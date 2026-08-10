@@ -30,10 +30,7 @@ jobs:
         run: |
           set -euo pipefail
           mkdir -p backup-parts workspace
-          gh release download "$RELEASE_TAG" \
-            --repo "$GITHUB_REPOSITORY" \
-            --pattern 'GBPUSD_RULE_EVALUATOR_V2_WORKSPACE_PART_*.zip.part' \
-            --dir backup-parts
+          gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --pattern 'GBPUSD_RULE_EVALUATOR_V2_WORKSPACE_PART_*.zip.part' --dir backup-parts
           ls -lh backup-parts
           test "$(find backup-parts -type f | wc -l)" -eq 3
 
@@ -43,23 +40,20 @@ jobs:
           set -euo pipefail
           cd backup-parts
           sha256sum *.zip.part | sort > ../backup-parts.sha256
-          cat ../backup-parts.sha256
-          cat \
-            GBPUSD_RULE_EVALUATOR_V2_WORKSPACE_PART_01_OF_03.zip.part \
-            GBPUSD_RULE_EVALUATOR_V2_WORKSPACE_PART_02_OF_03.zip.part \
-            GBPUSD_RULE_EVALUATOR_V2_WORKSPACE_PART_03_OF_03.zip.part \
-            > ../workspace-full.zip
+          cat GBPUSD_RULE_EVALUATOR_V2_WORKSPACE_PART_01_OF_03.zip.part GBPUSD_RULE_EVALUATOR_V2_WORKSPACE_PART_02_OF_03.zip.part GBPUSD_RULE_EVALUATOR_V2_WORKSPACE_PART_03_OF_03.zip.part > ../workspace-full.zip
           cd ..
-          ls -lh workspace-full.zip
           unzip -t workspace-full.zip
 
       - name: Extract workspace
         shell: bash
         run: |
           set -euo pipefail
+          rm -rf workspace
+          mkdir -p workspace
           unzip -q workspace-full.zip -d workspace
           echo 'Top-level extracted content:'
-          find workspace -maxdepth 2 -mindepth 1 -print | head -200
+          find workspace -maxdepth 2 -mindepth 1 -print > extracted-list.txt
+          sed -n '1,200p' extracted-list.txt
 
       - name: Build complete workspace manifest
         shell: bash
@@ -86,44 +80,23 @@ jobs:
           set -euo pipefail
           python3 <<'PY'
           from pathlib import Path
-          import hashlib
-          import json
-
-          root = Path('workspace')
-          text_ext = {
-              '.md','.txt','.json','.jsonl','.yaml','.yml','.csv','.tsv','.sql',
-              '.py','.js','.ts','.tsx','.jsx','.mjs','.cjs','.toml','.ini','.cfg',
-              '.xml','.html','.css','.sh','.bat','.ps1','.r','.ipynb'
-          }
+          import hashlib, json
+          root=Path('workspace')
+          text_ext={'.md','.txt','.json','.jsonl','.yaml','.yml','.csv','.tsv','.sql','.py','.js','.ts','.tsx','.jsx','.mjs','.cjs','.toml','.ini','.cfg','.xml','.html','.css','.sh','.bat','.ps1','.r','.ipynb'}
           records=[]
           for p in sorted(root.rglob('*')):
-              if not p.is_file():
-                  continue
-              rec={'path':str(p),'bytes':p.stat().st_size}
-              h=hashlib.sha256()
-              try:
-                  data=p.read_bytes()
-                  h.update(data)
-                  rec['sha256']=h.hexdigest()
-                  if p.suffix.lower() in text_ext:
-                      text=data.decode('utf-8',errors='replace')
-                      rec['text']=True
-                      rec['lines']=text.count('\n') + (1 if text else 0)
-                      rec['chars']=len(text)
-                  else:
-                      rec['text']=False
-              except Exception as e:
-                  rec['error']=repr(e)
+              if not p.is_file(): continue
+              data=p.read_bytes(); rec={'path':str(p),'bytes':len(data),'sha256':hashlib.sha256(data).hexdigest()}
+              if p.suffix.lower() in text_ext:
+                  text=data.decode('utf-8',errors='replace'); rec.update(text=True,lines=text.count('\n')+(1 if text else 0),chars=len(text))
+              else: rec['text']=False
               records.append(rec)
-
           Path('workspace-inventory.json').write_text(json.dumps(records,indent=2),encoding='utf-8')
-          text=[r for r in records if r.get('text')]
+          text=[r for r in records if r['text']]
           with Path('workspace-text-inventory.md').open('w',encoding='utf-8') as f:
               f.write('# Workspace Text Inventory\n\n')
-              f.write(f'Total files: {len(records)}\n\n')
-              f.write(f'Text/config files: {len(text)}\n\n')
-              for r in text:
-                  f.write(f"- `{r['path']}` — {r['lines']} lines, {r['chars']} chars, sha256 `{r['sha256']}`\n")
+              f.write(f'Total files: {len(records)}\n\nText/config files: {len(text)}\n\n')
+              for r in text: f.write(f"- `{r['path']}` — {r['lines']} lines, {r['chars']} chars, sha256 `{r['sha256']}`\n")
           print(f'Indexed {len(records)} files; {len(text)} text/config files.')
           PY
 
