@@ -1,0 +1,59 @@
+name: Workspace Audit
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download backup assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p parts
+          gh release download workspace-v1 --repo "${{ github.repository }}" --pattern 'GBPUSD_RULE_EVALUATOR_V2_WORKSPACE_PART_*_OF_03.zip.part' --dir parts
+
+      - name: Reassemble and extract
+        run: |
+          set -e
+          test "$(find parts -type f -name 'GBPUSD_RULE_EVALUATOR_V2_WORKSPACE_PART_*_OF_03.zip.part' | wc -l)" -eq 3
+          cat parts/* > workspace.zip
+          unzip -q workspace.zip -d workspace
+          find workspace -type f -print | sort > files.txt
+
+      - name: Build Murphy 0002 audit index
+        run: |
+          {
+            echo '=== FILE COUNT ==='
+            wc -l files.txt
+            echo
+            echo '=== MURPHY / 0002 / EVALUATOR CANDIDATES ==='
+            grep -Ei '(murphy|0002|evaluator|mapping|operator|mtf|historical|unit.?test)' files.txt || true
+          } > audit.txt
+
+          : > samples.txt
+          while IFS= read -r f; do
+            case "$f" in
+              *.md|*.txt|*.json|*.yaml|*.yml|*.py|*.sql|*.csv|*.toml|*.ini|*.cfg) ;;
+              *) continue ;;
+            esac
+            if [ -f "$f" ] && [ "$(stat -c%s "$f")" -le 300000 ] && grep -Eiq '(murphy|0002|evaluator|mapping|operator|mtf|historical|unit.?test)' "$f" 2>/dev/null; then
+              echo "===== $f =====" >> samples.txt
+              head -c 80000 "$f" >> samples.txt || true
+              printf '\n\n' >> samples.txt
+            fi
+          done < files.txt
+
+      - name: Upload audit
+        uses: actions/upload-artifact@v4
+        with:
+          name: Murphy-0002-Workspace-Audit
+          path: |
+            audit.txt
+            samples.txt
+            files.txt
+          retention-days: 7
