@@ -40,6 +40,28 @@ jobs:
           cp audits/MURPHY_0003_0004_EVALUATOR_V2/test_murphy_0003_0004_evaluator_v2.py /tmp/test_murphy_0003_0004_evaluator_v2.py
           cd /tmp
           pytest -q test_murphy_0003_0004_evaluator_v2.py
+          cd -
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          path = Path('audits/MURPHY_0003_0004_EVALUATOR_V2/MURPHY_0003_0004_AVAILABILITY_ALIGNMENT_CONTRACT_V1.json')
+          contract = json.loads(path.read_text())
+          assert contract['rule_scope'] == ['MURPHY_0003', 'MURPHY_0004']
+          assert contract['source'] == 'PIVOT_SEQUENCE_V2_OUTPUT'
+          assert contract['evaluation_period'] == {'start_year': 2016, 'end_year': 2024, 'exclude_year': 2025}
+          assert contract['pivot_requirement'] == 'CONFIRMED_AFTER_2_BARS'
+          assert contract['availability_rule'] == 'Only pivot evidence whose availability_timestamp is <= evaluation_availability_timestamp may be used.'
+          assert contract['sequence_rule']['0003'] == 'current reaction peak > prior reaction peak AND current reaction trough > prior reaction trough'
+          assert contract['sequence_rule']['0004'] == 'current reaction peak < prior reaction peak AND current reaction trough < prior reaction trough'
+          assert contract['peak_selection'] == 'At evaluation time, use the two latest confirmed HIGH pivots available by availability_timestamp.'
+          assert contract['trough_selection'] == 'Evaluate the current confirmed LOW against the immediately preceding confirmed LOW in chronological pivot order.'
+          assert contract['lookahead_policy'] == 'No future pivot may participate before its confirmation availability timestamp.'
+          assert contract['missing_evidence'] == 'Return NOT_EVALUABLE when either required side of the sequence is unavailable.'
+          assert contract['tuning_policy'] == 'No thresholds or pivot-generation parameters may be tuned from 2025 or from the evaluation outputs.'
+          assert contract['freeze_gate'] == 'Contract, implementation, unit tests, and 2016-2024 historical rerun must all pass before marking 0003-0004 production-frozen.'
+          print(f"Alignment contract assertions passed: {contract['contract_id']} ({contract['status']})")
+          PY
 
       - name: Historical 2016-2024 exact rerun
         run: |
@@ -52,31 +74,59 @@ jobs:
           import pandas as pd
 
           base = 'workspace/PIVOT_SEQUENCE_V2_OUTPUT'
-          groups = {}
           pattern = re.compile(r'^GBPUSD_(D1|H1|H4|M15|M30|M5)(?:_(\d{4}))?_STRUCTURE_PIVOT_SEQUENCE_V2\.csv$')
+          candidates = {tf: {'annual': [], 'unsuffixed': []} for tf in ('D1','H1','H4','M15','M30','M5')}
 
-          files = sorted(glob.glob(base + '/*_STRUCTURE_PIVOT_SEQUENCE_V2.csv'))
-          matched = 0
-          for f in files:
+          for f in sorted(glob.glob(base + '/*_STRUCTURE_PIVOT_SEQUENCE_V2.csv')):
               bn = os.path.basename(f)
               m = pattern.match(bn)
               if not m:
                   continue
-              matched += 1
-              tf = m.group(1)
-              df = pd.read_csv(f, usecols=['pivot_timestamp', 'pivot_type', 'pivot_price', 'availability_timestamp'])
-              df['pivot_timestamp'] = pd.to_datetime(df['pivot_timestamp'])
-              df['availability_timestamp'] = pd.to_datetime(df['availability_timestamp'])
-              df = df[(df.pivot_timestamp.dt.year >= 2016) & (df.pivot_timestamp.dt.year <= 2024)]
-              groups.setdefault(tf, []).append(df)
+              tf, year = m.group(1), m.group(2)
+              candidates[tf]['annual' if year else 'unsuffixed'].append(f)
 
-          if matched == 0 or not groups:
-              print('Candidate files:', files[:50])
-              raise SystemExit('No canonical Pivot Sequence V2 files matched. Refusing false-success validation.')
+          selected = {}
+          for tf, sets in candidates.items():
+              # Never concatenate a full-history file with annual shards: that double-counts events.
+              # Prefer annual shards when they exist; otherwise use the single unsuffixed canonical file.
+              if sets['annual']:
+                  selected[tf] = sorted(sets['annual'])
+              elif sets['unsuffixed']:
+                  if len(sets['unsuffixed']) != 1:
+                      raise SystemExit(f'Ambiguous canonical files for {tf}: {sets["unsuffixed"]}')
+                  selected[tf] = sets['unsuffixed']
+              else:
+                  selected[tf] = []
+
+          missing = [tf for tf, files in selected.items() if not files]
+          if missing:
+              raise SystemExit(f'Missing canonical Pivot Sequence V2 files for: {missing}')
+
+          with open('murphy_0003_0004_file_selection.txt', 'w') as s:
+              for tf in sorted(selected):
+                  s.write(f'{tf}\n')
+                  for f in selected[tf]:
+                      s.write(f'  {f}\n')
+          print(open('murphy_0003_0004_file_selection.txt').read())
 
           out = []
-          for tf, dfs in sorted(groups.items()):
-              df = pd.concat(dfs, ignore_index=True).sort_values('pivot_timestamp')
+          for tf in sorted(selected):
+              dfs = []
+              for f in selected[tf]:
+                  df = pd.read_csv(f, usecols=['pivot_timestamp', 'pivot_type', 'pivot_price', 'availability_timestamp'])
+                  df['pivot_timestamp'] = pd.to_datetime(df['pivot_timestamp'])
+                  df['availability_timestamp'] = pd.to_datetime(df['availability_timestamp'])
+                  dfs.append(df)
+
+              df = pd.concat(dfs, ignore_index=True)
+              df = df[(df.pivot_timestamp.dt.year >= 2016) & (df.pivot_timestamp.dt.year <= 2024)]
+              # Canonical identity guard: duplicate pivot rows are not allowed into the evaluation population.
+              key = ['pivot_timestamp', 'pivot_type', 'pivot_price', 'availability_timestamp']
+              dup = int(df.duplicated(key).sum())
+              if dup:
+                  raise SystemExit(f'{tf}: {dup} duplicate canonical pivot rows detected after file selection')
+
+              df = df.sort_values('pivot_timestamp')
               lows = df[df.pivot_type == 'LOW'].sort_values('pivot_timestamp').reset_index(drop=True)
               highs = df[df.pivot_type == 'HIGH'].sort_values('availability_timestamp').reset_index(drop=True)
               h_av = highs.availability_timestamp.values.astype('datetime64[ns]')
@@ -95,7 +145,7 @@ jobs:
               out.append((tf, n, p3, p4))
 
           if len(out) != 6:
-              raise SystemExit(f'Expected 6 timeframes, found {len(out)}: {sorted(groups)}')
+              raise SystemExit(f'Expected 6 timeframes, found {len(out)}')
 
           with open('murphy_0003_0004_historical_v2.csv', 'w') as f:
               f.write('timeframe,evaluable_events,murphy_0003_pass,murphy_0004_pass\n')
@@ -109,5 +159,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: murphy-0003-0004-v2-validation-${{ inputs.release_tag }}
-          path: murphy_0003_0004_historical_v2.csv
+          path: |
+            murphy_0003_0004_historical_v2.csv
+            murphy_0003_0004_file_selection.txt
           retention-days: 30
