@@ -1,0 +1,63 @@
+name: Extract Workspace Backup
+
+on:
+  push:
+    branches:
+      - tools/backup-extract
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download release assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          mkdir -p parts
+          gh release download workspace-v1 \
+            --repo "${{ github.repository }}" \
+            --pattern 'GBPUSD_RULE_EVALUATOR_V2_WORKSPACE_PART_*_OF_03.zip.part' \
+            --dir parts
+          echo "Downloaded assets:"
+          ls -lh parts
+
+      - name: Verify all three parts
+        run: |
+          test -f parts/GBPUSD_RULE_EVALUATOR_V2_WORKSPACE_PART_01_OF_03.zip.part
+          test -f parts/GBPUSD_RULE_EVALUATOR_V2_WORKSPACE_PART_02_OF_03.zip.part
+          test -f parts/GBPUSD_RULE_EVALUATOR_V2_WORKSPACE_PART_03_OF_03.zip.part
+          sha256sum parts/*
+
+      - name: Reassemble backup
+        run: |
+          cat \
+            parts/GBPUSD_RULE_EVALUATOR_V2_WORKSPACE_PART_01_OF_03.zip.part \
+            parts/GBPUSD_RULE_EVALUATOR_V2_WORKSPACE_PART_02_OF_03.zip.part \
+            parts/GBPUSD_RULE_EVALUATOR_V2_WORKSPACE_PART_03_OF_03.zip.part \
+            > workspace-backup.zip
+          ls -lh workspace-backup.zip
+          unzip -t workspace-backup.zip
+
+      - name: Extract backup
+        run: |
+          mkdir -p extracted-workspace
+          unzip -q workspace-backup.zip -d extracted-workspace
+          find extracted-workspace -type f -print | sort > extracted-file-list.txt
+          sha256sum workspace-backup.zip > backup-sha256.txt
+          du -sh extracted-workspace
+          wc -l extracted-file-list.txt
+
+      - name: Upload extracted workspace for inspection
+        uses: actions/upload-artifact@v4
+        with:
+          name: AI-Trading-Assistant-Workspace-Extracted
+          path: |
+            extracted-workspace
+            extracted-file-list.txt
+            backup-sha256.txt
+          retention-days: 7
+          compression-level: 0
