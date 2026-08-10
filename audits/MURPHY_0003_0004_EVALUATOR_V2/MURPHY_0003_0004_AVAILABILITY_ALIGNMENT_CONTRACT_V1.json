@@ -1,0 +1,19 @@
+{
+  "contract_id": "MURPHY_0003_0004_AVAILABILITY_ALIGNMENT_V1",
+  "status": "PROPOSED_FOR_VALIDATION",
+  "rule_scope": ["MURPHY_0003", "MURPHY_0004"],
+  "source": "PIVOT_SEQUENCE_V2_OUTPUT",
+  "evaluation_period": {"start_year": 2016, "end_year": 2024, "exclude_year": 2025},
+  "pivot_requirement": "CONFIRMED_AFTER_2_BARS",
+  "availability_rule": "Only pivot evidence whose availability_timestamp is <= evaluation_availability_timestamp may be used.",
+  "sequence_rule": {
+    "0003": "current reaction peak > prior reaction peak AND current reaction trough > prior reaction trough",
+    "0004": "current reaction peak < prior reaction peak AND current reaction trough < prior reaction trough"
+  },
+  "peak_selection": "At evaluation time, use the two latest confirmed HIGH pivots available by availability_timestamp.",
+  "trough_selection": "Evaluate the current confirmed LOW against the immediately preceding confirmed LOW in chronological pivot order.",
+  "lookahead_policy": "No future pivot may participate before its confirmation availability timestamp.",
+  "missing_evidence": "Return NOT_EVALUABLE when either required side of the sequence is unavailable.",
+  "tuning_policy": "No thresholds or pivot-generation parameters may be tuned from 2025 or from the evaluation outputs.",
+  "freeze_gate": "Contract, implementation, unit tests, and 2016-2024 historical rerun must all pass before marking 0003-0004 production-frozen."
+}
