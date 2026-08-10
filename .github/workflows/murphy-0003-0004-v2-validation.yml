@@ -1,0 +1,93 @@
+name: Murphy 0003-0004 V2 Validation
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Workspace backup release tag
+        required: true
+        default: workspace-v1
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download workspace backup
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: |
+          set -euo pipefail
+          mkdir -p parts workspace
+          gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --pattern 'GBPUSD_RULE_EVALUATOR_V2_WORKSPACE_PART_*.zip.part' --dir parts
+          cat parts/GBPUSD_RULE_EVALUATOR_V2_WORKSPACE_PART_01_OF_03.zip.part \
+              parts/GBPUSD_RULE_EVALUATOR_V2_WORKSPACE_PART_02_OF_03.zip.part \
+              parts/GBPUSD_RULE_EVALUATOR_V2_WORKSPACE_PART_03_OF_03.zip.part > workspace-full.zip
+          unzip -q workspace-full.zip -d workspace
+
+      - name: Validate evaluator and alignment contract
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check -q pytest pandas
+          cp audits/MURPHY_0003_0004_EVALUATOR_V2/murphy_0003_0004_evaluator_v2.py /tmp/murphy_0003_0004_evaluator_v2.py
+          cp audits/MURPHY_0003_0004_EVALUATOR_V2/test_murphy_0003_0004_evaluator_v2.py /tmp/test_murphy_0003_0004_evaluator_v2.py
+          cd /tmp
+          pytest -q test_murphy_0003_0004_evaluator_v2.py
+
+      - name: Historical 2016-2024 exact rerun
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import glob, os, re
+          import numpy as np
+          import pandas as pd
+
+          base='workspace/PIVOT_SEQUENCE_V2_OUTPUT'
+          groups={}
+          for f in glob.glob(base+'/*_STRUCTURE_PIVOT_SEQUENCE_V2.csv'):
+              bn=os.path.basename(f)
+              m=re.match(r'GBPUSD_(D1|H1|H4|M15|M30|M5)(?:_(\\d{4}))?_STRUCTURE_PIVOT_SEQUENCE_V2\\.csv',bn)
+              if not m: continue
+              tf=m.group(1)
+              df=pd.read_csv(f, usecols=['pivot_timestamp','pivot_type','pivot_price','availability_timestamp'])
+              df['pivot_timestamp']=pd.to_datetime(df['pivot_timestamp'])
+              df['availability_timestamp']=pd.to_datetime(df['availability_timestamp'])
+              df=df[(df.pivot_timestamp.dt.year>=2016)&(df.pivot_timestamp.dt.year<=2024)]
+              groups.setdefault(tf,[]).append(df)
+
+          out=[]
+          for tf,dfs in sorted(groups.items()):
+              df=pd.concat(dfs,ignore_index=True).sort_values('pivot_timestamp')
+              lows=df[df.pivot_type=='LOW'].sort_values('pivot_timestamp').reset_index(drop=True)
+              highs=df[df.pivot_type=='HIGH'].sort_values('availability_timestamp').reset_index(drop=True)
+              h_av=highs.availability_timestamp.values.astype('datetime64[ns]')
+              h_price=highs.pivot_price.values
+              n=p3=p4=0
+              for i in range(1,len(lows)):
+                  r=lows.iloc[i]
+                  idx=np.searchsorted(h_av, r.availability_timestamp.to_datetime64(), side='right')
+                  if idx<2: continue
+                  cp,pp=h_price[idx-1],h_price[idx-2]
+                  ct,pt=r.pivot_price,lows.iloc[i-1].pivot_price
+                  n+=1; p3+=int(cp>pp and ct>pt); p4+=int(cp<pp and ct<pt)
+              out.append((tf,n,p3,p4))
+
+          with open('murphy_0003_0004_historical_v2.csv','w') as f:
+              f.write('timeframe,evaluable_events,murphy_0003_pass,murphy_0004_pass\n')
+              for r in out: f.write(','.join(map(str,r))+'\n')
+          print(open('murphy_0003_0004_historical_v2.csv').read())
+          PY
+
+      - name: Upload validation artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: murphy-0003-0004-v2-validation-${{ inputs.release_tag }}
+          path: murphy_0003_0004_historical_v2.csv
+          retention-days: 30
