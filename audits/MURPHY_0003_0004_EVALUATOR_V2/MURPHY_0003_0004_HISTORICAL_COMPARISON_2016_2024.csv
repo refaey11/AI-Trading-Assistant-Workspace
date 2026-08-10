@@ -1,0 +1,7 @@
+timeframe,old_0003_pass_trough_only,new_0003_pass_peak_and_trough,new_0004_pass_trough_only,new_0004_pass_peak_and_trough,notes
+D1,197,15,204,15,"2016-2024; availability-time aligned; no 2025"
+H1,4672,309,4335,309,"2016-2024; availability-time aligned; no 2025"
+H4,1125,102,1102,102,"2016-2024; availability-time aligned; no 2025"
+M15,15071,1135,14155,1135,"2016-2024; availability-time aligned; no 2025"
+M30,7676,548,7183,548,"2016-2024; availability-time aligned; no 2025"
+M5,42898,2806,40410,2806,"2016-2024; availability-time aligned; no 2025"
