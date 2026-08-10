@@ -1,0 +1,101 @@
+name: Murphy 0003-0004 Diagnostic Reconciliation
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Workspace backup release tag
+        required: true
+        default: workspace-v1
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  diagnostic:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download workspace backup
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: |
+          set -euo pipefail
+          mkdir -p parts workspace
+          gh release download "$RELEASE_TAG" --repo "$GITHUB_REPOSITORY" --pattern 'GBPUSD_RULE_EVALUATOR_V2_WORKSPACE_PART_*.zip.part' --dir parts
+          cat parts/GBPUSD_RULE_EVALUATOR_V2_WORKSPACE_PART_01_OF_03.zip.part parts/GBPUSD_RULE_EVALUATOR_V2_WORKSPACE_PART_02_OF_03.zip.part parts/GBPUSD_RULE_EVALUATOR_V2_WORKSPACE_PART_03_OF_03.zip.part > workspace-full.zip
+          unzip -q workspace-full.zip -d workspace
+
+      - name: Compare evaluation populations
+        run: |
+          set -euo pipefail
+          python -m pip install --disable-pip-version-check -q pandas numpy
+          python - <<'PY'
+          import glob, os, re
+          import numpy as np
+          import pandas as pd
+
+          base='workspace/PIVOT_SEQUENCE_V2_OUTPUT'
+          pat=re.compile(r'^GBPUSD_(D1|H1|H4|M15|M30|M5)(?:_(\d{4}))?_STRUCTURE_PIVOT_SEQUENCE_V2\.csv$')
+          files={tf:[] for tf in ('D1','H1','H4','M15','M30','M5')}
+          for f in glob.glob(base+'/*_STRUCTURE_PIVOT_SEQUENCE_V2.csv'):
+              m=pat.match(os.path.basename(f))
+              if m: files[m.group(1)].append(f)
+          for tf in files:
+              annual=[f for f in files[tf] if re.search(r'_\d{4}_STRUCTURE',f)]
+              uns=[f for f in files[tf] if not re.search(r'_\d{4}_STRUCTURE',f)]
+              files[tf]=sorted(annual) if annual else sorted(uns)
+              if not files[tf]: raise SystemExit('missing '+tf)
+
+          # Compare four deterministic semantics; no tuning.
+          # A: current V2: peaks selected by availability.
+          # B: peaks strictly prior in pivot chronology to the evaluated LOW.
+          # C: peaks prior in pivot chronology AND availability <= evaluation time.
+          # D: current V2 but evaluation period clipped by availability year as well as pivot year.
+          rows=[]
+          for tf in sorted(files):
+              df=pd.concat([pd.read_csv(f,usecols=['pivot_timestamp','pivot_type','pivot_price','availability_timestamp']) for f in files[tf]],ignore_index=True)
+              for c in ('pivot_timestamp','availability_timestamp'): df[c]=pd.to_datetime(df[c])
+              df=df[(df.pivot_timestamp.dt.year>=2016)&(df.pivot_timestamp.dt.year<=2024)].sort_values('pivot_timestamp').drop_duplicates()
+              lows=df[df.pivot_type=='LOW'].sort_values('pivot_timestamp').reset_index(drop=True)
+              highs=df[df.pivot_type=='HIGH'].sort_values('pivot_timestamp').reset_index(drop=True)
+              nA=pA3=pA4=nB=pB3=pB4=nC=pC3=pC4=nD=pD3=pD4=0
+              for i in range(1,len(lows)):
+                  r=lows.iloc[i]; prev=lows.iloc[i-1]
+                  # A
+                  ha=highs[highs.availability_timestamp<=r.availability_timestamp]
+                  if len(ha)>=2:
+                      cp,pp=ha.iloc[-1].pivot_price,ha.iloc[-2].pivot_price
+                      nA+=1; pA3+=int(cp>pp and r.pivot_price>prev.pivot_price); pA4+=int(cp<pp and r.pivot_price<prev.pivot_price)
+                  # B
+                  hb=highs[highs.pivot_timestamp<r.pivot_timestamp]
+                  if len(hb)>=2:
+                      cp,pp=hb.iloc[-1].pivot_price,hb.iloc[-2].pivot_price
+                      nB+=1; pB3+=int(cp>pp and r.pivot_price>prev.pivot_price); pB4+=int(cp<pp and r.pivot_price<prev.pivot_price)
+                  # C
+                  hc=highs[(highs.pivot_timestamp<r.pivot_timestamp)&(highs.availability_timestamp<=r.availability_timestamp)]
+                  if len(hc)>=2:
+                      cp,pp=hc.iloc[-1].pivot_price,hc.iloc[-2].pivot_price
+                      nC+=1; pC3+=int(cp>pp and r.pivot_price>prev.pivot_price); pC4+=int(cp<pp and r.pivot_price<prev.pivot_price)
+                  # D
+                  if r.availability_timestamp.year>=2016 and r.availability_timestamp.year<=2024:
+                      hd=highs[highs.availability_timestamp<=r.availability_timestamp]
+                      if len(hd)>=2:
+                          cp,pp=hd.iloc[-1].pivot_price,hd.iloc[-2].pivot_price
+                          nD+=1; pD3+=int(cp>pp and r.pivot_price>prev.pivot_price); pD4+=int(cp<pp and r.pivot_price<prev.pivot_price)
+              rows.append([tf,nA,pA3,pA4,nB,pB3,pB4,nC,pC3,pC4,nD,pD3,pD4])
+          cols=['tf','A_events','A_0003','A_0004','B_events','B_0003','B_0004','C_events','C_0003','C_0004','D_events','D_0003','D_0004']
+          out=pd.DataFrame(rows,columns=cols)
+          out.to_csv('murphy_0003_0004_diagnostic.csv',index=False)
+          print(out.to_string(index=False))
+          print('\nTarget historical artifact: D1 15/15; H1 309/309; H4 102/102; M15 1135/1135; M30 548/548; M5 2806/2806')
+          PY
+      - name: Upload diagnostic
+        uses: actions/upload-artifact@v4
+        with:
+          name: murphy-0003-0004-diagnostic-${{ inputs.release_tag }}
+          path: murphy_0003_0004_diagnostic.csv
+          retention-days: 30
