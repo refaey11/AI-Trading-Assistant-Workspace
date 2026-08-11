@@ -1,0 +1,15 @@
+{
+  "manifest_version": "V1",
+  "status": "READY_FOR_EXECUTION",
+  "candidate": "V2 + 4H",
+  "assets": ["EURUSD", "GBPUSD", "USDJPY", "USDCAD", "XAUUSD"],
+  "fold_a": {"train": "2016-2023", "oos": "2024"},
+  "fold_b": {"train": "2016-2024", "oos": "2025"},
+  "k_neighbors": 20,
+  "selection_rule": "maximize minimum-asset expectancy on calibration only",
+  "oos_rule": "locked parameters; no retuning on OOS",
+  "leakage_rule": "future outcomes cannot enter retrieval or calibration for the OOS year",
+  "execution_requirement": "fresh raw-data end-to-end rerun across all five assets",
+  "official_baseline_rule": "do not freeze until fresh rerun and leakage audit pass",
+  "oos_protection": "2025 is OOS and must not be used for tuning or implementation selection"
+}
