@@ -1,6 +1,7 @@
 name: Murphy Evidence Adapter Tests
 
 on:
+  workflow_dispatch:
   push:
     paths:
       - 'src/murphy_0006_0007/**'
