@@ -19,8 +19,9 @@ Corrected candidates:
 Raw observations on corrected population:
 - 0006 daily-range/line intersections: 32
 - 0007 daily-range/line intersections: 30
-- 0006 directionally-consistent reaction candidates: 166? (see generated dataset for row-level truth)
-- 0007 directionally-consistent reaction candidates: 175? (see generated dataset for row-level truth)
+- 0006 directionally-consistent reaction candidates: 163
+- 0007 directionally-consistent reaction candidates: 178
+- Total rows with a reaction candidate: 347
 
 ## QA checks passed after correction
 - 403-row preliminary population detected as period-leaky and rejected.
