@@ -6,10 +6,15 @@ TRENDLINE_GEOMETRY_V1_OUTPUT/GBPUSD_D1_STRUCTURE_TRENDLINES_V1.csv
 DMI_ADX_V1_OUTPUT/GBPUSD_D1_DMI_ADX_2016_2024.csv
 
 This runner does not implement PASS/FAIL or a successful-touch threshold.
+The historical QA population is explicitly capped to candidate timestamps
+between 2016-01-01 and 2024-12-31 inclusive. 2025+ observations are excluded.
 """
 from pathlib import Path
 import argparse
 import pandas as pd
+
+START = pd.Timestamp("2016-01-01")
+END = pd.Timestamp("2024-12-31 23:59:59")
 
 
 def run(root: Path, output: Path) -> pd.DataFrame:
@@ -33,7 +38,9 @@ def run(root: Path, output: Path) -> pd.DataFrame:
         rule_id, expected_reaction = mapping[(g.line_type, g.direction)]
         candidates = piv[(piv.pivot_type == g.line_type)
                          & (piv.pivot_timestamp > g.point_2_timestamp)
-                         & (piv.availability_timestamp >= g.availability_timestamp)]
+                         & (piv.availability_timestamp >= g.availability_timestamp)
+                         & (piv.pivot_timestamp >= START)
+                         & (piv.pivot_timestamp <= END)]
         if candidates.empty:
             continue
         c = candidates.iloc[0]
@@ -48,7 +55,9 @@ def run(root: Path, output: Path) -> pd.DataFrame:
         opposite = "HIGH" if g.line_type == "LOW" else "LOW"
         reactions = piv[(piv.pivot_type == opposite)
                         & (piv.pivot_timestamp > c.pivot_timestamp)
-                        & (piv.availability_timestamp >= c.availability_timestamp)]
+                        & (piv.availability_timestamp >= c.availability_timestamp)
+                        & (piv.pivot_timestamp >= START)
+                        & (piv.pivot_timestamp <= END)]
         r = reactions.iloc[0] if not reactions.empty else None
         consistent = None if r is None else (
             r.pivot_price > c.pivot_price if expected_reaction == "UP"
@@ -81,6 +90,9 @@ def run(root: Path, output: Path) -> pd.DataFrame:
         })
 
     result = pd.DataFrame(rows)
+    if not result.empty:
+        result = result[(pd.to_datetime(result["candidate_timestamp"]) >= START)
+                        & (pd.to_datetime(result["candidate_timestamp"]) <= END)].copy()
     output.parent.mkdir(parents=True, exist_ok=True)
     result.to_csv(output, index=False)
     return result
