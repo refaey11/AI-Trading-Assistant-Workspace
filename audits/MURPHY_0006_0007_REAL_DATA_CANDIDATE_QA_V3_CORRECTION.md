@@ -9,7 +9,7 @@ The first rebuilt candidate dataset was labeled 2016–2024 but the runner did n
 This was caught during the historical QA gate before any confirmation or PASS/FAIL promotion.
 
 ## Correction
-The corrected population is restricted to candidate timestamps from 2016-01-01 through 2024-12-31 inclusive.
+The corrected population is restricted to candidate timestamps from 2016-01-01 through 2024-12-31 inclusive. Reaction candidates are also restricted to the same historical window; an out-of-window reaction is not carried into the historical dataset.
 
 Corrected candidates:
 - MURPHY_0006: 166
@@ -20,8 +20,8 @@ Raw observations on corrected population:
 - 0006 daily-range/line intersections: 32
 - 0007 daily-range/line intersections: 30
 - 0006 directionally-consistent reaction candidates: 163
-- 0007 directionally-consistent reaction candidates: 178
-- Total rows with a reaction candidate: 347
+- 0007 directionally-consistent reaction candidates: 177
+- Total rows with an in-window reaction candidate: 346
 
 ## QA checks passed after correction
 - 403-row preliminary population detected as period-leaky and rejected.
@@ -33,6 +33,7 @@ Raw observations on corrected population:
 - Rule mapping remains 0006 = LOW/UP and 0007 = HIGH/DOWN.
 - Evidence status remains CANDIDATE_ONLY.
 - No 2025/2026 candidate or reaction is included in the corrected dataset.
+- Exact zero-distance line contacts in the candidate population: 0.
 
 ## Provenance
 Canonical inputs remain:
@@ -41,7 +42,7 @@ Canonical inputs remain:
 - D1 OHLC / DMI_ADX 2016–2024
 
 Corrected local dataset SHA-256:
-`3ca710e97679fdc5025311c145e6d73bd5c1111cb15657c87ed05c6100335167`
+`7739a55aba0a61b26ac25849135d147f153a637a55db08801701b41134e85303`
 
 ## Decision
 The earlier 403-row candidate population is NOT a valid 2016–2024 historical QA population and must not be used for scoring, tuning, or confirmation.
