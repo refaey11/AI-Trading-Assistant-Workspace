@@ -1,0 +1,31 @@
+{
+  "version": "1.0",
+  "rules": {
+    "MURPHY_0025": {
+      "source_condition": "Price reaches a new four-week high.",
+      "confirmation": "Four-week high acts as a buy/short-covering signal.",
+      "direction": "BULLISH",
+      "feature": "existing_four_week_lookback.new_four_week_high",
+      "operator": "feature == true",
+      "timeframe_role": "dynamic/current evidence; no new fixed execution timeframe",
+      "availability": "timestamp of the completed bar on which the existing four-week-high feature becomes true",
+      "lookahead": "feature must be based only on data available at evaluation timestamp"
+    },
+    "MURPHY_0026": {
+      "source_condition": "Price reaches a new four-week low.",
+      "confirmation": "Four-week low acts as a sell/short-entry signal.",
+      "direction": "BEARISH",
+      "feature": "existing_four_week_lookback.new_four_week_low",
+      "operator": "feature == true",
+      "timeframe_role": "dynamic/current evidence; no new fixed execution timeframe",
+      "availability": "timestamp of the completed bar on which the existing four-week-low feature becomes true",
+      "lookahead": "feature must be based only on data available at evaluation timestamp"
+    }
+  },
+  "controls": {
+    "reuse_existing_component": true,
+    "invent_new_threshold": false,
+    "invent_new_timeframe": false,
+    "use_2025_for_tuning": false
+  }
+}
