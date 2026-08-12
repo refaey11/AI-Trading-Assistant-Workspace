@@ -1,0 +1,40 @@
+{
+  "status": "CANDIDATE_EVIDENCE_ONLY",
+  "period": "2016-2024",
+  "workspace_entries": 241,
+  "rules": {
+    "MURPHY_0006": "LOW + UP",
+    "MURPHY_0007": "HIGH + DOWN"
+  },
+  "inputs": {
+    "PIVOT_SEQUENCE_V2_OUTPUT/GBPUSD_D1_STRUCTURE_PIVOT_SEQUENCE_V2.csv": {
+      "rows": 808,
+      "sha256": "bd9df3ec9fea3e180628daf9d4a079b5d030edbb4a3bd659c4a7baf9de6033f8"
+    },
+    "TRENDLINE_GEOMETRY_V1_OUTPUT/GBPUSD_D1_STRUCTURE_TRENDLINES_V1.csv": {
+      "rows": 806,
+      "sha256": "9394b594a15a9e0e33a3fda14364b9158fda13ff074a325df24997c92295b1b3"
+    },
+    "DMI_ADX_V1_OUTPUT/GBPUSD_D1_DMI_ADX_2016_2024.csv": {
+      "rows": 2544,
+      "sha256": "c3d415c65887d1133e8b645c8d5c7473f4d2e2f6426361216b6908b75aad34c8"
+    }
+  },
+  "output": {
+    "rows": 403,
+    "MURPHY_0006": 197,
+    "MURPHY_0007": 206,
+    "daily_range_intersections": 62,
+    "directionally_consistent_reaction_candidates": 396,
+    "exact_zero_distance": 0,
+    "sha256": "5169513a7cc48ad4204186ceb65a9b0032bb05e8b24a580ce43aea07271442e4"
+  },
+  "constraints": [
+    "No 2025 data used",
+    "No invented touch tolerance",
+    "No invented ATR or percentage threshold",
+    "No invented lookback",
+    "No production PASS/FAIL",
+    "No modification of canonical Pivot or Geometry components"
+  ]
+}
