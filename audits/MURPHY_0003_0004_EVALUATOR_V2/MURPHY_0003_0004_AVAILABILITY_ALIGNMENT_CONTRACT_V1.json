@@ -1,6 +1,6 @@
 {
   "contract_id": "MURPHY_0003_0004_AVAILABILITY_ALIGNMENT_V1",
-  "status": "PROPOSED_FOR_VALIDATION",
+  "status": "PRODUCTION_FROZEN",
   "rule_scope": ["MURPHY_0003", "MURPHY_0004"],
   "source": "PIVOT_SEQUENCE_V2_OUTPUT",
   "evaluation_period": {"start_year": 2016, "end_year": 2024, "exclude_year": 2025},
@@ -15,5 +15,15 @@
   "lookahead_policy": "No future pivot may participate before its confirmation availability timestamp.",
   "missing_evidence": "Return NOT_EVALUABLE when either required side of the sequence is unavailable.",
   "tuning_policy": "No thresholds or pivot-generation parameters may be tuned from 2025 or from the evaluation outputs.",
-  "freeze_gate": "Contract, implementation, unit tests, and 2016-2024 historical rerun must all pass before marking 0003-0004 production-frozen."
+  "freeze_gate": "Contract, implementation, unit tests, and 2016-2024 historical rerun must all pass before marking 0003-0004 production-frozen.",
+  "freeze_evidence": {
+    "workflow": "Murphy 0003-0004 V2 Validation",
+    "run_number": 5,
+    "run_id": 31452549681,
+    "conclusion": "success",
+    "validated_at": "2026-08-11T02:30:43Z",
+    "historical_period": "2016-2024",
+    "2025_included": false,
+    "validation_artifact": "murphy-0003-0004-v2-validation-workspace-v1"
+  }
 }
