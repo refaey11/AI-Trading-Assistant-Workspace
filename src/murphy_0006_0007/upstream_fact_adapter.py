@@ -19,7 +19,7 @@ class UpstreamFacts:
     third_touch: Optional[bool]
     reaction_bounce: Optional[bool]
     no_break: Optional[bool]
-    confirmation_available_timestamp: str
+    confirmation_available_timestamp: Optional[str]
     status: str = "CANDIDATE_FACTS_ONLY"
 
 
@@ -28,14 +28,14 @@ def derive_candidate_facts(candidate: EvidenceCandidate) -> UpstreamFacts:
 
     Third-touch candidate requires the existing same-family pivot observation
     plus daily-range/line intersection. Reaction candidate requires the
-    existing directional-consistency observation. No-break is intentionally
-    left unknown because the project has no approved 0006/0007 predicate.
+    existing directional-consistency observation. No-break and the successful
+    confirmation availability timestamp are intentionally left unknown because
+    the project has no approved 0006/0007 production predicates for them.
     """
     same_family = candidate.candidate_pivot_type.upper() == candidate.line_type.upper()
 
-    third_touch: Optional[bool]
     if candidate.daily_range_intersects_line is None:
-        third_touch = None
+        third_touch: Optional[bool] = None
     else:
         third_touch = bool(same_family and candidate.daily_range_intersects_line)
 
@@ -47,5 +47,5 @@ def derive_candidate_facts(candidate: EvidenceCandidate) -> UpstreamFacts:
         third_touch=third_touch,
         reaction_bounce=reaction_bounce,
         no_break=None,
-        confirmation_available_timestamp=candidate.line_availability_timestamp,
+        confirmation_available_timestamp=None,
     )
