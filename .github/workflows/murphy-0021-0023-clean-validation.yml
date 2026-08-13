@@ -1,0 +1,81 @@
+name: Murphy 0021-0023 Clean Historical Validation
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'audits/MURPHY_0021_0023_HISTORICAL_EVALUATION_2020_2024_CLEAN_V1.csv'
+      - 'audits/MURPHY_0021_0023_HISTORICAL_SUMMARY_2020_2024_CLEAN_V1.csv'
+      - '.github/workflows/murphy-0021-0023-clean-validation.yml'
+
+jobs:
+  validate-clean-history:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Validate clean historical artifact
+        shell: python
+        run: |
+          import csv
+          from pathlib import Path
+          from collections import Counter, defaultdict
+
+          p = Path('audits/MURPHY_0021_0023_HISTORICAL_EVALUATION_2020_2024_CLEAN_V1.csv')
+          if not p.exists():
+              raise SystemExit(f'Missing artifact: {p}')
+
+          rows = list(csv.DictReader(p.open(newline='', encoding='utf-8')))
+          required = {'timeframe','timestamp','rule_id','status','directional_confirmation'}
+          if not rows:
+              raise SystemExit('Clean historical artifact is empty')
+          if not required.issubset(rows[0]):
+              raise SystemExit(f'Missing columns: {required - set(rows[0])}')
+
+          years = []
+          rules = set()
+          tfs = set()
+          for r in rows:
+              ts = r['timestamp']
+              year = int(ts[:4])
+              years.append(year)
+              rules.add(r['rule_id'])
+              tfs.add(r['timeframe'])
+              if year < 2020 or year > 2024:
+                  raise SystemExit(f'Out-of-window row: {r}')
+
+          if 2025 in years:
+              raise SystemExit('2025 rows detected')
+          if rules != {'MURPHY_0021','MURPHY_0022','MURPHY_0023'}:
+              raise SystemExit(f'Unexpected rules: {sorted(rules)}')
+          if tfs != {'H1','H4','D1'}:
+              raise SystemExit(f'Unexpected timeframes: {sorted(tfs)}')
+
+          counts = defaultdict(Counter)
+          for r in rows:
+              counts[r['rule_id']][r['status']] += 1
+
+          expected = {
+              'MURPHY_0021': {'PASS':20600, 'FAIL':20200, 'NOT_EVALUABLE':20},
+              'MURPHY_0022': {'PASS':5509, 'FAIL':34427, 'NOT_EVALUABLE':1352},
+              'MURPHY_0023': {'PASS':5401, 'FAIL':34535, 'NOT_EVALUABLE':1352},
+          }
+          # Only enforce PASS totals from the validated clean report; other statuses
+          # remain evaluator-output data and are not reinterpreted here.
+          for rule, exp in expected.items():
+              got = counts[rule]['PASS']
+              if got != exp['PASS']:
+                  raise SystemExit(f'{rule}: PASS mismatch: {got} != {exp["PASS"]}')
+
+          print(f'PASS: {len(rows)} clean rows; years={sorted(set(years))}; rules={sorted(rules)}; timeframes={sorted(tfs)}')
+          for rule in sorted(counts):
+              print(rule, dict(counts[rule]))
+
+      - name: Verify 2025 is absent
+        shell: bash
+        run: |
+          if grep -q '2025-' audits/MURPHY_0021_0023_HISTORICAL_EVALUATION_2020_2024_CLEAN_V1.csv; then
+            echo '2025 rows found'
+            exit 1
+          fi
+          echo 'PASS: no 2025 timestamps found'
