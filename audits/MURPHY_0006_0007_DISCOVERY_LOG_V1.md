@@ -29,5 +29,17 @@ Date: 2026-08-14
 Finding: Conversational claims are not sufficient evidence.
 Decision: Every material discovery must be written to this log and/or a dedicated evidence artifact with inputs, hashes, method, result, and governance impact.
 
+## Entry 006 — Governance review V2
+Date: 2026-08-14
+Finding: The current operational contract is deterministic and reproducible, but several clauses are project operationalizations rather than verbatim Murphy numeric/deterministic source text.
+Evidence: `MURPHY_0006_0007_GOVERNANCE_REVIEW_V2.md`; `MURPHY_0006_0007_FORMAL_OPERATIONAL_CONTRACT_V1.md`; Murphy source/provenance artifacts.
+Result: Governance approval remains OPEN. 0006/0007 remain QA PASS / NOT PRODUCTION FROZEN.
+
+## Entry 007 — Source-lock search result
+Date: 2026-08-14
+Finding: Current Workspace search still exposes the original registry wording as "A third successful touch and reaction confirms the trendline" and explicitly states that exact operational meanings for successful touch, reaction, third touch, and confirmation/availability timing were not proven from an authoritative project contract.
+Evidence: `PROJECT_CURRENT_STATE.md`, `AI_TRADING_ASSISTANT_PROJECT_CURRENT_STATE_2026-08-12_MURPHY_0006_0007.md`.
+Result: No new authoritative deterministic contract was found in the accessible source material during this review. Do not promote the operational clauses as source text.
+
 ## Next required discovery
-Determine whether the current operational no-break predicate can be formally approved as the project contract and confirm production-path evaluator integration without changing rule semantics.
+Recover the authoritative original MURPHY_0006/MURPHY_0007 database records, or document their unavailability, then complete the explicit governance decision and production-path integration review.
