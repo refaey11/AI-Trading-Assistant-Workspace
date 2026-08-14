@@ -2,6 +2,7 @@ name: Overnight 0006-0007 OpenAI Audit - Today
 
 on:
   push:
+    branches: [main]
     paths:
       - '.github/workflows/overnight-0006-0007-openai-audit-today.yml'
   workflow_dispatch:
@@ -23,14 +24,24 @@ jobs:
           START=$(date -u -d '2026-08-14T03:00:00Z' +%s)
           CUTOFF=$(date -u -d '2026-08-14T11:05:00Z' +%s)
           if [ "$NOW_UTC" -lt "$START" ] || [ "$NOW_UTC" -ge "$CUTOFF" ]; then
-            echo 'Outside requested 06:00–14:00 Cairo window; clean exit.'
+            echo 'Outside requested 06:00-14:00 Cairo window; clean exit.'
             exit 0
           fi
 
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+
+      - name: Install test runner
+        run: python -m pip install --disable-pip-version-check pytest
+
       - name: Collect deterministic evidence
+        shell: bash
         run: |
           set +e
           mkdir -p overnight_audit
@@ -43,16 +54,17 @@ jobs:
             echo '=== KEYWORDS ==='
             git grep -n -I -E 'third_touch|reaction_bounce|no_break|confirmation_available_at|reaction_available_at|TRENDLINE_GEOMETRY_V1|PIVOT_SEQUENCE_V2|NOT_EVALUABLE' -- . ':!overnight_audit' | head -n 1600
           } > overnight_audit/evidence.txt 2>&1
-          if [ -f pyproject.toml ] || [ -f requirements.txt ] || [ -d tests ]; then
+          if [ -d tests ]; then
             python -m pytest -q > overnight_audit/pytest.txt 2>&1
             echo $? > overnight_audit/pytest_exit_code.txt
           else
-            echo 'No pytest project detected.' > overnight_audit/pytest.txt
+            echo 'No tests directory detected.' > overnight_audit/pytest.txt
             echo 0 > overnight_audit/pytest_exit_code.txt
           fi
 
       - name: OpenAI forensic analysis (optional, never blocks audit)
         continue-on-error: true
+        shell: bash
         run: |
           set +e
           if [ -z "${OPENAI_API_KEY:-}" ]; then
@@ -74,7 +86,7 @@ Repository evidence:\n{evidence}\n\nTests:\n{tests}'''
           body=json.dumps({'model':'gpt-5','input':prompt,'store':False}).encode()
           headers={'Authorization':'Bearer '+os.environ['OPENAI_API_KEY'],'Content-Type':'application/json'}
           last='unknown'
-          for attempt in range(1,4):
+          for attempt in range(1,6):
               try:
                   req=urllib.request.Request('https://api.openai.com/v1/responses',data=body,headers=headers,method='POST')
                   with urllib.request.urlopen(req,timeout=120) as r: data=json.load(r)
@@ -83,11 +95,14 @@ Repository evidence:\n{evidence}\n\nTests:\n{tests}'''
                   break
               except urllib.error.HTTPError as e:
                   last=f'HTTP {e.code}: {e.reason}'
+                  retry_after=e.headers.get('Retry-After')
                   if e.code not in (408,409,429,500,502,503,504): break
-                  time.sleep(min(60,5*attempt))
+                  try: delay=max(5,min(120,int(retry_after))) if retry_after else min(120,10*attempt)
+                  except ValueError: delay=min(120,10*attempt)
+                  time.sleep(delay)
               except Exception as e:
                   last=f'{type(e).__name__}: {e}'
-                  time.sleep(min(60,5*attempt))
+                  time.sleep(min(120,10*attempt))
           else:
               Path('overnight_audit/openai_report.md').write_text('STATUS: OPENAI_UNAVAILABLE\n\nLast error: '+last+'\nDeterministic audit remains authoritative for this run.',encoding='utf-8')
           PY
