@@ -1,5 +1,7 @@
 name: Overnight 0006-0007 OpenAI Audit - Today
 
+# Active today-only audit window: 06:00–14:00 Cairo.
+
 on:
   push:
     paths:
