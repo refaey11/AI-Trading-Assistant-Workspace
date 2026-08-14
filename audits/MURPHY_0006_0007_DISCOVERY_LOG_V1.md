@@ -64,5 +64,24 @@ Findings:
 Result: The previous wording that Geometry V1's schema was not exposed is superseded. Geometry V1 is now directly proven as an upstream geometry primitive that emits line identity, family, direction, anchors, slope, and availability. It intentionally does NOT emit third-touch/reaction/no-break fields; those belong in the separate Murphy Confirmation Layer/operator above Geometry. Therefore Geometry V1 is NOT the current blocker.
 Governance impact: close the Geometry-schema blocker. Keep the operational no-break governance gate open; do not rebuild Geometry.
 
+## Entry 011 — Explicit governance decision
+Date: 2026-08-14
+Finding: The project now has an explicit governance record approving the current deterministic 0006/0007 operationalization as the project's executable translation of Murphy Chapter 4 semantics.
+Evidence: `MURPHY_0006_0007_GOVERNANCE_DECISION_V1.md`.
+Decision: CONDITIONAL APPROVAL. Murphy remains the semantic authority; the operational contract is explicitly an implementation translation, not verbatim numeric Murphy wording. No 3%, 2-day, ATR, pip, arbitrary tolerance, hidden lookback, or 2025 tuning is authorized.
+Impact: Governance approval gate is CLOSED/PASS. Remaining freeze gate is production-path integration and explicit freeze manifest.
+
+## Entry 012 — Fresh production-path replay after operator correction
+Date: 2026-08-14
+Method: Executed the corrected `murphy_event_operator.py` locally against the canonical D1 Pivot V2 and Geometry V1 artifacts extracted from the full Rule Evaluator V2 workspace, with D1 rebuilt from the supplied M1 master using calendar-date OHLC aggregation. No reference result artifact was read by the replay.
+Input hashes:
+- Pivot V2: `bd9df3ec9fea3e180628daf9d4a079b5d030edbb4a3bd659c4a7baf9de6033f8`
+- Geometry V1: `9394b594a15a9e0e33a3fda14364b9158fda13ff074a325df24997c92295b1b3`
+- M1: `e0383c003fdb08e8776e68a4e8d1cc30529c0be55799295c0ffbdd52a80e1bb8`
+- Rebuilt D1: `467d6a08ee59721e4a6048b7888b4d19b6da8d2fa46a89f6af47249b27cd31cb`
+Result: `MURPHY_0006=8`, `MURPHY_0007=7`, `total=15` across 2016–2024. 2025 excluded. First same-family candidate is enforced; reaction is strictly after touch by event timestamp; availability is used as the no-lookahead gate.
+Evidence: `MURPHY_0006_0007_PRODUCTION_PATH_VALIDATION_V1.md`.
+Impact: Fresh replay gate CLOSED/PASS. This proves corrected evaluator behavior with canonical inputs; it does NOT by itself prove that the evaluator is merged into an external Decision Brain runtime. That final integration claim remains OPEN until an explicit production-path adapter/integration artifact is recorded.
+
 ## Next required discovery
-Recover the authoritative original MURPHY_0006/MURPHY_0007 database records, or document their unavailability, then complete the explicit governance decision and production-path integration review.
+Complete explicit production-path adapter/integration validation, then create the final freeze manifest and freeze decision if the integration gate passes.
