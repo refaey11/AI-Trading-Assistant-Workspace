@@ -59,9 +59,8 @@ jobs:
             exit 0
           fi
           python - <<'PY'
-          import json, os
+          import json, os, time, urllib.request, urllib.error
           from pathlib import Path
-          import urllib.request
           evidence = Path('overnight_audit/evidence.txt').read_text(errors='ignore')[:120000]
           tests = Path('overnight_audit/pytest.txt').read_text(errors='ignore')[:40000]
           prompt = ("You are the forensic integration auditor for the AI Trading Assistant project.\n\n"
@@ -73,9 +72,25 @@ jobs:
                     "Repository evidence:\n" + evidence + "\n\nTest output:\n" + tests)
           body = {'model': 'gpt-5', 'input': prompt, 'store': False}
           req = urllib.request.Request('https://api.openai.com/v1/responses', data=json.dumps(body).encode(), headers={'Authorization': 'Bearer '+os.environ['OPENAI_API_KEY'], 'Content-Type':'application/json'}, method='POST')
-          with urllib.request.urlopen(req, timeout=120) as r:
-              data = json.load(r)
-          Path('overnight_audit/openai_report.md').write_text(data.get('output_text',''), encoding='utf-8')
+          last_error = None
+          for attempt in range(3):
+              try:
+                  with urllib.request.urlopen(req, timeout=120) as r:
+                      data = json.load(r)
+                  Path('overnight_audit/openai_report.md').write_text(data.get('output_text',''), encoding='utf-8')
+                  break
+              except urllib.error.HTTPError as e:
+                  last_error = e
+                  detail = e.read().decode('utf-8', errors='ignore')
+                  Path('overnight_audit/openai_error.txt').write_text(f'HTTP {e.code}\n{detail}', encoding='utf-8')
+                  if e.code == 429 and attempt < 2:
+                      time.sleep(30 * (attempt + 1))
+                      continue
+                  Path('overnight_audit/openai_report.md').write_text('OPENAI_ANALYSIS_UNAVAILABLE\n' + f'HTTP {e.code}\n' + detail[:4000], encoding='utf-8')
+                  break
+              except Exception as e:
+                  Path('overnight_audit/openai_report.md').write_text('OPENAI_ANALYSIS_UNAVAILABLE\n' + repr(e), encoding='utf-8')
+                  break
           PY
 
       - name: Upload audit artifact
