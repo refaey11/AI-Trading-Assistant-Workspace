@@ -53,5 +53,16 @@ Important exclusion: Chapter 4's general 3% price-filter and 2-consecutive-daily
 Evidence: `MURPHY_0006_0007_CH4_COMPATIBILITY_MATRIX_V1.md`; `MURPHY_0006_0007_CONFIRMATION_CONTRACT_V2_DRAFT.md`; `MURPHY_0006_0007_FORMAL_OPERATIONAL_CONTRACT_V1.md`.
 Result: Source compatibility is sufficient for governance review, but the production freeze decision remains OPEN. No semantic change or new threshold is authorized.
 
+## Entry 010 — Direct Geometry V1 artifact/schema audit
+Date: 2026-08-14
+Method: Reconstructed the uploaded 597,678,846-byte GBPUSD Rule Evaluator V2 workspace from its split parts, stripped the `.bcut` metadata headers, validated the ZIP, and directly inspected the canonical Geometry V1 build contract, manifest, QA report, and D1 trendline output.
+Findings:
+- `TRENDLINE_GEOMETRY_BUILD_CONTRACT_V1.json` states: input=`PIVOT_SEQUENCE_V2`; line generation=`consecutive pivots of the same type only`; slope=`exact price change / elapsed seconds`; availability=`later confirmation timestamp of the two defining pivots`; pattern classification and breakout detection are explicitly excluded; thresholds added=false; 2025 used=false; line cannot be available before both defining pivots are confirmed.
+- `TRENDLINE_GEOMETRY_MANIFEST_V1.csv` includes a D1 output with 806 lines: `GBPUSD_D1_STRUCTURE_TRENDLINES_V1.csv`.
+- The D1 Geometry output schema is explicitly: `line_id,line_type,point_1_timestamp,point_1_price,point_2_timestamp,point_2_price,slope_price_per_second,direction,availability_timestamp,point_1_availability,point_2_availability,source_file`.
+- `TRENDLINE_GEOMETRY_QA_V1.csv` reports slope_ok, availability_ok, chronology_ok, type_ok, and no_2025 as true for the D1 output and the listed timeframe outputs.
+Result: The previous wording that Geometry V1's schema was not exposed is superseded. Geometry V1 is now directly proven as an upstream geometry primitive that emits line identity, family, direction, anchors, slope, and availability. It intentionally does NOT emit third-touch/reaction/no-break fields; those belong in the separate Murphy Confirmation Layer/operator above Geometry. Therefore Geometry V1 is NOT the current blocker.
+Governance impact: close the Geometry-schema blocker. Keep the operational no-break governance gate open; do not rebuild Geometry.
+
 ## Next required discovery
 Recover the authoritative original MURPHY_0006/MURPHY_0007 database records, or document their unavailability, then complete the explicit governance decision and production-path integration review.
