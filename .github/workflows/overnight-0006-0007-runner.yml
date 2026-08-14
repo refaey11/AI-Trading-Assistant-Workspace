@@ -15,9 +15,87 @@ jobs:
     env:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
     steps:
+      - name: Check requested time window
+        shell: bash
+        run: |
+          set -euo pipefail
+          NOW_UTC=$(date -u +%s)
+          START=$(date -u -d '2026-08-14T03:00:00Z' +%s)
+          CUTOFF=$(date -u -d '2026-08-14T11:05:00Z' +%s)
+          if [ "$NOW_UTC" -lt "$START" ] || [ "$NOW_UTC" -ge "$CUTOFF" ]; then
+            echo 'Outside the requested 06:00–14:00 Cairo window; clean exit.'
+            exit 0
+          fi
+
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Verify runner
+
+      - name: Collect deterministic evidence
+        shell: bash
         run: |
-          echo "Runner started"
-          echo "OpenAI key configured: $([ -n \"${OPENAI_API_KEY:-}\" ] && echo yes || echo no)"
+          set -euo pipefail
+          mkdir -p overnight_audit
+          date -u '+%Y-%m-%dT%H:%M:%SZ' > overnight_audit/run_utc.txt
+          TZ=Africa/Cairo date '+%Y-%m-%dT%H:%M:%S%z' > overnight_audit/run_cairo.txt
+          git rev-parse HEAD > overnight_audit/commit.txt
+          {
+            echo '=== FILES ==='
+            find . -type f -not -path './.git/*' | sort | grep -Ei '0006|0007|pivot|geometry|trendline|evaluator|confirmation|adapter|contract' | head -n 500 || true
+            echo '=== KEYWORDS ==='
+            git grep -n -I -E 'third_touch|reaction_bounce|no_break|confirmation_available_at|reaction_available_at|TRENDLINE_GEOMETRY_V1|PIVOT_SEQUENCE_V2|NOT_EVALUABLE' -- . ':!overnight_audit' | head -n 1600 || true
+          } > overnight_audit/evidence.txt
+          if [ -f pyproject.toml ] || [ -f requirements.txt ] || [ -d tests ]; then
+            python -m pytest -q > overnight_audit/pytest.txt 2>&1 || true
+          else
+            echo 'No pytest project detected.' > overnight_audit/pytest.txt
+          fi
+
+      - name: OpenAI forensic analysis
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${OPENAI_API_KEY:-}" ]; then
+            echo 'OPENAI_API_KEY GitHub Secret is not configured. Deterministic audit ran without OpenAI.' > overnight_audit/openai_report.md
+            exit 0
+          fi
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          import urllib.request
+          evidence = Path('overnight_audit/evidence.txt').read_text(errors='ignore')[:120000]
+          tests = Path('overnight_audit/pytest.txt').read_text(errors='ignore')[:40000]
+          prompt = f'''You are the forensic integration auditor for the AI Trading Assistant project.
+
+Target: Murphy 0006/0007 only.
+Use ONLY repository evidence below. Do not invent fields, thresholds, tolerances, lookbacks, or evidence. Do not use 2025 for tuning or selection. Do not declare Production Frozen. Do not rebuild Pivot or Geometry unless evidence proves the canonical component is missing.
+
+Check this lineage:
+PIVOT_SEQUENCE_V2 -> TRENDLINE_GEOMETRY_V1 -> third_touch -> reaction -> no_break -> availability -> 0006/0007 evaluator.
+
+Classify every link: PROVEN / DOWNSTREAM_ONLY / MISSING / CONTRADICTORY.
+
+Return:
+VERDICT: PROVEN / NOT_PROVEN / BLOCKED
+LINKAGE TABLE
+EXACT BLOCKER(S)
+SMALLEST SAFE NEXT ACTION
+FREEZE REVIEW: READY / NOT_READY
+
+Repository evidence:
+{evidence}
+
+Test output:
+{tests}
+'''
+          body = {'model': 'gpt-5', 'input': prompt, 'store': False}
+          req = urllib.request.Request('https://api.openai.com/v1/responses', data=json.dumps(body).encode(), headers={'Authorization': 'Bearer '+os.environ['OPENAI_API_KEY'], 'Content-Type':'application/json'}, method='POST')
+          with urllib.request.urlopen(req, timeout=120) as r:
+              data = json.load(r)
+          Path('overnight_audit/openai_report.md').write_text(data.get('output_text',''), encoding='utf-8')
+          PY
+
+      - name: Upload audit artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: overnight-0006-0007-openai-audit-${{ github.run_number }}
+          path: overnight_audit/
