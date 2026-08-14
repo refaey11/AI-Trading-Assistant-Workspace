@@ -1,38 +1,44 @@
 # Murphy 0006/0007 — Canonical Input Replay Blocker V1
 
 Date: 2026-08-14
-Status: REPLAY BLOCKED BY INPUT LINEAGE MISMATCH
+Status: SUPERSEDED — D1 LINEAGE MISMATCH CLAIM INVALIDATED
 
-## What was verified
-The complete split GBPUSD_RULE_EVALUATOR_V2 workspace was reconstructed successfully from the uploaded parts. The canonical files were recovered:
-- PIVOT_SEQUENCE_V2_OUTPUT/GBPUSD_D1_STRUCTURE_PIVOT_SEQUENCE_V2.csv
-- TRENDLINE_GEOMETRY_V1_OUTPUT/GBPUSD_D1_STRUCTURE_TRENDLINES_V1.csv
+## Why this artifact is superseded
+The original blocker compared the canonical Pivot V2 first LOW price `1.43519` with the D1 bar low `1.40792` for 2016-01-21 and treated the difference as evidence that the M1-derived D1 was not canonical.
 
-The newly uploaded GBPUSD_M1_MASTER_2016_2026_V1.zip was also inspected successfully.
+That comparison was invalid: `1.43519` is a Pivot V2 event price, not the D1 bar's low.
 
-## Critical finding
-The newly uploaded M1 dataset cannot currently be treated as the source dataset for the canonical D1 Pivot V2/Geometry V1 outputs without proving the D1 session/boundary/source lineage.
+## Correct verification
+Using the uploaded `GBPUSD_M1_MASTER_2016_2026_V1.zip` and the project D1 reference `d1_ref.csv`:
+- aggregate M1 by calendar date,
+- Open = first M1 Open,
+- High = max M1 High,
+- Low = min M1 Low,
+- Close = last M1 Close.
 
-Concrete check:
-- Canonical Pivot V2 first LOW: 2016-01-21, price 1.43519.
-- Aggregating the newly uploaded M1 file by calendar date gives 2016-01-21 low = 1.40792.
-- Therefore the new M1 file does not reproduce the canonical D1 bar used by the Pivot V2 artifact under the simple calendar-day aggregation.
+For 2,544 common 2016–2024 dates:
+- max absolute Open difference = 0
+- max absolute High difference = 0
+- max absolute Low difference = 0
+- max absolute Close difference = 0
+- nonzero OHLC differences = 0
+
+For 2016-01-21 specifically, both D1 sources have Low = 1.40792.
+
+## Superseding evidence
+See `MURPHY_0006_0007_D1_LINEAGE_RECONCILIATION_V1.md` for the full verification, input hashes, and governance impact.
 
 ## Consequence
-Do NOT run a "fresh" 0006/0007 replay using the new M1-derived D1 bars while keeping the canonical Pivot/Geometry. That would mix two different data lineages and could create false mismatches.
+The D1/M1 lineage mismatch is no longer an open blocker. The existing fresh replay artifact records 0006=8, 0007=7, total=15, with 2025 excluded and lookahead/availability checks enforced.
 
-## Existing evidence
-The project already records 2016–2024 D1 evidence and a reconciled 0006/0007 result of 8 + 7 = 15 with 15/15 reference reconciliation. This remains QA evidence, not a production freeze.
+## Remaining blockers
+- formal evaluator integration into the production path,
+- governance approval of the operational no-break contract,
+- explicit final freeze manifest/decision.
 
-## Exact next input required for an independent canonical replay
-Recover the exact D1 source used by PIVOT_SEQUENCE_V2 (or its documented session/timezone aggregation contract), then run:
-D1 source -> canonical Pivot V2 -> canonical Geometry V1 -> 0006/0007 Event Operator -> 2016–2024 QA.
-
-The newly uploaded M1 dataset remains useful raw market data, but it is NOT silently substituted for the canonical D1 source.
-
-## Guardrails
+## Guardrails remain
 - Do not rebuild Pivot V2.
 - Do not rebuild Geometry V1.
 - Do not tune 2025.
 - Do not introduce 3%, 2-day, ATR, pip, percentage, or hidden lookback thresholds.
-- Do not declare production freeze from the existing 15/15 reconciliation alone.
+- Do not declare production freeze until remaining gates are explicitly evidenced and approved.
