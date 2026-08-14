@@ -1,0 +1,29 @@
+name: Overnight 0006-0007 Closure Audit
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 * * * *'
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Run targeted closure audit
+        run: python .github/scripts/overnight_0006_0007_audit.py
+      - name: Upload audit report
+        uses: actions/upload-artifact@v4
+        with:
+          name: overnight-0006-0007-audit
+          path: overnight_audit/
+          if-no-files-found: error
