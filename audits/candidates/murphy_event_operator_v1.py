@@ -98,11 +98,14 @@ def evaluate_event_chain(
     if touch_bar is None or not _range_intersects(touch_bar, touch_line):
         return None
 
+    # Reaction must be a distinct later market event. Using >= here admits
+    # same-timestamp touch/reaction pairs and breaks the canonical 2016-2024
+    # reconciliation (15 = 8 for 0006 + 7 for 0007).
     reaction = next(
         (
             p for p in eligible
             if p.pivot_type == reaction_family
-            and p.timestamp >= touch.timestamp
+            and p.timestamp > touch.timestamp
             and p.available_at >= touch.available_at
         ),
         None,
