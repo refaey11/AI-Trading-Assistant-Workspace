@@ -1,6 +1,7 @@
 name: Overnight 0006-0007 OpenAI Audit - Today
 
 # Active today-only audit window: 06:00–14:00 Cairo.
+# The audit must never lose deterministic evidence because OpenAI is rate-limited.
 
 on:
   push:
@@ -54,18 +55,24 @@ jobs:
             echo 'No pytest project detected.' > overnight_audit/pytest.txt
           fi
 
-      - name: OpenAI forensic analysis
+      - name: OpenAI forensic analysis (resilient)
         shell: bash
         run: |
-          set -euo pipefail
+          set -u
           if [ -z "${OPENAI_API_KEY:-}" ]; then
-            echo 'OPENAI_API_KEY GitHub Secret is not configured. Deterministic audit ran without OpenAI.' > overnight_audit/openai_report.md
+            cat > overnight_audit/openai_report.md <<'EOF'
+          STATUS: OPENAI_NOT_CONFIGURED
+
+          Deterministic audit completed. No OpenAI analysis was attempted because
+          OPENAI_API_KEY is unavailable to this GitHub Actions job.
+          EOF
             exit 0
           fi
+
           python - <<'PY'
-          import json, os
+          import json, os, time, urllib.error, urllib.request
           from pathlib import Path
-          import urllib.request
+
           evidence = Path('overnight_audit/evidence.txt').read_text(errors='ignore')[:120000]
           tests = Path('overnight_audit/pytest.txt').read_text(errors='ignore')[:40000]
           prompt = f'''You are the forensic integration auditor for the AI Trading Assistant project.
@@ -91,15 +98,65 @@ Repository evidence:
 Test output:
 {tests}
 '''
-          body = {'model': 'gpt-5', 'input': prompt, 'store': False}
-          req = urllib.request.Request('https://api.openai.com/v1/responses', data=json.dumps(body).encode(), headers={'Authorization': 'Bearer '+os.environ['OPENAI_API_KEY'], 'Content-Type':'application/json'}, method='POST')
-          with urllib.request.urlopen(req, timeout=120) as r:
-              data = json.load(r)
-          Path('overnight_audit/openai_report.md').write_text(data.get('output_text',''), encoding='utf-8')
+
+          body = json.dumps({'model': 'gpt-5', 'input': prompt, 'store': False}).encode()
+          headers = {
+              'Authorization': 'Bearer ' + os.environ['OPENAI_API_KEY'],
+              'Content-Type': 'application/json',
+          }
+
+          last_error = None
+          for attempt in range(1, 6):
+              try:
+                  req = urllib.request.Request(
+                      'https://api.openai.com/v1/responses',
+                      data=body,
+                      headers=headers,
+                      method='POST',
+                  )
+                  with urllib.request.urlopen(req, timeout=120) as r:
+                      data = json.load(r)
+                  text = data.get('output_text', '')
+                  if not text:
+                      text = json.dumps(data, indent=2)
+                  Path('overnight_audit/openai_report.md').write_text(
+                      'STATUS: OPENAI_SUCCESS\n\n' + text, encoding='utf-8'
+                  )
+                  raise SystemExit(0)
+              except urllib.error.HTTPError as e:
+                  last_error = f'HTTP {e.code}: {e.reason}'
+                  retry_after = e.headers.get('Retry-After')
+                  if e.code not in (408, 409, 429, 500, 502, 503, 504):
+                      break
+                  try:
+                      delay = max(5, min(120, int(retry_after))) if retry_after else min(120, 2 ** attempt * 5)
+                  except ValueError:
+                      delay = min(120, 2 ** attempt * 5)
+                  if attempt < 5:
+                      print(f'OpenAI temporary failure ({last_error}); retry {attempt + 1}/5 after {delay}s')
+                      time.sleep(delay)
+              except Exception as e:
+                  last_error = f'{type(e).__name__}: {e}'
+                  if attempt < 5:
+                      delay = min(120, 2 ** attempt * 5)
+                      print(f'OpenAI client failure ({last_error}); retry {attempt + 1}/5 after {delay}s')
+                      time.sleep(delay)
+
+          Path('overnight_audit/openai_report.md').write_text(
+              'STATUS: OPENAI_UNAVAILABLE\n\n'
+              'OpenAI forensic analysis could not be completed after 5 attempts.\n'
+              f'Last error: {last_error}\n\n'
+              'The deterministic evidence and test results remain valid and are uploaded separately.\n',
+              encoding='utf-8'
+          )
+          print(f'OpenAI analysis unavailable after retries: {last_error}')
+          raise SystemExit(0)
           PY
 
       - name: Upload audit artifact
+        if: ${{ always() }}
         uses: actions/upload-artifact@v4
         with:
           name: overnight-0006-0007-openai-audit-${{ github.run_number }}
           path: overnight_audit/
+          if-no-files-found: error
