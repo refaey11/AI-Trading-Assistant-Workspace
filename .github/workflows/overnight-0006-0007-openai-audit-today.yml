@@ -6,20 +6,29 @@ on:
       - '.github/workflows/overnight-0006-0007-openai-audit-today.yml'
   workflow_dispatch:
   schedule:
-    # 2026-08-14: Egypt is UTC+3. Hourly from 06:00 through 14:00 Cairo.
     - cron: '0 3-11 14 8 *'
 
 permissions:
   contents: read
-  actions: write
 
 jobs:
   audit:
     runs-on: ubuntu-latest
     env:
       OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
-      CUTOFF_UTC: '2026-08-14T11:05:00Z'
     steps:
+      - name: Stop outside the requested window
+        shell: bash
+        run: |
+          set -euo pipefail
+          NOW_UTC=$(date -u +%s)
+          START=$(date -u -d '2026-08-14T03:00:00Z' +%s)
+          CUTOFF=$(date -u -d '2026-08-14T11:05:00Z' +%s)
+          if [ "$NOW_UTC" -lt "$START" ] || [ "$NOW_UTC" -ge "$CUTOFF" ]; then
+            echo 'Outside the 06:00–14:00 Cairo audit window. Exiting cleanly.'
+            exit 0
+          fi
+
       - name: Checkout
         uses: actions/checkout@v4
 
@@ -55,21 +64,19 @@ jobs:
           import json, os
           from pathlib import Path
           import urllib.request
-
           evidence = Path('overnight_audit/evidence.txt').read_text(errors='ignore')[:120000]
           tests = Path('overnight_audit/pytest.txt').read_text(errors='ignore')[:40000]
           prompt = f'''You are the forensic integration auditor for the AI Trading Assistant project.
 
 Target: Murphy 0006/0007 only.
+Use ONLY the repository evidence below. Do not invent fields, thresholds, tolerances, lookbacks, or evidence. Do not use 2025 for tuning or selection. Do not declare Production Frozen. Do not rebuild Pivot or Geometry unless the evidence proves the canonical component is missing.
 
-Use ONLY repository evidence supplied below for factual claims. Do not invent missing fields, thresholds, tolerances, lookbacks, or evidence. Do not use 2025 for tuning or selection. Do not declare Production Frozen. Do not rebuild Pivot or Geometry unless evidence proves the canonical component is missing.
-
-Determine whether this exact lineage is proven by canonical upstream evidence:
+Check this lineage:
 PIVOT_SEQUENCE_V2 -> TRENDLINE_GEOMETRY_V1 -> third_touch -> reaction -> no_break -> availability -> 0006/0007 evaluator.
 
-Classify each link as PROVEN / DOWNSTREAM_ONLY / MISSING / CONTRADICTORY.
+Classify every link: PROVEN / DOWNSTREAM_ONLY / MISSING / CONTRADICTORY.
 
-Return exactly:
+Return:
 VERDICT: PROVEN / NOT_PROVEN / BLOCKED
 LINKAGE TABLE
 EXACT BLOCKER(S)
@@ -83,13 +90,9 @@ Test output:
 {tests}
 '''
           body = {'model': 'gpt-5', 'input': prompt, 'store': False}
-          req = urllib.request.Request(
-            'https://api.openai.com/v1/responses',
-            data=json.dumps(body).encode(),
-            headers={'Authorization': 'Bearer '+os.environ['OPENAI_API_KEY'], 'Content-Type':'application/json'},
-            method='POST')
+          req = urllib.request.Request('https://api.openai.com/v1/responses', data=json.dumps(body).encode(), headers={'Authorization': 'Bearer '+os.environ['OPENAI_API_KEY'], 'Content-Type':'application/json'}, method='POST')
           with urllib.request.urlopen(req, timeout=120) as r:
-            data = json.load(r)
+              data = json.load(r)
           Path('overnight_audit/openai_report.md').write_text(data.get('output_text',''), encoding='utf-8')
           PY
 
@@ -98,18 +101,3 @@ Test output:
         with:
           name: overnight-0006-0007-openai-audit-${{ github.run_number }}
           path: overnight_audit/
-
-      - name: Stop after 14:00 Cairo
-        shell: bash
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          NOW_UTC=$(date -u +%s)
-          CUTOFF=$(date -u -d "$CUTOFF_UTC" +%s)
-          if [ "$NOW_UTC" -ge "$CUTOFF" ]; then
-            gh workflow disable "Overnight 0006-0007 OpenAI Audit - Today" --repo "${GITHUB_REPOSITORY}"
-            echo 'Temporary today-only audit workflow disabled after the 14:00 Cairo cutoff.'
-          else
-            echo 'Audit continues on the next hourly schedule.'
-          fi
