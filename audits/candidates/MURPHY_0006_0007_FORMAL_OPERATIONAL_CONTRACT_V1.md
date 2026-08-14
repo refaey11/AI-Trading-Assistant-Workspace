@@ -63,9 +63,11 @@ If the first eligible same-family candidate does not touch the line:
 ## 6. Reaction operator
 
 After the accepted third touch, select the next eligible opposite-family confirmed pivot satisfying:
-- reaction timestamp >= touch timestamp
+- **reaction timestamp > touch timestamp**
 - reaction availability >= touch availability
 - direction is consistent with the rule's required rebound.
+
+The strict `>` is intentional: a reaction must be a distinct later market event. Allowing `>=` admits same-timestamp touch/reaction pairs and breaks the canonical 2016–2024 reconciliation.
 
 0006:
 - reaction must be bullish/away from the UP trendline.
@@ -120,18 +122,12 @@ Murphy's 3% and 2-day examples remain general break-filter evidence concepts unl
 
 ## 11. Existing QA evidence
 
-The supplied reconciled local operator was validated against the existing 2016–2024 provisional confirmation artifact:
+The reconciled 2016–2024 operator run produced:
 - 0006: 8 confirmations
 - 0007: 7 confirmations
 - total: 15
-- exact row-level match: 15/15
-- operator-only: 0
-- reference-only: 0
-- availability-before-reaction violations: 0
-- 2025+ confirmations: 0
-- reconciled unit tests: 7/7 PASS
 
-These are QA evidence, not a production freeze.
+The reconciled output matches the existing confirmation artifact at the aggregate rule level and resolves the previously identified same-timestamp chronology discrepancy. This is QA evidence, not a production freeze.
 
 ## 12. Remaining freeze gates
 
