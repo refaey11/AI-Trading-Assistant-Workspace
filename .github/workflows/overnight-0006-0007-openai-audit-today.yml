@@ -1,0 +1,118 @@
+name: Overnight 0006-0007 OpenAI Audit - Today
+
+on:
+  push:
+    paths:
+      - '.github/workflows/overnight-0006-0007-openai-audit-today.yml'
+  workflow_dispatch:
+  schedule:
+    # Egypt is UTC+3 on 2026-08-14. Runs 06:00 through 14:00 Cairo.
+    - cron: '0 3-11 14 8 *'
+
+permissions:
+  contents: read
+  actions: write
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    env:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      CUTOFF_UTC: '2026-08-14T11:05:00Z'
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Collect deterministic evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p overnight_audit
+          date -u '+%Y-%m-%dT%H:%M:%SZ' > overnight_audit/run_utc.txt
+          TZ=Africa/Cairo date '+%Y-%m-%dT%H:%M:%S%z' > overnight_audit/run_cairo.txt
+          git rev-parse HEAD > overnight_audit/commit.txt
+          {
+            echo '=== FILES ==='
+            find . -type f -not -path './.git/*' | sort | grep -Ei '0006|0007|pivot|geometry|trendline|evaluator|confirmation|adapter|contract' | head -n 500 || true
+            echo '=== KEYWORDS ==='
+            git grep -n -I -E 'third_touch|reaction_bounce|no_break|confirmation_available_at|reaction_available_at|TRENDLINE_GEOMETRY_V1|PIVOT_SEQUENCE_V2|NOT_EVALUABLE' -- . ':!overnight_audit' | head -n 1600 || true
+          } > overnight_audit/evidence.txt
+          if [ -f pyproject.toml ] || [ -f requirements.txt ] || [ -d tests ]; then
+            python -m pytest -q > overnight_audit/pytest.txt 2>&1 || true
+          else
+            echo 'No pytest project detected.' > overnight_audit/pytest.txt
+          fi
+
+      - name: OpenAI forensic analysis
+        if: ${{ env.OPENAI_API_KEY != '' }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          import urllib.request
+
+          evidence = Path('overnight_audit/evidence.txt').read_text(errors='ignore')[:120000]
+          tests = Path('overnight_audit/pytest.txt').read_text(errors='ignore')[:40000]
+          prompt = f'''You are the forensic integration auditor for the AI Trading Assistant project.
+
+Target: Murphy 0006/0007 only.
+
+Use ONLY repository evidence supplied below for factual claims. Do not invent missing fields, thresholds, tolerances, lookbacks, or evidence. Do not use 2025 for tuning or selection. Do not declare Production Frozen. Do not rebuild Pivot or Geometry unless evidence proves the canonical component is missing.
+
+Determine whether this exact lineage is proven by canonical upstream evidence:
+PIVOT_SEQUENCE_V2 -> TRENDLINE_GEOMETRY_V1 -> third_touch -> reaction -> no_break -> availability -> 0006/0007 evaluator.
+
+Classify each link as PROVEN / DOWNSTREAM_ONLY / MISSING / CONTRADICTORY.
+
+Return:
+VERDICT: PROVEN / NOT_PROVEN / BLOCKED
+LINKAGE TABLE
+EXACT BLOCKER(S)
+SMALLEST SAFE NEXT ACTION
+FREEZE REVIEW: READY / NOT_READY
+
+Repository evidence:
+{evidence}
+
+Test output:
+{tests}
+'''
+          body = {'model': 'gpt-5', 'input': prompt, 'store': False}
+          req = urllib.request.Request(
+            'https://api.openai.com/v1/responses',
+            data=json.dumps(body).encode(),
+            headers={'Authorization': 'Bearer '+os.environ['OPENAI_API_KEY'], 'Content-Type':'application/json'},
+            method='POST')
+          with urllib.request.urlopen(req, timeout=120) as r:
+            data = json.load(r)
+          Path('overnight_audit/openai_report.md').write_text(data.get('output_text',''), encoding='utf-8')
+          PY
+
+      - name: Record missing-key state
+        if: ${{ env.OPENAI_API_KEY == '' }}
+        run: |
+          echo 'OPENAI_API_KEY GitHub Secret is not configured. Deterministic audit ran without OpenAI.' > overnight_audit/openai_report.md
+
+      - name: Upload audit artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: overnight-0006-0007-openai-audit-${{ github.run_number }}
+          path: overnight_audit/
+
+      - name: Stop after 14:00 Cairo
+        if: ${{ github.event_name == 'schedule' && github.run_number != 0 }}
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          NOW_UTC=$(date -u +%s)
+          CUTOFF=$(date -u -d "$CUTOFF_UTC" +%s)
+          if [ "$NOW_UTC" -ge "$CUTOFF" ]; then
+            gh workflow disable "Overnight 0006-0007 OpenAI Audit - Today" --repo "${GITHUB_REPOSITORY}"
+            echo 'Temporary today-only audit workflow disabled after the 14:00 Cairo cutoff.'
+          else
+            echo 'Audit continues on the next hourly schedule.'
+          fi
