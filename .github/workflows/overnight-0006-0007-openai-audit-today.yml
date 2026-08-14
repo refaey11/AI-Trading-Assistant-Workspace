@@ -6,7 +6,7 @@ on:
       - '.github/workflows/overnight-0006-0007-openai-audit-today.yml'
   workflow_dispatch:
   schedule:
-    # Egypt is UTC+3 on 2026-08-14. Runs 06:00 through 14:00 Cairo.
+    # 2026-08-14: Egypt is UTC+3. Hourly from 06:00 through 14:00 Cairo.
     - cron: '0 3-11 14 8 *'
 
 permissions:
@@ -44,10 +44,13 @@ jobs:
           fi
 
       - name: OpenAI forensic analysis
-        if: ${{ env.OPENAI_API_KEY != '' }}
         shell: bash
         run: |
           set -euo pipefail
+          if [ -z "${OPENAI_API_KEY:-}" ]; then
+            echo 'OPENAI_API_KEY GitHub Secret is not configured. Deterministic audit ran without OpenAI.' > overnight_audit/openai_report.md
+            exit 0
+          fi
           python - <<'PY'
           import json, os
           from pathlib import Path
@@ -66,7 +69,7 @@ PIVOT_SEQUENCE_V2 -> TRENDLINE_GEOMETRY_V1 -> third_touch -> reaction -> no_brea
 
 Classify each link as PROVEN / DOWNSTREAM_ONLY / MISSING / CONTRADICTORY.
 
-Return:
+Return exactly:
 VERDICT: PROVEN / NOT_PROVEN / BLOCKED
 LINKAGE TABLE
 EXACT BLOCKER(S)
@@ -90,11 +93,6 @@ Test output:
           Path('overnight_audit/openai_report.md').write_text(data.get('output_text',''), encoding='utf-8')
           PY
 
-      - name: Record missing-key state
-        if: ${{ env.OPENAI_API_KEY == '' }}
-        run: |
-          echo 'OPENAI_API_KEY GitHub Secret is not configured. Deterministic audit ran without OpenAI.' > overnight_audit/openai_report.md
-
       - name: Upload audit artifact
         uses: actions/upload-artifact@v4
         with:
@@ -102,7 +100,6 @@ Test output:
           path: overnight_audit/
 
       - name: Stop after 14:00 Cairo
-        if: ${{ github.event_name == 'schedule' && github.run_number != 0 }}
         shell: bash
         env:
           GH_TOKEN: ${{ github.token }}
