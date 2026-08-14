@@ -17,7 +17,7 @@ def test_0006_low_up_candidate_never_returns_pass_fail():
         anchor_2_timestamp="2024-01-03",
         anchor_2_price=1.24,
         line_availability_timestamp="2024-01-05",
-        candidate_timestamp="2024-01-08",
+        candidate_timestamp="2024-01-06",
         candidate_pivot_type="LOW",
         candidate_pivot_price=1.26,
         daily_high=1.28,
