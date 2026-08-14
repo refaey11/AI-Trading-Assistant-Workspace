@@ -125,10 +125,10 @@ def test_market_event_ordering_is_not_availability_ordering():
     assert out.third_touch.timestamp == ts(2)
 
 
-def test_first_same_family_candidate_cannot_be_skipped():
+def test_first_same_family_candidate_cannot_be_skipped_even_if_later_one_would_pass():
     line = Line("LOW", "UP", ts(1))
-    # First eligible LOW does not intersect; a later LOW does. The later
-    # candidate must not be promoted to manufacture a third touch.
+    # The first eligible LOW misses the line. A later LOW touches and has a
+    # valid reaction, but it must NOT replace the first candidate.
     pivots = [
         PivotEvent(ts(2), ts(4), "LOW", 90.0),
         PivotEvent(ts(3), ts(5), "LOW", 100.0),
@@ -143,3 +143,21 @@ def test_first_same_family_candidate_cannot_be_skipped():
         "MURPHY_0006", line, lambda t: 100.0, pivots, bars
     )
     assert out is None
+
+
+def test_reaction_must_be_strictly_after_touch_timestamp():
+    line = Line("LOW", "UP", ts(1))
+    pivots = [
+        PivotEvent(ts(2), ts(4), "LOW", 100.0),
+        PivotEvent(ts(2), ts(5), "HIGH", 110.0),
+        PivotEvent(ts(3), ts(6), "HIGH", 111.0),
+    ]
+    bars = [
+        D1Bar(ts(2), 105, 100),
+        D1Bar(ts(3), 112, 106),
+    ]
+    out = evaluate_event_chain(
+        "MURPHY_0006", line, lambda t: 100.0, pivots, bars
+    )
+    assert out is not None
+    assert out.reaction.timestamp == ts(3)
