@@ -64,29 +64,13 @@ jobs:
           import urllib.request
           evidence = Path('overnight_audit/evidence.txt').read_text(errors='ignore')[:120000]
           tests = Path('overnight_audit/pytest.txt').read_text(errors='ignore')[:40000]
-          prompt = f'''You are the forensic integration auditor for the AI Trading Assistant project.
-
-Target: Murphy 0006/0007 only.
-Use ONLY repository evidence below. Do not invent fields, thresholds, tolerances, lookbacks, or evidence. Do not use 2025 for tuning or selection. Do not declare Production Frozen. Do not rebuild Pivot or Geometry unless evidence proves the canonical component is missing.
-
-Check this lineage:
-PIVOT_SEQUENCE_V2 -> TRENDLINE_GEOMETRY_V1 -> third_touch -> reaction -> no_break -> availability -> 0006/0007 evaluator.
-
-Classify every link: PROVEN / DOWNSTREAM_ONLY / MISSING / CONTRADICTORY.
-
-Return:
-VERDICT: PROVEN / NOT_PROVEN / BLOCKED
-LINKAGE TABLE
-EXACT BLOCKER(S)
-SMALLEST SAFE NEXT ACTION
-FREEZE REVIEW: READY / NOT_READY
-
-Repository evidence:
-{evidence}
-
-Test output:
-{tests}
-'''
+          prompt = ("You are the forensic integration auditor for the AI Trading Assistant project.\n\n"
+                    "Target: Murphy 0006/0007 only.\n"
+                    "Use ONLY repository evidence below. Do not invent fields, thresholds, tolerances, lookbacks, or evidence. Do not use 2025 for tuning or selection. Do not declare Production Frozen. Do not rebuild Pivot or Geometry unless evidence proves the canonical component is missing.\n\n"
+                    "Check this lineage: PIVOT_SEQUENCE_V2 -> TRENDLINE_GEOMETRY_V1 -> third_touch -> reaction -> no_break -> availability -> 0006/0007 evaluator.\n\n"
+                    "Classify every link: PROVEN / DOWNSTREAM_ONLY / MISSING / CONTRADICTORY.\n\n"
+                    "Return: VERDICT: PROVEN / NOT_PROVEN / BLOCKED; LINKAGE TABLE; EXACT BLOCKER(S); SMALLEST SAFE NEXT ACTION; FREEZE REVIEW: READY / NOT_READY.\n\n"
+                    "Repository evidence:\n" + evidence + "\n\nTest output:\n" + tests)
           body = {'model': 'gpt-5', 'input': prompt, 'store': False}
           req = urllib.request.Request('https://api.openai.com/v1/responses', data=json.dumps(body).encode(), headers={'Authorization': 'Bearer '+os.environ['OPENAI_API_KEY'], 'Content-Type':'application/json'}, method='POST')
           with urllib.request.urlopen(req, timeout=120) as r:
