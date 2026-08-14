@@ -1,0 +1,60 @@
+name: 0006-0007 Deterministic Audit
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '15 * * * *'
+
+permissions:
+  contents: read
+
+jobs:
+  deterministic-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check audit window
+        shell: bash
+        run: |
+          set -euo pipefail
+          NOW=$(date -u +%s)
+          START=$(date -u -d '2026-08-14T03:00:00Z' +%s)
+          END=$(date -u -d '2026-08-14T11:05:00Z' +%s)
+          if [ "$NOW" -lt "$START" ] || [ "$NOW" -ge "$END" ]; then
+            echo 'Outside 06:00-14:00 Cairo audit window.'
+            exit 0
+          fi
+
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Deterministic evidence and tests
+        shell: bash
+        run: |
+          set +e
+          mkdir -p deterministic_audit
+          date -u '+%Y-%m-%dT%H:%M:%SZ' > deterministic_audit/run_utc.txt
+          TZ=Africa/Cairo date '+%Y-%m-%dT%H:%M:%S%z' > deterministic_audit/run_cairo.txt
+          git rev-parse HEAD > deterministic_audit/commit.txt
+          {
+            echo '=== TARGET FILES ==='
+            find . -type f -not -path './.git/*' | sort | grep -Ei '0006|0007|pivot|geometry|trendline|evaluator|confirmation|contract|adapter' | head -n 1000
+            echo '=== CANONICAL KEYWORDS ==='
+            git grep -n -I -E 'third_touch|reaction_bounce|no_break|confirmation_available_at|reaction_available_at|TRENDLINE_GEOMETRY_V1|PIVOT_SEQUENCE_V2|NOT_EVALUABLE' -- . ':!.git' | head -n 3000
+          } > deterministic_audit/evidence.txt 2>&1
+          if [ -f pyproject.toml ] || [ -f requirements.txt ] || [ -d tests ]; then
+            python -m pytest -q > deterministic_audit/pytest.txt 2>&1
+            echo $? > deterministic_audit/pytest_exit_code.txt
+          else
+            echo 'No pytest project detected.' > deterministic_audit/pytest.txt
+            echo 0 > deterministic_audit/pytest_exit_code.txt
+          fi
+          echo 'OPENAI_DISABLED_FOR_DIAGNOSTIC_RUN' > deterministic_audit/openai_status.txt
+          echo 'This workflow intentionally contains no OpenAI API call. Its purpose is to isolate GitHub/repository audit health.' > deterministic_audit/README.txt
+
+      - name: Upload deterministic artifact
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: 0006-0007-deterministic-audit-${{ github.run_number }}
+          path: deterministic_audit/
+          if-no-files-found: error
