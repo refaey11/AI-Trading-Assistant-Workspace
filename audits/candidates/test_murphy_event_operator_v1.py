@@ -54,6 +54,26 @@ def test_0007_valid_chain():
     assert out.reaction.pivot_type == "LOW"
 
 
+def test_same_timestamp_reaction_is_rejected():
+    line = Line("LOW", "UP", ts(1))
+    pivots = [
+        PivotEvent(ts(2), ts(4), "LOW", 100.0),
+        PivotEvent(ts(2), ts(4), "HIGH", 110.0),
+        PivotEvent(ts(4), ts(6), "HIGH", 115.0),
+    ]
+    bars = [
+        D1Bar(ts(2), 110, 100),
+        D1Bar(ts(4), 116, 105),
+    ]
+    out = evaluate_event_chain(
+        "MURPHY_0006", line,
+        lambda t: 100.0,
+        pivots, bars,
+    )
+    assert out is not None
+    assert out.reaction.timestamp == ts(4)
+
+
 def test_touch_without_intersection_does_not_confirm():
     line = Line("LOW", "UP", ts(1))
     pivots = [
