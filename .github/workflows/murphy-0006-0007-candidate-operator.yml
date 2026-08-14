@@ -1,0 +1,30 @@
+name: Murphy 0006-0007 Candidate Operator
+
+on:
+  push:
+    branches:
+      - candidate/murphy-0006-0007-operational-contract-v1
+    paths:
+      - 'audits/candidates/murphy_event_operator_v1.py'
+      - 'audits/candidates/test_murphy_event_operator_v1.py'
+      - 'audits/candidates/MURPHY_0006_0007_FORMAL_OPERATIONAL_CONTRACT_V1.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  candidate-operator-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install pytest
+        run: python -m pip install pytest
+      - name: Run candidate operator tests
+        working-directory: audits/candidates
+        run: python -m pytest -q test_murphy_event_operator_v1.py
