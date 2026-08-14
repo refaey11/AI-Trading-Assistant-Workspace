@@ -1,0 +1,13 @@
+name: Overnight 0006-0007 Smoke Test
+
+on: push
+
+permissions:
+  contents: read
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Smoke test
+        run: echo '0006-0007 overnight runner is alive'
