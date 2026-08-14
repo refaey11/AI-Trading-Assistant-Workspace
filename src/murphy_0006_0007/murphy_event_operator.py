@@ -75,37 +75,39 @@ def evaluate_event_chain(
         if p.timestamp >= line.available_at and p.available_at >= line.available_at
     ]
 
-    for i, touch in enumerate(eligible):
-        if touch.pivot_type != expected_family:
-            continue
-        touch_line = line_price_at(touch.timestamp)
-        touch_bar = next((b for b in bars if b.timestamp == touch.timestamp), None)
-        if touch_bar is None or not _range_intersects(touch_bar, touch_line):
-            continue
+    # The first eligible same-family pivot is the only third-touch candidate.
+    # If it fails the touch test, do not skip it and manufacture a later touch.
+    touch = next((p for p in eligible if p.pivot_type == expected_family), None)
+    if touch is None:
+        return None
 
-        reaction = next(
-            (p for p in eligible[i + 1:]
-             if p.pivot_type == reaction_family
-             and p.available_at >= touch.available_at),
-            None,
-        )
-        if reaction is None or not _reaction_is_away(rule_id, touch.price, reaction.price):
-            continue
+    touch_line = line_price_at(touch.timestamp)
+    touch_bar = next((b for b in bars if b.timestamp == touch.timestamp), None)
+    if touch_bar is None or not _range_intersects(touch_bar, touch_line):
+        return None
 
-        interval_bars = [b for b in bars if touch.timestamp <= b.timestamp <= reaction.timestamp]
-        if not interval_bars:
-            continue
+    # Reaction is the next opposite-family event strictly after the touch.
+    reaction = next(
+        (
+            p for p in eligible
+            if p.pivot_type == reaction_family
+            and p.timestamp > touch.timestamp
+            and p.available_at >= touch.available_at
+        ),
+        None,
+    )
+    if reaction is None or not _reaction_is_away(rule_id, touch.price, reaction.price):
+        return None
 
-        holds = True
-        for bar in interval_bars:
-            lp = line_price_at(bar.timestamp)
-            if bar.timestamp == touch.timestamp:
-                continue
-            if not _holds_without_break(bar, lp, expected_direction):
-                holds = False
-                break
-        if not holds:
-            continue
+    interval_bars = [b for b in bars if touch.timestamp <= b.timestamp <= reaction.timestamp]
+    if not interval_bars:
+        return None
 
-        return Confirmation(rule_id, touch, reaction, reaction.available_at)
-    return None
+    for bar in interval_bars:
+        lp = line_price_at(bar.timestamp)
+        if bar.timestamp == touch.timestamp:
+            continue
+        if not _holds_without_break(bar, lp, expected_direction):
+            return None
+
+    return Confirmation(rule_id, touch, reaction, reaction.available_at)
