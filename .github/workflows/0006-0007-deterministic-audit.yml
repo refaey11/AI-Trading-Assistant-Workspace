@@ -1,6 +1,9 @@
 name: 0006-0007 Deterministic Audit
 
 on:
+  push:
+    paths:
+      - '.github/workflows/0006-0007-deterministic-audit.yml'
   workflow_dispatch:
   schedule:
     - cron: '15 * * * *'
