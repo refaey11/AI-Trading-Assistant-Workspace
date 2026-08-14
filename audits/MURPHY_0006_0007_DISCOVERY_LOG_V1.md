@@ -41,5 +41,17 @@ Finding: Current Workspace search still exposes the original registry wording as
 Evidence: `PROJECT_CURRENT_STATE.md`, `AI_TRADING_ASSISTANT_PROJECT_CURRENT_STATE_2026-08-12_MURPHY_0006_0007.md`.
 Result: No new authoritative deterministic contract was found in the accessible source material during this review. Do not promote the operational clauses as source text.
 
+## Entry 008 — Full-book review boundary
+Date: 2026-08-14
+Finding: The supplied Murphy source package was reviewed as the broader source context. Chapter 4 is the primary source for 0006/0007 trendline semantics. Other chapters provide adjacent technical-analysis context but do not, from the accessible project artifacts reviewed, create a rule-specific 0006/0007 numeric touch/reaction/no-break contract.
+Result: Do not import thresholds or semantics from unrelated chapters into 0006/0007. Keep Chapter 4 as the primary semantic authority for this gate.
+
+## Entry 009 — Chapter 4 compatibility matrix
+Date: 2026-08-14
+Finding: Chapter 4 supports the qualitative structure of 0006/0007: reaction-low/high trendline families, two anchors, third successful touch, directional reaction, and no meaningful break. The existing project operator is compatible at the qualitative level. However, its deterministic clauses remain explicitly labeled project operationalization.
+Important exclusion: Chapter 4's general 3% price-filter and 2-consecutive-daily-close examples are NOT rule-specific authorization for 0006/0007 and remain unbound.
+Evidence: `MURPHY_0006_0007_CH4_COMPATIBILITY_MATRIX_V1.md`; `MURPHY_0006_0007_CONFIRMATION_CONTRACT_V2_DRAFT.md`; `MURPHY_0006_0007_FORMAL_OPERATIONAL_CONTRACT_V1.md`.
+Result: Source compatibility is sufficient for governance review, but the production freeze decision remains OPEN. No semantic change or new threshold is authorized.
+
 ## Next required discovery
 Recover the authoritative original MURPHY_0006/MURPHY_0007 database records, or document their unavailability, then complete the explicit governance decision and production-path integration review.
