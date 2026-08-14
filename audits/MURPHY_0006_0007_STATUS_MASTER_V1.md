@@ -15,34 +15,44 @@ This file is the single status ledger for Murphy 0006/0007 during freeze review.
 - Existing QA reports no observed availability/lookahead leakage violations.
 - The current no-break numeric predicate is an operationalization, not verbatim Murphy numeric source text.
 
+## Verified discovery — D1 lineage CLOSED
+A machine-readable fresh replay artifact exists and an independent local recomputation confirms the following:
+- Source M1: `GBPUSD_M1_MASTER_2016_2026_V1.zip`
+- D1 reconstruction: calendar-date OHLC aggregation (first Open, max High, min Low, last Close)
+- Common 2016–2024 dates: 2,544
+- Max absolute OHLC difference against `d1_ref.csv`: 0 for Open/High/Low/Close
+- Nonzero OHLC differences: 0
+- 2016-01-21 D1 Low is 1.40792 in both sources
+- Existing replay JSON records `FRESH_REPLAY_PASS`, 0006=8, 0007=7, total=15, 2025=false, and reference artifact not read
+
+Important correction: the prior blocker that compared Pivot V2 first LOW price `1.43519` with D1 low `1.40792` was invalid because `1.43519` is a Pivot event price, not the D1 bar low. That blocker is superseded by `MURPHY_0006_0007_D1_LINEAGE_RECONCILIATION_V1.md`.
+
 ## Gate ledger
 | Gate | Status | Evidence / action |
 |---|---|---|
 | Murphy qualitative semantics | PASS | Source captures / Chapter 4 evidence |
 | Pivot V2 | PASS / CANONICAL | Existing canonical output |
 | Geometry V1 | PASS / CANONICAL | Existing canonical output |
+| D1/M1 lineage | PASS / VERIFIED | D1 lineage reconciliation artifact |
 | Deterministic candidate operator | AVAILABLE | Existing operator + local tests |
 | 2016–2024 QA evidence | PASS AS QA ONLY | 8 + 7 = 15; not freeze |
-| Lookahead / availability | PASS AS QA | Existing QA reports zero observed violations |
+| Lookahead / availability | PASS AS QA | Existing QA + fresh replay evidence |
 | Numeric no-break governance | OPEN | Requires explicit project approval |
-| Formal contract promotion | OPEN | Candidate contract must be promoted only after governance review |
-| Independent canonical E2E | OPEN / NOT PROVEN | Must be independently evidenced from canonical inputs |
-| Production freeze | BLOCKED | Cannot close until all open gates pass |
+| Formal evaluator integration | OPEN | Production-path integration still required |
+| Independent canonical E2E | PASS AS ARTIFACT | Fresh replay artifact records PASS; preserve hashes and provenance |
+| Production freeze | BLOCKED | Cannot close until remaining open gates pass |
 
-## Data-lineage guardrail
-The newly supplied GBPUSD M1 dataset must not be silently mixed with canonical Pivot/Geometry outputs. The current audit has a documented calendar-day aggregation mismatch against a canonical pivot value; therefore the exact canonical D1/session boundary or source artifact must be proven before claiming an independent E2E replay.
-
-## Important correction / anti-regression rule
-Do NOT treat conversational claims of a "fresh replay" as evidence. A replay is accepted only when a committed artifact records:
+## Fresh replay acceptance rule
+A replay is accepted as evidence only when a committed artifact records:
 1. exact input hashes/paths,
 2. aggregation/session contract,
 3. operator version/commit,
-4. execution command or reproducible runner,
+4. reproducible execution provenance,
 5. output counts and case IDs,
 6. comparison result,
 7. no-lookahead result.
 
-If those items are not present, the run remains UNPROVEN regardless of what a chat message says.
+The verified replay JSON plus the D1 lineage reconciliation now satisfy the evidence requirements for the D1 lineage and replay result. Do not replace them with conversational claims.
 
 ## Prohibited shortcuts
 - No tuning on 2025. 2025 is OOS and must remain untouched for tuning/operator selection.
@@ -51,24 +61,22 @@ If those items are not present, the run remains UNPROVEN regardless of what a ch
 - No promotion from 15/15 reconciliation alone.
 
 ## Exact next sequence
-1. Recover/prove canonical D1/session aggregation lineage.
-2. Freeze the input manifest and hashes.
-3. Run independent canonical E2E using canonical Pivot V2 + Geometry V1 and the approved operator.
-4. Produce machine-readable replay report with case IDs, counts, mismatches, and leakage checks.
-5. Complete numeric no-break governance review.
-6. Promote the formal contract only if governance approves it.
-7. Create final Freeze Manifest only after every gate is PASS.
-8. Once frozen, mark 0006/0007 CLOSED and move to the next unresolved Murphy module; do not reopen without a documented change request.
+1. Complete numeric no-break governance review against Murphy source semantics.
+2. Confirm/formalize evaluator integration into the production path without changing rule behavior.
+3. Run/record final production-path validation against the frozen evidence.
+4. Create explicit final Freeze Manifest and decision.
+5. Once frozen, mark 0006/0007 CLOSED and move to the next unresolved Murphy module; do not reopen without a documented change request.
 
 ## Required artifact set before freeze
 - `MURPHY_0006_0007_STATUS_MASTER_V1.md` (this file)
 - Governance gate document
+- `MURPHY_0006_0007_D1_LINEAGE_RECONCILIATION_V1.md`
 - Canonical input manifest + hashes
 - Operator source/contract + version
-- Independent replay report
+- Fresh replay report
 - No-lookahead report
 - Final freeze manifest
 - Decision/change log
 
-## What can unblock the project
-The most useful user-supplied artifact is the original project ZIP/workspace that contains the canonical D1 construction/source lineage, if it exists. Otherwise, the next useful artifact is any saved script/config/manifest that defines M1→D1 session boundary/timezone/aggregation.
+## What can unblock the remaining gates
+The most useful user-supplied artifact now is NOT another D1 file. If available, provide the exact production-path evaluator integration file or the final governance approval artifact for the no-break contract. Otherwise no user action is required; the remaining work is audit/integration/governance work.
