@@ -27,12 +27,26 @@ A machine-readable fresh replay artifact exists and an independent local recompu
 
 Important correction: the prior blocker that compared Pivot V2 first LOW price `1.43519` with D1 low `1.40792` was invalid because `1.43519` is a Pivot event price, not the D1 bar low. That blocker is superseded by `MURPHY_0006_0007_D1_LINEAGE_RECONCILIATION_V1.md`.
 
+## Verified discovery — Geometry V1 schema CLOSED
+Direct inspection of the reconstructed canonical workspace proved:
+- Geometry input is `PIVOT_SEQUENCE_V2`.
+- Geometry connects consecutive pivots of the same type only.
+- Slope is exact price change divided by elapsed seconds.
+- Line availability is the later confirmation timestamp of the two defining pivots.
+- Pattern classification and breakout detection are explicitly excluded.
+- No thresholds are added; 2025 is not used; a line cannot be available before both defining pivots are confirmed.
+- D1 Geometry output contains `line_id`, `line_type`, two anchor timestamps/prices, slope, direction, availability timestamps, and source file.
+- Canonical D1 Geometry output has 806 lines.
+- Geometry QA reports slope, availability, chronology, type, and no-2025 checks as true for the D1 output.
+
+Interpretation: Geometry V1 is an upstream geometry primitive, not the Murphy confirmation detector. It intentionally does NOT emit third-touch/reaction/no-break fields. Those belong to the separate Murphy Confirmation Layer/operator. Therefore the earlier Geometry-schema blocker is CLOSED/SUPERSEDED.
+
 ## Gate ledger
 | Gate | Status | Evidence / action |
 |---|---|---|
 | Murphy qualitative semantics | PASS | Source captures / Chapter 4 evidence |
 | Pivot V2 | PASS / CANONICAL | Existing canonical output |
-| Geometry V1 | PASS / CANONICAL | Existing canonical output |
+| Geometry V1 | PASS / CANONICAL | Direct artifact/schema audit |
 | D1/M1 lineage | PASS / VERIFIED | D1 lineage reconciliation artifact |
 | Deterministic candidate operator | AVAILABLE | Existing operator + local tests |
 | 2016–2024 QA evidence | PASS AS QA ONLY | 8 + 7 = 15; not freeze |
@@ -52,7 +66,7 @@ A replay is accepted as evidence only when a committed artifact records:
 6. comparison result,
 7. no-lookahead result.
 
-The verified replay JSON plus the D1 lineage reconciliation now satisfy the evidence requirements for the D1 lineage and replay result. Do not replace them with conversational claims.
+The verified replay JSON plus the D1 lineage reconciliation satisfy the evidence requirements for the D1 lineage and replay result. Do not replace them with conversational claims.
 
 ## Prohibited shortcuts
 - No tuning on 2025. 2025 is OOS and must remain untouched for tuning/operator selection.
@@ -72,6 +86,7 @@ The verified replay JSON plus the D1 lineage reconciliation now satisfy the evid
 - Governance gate document
 - `MURPHY_0006_0007_D1_LINEAGE_RECONCILIATION_V1.md`
 - Canonical input manifest + hashes
+- Geometry V1 build contract/manifest/QA artifacts
 - Operator source/contract + version
 - Fresh replay report
 - No-lookahead report
@@ -79,4 +94,4 @@ The verified replay JSON plus the D1 lineage reconciliation now satisfy the evid
 - Decision/change log
 
 ## What can unblock the remaining gates
-The most useful user-supplied artifact now is NOT another D1 file. If available, provide the exact production-path evaluator integration file or the final governance approval artifact for the no-break contract. Otherwise no user action is required; the remaining work is audit/integration/governance work.
+The most useful user-supplied artifact now is NOT another D1 or Geometry file. If available, provide the exact production-path evaluator integration file or the final governance approval artifact for the no-break contract. Otherwise no user action is required; the remaining work is audit/integration/governance work.
