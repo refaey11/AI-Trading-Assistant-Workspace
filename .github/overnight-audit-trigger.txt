@@ -1,2 +1,2 @@
 Temporary trigger for the 2026-08-14 06:00–14:00 Cairo audit window.
-Runner validation triggered.
+Resilient OpenAI retry runner enabled.
