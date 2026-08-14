@@ -11,6 +11,8 @@ permissions:
 jobs:
   audit:
     runs-on: ubuntu-latest
+    env:
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -35,9 +37,7 @@ jobs:
           fi
 
       - name: OpenAI forensic analysis
-        if: ${{ secrets.OPENAI_API_KEY != '' }}
-        env:
-          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        if: ${{ env.OPENAI_API_KEY != '' }}
         shell: bash
         run: |
           set -euo pipefail
@@ -79,11 +79,7 @@ Repository evidence:
 Test output:
 {tests}
 '''
-          body = {
-            'model': 'gpt-5',
-            'input': prompt,
-            'store': False
-          }
+          body = {'model': 'gpt-5', 'input': prompt, 'store': False}
           req = urllib.request.Request(
             'https://api.openai.com/v1/responses',
             data=json.dumps(body).encode(),
@@ -96,7 +92,7 @@ Test output:
           PY
 
       - name: Record missing-key state
-        if: ${{ secrets.OPENAI_API_KEY == '' }}
+        if: ${{ env.OPENAI_API_KEY == '' }}
         run: |
           echo 'OPENAI_API_KEY GitHub Secret is not configured. Deterministic audit still ran.' > overnight_audit/openai_report.md
 
