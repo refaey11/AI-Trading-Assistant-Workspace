@@ -1,0 +1,107 @@
+name: Overnight 0006-0007 OpenAI Audit
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 * * * *'
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Collect deterministic evidence
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p overnight_audit
+          git rev-parse HEAD > overnight_audit/commit.txt
+          git status --short > overnight_audit/git_status.txt || true
+          {
+            echo '=== FILES ==='
+            find . -type f -not -path './.git/*' | sort | grep -Ei '0006|0007|pivot|geometry|trendline|evaluator|confirmation|adapter|contract' | head -n 400 || true
+            echo '=== KEYWORDS ==='
+            git grep -n -I -E 'third_touch|reaction_bounce|no_break|confirmation_available_at|reaction_available_at|TRENDLINE_GEOMETRY_V1|PIVOT_SEQUENCE_V2|NOT_EVALUABLE' -- . ':!overnight_audit' | head -n 1200 || true
+          } > overnight_audit/evidence.txt
+          if [ -f pyproject.toml ] || [ -f requirements.txt ] || [ -d tests ]; then
+            python -m pytest -q > overnight_audit/pytest.txt 2>&1 || true
+          else
+            echo 'No pytest project detected.' > overnight_audit/pytest.txt
+          fi
+
+      - name: OpenAI forensic analysis
+        if: ${{ secrets.OPENAI_API_KEY != '' }}
+        env:
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          import urllib.request
+
+          evidence = Path('overnight_audit/evidence.txt').read_text(errors='ignore')[:90000]
+          tests = Path('overnight_audit/pytest.txt').read_text(errors='ignore')[:30000]
+          prompt = f'''You are the forensic integration auditor for the AI Trading Assistant project.
+
+Current target: Murphy 0006/0007 only.
+
+Do not invent missing fields, thresholds, tolerances, lookbacks, or evidence.
+Do not use 2025 for tuning or selection.
+Do not declare Production Frozen.
+Do not propose rebuilding existing Pivot or Geometry components unless the evidence proves they are missing.
+
+Determine whether this exact lineage is proven by repository evidence:
+PIVOT_SEQUENCE_V2 -> TRENDLINE_GEOMETRY_V1 -> third_touch -> reaction -> no_break -> availability -> 0006/0007 evaluator.
+
+Distinguish:
+1. proven by canonical upstream artifact,
+2. present only in a downstream/provisional artifact,
+3. missing,
+4. contradictory.
+
+Return a concise report with:
+- VERDICT: PROVEN / NOT_PROVEN / BLOCKED
+- exact blocker(s),
+- exact file paths and relevant evidence,
+- smallest safe next action,
+- whether 0006/0007 are ready for Freeze Review.
+
+Repository evidence:
+{evidence}
+
+Test output:
+{tests}
+'''
+          body = {
+            'model': 'gpt-5',
+            'input': prompt,
+            'store': False
+          }
+          req = urllib.request.Request(
+            'https://api.openai.com/v1/responses',
+            data=json.dumps(body).encode(),
+            headers={'Authorization': 'Bearer '+os.environ['OPENAI_API_KEY'], 'Content-Type':'application/json'},
+            method='POST')
+          with urllib.request.urlopen(req, timeout=120) as r:
+            data=json.load(r)
+          text = data.get('output_text','')
+          Path('overnight_audit/openai_report.md').write_text(text, encoding='utf-8')
+          PY
+
+      - name: Record missing-key state
+        if: ${{ secrets.OPENAI_API_KEY == '' }}
+        run: |
+          echo 'OPENAI_API_KEY GitHub Secret is not configured. Deterministic audit still ran.' > overnight_audit/openai_report.md
+
+      - name: Upload overnight audit
+        uses: actions/upload-artifact@v4
+        with:
+          name: overnight-0006-0007-openai-audit
+          path: overnight_audit/
