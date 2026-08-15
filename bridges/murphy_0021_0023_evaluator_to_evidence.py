@@ -19,7 +19,7 @@ def _direction(value: Any) -> str:
 
 def adapt_evaluator_result(result: Dict[str, Any], canonical_statement: str = "") -> Dict[str, Any]:
     status = str(result.get("status") or "").strip().upper()
-    direction = _direction(result.get("directional_confirmation"))
+    direction = _direction(result.get("directional_confirmation")) if status in {"PASS", "FAIL", "NOT_EVALUABLE"} else "neutral"
     rule_id = str(result.get("rule_id") or "UNKNOWN_RULE")
     reason = str(result.get("reason") or "").strip()
 
