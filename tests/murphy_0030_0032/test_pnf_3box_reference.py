@@ -92,13 +92,16 @@ def test_replay_is_deterministic():
     assert signature(PNF3BoxReference(1.0).build(data)) == signature(PNF3BoxReference(1.0).build(data))
 
 
-def test_prefix_replay_is_stable_at_the_prefix_boundary():
-    data = bars(
+def test_prefix_snapshot_is_unchanged_by_future_suffix():
+    prefix = bars(
         ("2024-01-01", 100, 101, 99, 101),
         ("2024-01-02", 101, 104, 100, 103),
         ("2024-01-03", 103, 104, 99, 100),
+    )
+    suffix = bars(
         ("2024-01-04", 100, 100, 94, 95),
         ("2024-01-05", 95, 99, 95, 98),
     )
-    prefix = data[:3]
-    assert signature(PNF3BoxReference(1.0).build(prefix)) == signature(PNF3BoxReference(1.0).build(prefix))
+    prefix_snapshot = PNF3BoxReference(1.0).build_snapshots(prefix)[-1]
+    full_snapshots = PNF3BoxReference(1.0).build_snapshots(prefix + suffix)
+    assert signature(prefix_snapshot) == signature(full_snapshots[len(prefix) - 1])
