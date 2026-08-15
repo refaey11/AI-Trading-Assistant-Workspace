@@ -27,6 +27,7 @@ Do NOT answer those questions from model memory, old chat handoffs, old snapshot
 - Production Frozen: **12**
 - Remaining / not yet Production Frozen: **39**
 - Current next rule: **0030**
+- 0030 current work state: **IN PROGRESS — COMPATIBILITY AUDIT**
 - Frozen rules are CLOSED and must not be reworked as routine cleanup.
 
 ## Production Frozen — 12/51
@@ -51,9 +52,21 @@ The remaining set is exactly:
 **0001, 0002, 0005, 0009, 0010, 0011, 0012, 0013, 0014, 0015, 0016, 0017, 0018, 0019, 0020, 0024, 0027, 0030, 0031, 0032, 0033, 0034, 0035, 0036, 0037, 0038, 0039, 0040, 0041, 0042, 0043, 0044, 0045, 0046, 0047, 0048, 0049, 0050, 0051**
 
 ### Next queue position
-**0030 is the next rule to audit.**
+**0030 is the next rule to audit and close.**
 
 No work should jump to another remaining rule unless the project explicitly changes scope.
+
+## Current active rule: 0030
+- Rule identity: P&F bullish support.
+- Source: Murphy Chapter 11 / Point & Figure.
+- Source-derived structural semantics: 3-box-reversal P&F bullish support line; 45-degree upward support line from under the lowest O column; bullish while price remains above the line.
+- Master KB rule record has been recovered and is still UNTESTED.
+- A reusable external P&F implementation candidate has been discovered and is undergoing compatibility audit.
+- Do not choose box size by backtest optimization.
+- Do not invent a project box-size policy, proxy, or fixed timeframe.
+- Do not integrate the external engine until source/behavior/availability compatibility is proven.
+- Next exact gate: deterministic compatibility harness against canonical GBPUSD data.
+- Artifact: `project_state/MURPHY_0030_COMPATIBILITY_AUDIT_V2_FINDINGS_2026-08-15.md`.
 
 ## Status semantics for the remaining set
 For a remaining rule, use the project's latest authoritative evidence to assign one of these states when supported:
@@ -79,6 +92,7 @@ Do not convert NOT_EVALUABLE/PARTIAL/BLOCKED into a guessed completion state.
 ## Anti-confusion rule
 If asked only “what is left?”, answer from the **Remaining — 39/51** list above.
 If asked “what is next?”, answer **0030**.
+If asked “what is happening on 0030?”, answer **IN PROGRESS — COMPATIBILITY AUDIT** and use the rule-specific 0030 audit artifact.
 If asked “how many are frozen?”, answer **12/51**.
 If asked for a specific rule, use this registry for its headline state and then open the rule-specific evidence.
 Never use an older count such as 10/51 or 11/51 when this registry is available.
