@@ -1,4 +1,4 @@
-"""Source-faithful 3-box Point & Figure construction core for Murphy 0030-0032.
+"""Source-bounded 3-box Point & Figure construction core for Murphy 0030-0032.
 
 Source boundary: John J. Murphy, Technical Analysis of the Financial Markets,
 Chapter 11, 3-box reversal construction.
@@ -6,8 +6,9 @@ Chapter 11, 3-box reversal construction.
 Important: box-size selection and initial-chart bootstrap are explicit project
 parameters. They are NOT claimed to be verbatim Murphy numeric prescriptions.
 """
+from copy import deepcopy
 from dataclasses import dataclass
-from math import floor, ceil
+from math import ceil, floor
 from typing import Literal, Optional
 
 
@@ -66,55 +67,71 @@ class PNF3BoxReference:
 
     def _seed(self, bar: PNFBar) -> PNFColumn:
         # Project bootstrap only. Murphy describes the construction after a
-        # column exists; this seed is deliberately isolated so it can later be
-        # replaced by an approved project bootstrap without touching the core.
+        # column exists; this seed is isolated so an approved project bootstrap
+        # can replace it without changing the 3-box construction rules.
         if bar.close >= bar.open:
             level = self._floor_box(bar.high)
             return PNFColumn("X", [level], bar.timestamp, bar.timestamp)
         level = self._ceil_box(bar.low)
         return PNFColumn("O", [level], bar.timestamp, bar.timestamp)
 
+    def _process_bar(self, columns: list[PNFColumn], bar: PNFBar) -> None:
+        if bar.high < bar.low:
+            raise ValueError(f"invalid OHLC at {bar.timestamp}: high < low")
+
+        if not columns:
+            columns.append(self._seed(bar))
+            return
+
+        current = columns[-1]
+        if current.kind == "X":
+            next_x = current.top + self.box_size
+            if bar.high >= next_x:
+                n = int(floor((bar.high - next_x) / self.box_size)) + 1
+                current.boxes.extend(next_x + i * self.box_size for i in range(n))
+                current.last_timestamp = bar.timestamp
+                return
+
+            reversal_level = current.top - self.reversal_boxes * self.box_size
+            if bar.low <= reversal_level:
+                first = current.top - self.box_size
+                boxes = [first - i * self.box_size for i in range(self.reversal_boxes)]
+                columns.append(PNFColumn("O", boxes, bar.timestamp, bar.timestamp))
+            return
+
+        next_o = current.bottom - self.box_size
+        if bar.low <= next_o:
+            n = int(floor((next_o - bar.low) / self.box_size)) + 1
+            current.boxes.extend(next_o - i * self.box_size for i in range(n))
+            current.last_timestamp = bar.timestamp
+            return
+
+        reversal_level = current.bottom + self.reversal_boxes * self.box_size
+        if bar.high >= reversal_level:
+            first = current.bottom + self.box_size
+            boxes = [first + i * self.box_size for i in range(self.reversal_boxes)]
+            columns.append(PNFColumn("X", boxes, bar.timestamp, bar.timestamp))
+
     def build(self, bars: list[PNFBar]) -> list[PNFColumn]:
         columns: list[PNFColumn] = []
         for bar in bars:
-            if bar.high < bar.low:
-                raise ValueError(f"invalid OHLC at {bar.timestamp}: high < low")
-
-            if not columns:
-                columns.append(self._seed(bar))
-                continue
-
-            current = columns[-1]
-            if current.kind == "X":
-                next_x = current.top + self.box_size
-                if bar.high >= next_x:
-                    n = int(floor((bar.high - next_x) / self.box_size)) + 1
-                    current.boxes.extend(next_x + i * self.box_size for i in range(n))
-                    current.last_timestamp = bar.timestamp
-                    continue
-
-                reversal_level = current.top - self.reversal_boxes * self.box_size
-                if bar.low <= reversal_level:
-                    first = current.top - self.box_size
-                    boxes = [first - i * self.box_size for i in range(self.reversal_boxes)]
-                    columns.append(PNFColumn("O", boxes, bar.timestamp, bar.timestamp))
-
-            else:
-                next_o = current.bottom - self.box_size
-                if bar.low <= next_o:
-                    n = int(floor((next_o - bar.low) / self.box_size)) + 1
-                    current.boxes.extend(next_o - i * self.box_size for i in range(n))
-                    current.last_timestamp = bar.timestamp
-                    continue
-
-                reversal_level = current.bottom + self.reversal_boxes * self.box_size
-                if bar.high >= reversal_level:
-                    first = current.bottom + self.box_size
-                    boxes = [first + i * self.box_size for i in range(self.reversal_boxes)]
-                    columns.append(PNFColumn("X", boxes, bar.timestamp, bar.timestamp))
-
+            self._process_bar(columns, bar)
         self.columns = columns
         return columns
+
+    def build_snapshots(self, bars: list[PNFBar]) -> list[list[PNFColumn]]:
+        """Return the state available immediately after each completed bar.
+
+        This is used only for availability/no-lookahead testing; later bars are
+        never allowed to mutate an earlier snapshot.
+        """
+        columns: list[PNFColumn] = []
+        snapshots: list[list[PNFColumn]] = []
+        for bar in bars:
+            self._process_bar(columns, bar)
+            snapshots.append(deepcopy(columns))
+        self.columns = columns
+        return snapshots
 
 
 def bullish_support_reference(columns: list[PNFColumn]) -> Optional[dict]:
@@ -122,8 +139,7 @@ def bullish_support_reference(columns: list[PNFColumn]) -> Optional[dict]:
 
     Source semantics: bullish support line starts from the base of the lowest O
     column. In a P&F grid, a 45-degree line advances one box upward per column.
-    This function returns the structural reference; it does not manufacture a
-    trade signal.
+    This returns a structural reference; it does not manufacture a trade signal.
     """
     o_columns = [(i, c) for i, c in enumerate(columns) if c.kind == "O"]
     if not o_columns:
