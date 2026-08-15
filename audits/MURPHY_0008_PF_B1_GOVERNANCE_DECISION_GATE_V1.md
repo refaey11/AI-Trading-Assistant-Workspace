@@ -1,9 +1,9 @@
 # Murphy 0008 — PF-B1 Governance Decision Gate V1
 
-Status: APPROVED FOR EXPERIMENTAL VALIDATION — NOT PRODUCTION FROZEN
+Status: FROZEN FOR 0008 VALIDATION — NOT PRODUCTION FROZEN
 
 ## Governance decision
-Approved for the 0008 validation run:
+PF-B1 is frozen for the 0008 validation path:
 
 `TIME_FILTER = two successive completed D1 closes beyond the Support boundary.`
 
@@ -16,7 +16,7 @@ Approved for the 0008 validation run:
 0008 is Support → decisive downside break → later rally/retest → broken support functions as resistance.
 
 ## Critical source/governance separation
-This approval does NOT claim that Murphy wrote "0008 = two days" verbatim. Murphy's broader discussion provides the Two-Day Rule as a breakout confirmation policy for important Support/Resistance contexts. The project is explicitly adopting the two-successive-D1-close operator as its operationalization for this validation run.
+This freeze does NOT claim that Murphy wrote "0008 = two days" verbatim. Murphy's broader discussion provides the Two-Day Rule as a breakout confirmation policy for important Support/Resistance contexts. The project is adopting the two-successive-D1-close operator as its explicit operationalization for this 0008 validation path.
 
 ## Hard exclusions
 - No 3% threshold selection.
@@ -35,6 +35,6 @@ This approval does NOT claim that Murphy wrote "0008 = two days" verbatim. Murph
 7. Production freeze only after all gates pass.
 
 ## Production status
-PF-B1 is APPROVED FOR EXPERIMENTAL VALIDATION but remains NOT PRODUCTION FROZEN until the validation gates pass. 0008 remains NOT PRODUCTION FROZEN.
+PF-B1 is FROZEN FOR THE 0008 VALIDATION PATH. This is not a production freeze of the broader PF-B1 module or of 0008. 0008 remains NOT PRODUCTION FROZEN until all validation gates pass.
 
 2025 remains strictly OOS and must not be used for policy selection or tuning.
