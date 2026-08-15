@@ -14,7 +14,7 @@ from typing import Iterable
 
 from tools.murphy_evidence_chain import EvidenceRecord
 
-RULE_RE = re.compile(r"(?<!\d)(?:00[1-9]|0[1-4][0-9]|05[01])(?!\d)")
+RULE_RE = re.compile(r"(?<!\d)00(?:0[1-9]|[1-4][0-9]|5[01])(?!\d)")
 OOS_RE = re.compile(r"\b2025\b|OOS", re.IGNORECASE)
 STATUS_RE = re.compile(
     r"\b(FROZEN|QA_COMPLETE|TECHNICALLY_COMPLETE|INTEGRATION_PENDING|BLOCKED|UNVERIFIED|CONFLICT|COMPLETED)\b",
