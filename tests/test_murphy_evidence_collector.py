@@ -44,6 +44,37 @@ def test_artifact_timestamp_uses_git_commit_not_filesystem_mtime(tmp_path: Path)
     assert artifact_records[0].commit_sha == git(tmp_path, "log", "-1", "--format=%H", "--", "FREEZES.md")
 
 
+def test_explicit_freeze_surface_is_gate_evidence(tmp_path: Path):
+    git(tmp_path, "init", "-q")
+    git(tmp_path, "config", "user.email", "test@example.com")
+    git(tmp_path, "config", "user.name", "Test")
+    (tmp_path / "FREEZES").mkdir()
+    freeze = tmp_path / "FREEZES" / "MURPHY_0021_FREEZE_RECORD.md"
+    freeze.write_text("0021\nStatus: PRODUCTION FROZEN\nEvaluator + unit tests: PASS\n", encoding="utf-8")
+    git(tmp_path, "add", ".")
+    git(tmp_path, "commit", "-m", "freeze: Murphy 0021 record")
+
+    records = collect_repository_surface(tmp_path)
+    freeze_records = [r for r in records if r.rule_id == "0021"]
+    assert len(freeze_records) == 1
+    assert freeze_records[0].evidence_type == "freeze_artifact"
+    assert freeze_records[0].status_claim == "FROZEN"
+
+
+def test_generic_status_artifact_is_not_a_freeze_gate(tmp_path: Path):
+    git(tmp_path, "init", "-q")
+    git(tmp_path, "config", "user.email", "test@example.com")
+    git(tmp_path, "config", "user.name", "Test")
+    artifact = tmp_path / "project_state.md"
+    artifact.write_text("0021 FROZEN\n", encoding="utf-8")
+    git(tmp_path, "add", ".")
+    git(tmp_path, "commit", "-m", "status: Murphy 0021 frozen")
+
+    records = collect(tmp_path, ["project_state.md"])
+    assert records[0].evidence_type == "artifact"
+    assert records[0].status_claim is None
+
+
 def test_repository_surface_expands_known_evidence_roots(tmp_path: Path):
     git(tmp_path, "init", "-q")
     git(tmp_path, "config", "user.email", "test@example.com")
