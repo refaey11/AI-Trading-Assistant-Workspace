@@ -25,7 +25,7 @@ def test_report_does_not_promote_a_status_claim_to_frozen_gate():
     row = next(item for item in report["rows"] if item["rule_id"] == "0021")
     assert row["status_claims"] == {"FROZEN": 1}
     assert row["state"] != "FROZEN"
-    assert "insufficient traceable evidence" in row["reasons"]
+    assert "status/artifact evidence exists but no recognized gate evidence is established" in row["reasons"]
 
 
 def test_report_ignores_out_of_range_rule_ids():
