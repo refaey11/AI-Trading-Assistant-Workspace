@@ -1,5 +1,5 @@
 from src.murphy_0030_0032.evaluator_v1 import evaluate_series
-from src.murphy_0030_0032.pnf_3box_log_reference import PNF3BoxLogReference, PNFBar
+from src.murphy_0030_0032.pnf_3box_log_reference import PNFBar
 
 
 def bars(*rows):
@@ -29,16 +29,30 @@ def test_0030_becomes_available_after_o_column_exists():
     assert result[-1].rules[0].availability_timestamp == "2024-01-03"
 
 
-def test_0031_and_0032_are_directional_stop_references_only():
+def test_0032_is_available_on_downtrend_with_previous_x():
     data = bars(
         ("2024-01-01", 100, 101, 99, 101),
         ("2024-01-02", 101, 104, 100, 103),
         ("2024-01-03", 103, 104, 97, 100),
     )
     result = evaluate_series(data, 0.01)
+    assert result[-1].rules[2].status == "AVAILABLE"
+    assert result[-1].rules[2].placement_relation == "ABOVE_PREVIOUS_X_COLUMN"
+    assert result[-1].rules[1].status == "NOT_EVALUABLE"
+
+
+def test_0031_is_available_on_uptrend_with_previous_o():
+    data = bars(
+        ("2024-01-01", 100, 101, 99, 101),
+        ("2024-01-02", 101, 104, 100, 103),
+        ("2024-01-03", 103, 104, 97, 100),
+        ("2024-01-04", 100, 100, 94, 95),
+        ("2024-01-05", 95, 99, 95, 98),
+        ("2024-01-06", 98, 104, 98, 103),
+    )
+    result = evaluate_series(data, 0.01)
     assert result[-1].rules[1].status == "AVAILABLE"
     assert result[-1].rules[1].placement_relation == "BELOW_PREVIOUS_O_COLUMN"
-    assert result[-1].rules[2].status == "NOT_EVALUABLE"
 
 
 def test_prefix_replay_is_future_suffix_invariant():
