@@ -117,21 +117,50 @@ def _iter_paths(repo: Path, roots: Iterable[str]) -> list[str]:
     return paths
 
 
+def _freeze_claim(text: str) -> str | None:
+    """Return FROZEN only when the artifact contains explicit freeze scope and gates.
+
+    This intentionally requires more than the word ``FROZEN``. A dedicated
+    freeze artifact must state a recognized freeze scope and include at least
+    two independent evidence-gate markers. Otherwise it remains non-gate text.
+    """
+    lower = text.lower()
+    explicit_scope = (
+        "production frozen" in lower
+        or "frozen at evaluator" in lower
+        or "frozen at evaluator + decision-brain-evidence" in lower
+    )
+    if not explicit_scope:
+        return None
+    gate_markers = (
+        "evaluator",
+        "unit test",
+        "integration contract",
+        "historical",
+        "availability",
+        "no-lookahead",
+        "freeze record",
+    )
+    gate_count = sum(marker in lower for marker in gate_markers)
+    return "FROZEN" if gate_count >= 2 else None
+
+
 def _artifact_evidence_type(raw_path: str, text: str) -> tuple[str, str | None]:
     """Classify repository artifacts without treating generic status text as a gate.
 
-    A freeze artifact is recognized only from a dedicated freeze surface/name.
-    Generic project-status files remain non-gate evidence so a word such as
-    FROZEN cannot by itself establish a freeze.
+    A freeze artifact is recognized only from a dedicated freeze surface/name
+    *and* an explicit freeze scope plus multiple gate markers. Generic project
+    status files remain non-gate evidence so a word such as FROZEN cannot by
+    itself establish a freeze.
     """
     normalized = raw_path.replace("\\", "/").lower()
-    explicit_freeze_surface = normalized.startswith("freezes/") or "freeze_record" in normalized or normalized.endswith("_freeze.md")
+    explicit_freeze_surface = (
+        normalized.startswith("freezes/")
+        or "freeze_record" in normalized
+        or normalized.endswith("_freeze.md")
+    )
     if explicit_freeze_surface:
-        match = STATUS_RE.search(text)
-        claim = match.group(1).upper() if match else None
-        if claim == "COMPLETED":
-            claim = "FROZEN"
-        return "freeze_artifact", claim
+        return "freeze_artifact", _freeze_claim(text)
     return "artifact", None
 
 
