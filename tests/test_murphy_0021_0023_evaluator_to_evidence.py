@@ -54,11 +54,11 @@ def test_0023_pass_bearish():
     assert x["decision_hint"] == "bearish"
 
 
-def test_unknown_status_is_review():
+def test_unknown_status_is_review_and_direction_neutral():
     x = adapt_evaluator_result({"rule_id": "0021", "status": "UNKNOWN", "directional_confirmation": "BULLISH", "reason": "bad status"})
     assert x["available"] is False
     assert x["gate"] == "needs_review"
-    assert x["direction"] == "bullish"
+    assert x["direction"] == "neutral"
     assert x["decision_hint"] == "neutral"
 
 
