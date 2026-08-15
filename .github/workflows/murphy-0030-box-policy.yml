@@ -1,0 +1,22 @@
+name: Murphy 0030-0032 Box Policy Proposal
+
+on:
+  push:
+    branches:
+      - proposal/murphy-0030-box-policy-v1
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  test-murphy-0030-0032:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install test runner
+        run: python -m pip install --upgrade pytest
+      - name: Run 0030-0032 tests
+        run: python -m pytest -q tests/murphy_0030_0032
