@@ -39,7 +39,7 @@ def test_deterministic_replay():
     assert [(c.kind, c.boxes) for c in a] == [(c.kind, c.boxes) for c in b]
 
 
-def test_finalized_prefix_does_not_change_after_future_suffix():
+def test_future_suffix_does_not_change_existing_prefix():
     prefix = bars(
         ("2024-01-01", 100, 101, 99, 101),
         ("2024-01-02", 101, 104, 100, 103),
@@ -50,7 +50,5 @@ def test_finalized_prefix_does_not_change_after_future_suffix():
         ("2024-01-05", 95, 99, 95, 98),
     )
     p = PNF3BoxLogReference(0.01).build(prefix)
-    f = PNF3BoxLogReference(0.01).build(prefix + suffix)
-    # The active last column may legitimately extend with future data.
-    # Finalized columns must remain identical.
-    assert [(c.kind, c.boxes) for c in p[:-1]] == [(c.kind, c.boxes) for c in f[:len(p)-1]]
+    f = PNF3BoxReference(0.01).build(prefix + suffix) if False else PNF3BoxLogReference(0.01).build(prefix + suffix)
+    assert [(c.kind, c.boxes) for c in p] == [(c.kind, c.boxes) for c in f[:len(p)]]
