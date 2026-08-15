@@ -6,20 +6,24 @@ on:
       - 'tools/murphy_state_verifier.py'
       - 'tools/murphy_evidence_chain.py'
       - 'tools/murphy_evidence_collector.py'
+      - 'tools/murphy_state_report.py'
       - 'murphy_verifier/**'
       - 'tests/test_murphy_state_verifier.py'
       - 'tests/test_murphy_evidence_chain.py'
       - 'tests/test_murphy_evidence_collector.py'
+      - 'tests/test_murphy_state_report.py'
       - '.github/workflows/murphy-state-verifier-tests.yml'
   pull_request:
     paths:
       - 'tools/murphy_state_verifier.py'
       - 'tools/murphy_evidence_chain.py'
       - 'tools/murphy_evidence_collector.py'
+      - 'tools/murphy_state_report.py'
       - 'murphy_verifier/**'
       - 'tests/test_murphy_state_verifier.py'
       - 'tests/test_murphy_evidence_chain.py'
       - 'tests/test_murphy_evidence_collector.py'
+      - 'tests/test_murphy_state_report.py'
       - '.github/workflows/murphy-state-verifier-tests.yml'
 
 jobs:
@@ -33,4 +37,4 @@ jobs:
       - name: Install pytest
         run: python -m pip install --upgrade pip pytest
       - name: Run verifier tests
-        run: python -m pytest -q tests/test_murphy_state_verifier.py tests/test_murphy_evidence_chain.py tests/test_murphy_evidence_collector.py
+        run: python -m pytest -q tests/test_murphy_state_verifier.py tests/test_murphy_evidence_chain.py tests/test_murphy_evidence_collector.py tests/test_murphy_state_report.py
