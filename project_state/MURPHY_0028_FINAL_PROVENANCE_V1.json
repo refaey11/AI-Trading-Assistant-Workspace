@@ -1,0 +1,16 @@
+{
+  "rule": "MURPHY_0028",
+  "date": "2026-08-15",
+  "status": "PRODUCTION_FREEZE_CANDIDATE",
+  "historical_qa": "PASS",
+  "integrated_availability_leakage": "PASS",
+  "evidence_rows": 5819,
+  "0028_pass_rows": 2889,
+  "0028_fail_rows": 2930,
+  "availability_violations": 0,
+  "duplicates": 0,
+  "missing_availability": 0,
+  "2025_rows": 0,
+  "provenance": "Controlled RSI(14) recovery reverse-validated against the existing 2020-2024 divergence artifact; existing Pivot Sequence V2; existing OSCILLATOR_DIVERGENCE_V1 semantics; existing 0027-0029 evaluator and source-locked bridge preserved.",
+  "freeze_boundary": "This commit records the final provenance package for governance review. It does not claim production-frozen status until the canonical governance state is explicitly updated."
+}
