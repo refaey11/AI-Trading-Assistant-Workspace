@@ -39,8 +39,8 @@ def reduce_state(records: Iterable[EvidenceRecord]) -> tuple[State, tuple[str, .
     Rules:
     - non-authoritative/chat-like records never establish state;
     - an explicit later supersession makes the older assertion stale;
-    - an explicit blocker closure makes that blocker inactive only when the
-      closure references the blocker and occurs later in the evidence chain;
+    - a blocker closure is valid only when it references the blocker and its
+      closure commit is later than the blocker-open record;
     - two still-live incompatible authoritative state assertions yield CONFLICT.
     """
     ordered = _ordered(r for r in records if r.authoritative)
@@ -60,15 +60,25 @@ def reduce_state(records: Iterable[EvidenceRecord]) -> tuple[State, tuple[str, .
             "multiple incompatible authoritative state assertions remain live",
         )
 
-    active_blockers: set[str] = set()
-    closed_blockers: set[str] = set()
+    open_times: dict[str, datetime] = {}
     for record in ordered:
         if record.evidence_type == "blocker_open" and record.blocker_id:
-            active_blockers.add(record.blocker_id)
-        if record.evidence_type == "blocker_closed" and record.blocker_id:
-            if record.blocker_closed_by and record.blocker_closed_by in by_sha:
-                closed_blockers.add(record.blocker_id)
+            open_times[record.blocker_id] = min(
+                record.timestamp,
+                open_times.get(record.blocker_id, record.timestamp),
+            )
 
+    closed_blockers: set[str] = set()
+    for record in ordered:
+        if record.evidence_type != "blocker_closed" or not record.blocker_id:
+            continue
+        closure_sha = record.blocker_closed_by
+        closure = by_sha.get(closure_sha) if closure_sha else None
+        opened_at = open_times.get(record.blocker_id)
+        if closure and opened_at and closure.timestamp > opened_at:
+            closed_blockers.add(record.blocker_id)
+
+    active_blockers = set(open_times)
     unresolved = active_blockers - closed_blockers
     if unresolved:
         return State.BLOCKED, (
