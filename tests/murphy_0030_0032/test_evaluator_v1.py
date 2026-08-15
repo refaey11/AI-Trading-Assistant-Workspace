@@ -16,32 +16,36 @@ def test_0030_requires_an_o_column():
     assert all(r.rules[0].status == "NOT_EVALUABLE" for r in result if r.rules)
 
 
-def test_0030_becomes_available_after_o_column_exists():
+def test_0030_is_structural_origin_only_and_has_no_entry_trigger():
     data = bars(
         ("2024-01-01", 100, 101, 99, 101),
         ("2024-01-02", 101, 104, 100, 103),
         ("2024-01-03", 103, 104, 97, 100),
     )
-    result = evaluate_series(data, 0.01)
-    assert result[-1].rules[0].status == "AVAILABLE"
-    assert result[-1].rules[0].direction == "BULLISH"
-    assert result[-1].rules[0].evidence_type == "PNF_BULLISH_SUPPORT_REFERENCE"
-    assert result[-1].rules[0].availability_timestamp == "2024-01-03"
+    evidence = evaluate_series(data, 0.01)[-1].rules[0]
+    assert evidence.status == "AVAILABLE"
+    assert evidence.direction == "BULLISH"
+    assert evidence.evidence_type == "PNF_BULLISH_SUPPORT_ORIGIN"
+    assert evidence.role == "STRUCTURAL_REFERENCE"
+    assert evidence.entry_trigger is None
+    assert evidence.availability_timestamp == "2024-01-03"
 
 
-def test_0032_is_available_on_downtrend_with_previous_x():
+def test_0032_is_available_on_downtrend_with_previous_x_and_is_risk_only():
     data = bars(
         ("2024-01-01", 100, 101, 99, 101),
         ("2024-01-02", 101, 104, 100, 103),
         ("2024-01-03", 103, 104, 97, 100),
     )
-    result = evaluate_series(data, 0.01)
-    assert result[-1].rules[2].status == "AVAILABLE"
-    assert result[-1].rules[2].placement_relation == "ABOVE_PREVIOUS_X_COLUMN"
-    assert result[-1].rules[1].status == "NOT_EVALUABLE"
+    evidence = evaluate_series(data, 0.01)[-1].rules[2]
+    assert evidence.status == "AVAILABLE"
+    assert evidence.placement_relation == "ABOVE_PREVIOUS_X_COLUMN"
+    assert evidence.role == "RISK_REFERENCE"
+    assert evidence.entry_trigger is None
+    assert evaluate_series(data, 0.01)[-1].rules[1].status == "NOT_EVALUABLE"
 
 
-def test_0031_is_available_on_uptrend_with_previous_o():
+def test_0031_is_available_on_uptrend_with_previous_o_and_is_risk_only():
     data = bars(
         ("2024-01-01", 100, 101, 99, 101),
         ("2024-01-02", 101, 104, 100, 103),
@@ -50,9 +54,11 @@ def test_0031_is_available_on_uptrend_with_previous_o():
         ("2024-01-05", 95, 99, 95, 98),
         ("2024-01-06", 98, 104, 98, 103),
     )
-    result = evaluate_series(data, 0.01)
-    assert result[-1].rules[1].status == "AVAILABLE"
-    assert result[-1].rules[1].placement_relation == "BELOW_PREVIOUS_O_COLUMN"
+    evidence = evaluate_series(data, 0.01)[-1].rules[1]
+    assert evidence.status == "AVAILABLE"
+    assert evidence.placement_relation == "BELOW_PREVIOUS_O_COLUMN"
+    assert evidence.role == "RISK_REFERENCE"
+    assert evidence.entry_trigger is None
 
 
 def test_prefix_replay_is_future_suffix_invariant():
@@ -70,9 +76,9 @@ def test_prefix_replay_is_future_suffix_invariant():
 
     def signature(row):
         return [
-            (e.rule_id, e.status, e.direction, e.evidence_type,
+            (e.rule_id, e.status, e.direction, e.evidence_type, e.role,
              e.reference_column_index, e.reference_price,
-             e.placement_relation, e.availability_timestamp)
+             e.placement_relation, e.entry_trigger, e.availability_timestamp)
             for e in row.rules
         ]
 
