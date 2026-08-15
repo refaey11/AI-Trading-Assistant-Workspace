@@ -27,6 +27,7 @@ DEFAULT_EVIDENCE_ROOTS = (
     "project_state",
     "PROJECT_STATUS_CURRENT_2026-08-12.md",
     "PROJECT_STATUS_CURRENT_2026-08-13.md",
+    "project_state/MURPHY_51_CURRENT_STATUS_V6_2026-08-15.md",
 )
 
 
@@ -116,6 +117,24 @@ def _iter_paths(repo: Path, roots: Iterable[str]) -> list[str]:
     return paths
 
 
+def _artifact_evidence_type(raw_path: str, text: str) -> tuple[str, str | None]:
+    """Classify repository artifacts without treating generic status text as a gate.
+
+    A freeze artifact is recognized only from a dedicated freeze surface/name.
+    Generic project-status files remain non-gate evidence so a word such as
+    FROZEN cannot by itself establish a freeze.
+    """
+    normalized = raw_path.replace("\\", "/").lower()
+    explicit_freeze_surface = normalized.startswith("freezes/") or "freeze_record" in normalized or normalized.endswith("_freeze.md")
+    if explicit_freeze_surface:
+        match = STATUS_RE.search(text)
+        claim = match.group(1).upper() if match else None
+        if claim == "COMPLETED":
+            claim = "FROZEN"
+        return "freeze_artifact", claim
+    return "artifact", None
+
+
 def collect_artifact_text(repo: Path, paths: Iterable[str]) -> list[EvidenceRecord]:
     records: list[EvidenceRecord] = []
     for raw_path in sorted(set(paths)):
@@ -127,17 +146,14 @@ def collect_artifact_text(repo: Path, paths: Iterable[str]) -> list[EvidenceReco
             continue
         sha, timestamp = stamp
         text = path.read_text(encoding="utf-8", errors="replace")
+        evidence_type, claim = _artifact_evidence_type(raw_path, text)
         for rule_id in sorted(_rules(text)):
-            claim_match = STATUS_RE.search(text)
-            claim = claim_match.group(1).upper() if claim_match else None
-            if claim == "COMPLETED":
-                claim = "FROZEN"
             records.append(EvidenceRecord(
                 rule_id=rule_id,
                 commit_sha=sha,
                 timestamp=timestamp,
                 artifact_path=raw_path,
-                evidence_type="artifact",
+                evidence_type=evidence_type,
                 status_claim=claim,
                 oos_used=bool(OOS_RE.search(text)),
                 notes=f"artifact scanned; bytes={len(text.encode('utf-8'))}",
