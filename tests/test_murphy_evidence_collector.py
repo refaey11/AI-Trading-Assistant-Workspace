@@ -50,7 +50,11 @@ def test_explicit_freeze_surface_is_gate_evidence(tmp_path: Path):
     git(tmp_path, "config", "user.name", "Test")
     (tmp_path / "FREEZES").mkdir()
     freeze = tmp_path / "FREEZES" / "MURPHY_0021_FREEZE_RECORD.md"
-    freeze.write_text("0021\nStatus: PRODUCTION FROZEN\nEvaluator + unit tests: PASS\n", encoding="utf-8")
+    freeze.write_text(
+        "0021\nStatus: PRODUCTION FROZEN\nEvaluator + unit tests: PASS\n"
+        "Integration Contract: PASS\nAvailability/no-lookahead: PASS\n",
+        encoding="utf-8",
+    )
     git(tmp_path, "add", ".")
     git(tmp_path, "commit", "-m", "freeze: Murphy 0021 record")
 
@@ -59,6 +63,21 @@ def test_explicit_freeze_surface_is_gate_evidence(tmp_path: Path):
     assert len(freeze_records) == 1
     assert freeze_records[0].evidence_type == "freeze_artifact"
     assert freeze_records[0].status_claim == "FROZEN"
+
+
+def test_weak_freeze_text_does_not_prove_freeze(tmp_path: Path):
+    git(tmp_path, "init", "-q")
+    git(tmp_path, "config", "user.email", "test@example.com")
+    git(tmp_path, "config", "user.name", "Test")
+    (tmp_path / "FREEZES").mkdir()
+    freeze = tmp_path / "FREEZES" / "MURPHY_0021_FREEZE_RECORD.md"
+    freeze.write_text("0021\nStatus: PRODUCTION FROZEN\n", encoding="utf-8")
+    git(tmp_path, "add", ".")
+    git(tmp_path, "commit", "-m", "freeze: Murphy 0021 record")
+
+    records = collect_repository_surface(tmp_path)
+    assert records[0].evidence_type == "freeze_artifact"
+    assert records[0].status_claim is None
 
 
 def test_generic_status_artifact_is_not_a_freeze_gate(tmp_path: Path):
