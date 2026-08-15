@@ -1,7 +1,7 @@
 # Murphy 51 — Current Canonical Status V6
 
 Date: 2026-08-15
-Status: CANONICAL CORRECTION
+Status: CANONICAL CORRECTION + 0028 FREEZE CANDIDATE UPDATE
 
 ## Completed / Frozen — 10 of 51
 - 0003 — Production Frozen
@@ -15,8 +15,21 @@ Status: CANONICAL CORRECTION
 - 0025 — Completed: evaluator, deterministic rule suite, full 2016–2024 replay, availability/no-lookahead, problems/solutions, backup, and freeze record completed.
 - 0026 — Completed: evaluator, deterministic rule suite, full 2016–2024 replay, availability/no-lookahead, problems/solutions, backup, and freeze record completed.
 
+## 0028 — Freeze Candidate
+- Status: QA PASS / FREEZE CANDIDATE — GOVERNANCE APPROVAL REQUIRED.
+- Full historical evidence: 5,819 divergence events covering 2016–2024.
+- 0028 PASS: 2,889; FAIL: 2,930.
+- Historical QA: PASS.
+- Integrated availability/no-lookahead: PASS.
+- Duplicate events: 0.
+- Missing availability: 0.
+- 2025 rows used: 0.
+- Final provenance package committed as `project_state/MURPHY_0028_FINAL_PROVENANCE_V1.json`.
+- Existing 0028 semantics, evaluator, divergence contract, Pivot Sequence V2, and source-locked bridge preserved.
+- Controlled RSI(14) recovery was reverse-validated against the existing 2020–2024 divergence artifact before 2016–2019 extension.
+- This entry does not claim Production Frozen until explicit canonical governance approval is recorded.
+
 ## QA Pass / Freeze Candidate — not completed
-- 0028
 - 0029
 
 ## Correction
