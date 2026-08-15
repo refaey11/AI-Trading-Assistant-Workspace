@@ -1,0 +1,15 @@
+{
+  "schema_version": "1.0",
+  "authority": "git_evidence",
+  "states": ["FROZEN", "QA_COMPLETE", "TECHNICALLY_COMPLETE", "INTEGRATION_PENDING", "BLOCKED", "UNVERIFIED", "CONFLICT"],
+  "rules": {
+    "frozen_requires": ["freeze_evidence", "required_qa", "no_unresolved_blocker"],
+    "conflict_on": ["contradictory_authoritative_evidence"],
+    "stale_claim_is_non_authoritative": true,
+    "protect_oos_years": [2025],
+    "oos_forbidden_uses": ["tuning", "threshold_selection", "calibration", "feature_selection", "rule_change", "optimization"]
+  },
+  "evidence_fields": [
+    "rule_id", "commit_sha", "timestamp", "artifact_path", "evidence_type", "status_claim", "supersedes", "blocker_id", "blocker_closed_by", "oos_used", "notes"
+  ]
+}
