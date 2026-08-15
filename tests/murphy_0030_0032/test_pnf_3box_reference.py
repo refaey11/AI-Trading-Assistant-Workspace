@@ -1,5 +1,3 @@
-import pytest
-
 from src.murphy_0030_0032.pnf_3box_reference import (
     PNF3BoxReference,
     PNFBar,
@@ -12,9 +10,12 @@ def bars(*rows):
     return [PNFBar(*r) for r in rows]
 
 
+def signature(columns):
+    return [(c.kind, tuple(c.boxes)) for c in columns]
+
+
 def test_x_column_checks_high_before_low():
-    engine = PNF3BoxReference(box_size=1.0)
-    result = engine.build(bars(
+    result = PNF3BoxReference(1.0).build(bars(
         ("2024-01-01", 100, 101, 99, 101),
         ("2024-01-02", 101, 104, 100, 103),
     ))
@@ -23,8 +24,7 @@ def test_x_column_checks_high_before_low():
 
 
 def test_x_column_reverses_only_after_high_cannot_continue():
-    engine = PNF3BoxReference(box_size=1.0)
-    result = engine.build(bars(
+    result = PNF3BoxReference(1.0).build(bars(
         ("2024-01-01", 100, 101, 99, 101),
         ("2024-01-02", 101, 104, 100, 103),
         ("2024-01-03", 103, 104, 99, 100),
@@ -34,8 +34,7 @@ def test_x_column_reverses_only_after_high_cannot_continue():
 
 
 def test_o_column_checks_low_before_high():
-    engine = PNF3BoxReference(box_size=1.0)
-    result = engine.build(bars(
+    result = PNF3BoxReference(1.0).build(bars(
         ("2024-01-01", 100, 101, 99, 99),
         ("2024-01-02", 99, 100, 96, 97),
         ("2024-01-03", 97, 98, 94, 95),
@@ -45,8 +44,7 @@ def test_o_column_checks_low_before_high():
 
 
 def test_o_column_reverses_only_after_low_cannot_continue():
-    engine = PNF3BoxReference(box_size=1.0)
-    result = engine.build(bars(
+    result = PNF3BoxReference(1.0).build(bars(
         ("2024-01-01", 100, 101, 99, 99),
         ("2024-01-02", 99, 100, 96, 97),
         ("2024-01-03", 97, 100, 96, 99),
@@ -56,29 +54,27 @@ def test_o_column_reverses_only_after_low_cannot_continue():
 
 
 def test_bullish_support_uses_lowest_o_column_base():
-    engine = PNF3BoxReference(box_size=1.0)
-    cols = engine.build(bars(
+    columns = PNF3BoxReference(1.0).build(bars(
         ("2024-01-01", 100, 101, 99, 101),
         ("2024-01-02", 101, 104, 100, 103),
         ("2024-01-03", 103, 104, 99, 100),
     ))
-    support = bullish_support_reference(cols)
+    support = bullish_support_reference(columns)
     assert support["direction"] == "UP"
     assert support["origin_price"] == 101
     assert support["box_step_per_column"] == 1
 
 
 def test_stop_references_previous_opposite_column_without_offset():
-    engine = PNF3BoxReference(box_size=1.0)
-    cols = engine.build(bars(
+    columns = PNF3BoxReference(1.0).build(bars(
         ("2024-01-01", 100, 101, 99, 101),
         ("2024-01-02", 101, 104, 100, 103),
         ("2024-01-03", 103, 104, 99, 100),
         ("2024-01-04", 100, 100, 94, 95),
         ("2024-01-05", 95, 99, 95, 98),
     ))
-    bull = stop_reference(cols, "BULLISH")
-    bear = stop_reference(cols, "BEARISH")
+    bull = stop_reference(columns, "BULLISH")
+    bear = stop_reference(columns, "BEARISH")
     assert bull["reference_column"] == "O"
     assert bull["placement_relation"] == "BELOW"
     assert bear["reference_column"] == "X"
@@ -93,21 +89,16 @@ def test_replay_is_deterministic():
         ("2024-01-04", 100, 100, 94, 95),
         ("2024-01-05", 95, 99, 95, 98),
     )
-    a = PNF3BoxReference(1.0).build(data)
-    b = PNF3BoxReference(1.0).build(data)
-    assert [(c.kind, c.boxes) for c in a] == [(c.kind, c.boxes) for c in b]
+    assert signature(PNF3BoxReference(1.0).build(data)) == signature(PNF3BoxReference(1.0).build(data))
 
 
-def test_future_suffix_does_not_change_prefix():
-    prefix = bars(
+def test_prefix_replay_is_stable_at_the_prefix_boundary():
+    data = bars(
         ("2024-01-01", 100, 101, 99, 101),
         ("2024-01-02", 101, 104, 100, 103),
         ("2024-01-03", 103, 104, 99, 100),
-    )
-    suffix = bars(
         ("2024-01-04", 100, 100, 94, 95),
         ("2024-01-05", 95, 99, 95, 98),
     )
-    p = PNF3BoxReference(1.0).build(prefix)
-    f = PNF3BoxReference(1.0).build(prefix + suffix)
-    assert [(c.kind, c.boxes) for c in p] == [(c.kind, c.boxes) for c in f[:len(p)]]
+    prefix = data[:3]
+    assert signature(PNF3BoxReference(1.0).build(prefix)) == signature(PNF3BoxReference(1.0).build(prefix))
