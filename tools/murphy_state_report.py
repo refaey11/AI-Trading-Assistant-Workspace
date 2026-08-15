@@ -16,9 +16,9 @@ from typing import Iterable
 
 from tools.murphy_evidence_collector import collect_repository_surface
 from tools.murphy_evidence_chain import EvidenceRecord, reduce_state
-from tools.murphy_state_verifier import State
 
 RULE_IDS = tuple(f"{n:04d}" for n in range(1, 52))
+STATUS_ONLY_TYPES = {"status", "artifact", "git_commit"}
 
 
 def _group(records: Iterable[EvidenceRecord]) -> dict[str, list[EvidenceRecord]]:
@@ -34,11 +34,19 @@ def build_report(records: Iterable[EvidenceRecord]) -> dict:
     rows = []
     for rule_id in RULE_IDS:
         items = sorted(grouped.get(rule_id, []), key=lambda r: (r.timestamp, r.commit_sha, r.evidence_type))
-        state, reasons = reduce_state(items)
         claims = Counter(r.status_claim.upper() for r in items if r.status_claim)
+        recognized_gate_records = [r for r in items if r.evidence_type not in STATUS_ONLY_TYPES]
+        if recognized_gate_records:
+            state, reasons = reduce_state(items)
+        elif items:
+            state = None
+            reasons = ("status/artifact evidence exists but no recognized gate evidence is established",)
+        else:
+            state = None
+            reasons = ("no authoritative evidence records",)
         rows.append({
             "rule_id": rule_id,
-            "state": state.value,
+            "state": state.value if state is not None else "UNVERIFIED",
             "evidence_count": len(items),
             "git_commit_count": len({r.commit_sha for r in items}),
             "artifact_count": len({r.artifact_path for r in items if r.artifact_path}),
