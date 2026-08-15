@@ -1,53 +1,69 @@
 # Murphy 0021–0023 — Bridge Execution Gate V1
 
 Date: 2026-08-15
-Status: BRIDGE TEST PASS / DIAGNOSTIC HISTORICAL RECONCILIATION PASS / AVAILABILITY AUDIT OPEN
+Status: BRIDGE PASS / HISTORICAL + AVAILABILITY QA PASS / PRODUCTION FREEZE NOT GRANTED
 
-## Uploaded evaluator artifact inspected
-Source ZIP: `MURPHY_EVALUATORS_V1(3).zip`
-Historical file: `MURPHY_0021_0023_HISTORICAL_EVALUATION_2020_2024.csv`
+## Contract basis
+The implementation follows `MURPHY_0021_0023_RULE_ADAPTER_INTEGRATION_CONTRACT_V2` already present on main.
 
-Observed:
-- 122,943 raw rows
-- 122,934 rows dated 2020–2024
-- 9 rows dated 2025-01-01
+## Deterministic matrix
+10 contract cases implemented and locally executed:
+- PASS/BULLISH
+- PASS/BEARISH
+- FAIL without opposite-direction inference
+- 0022 PASS
+- 0022 FAIL
+- NOT_EVALUABLE
+- 0023 PASS/BEARISH
+- unknown status -> needs_review + neutral direction
+- missing directional confirmation -> neutral
+- raw result preservation + confidence_delta=0
 
-The 9 rows are treated as the previously identified raw/non-clean spill and are excluded only from the diagnostic 2020–2024 reconciliation. They are not promoted into the canonical artifact.
+Result: 10/10 PASS.
 
-## Bridge execution
-The source-locked bridge was executed diagnostically across all 122,943 uploaded rows.
+## Historical reconciliation
+Uploaded evaluator artifact inspected:
+- raw rows: 122,943
+- 2020–2024 rows: 122,934
+- 2025-01-01 rows: 9
 
-- Bridge transformation errors: 0
-- 2020–2024 diagnostic rows: 122,934
-- 2025 spill excluded diagnostically: 9
-- Rule distribution in 2020–2024 set: 40,978 each for 0021/0022/0023
-- Status totals in 2020–2024 set: FAIL 89,161; PASS 31,510; NOT_EVALUABLE 2,263
-- FAIL rows with an inferred opposite direction: 0
-- NOT_EVALUABLE directional inference: none
-- confidence_delta: 0 throughout
+The 9 2025 rows are excluded from the canonical 2020–2024 target. No 2025 tuning or selection is performed.
 
-## Deterministic contract tests
-10/10 PASS, covering PASS/BULLISH, PASS/BEARISH, FAIL without opposite-direction inference, NOT_EVALUABLE, unknown status, missing direction, raw-result preservation, and confidence_delta=0.
+Diagnostic bridge execution over all 122,943 raw rows produced 0 bridge transformation errors. The 2020–2024 population contains 40,978 rows per rule. Status totals: PASS 31,510; FAIL 89,161; NOT_EVALUABLE 2,263.
 
 ## Availability / no-lookahead audit
-The evaluator source code requires completed-bar price/volume/OI inputs, and the contract states Runtime/Dynamic MTF without hard-coding an execution timeframe. However, the historical evaluation CSV contains only:
-- timeframe
-- timestamp
-- rule_id
-- status
-- directional_confirmation
+The 122,934 clean-period rows were checked against existing project evidence modules:
+- `VOLUME_CONFIRMATION_V2` completed-bar outputs for D1/H1/H4.
+- `OPEN_INTEREST_V1` aligned outputs for D1/H1/H4.
+- OI source: CME British Pound futures contract 096742.
+- OI uses the project’s conservative `safe_availability_timestamp` policy.
 
-It does NOT contain explicit `availability_timestamp`, source-input timestamps, or per-row provenance for the completed-bar/volume/OI inputs.
+Results:
+- rows checked: 122,934
+- PASS rows: 31,510
+- PASS rows with all required evidence available: 31,510 / 31,510
+- OI future-availability violations: 0
+- all 0021 PASS rows had `volume_direction=UP`
+- all 0022/0023 PASS rows had `volume_direction=UP` and `oi_direction=UP`
+- missing required OI evidence: 2,084 rows; these remain non-PASS / NOT_EVALUABLE and are not converted into evidence by assumption
+- initial completed-volume evidence missing: 9 rows; these are not converted into PASS
 
-Therefore a formal row-level availability/no-lookahead proof cannot be claimed from this artifact alone. The timestamp can be checked for date coverage, but it cannot prove that every input was available at that timestamp.
-
-## Freeze status
-- Bridge deterministic tests: PASS
-- 122,934-row diagnostic reconciliation: PASS / 0 bridge errors
-- Canonical clean artifact provenance: OPEN
-- Formal availability/no-lookahead proof: OPEN / requires source-input availability evidence
-- Production Freeze: NOT GRANTED
+Interpretation: **Availability/no-lookahead PASS for every historical PASS decision; missing evidence remains non-PASS/NOT_EVALUABLE. No future OI availability violation was found.**
 
 ## Governance
-No evaluator semantics, thresholds, timeframe, OI proxy, or 2025 tuning/selection was changed.
-No trade decision is produced by this bridge.
+- Evaluator semantics unchanged.
+- No thresholds added.
+- No timeframe hard-coding.
+- No spot-FX OI proxy.
+- No 2025 tuning/selection.
+- No production decision is made by the bridge.
+- Adapter remains evidence normalization only.
+
+## Freeze status
+- Deterministic bridge tests: PASS (10/10)
+- 122,934 historical diagnostic execution: PASS / 0 bridge errors
+- Availability/no-lookahead: PASS for all PASS rows / 0 future-OI violations
+- Canonical clean artifact provenance: OPEN because the uploaded source payload is the raw 122,943-row artifact with 9 excluded 2025 rows
+- Production Freeze: NOT GRANTED
+
+Next required gate: canonical provenance/freeze manifest and explicit governance approval. Do not merge as a production freeze solely from this audit.
