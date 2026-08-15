@@ -1,0 +1,31 @@
+{
+  "rule": "MURPHY_0028",
+  "status": "PRODUCTION FROZEN",
+  "date": "2026-08-15",
+  "backup_type": "continuity + provenance + problem_solution",
+  "freeze_commit": "79ddf163e91101e168825c086deba47beaf556e9",
+  "canonical_status_commit": "ea950b5e9d1dc24c505bad067bb633d79a1236df",
+  "continuity_backup_commit": "4c6012c81eb35e455e5644f1d7c58b1b070eb9aa",
+  "frozen_rule_count": "11/51",
+  "next_candidate": "0029",
+  "qa": {
+    "historical_range": "2016-2024",
+    "total_events": 5819,
+    "pass": 2889,
+    "fail": 2930,
+    "duplicates": 0,
+    "availability_violations": 0,
+    "missing_availability": 0,
+    "2025_rows": 0,
+    "out_of_scope_rows": 0,
+    "nonconforming_labels": 0
+  },
+  "problem": "Missing directly authoritative RSI(14) historical producer/artifact coverage for 2016-2019 while the existing 0028 evaluator and 2020-2024 divergence evidence were already present.",
+  "solution": "Controlled RSI(14) recovery: reverse-validate Wilder RSI(14) against the existing 2020-2024 divergence artifact, extend the proven implementation to 2016-2019, preserve existing Pivot Sequence V2 and divergence semantics, run full historical QA and availability/no-lookahead checks, then freeze 0028.",
+  "do_not_repeat": [
+    "Do not rebuild 0028.",
+    "Do not rebuild the divergence detector.",
+    "Do not retune on 2025.",
+    "Do not reopen a frozen rule without a new compatibility audit and re-freeze."
+  ]
+}
