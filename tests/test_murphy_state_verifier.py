@@ -8,7 +8,10 @@ def frozen_evidence():
         historical_qa=True,
         no_lookahead=True,
         compatibility_audit=True,
+        blocker_open=False,
         blocker_closed=True,
+        blocker_closure_traceable=True,
+        blocker_closed_after_open=True,
         freeze_manifest=True,
         frozen_snapshot=True,
         production_freeze=True,
@@ -26,13 +29,27 @@ def test_0021_0023_freeze_gate_is_deterministic():
 
 
 def test_0025_0026_stale_blocker_is_superseded_by_traceable_closure():
-    evidence = Evidence(**{**frozen_evidence().__dict__, "blocker_open": True, "blocker_closed": True})
+    evidence = Evidence(
+        **{
+            **frozen_evidence().__dict__,
+            "blocker_open": True,
+            "blocker_closed": True,
+            "blocker_closure_traceable": True,
+            "blocker_closed_after_open": True,
+        }
+    )
     result = verify("0025", evidence)
     assert result.state is State.FROZEN
 
 
 def test_active_blocker_prevents_freeze():
-    evidence = Evidence(**{**frozen_evidence().__dict__, "blocker_open": True, "blocker_closed": False})
+    evidence = Evidence(
+        **{
+            **frozen_evidence().__dict__,
+            "blocker_open": True,
+            "blocker_closed": False,
+        }
+    )
     result = verify("0026", evidence)
     assert result.state is State.BLOCKED
 
@@ -43,13 +60,23 @@ def test_conflicting_authoritative_states_do_not_guess():
 
 
 def test_2025_oos_forbidden_use_is_hard_block():
-    evidence = Evidence(**{**frozen_evidence().__dict__, "oos_2025_used_for_forbidden_purpose": True})
+    evidence = Evidence(
+        **{
+            **frozen_evidence().__dict__,
+            "oos_2025_used_for_forbidden_purpose": True,
+        }
+    )
     result = verify("0022", evidence)
     assert result.state is State.BLOCKED
 
 
 def test_future_data_contamination_is_hard_block():
-    evidence = Evidence(**{**frozen_evidence().__dict__, "future_data_contamination": True})
+    evidence = Evidence(
+        **{
+            **frozen_evidence().__dict__,
+            "future_data_contamination": True,
+        }
+    )
     result = verify("0023", evidence)
     assert result.state is State.BLOCKED
 
