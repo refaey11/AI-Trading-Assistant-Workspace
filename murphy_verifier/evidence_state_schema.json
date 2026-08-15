@@ -1,15 +1,62 @@
 {
-  "schema_version": "1.0",
+  "schema_version": "1.1",
   "authority": "git_evidence",
-  "states": ["FROZEN", "QA_COMPLETE", "TECHNICALLY_COMPLETE", "INTEGRATION_PENDING", "BLOCKED", "UNVERIFIED", "CONFLICT"],
+  "states": [
+    "FROZEN",
+    "QA_COMPLETE",
+    "TECHNICALLY_COMPLETE",
+    "INTEGRATION_PENDING",
+    "BLOCKED",
+    "UNVERIFIED",
+    "CONFLICT"
+  ],
   "rules": {
-    "frozen_requires": ["freeze_evidence", "required_qa", "no_unresolved_blocker"],
+    "frozen_requires": [
+      "implementation",
+      "tests_pass",
+      "historical_qa",
+      "no_lookahead",
+      "compatibility_audit",
+      "no_unresolved_blocker",
+      "freeze_manifest",
+      "frozen_snapshot",
+      "production_freeze",
+      "canonical_frozen",
+      "oos_2025_clean"
+    ],
     "conflict_on": ["contradictory_authoritative_evidence"],
     "stale_claim_is_non_authoritative": true,
+    "stale_blocker_requires": [
+      "blocker_closed",
+      "blocker_closure_traceable",
+      "blocker_closed_after_open"
+    ],
     "protect_oos_years": [2025],
-    "oos_forbidden_uses": ["tuning", "threshold_selection", "calibration", "feature_selection", "rule_change", "optimization"]
+    "oos_forbidden_uses": [
+      "tuning",
+      "threshold_selection",
+      "calibration",
+      "feature_selection",
+      "rule_change",
+      "optimization"
+    ],
+    "future_data_forbidden": true
   },
   "evidence_fields": [
-    "rule_id", "commit_sha", "timestamp", "artifact_path", "evidence_type", "status_claim", "supersedes", "blocker_id", "blocker_closed_by", "oos_used", "notes"
+    "rule_id",
+    "commit_sha",
+    "timestamp",
+    "artifact_path",
+    "evidence_type",
+    "status_claim",
+    "supersedes",
+    "blocker_id",
+    "blocker_closed_by",
+    "blocker_closure_traceable",
+    "blocker_closed_after_open",
+    "oos_used",
+    "oos_forbidden_purpose",
+    "future_data_contamination",
+    "notes"
   ]
 }
