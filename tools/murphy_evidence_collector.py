@@ -1,8 +1,8 @@
 """Deterministic local collector for Murphy Rule repository evidence.
 
-The collector extracts traceable repository facts from Git history and files.
-It deliberately does not infer missing Murphy semantics; reduction is delegated
-to ``murphy_evidence_chain.reduce_state``.
+The collector extracts traceable repository facts from Git history and known
+project evidence surfaces. It deliberately does not infer missing Murphy
+semantics; reduction is delegated to ``murphy_evidence_chain.reduce_state``.
 """
 from __future__ import annotations
 
@@ -19,6 +19,14 @@ OOS_RE = re.compile(r"\b2025\b|OOS", re.IGNORECASE)
 STATUS_RE = re.compile(
     r"\b(FROZEN|QA_COMPLETE|TECHNICALLY_COMPLETE|INTEGRATION_PENDING|BLOCKED|UNVERIFIED|CONFLICT|COMPLETED)\b",
     re.IGNORECASE,
+)
+DEFAULT_EVIDENCE_ROOTS = (
+    "FREEZES",
+    "PROJECT_INDEX",
+    "audits",
+    "project_state",
+    "PROJECT_STATUS_CURRENT_2026-08-12.md",
+    "PROJECT_STATUS_CURRENT_2026-08-13.md",
 )
 
 
@@ -86,9 +94,31 @@ def _path_timestamp(repo: Path, path: str) -> tuple[str, datetime] | None:
     return sha, datetime.fromisoformat(iso).astimezone(timezone.utc)
 
 
+def _iter_paths(repo: Path, roots: Iterable[str]) -> list[str]:
+    """Expand known evidence roots deterministically without scanning data payloads."""
+    paths: list[str] = []
+    for raw_root in roots:
+        root = repo / raw_root
+        if root.is_file():
+            paths.append(raw_root)
+            continue
+        if not root.is_dir():
+            continue
+        for path in sorted(root.rglob("*")):
+            if not path.is_file():
+                continue
+            # Avoid collecting generated caches/large datasets as evidence text.
+            if any(part in {"__pycache__", ".git"} for part in path.parts):
+                continue
+            rel = path.relative_to(repo).as_posix()
+            if path.suffix.lower() in {".md", ".json", ".yaml", ".yml", ".txt", ".csv"}:
+                paths.append(rel)
+    return paths
+
+
 def collect_artifact_text(repo: Path, paths: Iterable[str]) -> list[EvidenceRecord]:
     records: list[EvidenceRecord] = []
-    for raw_path in paths:
+    for raw_path in sorted(set(paths)):
         path = repo / raw_path
         if not path.is_file():
             continue
@@ -97,11 +127,11 @@ def collect_artifact_text(repo: Path, paths: Iterable[str]) -> list[EvidenceReco
             continue
         sha, timestamp = stamp
         text = path.read_text(encoding="utf-8", errors="replace")
-        claim_match = STATUS_RE.search(text)
-        claim = claim_match.group(1).upper() if claim_match else None
-        if claim == "COMPLETED":
-            claim = "FROZEN"
         for rule_id in sorted(_rules(text)):
+            claim_match = STATUS_RE.search(text)
+            claim = claim_match.group(1).upper() if claim_match else None
+            if claim == "COMPLETED":
+                claim = "FROZEN"
             records.append(EvidenceRecord(
                 rule_id=rule_id,
                 commit_sha=sha,
@@ -115,7 +145,23 @@ def collect_artifact_text(repo: Path, paths: Iterable[str]) -> list[EvidenceReco
     return records
 
 
+def collect_repository_surface(
+    repo: str | Path,
+    evidence_roots: Iterable[str] = DEFAULT_EVIDENCE_ROOTS,
+    max_commits: int | None = None,
+) -> list[EvidenceRecord]:
+    """Collect Git-history plus traceable text evidence for the known evidence surface."""
+    root = Path(repo).resolve()
+    if not (root / ".git").exists():
+        raise ValueError(f"not a git repository: {root}")
+    records = collect_git_history(root, max_commits)
+    paths = _iter_paths(root, evidence_roots)
+    records.extend(collect_artifact_text(root, paths))
+    return sorted(records, key=lambda r: (r.rule_id, r.timestamp, r.commit_sha, r.artifact_path, r.evidence_type))
+
+
 def collect(repo: str | Path, artifact_paths: Iterable[str] = (), max_commits: int | None = None) -> list[EvidenceRecord]:
+    """Backward-compatible collector; explicit artifacts remain supported."""
     root = Path(repo).resolve()
     if not (root / ".git").exists():
         raise ValueError(f"not a git repository: {root}")
@@ -134,6 +180,11 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("repo")
     parser.add_argument("--artifact", action="append", default=[])
+    parser.add_argument("--repository-surface", action="store_true")
     parser.add_argument("--max-commits", type=int, default=None)
     args = parser.parse_args()
-    print(json.dumps(to_dicts(collect(args.repo, args.artifact, args.max_commits)), default=str, indent=2))
+    if args.repository_surface:
+        records = collect_repository_surface(args.repo, max_commits=args.max_commits)
+    else:
+        records = collect(args.repo, args.artifact, args.max_commits)
+    print(json.dumps(to_dicts(records), default=str, indent=2))
