@@ -26,15 +26,13 @@ def test_0021_0023_freeze_gate_is_deterministic():
 
 
 def test_0025_0026_stale_blocker_is_superseded_by_traceable_closure():
-    evidence = Evidence(
-        **{**frozen_evidence().__dict__, "blocker_open": True, "blocker_closed": True}
-    )
+    evidence = Evidence(**{**frozen_evidence().__dict__, "blocker_open": True, "blocker_closed": True})
     result = verify("0025", evidence)
     assert result.state is State.FROZEN
 
 
 def test_active_blocker_prevents_freeze():
-    evidence = Evidence(**{**frozen_evidence().__dict__, "blocker_open": True})
+    evidence = Evidence(**{**frozen_evidence().__dict__, "blocker_open": True, "blocker_closed": False})
     result = verify("0026", evidence)
     assert result.state is State.BLOCKED
 
