@@ -1,7 +1,7 @@
 from pathlib import Path
 import subprocess
 
-from tools.murphy_evidence_collector import collect, collect_git_history
+from tools.murphy_evidence_collector import collect, collect_git_history, collect_repository_surface
 
 
 def git(repo: Path, *args: str) -> str:
@@ -42,6 +42,24 @@ def test_artifact_timestamp_uses_git_commit_not_filesystem_mtime(tmp_path: Path)
     assert len(artifact_records) == 1
     assert artifact_records[0].rule_id == "0021"
     assert artifact_records[0].commit_sha == git(tmp_path, "log", "-1", "--format=%H", "--", "FREEZES.md")
+
+
+def test_repository_surface_expands_known_evidence_roots(tmp_path: Path):
+    git(tmp_path, "init", "-q")
+    git(tmp_path, "config", "user.email", "test@example.com")
+    git(tmp_path, "config", "user.name", "Test")
+    (tmp_path / "FREEZES").mkdir()
+    (tmp_path / "audits").mkdir()
+    (tmp_path / "FREEZES" / "rule_0021.md").write_text("0021 FROZEN\n", encoding="utf-8")
+    (tmp_path / "audits" / "rule_0005.md").write_text("0005 BLOCKED\n", encoding="utf-8")
+    (tmp_path / "data").mkdir()
+    (tmp_path / "data" / "large.csv").write_text("0025 FROZEN\n", encoding="utf-8")
+    git(tmp_path, "add", ".")
+    git(tmp_path, "commit", "-m", "status: Murphy 0021 and 0005")
+
+    records = collect_repository_surface(tmp_path)
+    assert {r.rule_id for r in records} == {"0005", "0021"}
+    assert all(r.artifact_path.startswith(("FREEZES/", "audits/")) or not r.artifact_path for r in records)
 
 
 def test_non_rule_numbers_are_not_emitted(tmp_path: Path):
