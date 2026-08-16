@@ -1,0 +1,800 @@
+{
+  "source_registry": "/home/runner/work/AI-Trading-Assistant-Workspace/AI-Trading-Assistant-Workspace/nison_ci_source/03_Rule_Registry/INTEGRATED_RULE_REGISTRY_V1.json",
+  "nison_rule_count": 44,
+  "expected_nison_rule_count": 44,
+  "count_check": true,
+  "rules": [
+    {
+      "rule_id": "CANDLE_RULE_0001",
+      "source": "Steve Nison",
+      "integration_role": "confirmation",
+      "status": "PENDING_COMPATIBILITY_AUDIT",
+      "evaluator": null,
+      "decision": "NOT_EVALUABLE",
+      "reason": "No evaluator is assigned by this inventory runner; operationalization requires a compatible existing primitive/adapter.",
+      "governance": {
+        "confirmation_only": true,
+        "no_invented_thresholds": true,
+        "no_invented_lookbacks": true,
+        "no_scoring": true,
+        "no_direction_generation": true,
+        "no_2025_tuning": true,
+        "no_auto_freeze": true
+      }
+    },
+    {
+      "rule_id": "CANDLE_RULE_0002",
+      "source": "Steve Nison",
+      "integration_role": "confirmation",
+      "status": "PENDING_COMPATIBILITY_AUDIT",
+      "evaluator": null,
+      "decision": "NOT_EVALUABLE",
+      "reason": "No evaluator is assigned by this inventory runner; operationalization requires a compatible existing primitive/adapter.",
+      "governance": {
+        "confirmation_only": true,
+        "no_invented_thresholds": true,
+        "no_invented_lookbacks": true,
+        "no_scoring": true,
+        "no_direction_generation": true,
+        "no_2025_tuning": true,
+        "no_auto_freeze": true
+      }
+    },
+    {
+      "rule_id": "CANDLE_RULE_0003",
+      "source": "Steve Nison",
+      "integration_role": "confirmation",
+      "status": "PENDING_COMPATIBILITY_AUDIT",
+      "evaluator": null,
+      "decision": "NOT_EVALUABLE",
+      "reason": "No evaluator is assigned by this inventory runner; operationalization requires a compatible existing primitive/adapter.",
+      "governance": {
+        "confirmation_only": true,
+        "no_invented_thresholds": true,
+        "no_invented_lookbacks": true,
+        "no_scoring": true,
+        "no_direction_generation": true,
+        "no_2025_tuning": true,
+        "no_auto_freeze": true
+      }
+    },
+    {
+      "rule_id": "CANDLE_RULE_0004",
+      "source": "Steve Nison",
+      "integration_role": "confirmation",
+      "status": "PENDING_COMPATIBILITY_AUDIT",
+      "evaluator": null,
+      "decision": "NOT_EVALUABLE",
+      "reason": "No evaluator is assigned by this inventory runner; operationalization requires a compatible existing primitive/adapter.",
+      "governance": {
+        "confirmation_only": true,
+        "no_invented_thresholds": true,
+        "no_invented_lookbacks": true,
+        "no_scoring": true,
+        "no_direction_generation": true,
+        "no_2025_tuning": true,
+        "no_auto_freeze": true
+      }
+    },
+    {
+      "rule_id": "CANDLE_RULE_0005",
+      "source": "Steve Nison",
+      "integration_role": "confirmation",
+      "status": "PENDING_COMPATIBILITY_AUDIT",
+      "evaluator": null,
+      "decision": "NOT_EVALUABLE",
+      "reason": "No evaluator is assigned by this inventory runner; operationalization requires a compatible existing primitive/adapter.",
+      "governance": {
+        "confirmation_only": true,
+        "no_invented_thresholds": true,
+        "no_invented_lookbacks": true,
+        "no_scoring": true,
+        "no_direction_generation": true,
+        "no_2025_tuning": true,
+        "no_auto_freeze": true
+      }
+    },
+    {
+      "rule_id": "CANDLE_RULE_0006",
+      "source": "Steve Nison",
+      "integration_role": "confirmation",
+      "status": "PENDING_COMPATIBILITY_AUDIT",
+      "evaluator": null,
+      "decision": "NOT_EVALUABLE",
+      "reason": "No evaluator is assigned by this inventory runner; operationalization requires a compatible existing primitive/adapter.",
+      "governance": {
+        "confirmation_only": true,
+        "no_invented_thresholds": true,
+        "no_invented_lookbacks": true,
+        "no_scoring": true,
+        "no_direction_generation": true,
+        "no_2025_tuning": true,
+        "no_auto_freeze": true
+      }
+    },
+    {
+      "rule_id": "CANDLE_RULE_0007",
+      "source": "Steve Nison",
+      "integration_role": "confirmation",
+      "status": "PENDING_COMPATIBILITY_AUDIT",
+      "evaluator": null,
+      "decision": "NOT_EVALUABLE",
+      "reason": "No evaluator is assigned by this inventory runner; operationalization requires a compatible existing primitive/adapter.",
+      "governance": {
+        "confirmation_only": true,
+        "no_invented_thresholds": true,
+        "no_invented_lookbacks": true,
+        "no_scoring": true,
+        "no_direction_generation": true,
+        "no_2025_tuning": true,
+        "no_auto_freeze": true
+      }
+    },
+    {
+      "rule_id": "CANDLE_RULE_0008",
+      "source": "Steve Nison",
+      "integration_role": "confirmation",
+      "status": "PENDING_COMPATIBILITY_AUDIT",
+      "evaluator": null,
+      "decision": "NOT_EVALUABLE",
+      "reason": "No evaluator is assigned by this inventory runner; operationalization requires a compatible existing primitive/adapter.",
+      "governance": {
+        "confirmation_only": true,
+        "no_invented_thresholds": true,
+        "no_invented_lookbacks": true,
+        "no_scoring": true,
+        "no_direction_generation": true,
+        "no_2025_tuning": true,
+        "no_auto_freeze": true
+      }
+    },
+    {
+      "rule_id": "CANDLE_RULE_0009",
+      "source": "Steve Nison",
+      "integration_role": "confirmation",
+      "status": "PENDING_COMPATIBILITY_AUDIT",
+      "evaluator": null,
+      "decision": "NOT_EVALUABLE",
+      "reason": "No evaluator is assigned by this inventory runner; operationalization requires a compatible existing primitive/adapter.",
+      "governance": {
+        "confirmation_only": true,
+        "no_invented_thresholds": true,
+        "no_invented_lookbacks": true,
+        "no_scoring": true,
+        "no_direction_generation": true,
+        "no_2025_tuning": true,
+        "no_auto_freeze": true
+      }
+    },
+    {
+      "rule_id": "CANDLE_RULE_0010",
+      "source": "Steve Nison",
+      "integration_role": "confirmation",
+      "status": "PENDING_COMPATIBILITY_AUDIT",
+      "evaluator": null,
+      "decision": "NOT_EVALUABLE",
+      "reason": "No evaluator is assigned by this inventory runner; operationalization requires a compatible existing primitive/adapter.",
+      "governance": {
+        "confirmation_only": true,
+        "no_invented_thresholds": true,
+        "no_invented_lookbacks": true,
+        "no_scoring": true,
+        "no_direction_generation": true,
+        "no_2025_tuning": true,
+        "no_auto_freeze": true
+      }
+    },
+    {
+      "rule_id": "CANDLE_RULE_0011",
+      "source": "Steve Nison",
+      "integration_role": "confirmation",
+      "status": "PENDING_COMPATIBILITY_AUDIT",
+      "evaluator": null,
+      "decision": "NOT_EVALUABLE",
+      "reason": "No evaluator is assigned by this inventory runner; operationalization requires a compatible existing primitive/adapter.",
+      "governance": {
+        "confirmation_only": true,
+        "no_invented_thresholds": true,
+        "no_invented_lookbacks": true,
+        "no_scoring": true,
+        "no_direction_generation": true,
+        "no_2025_tuning": true,
+        "no_auto_freeze": true
+      }
+    },
+    {
+      "rule_id": "CANDLE_RULE_0012",
+      "source": "Steve Nison",
+      "integration_role": "confirmation",
+      "status": "PENDING_COMPATIBILITY_AUDIT",
+      "evaluator": null,
+      "decision": "NOT_EVALUABLE",
+      "reason": "No evaluator is assigned by this inventory runner; operationalization requires a compatible existing primitive/adapter.",
+      "governance": {
+        "confirmation_only": true,
+        "no_invented_thresholds": true,
+        "no_invented_lookbacks": true,
+        "no_scoring": true,
+        "no_direction_generation": true,
+        "no_2025_tuning": true,
+        "no_auto_freeze": true
+      }
+    },
+    {
+      "rule_id": "CANDLE_RULE_0013",
+      "source": "Steve Nison",
+      "integration_role": "confirmation",
+      "status": "PENDING_COMPATIBILITY_AUDIT",
+      "evaluator": null,
+      "decision": "NOT_EVALUABLE",
+      "reason": "No evaluator is assigned by this inventory runner; operationalization requires a compatible existing primitive/adapter.",
+      "governance": {
+        "confirmation_only": true,
+        "no_invented_thresholds": true,
+        "no_invented_lookbacks": true,
+        "no_scoring": true,
+        "no_direction_generation": true,
+        "no_2025_tuning": true,
+        "no_auto_freeze": true
+      }
+    },
+    {
+      "rule_id": "CANDLE_RULE_0014",
+      "source": "Steve Nison",
+      "integration_role": "confirmation",
+      "status": "PENDING_COMPATIBILITY_AUDIT",
+      "evaluator": null,
+      "decision": "NOT_EVALUABLE",
+      "reason": "No evaluator is assigned by this inventory runner; operationalization requires a compatible existing primitive/adapter.",
+      "governance": {
+        "confirmation_only": true,
+        "no_invented_thresholds": true,
+        "no_invented_lookbacks": true,
+        "no_scoring": true,
+        "no_direction_generation": true,
+        "no_2025_tuning": true,
+        "no_auto_freeze": true
+      }
+    },
+    {
+      "rule_id": "CANDLE_RULE_0015",
+      "source": "Steve Nison",
+      "integration_role": "confirmation",
+      "status": "PENDING_COMPATIBILITY_AUDIT",
+      "evaluator": null,
+      "decision": "NOT_EVALUABLE",
+      "reason": "No evaluator is assigned by this inventory runner; operationalization requires a compatible existing primitive/adapter.",
+      "governance": {
+        "confirmation_only": true,
+        "no_invented_thresholds": true,
+        "no_invented_lookbacks": true,
+        "no_scoring": true,
+        "no_direction_generation": true,
+        "no_2025_tuning": true,
+        "no_auto_freeze": true
+      }
+    },
+    {
+      "rule_id": "CANDLE_RULE_0016",
+      "source": "Steve Nison",
+      "integration_role": "confirmation",
+      "status": "PENDING_COMPATIBILITY_AUDIT",
+      "evaluator": null,
+      "decision": "NOT_EVALUABLE",
+      "reason": "No evaluator is assigned by this inventory runner; operationalization requires a compatible existing primitive/adapter.",
+      "governance": {
+        "confirmation_only": true,
+        "no_invented_thresholds": true,
+        "no_invented_lookbacks": true,
+        "no_scoring": true,
+        "no_direction_generation": true,
+        "no_2025_tuning": true,
+        "no_auto_freeze": true
+      }
+    },
+    {
+      "rule_id": "CANDLE_RULE_0017",
+      "source": "Steve Nison",
+      "integration_role": "confirmation",
+      "status": "PENDING_COMPATIBILITY_AUDIT",
+      "evaluator": null,
+      "decision": "NOT_EVALUABLE",
+      "reason": "No evaluator is assigned by this inventory runner; operationalization requires a compatible existing primitive/adapter.",
+      "governance": {
+        "confirmation_only": true,
+        "no_invented_thresholds": true,
+        "no_invented_lookbacks": true,
+        "no_scoring": true,
+        "no_direction_generation": true,
+        "no_2025_tuning": true,
+        "no_auto_freeze": true
+      }
+    },
+    {
+      "rule_id": "CANDLE_RULE_0018",
+      "source": "Steve Nison",
+      "integration_role": "confirmation",
+      "status": "PENDING_COMPATIBILITY_AUDIT",
+      "evaluator": null,
+      "decision": "NOT_EVALUABLE",
+      "reason": "No evaluator is assigned by this inventory runner; operationalization requires a compatible existing primitive/adapter.",
+      "governance": {
+        "confirmation_only": true,
+        "no_invented_thresholds": true,
+        "no_invented_lookbacks": true,
+        "no_scoring": true,
+        "no_direction_generation": true,
+        "no_2025_tuning": true,
+        "no_auto_freeze": true
+      }
+    },
+    {
+      "rule_id": "CANDLE_RULE_0019",
+      "source": "Steve Nison",
+      "integration_role": "confirmation",
+      "status": "PENDING_COMPATIBILITY_AUDIT",
+      "evaluator": null,
+      "decision": "NOT_EVALUABLE",
+      "reason": "No evaluator is assigned by this inventory runner; operationalization requires a compatible existing primitive/adapter.",
+      "governance": {
+        "confirmation_only": true,
+        "no_invented_thresholds": true,
+        "no_invented_lookbacks": true,
+        "no_scoring": true,
+        "no_direction_generation": true,
+        "no_2025_tuning": true,
+        "no_auto_freeze": true
+      }
+    },
+    {
+      "rule_id": "CANDLE_RULE_0020",
+      "source": "Steve Nison",
+      "integration_role": "confirmation",
+      "status": "PENDING_COMPATIBILITY_AUDIT",
+      "evaluator": null,
+      "decision": "NOT_EVALUABLE",
+      "reason": "No evaluator is assigned by this inventory runner; operationalization requires a compatible existing primitive/adapter.",
+      "governance": {
+        "confirmation_only": true,
+        "no_invented_thresholds": true,
+        "no_invented_lookbacks": true,
+        "no_scoring": true,
+        "no_direction_generation": true,
+        "no_2025_tuning": true,
+        "no_auto_freeze": true
+      }
+    },
+    {
+      "rule_id": "CANDLE_RULE_0021",
+      "source": "Steve Nison",
+      "integration_role": "confirmation",
+      "status": "PENDING_COMPATIBILITY_AUDIT",
+      "evaluator": null,
+      "decision": "NOT_EVALUABLE",
+      "reason": "No evaluator is assigned by this inventory runner; operationalization requires a compatible existing primitive/adapter.",
+      "governance": {
+        "confirmation_only": true,
+        "no_invented_thresholds": true,
+        "no_invented_lookbacks": true,
+        "no_scoring": true,
+        "no_direction_generation": true,
+        "no_2025_tuning": true,
+        "no_auto_freeze": true
+      }
+    },
+    {
+      "rule_id": "CANDLE_RULE_0022",
+      "source": "Steve Nison",
+      "integration_role": "confirmation",
+      "status": "PENDING_COMPATIBILITY_AUDIT",
+      "evaluator": null,
+      "decision": "NOT_EVALUABLE",
+      "reason": "No evaluator is assigned by this inventory runner; operationalization requires a compatible existing primitive/adapter.",
+      "governance": {
+        "confirmation_only": true,
+        "no_invented_thresholds": true,
+        "no_invented_lookbacks": true,
+        "no_scoring": true,
+        "no_direction_generation": true,
+        "no_2025_tuning": true,
+        "no_auto_freeze": true
+      }
+    },
+    {
+      "rule_id": "CANDLE_RULE_0023",
+      "source": "Steve Nison",
+      "integration_role": "confirmation",
+      "status": "PENDING_COMPATIBILITY_AUDIT",
+      "evaluator": null,
+      "decision": "NOT_EVALUABLE",
+      "reason": "No evaluator is assigned by this inventory runner; operationalization requires a compatible existing primitive/adapter.",
+      "governance": {
+        "confirmation_only": true,
+        "no_invented_thresholds": true,
+        "no_invented_lookbacks": true,
+        "no_scoring": true,
+        "no_direction_generation": true,
+        "no_2025_tuning": true,
+        "no_auto_freeze": true
+      }
+    },
+    {
+      "rule_id": "CANDLE_RULE_0024",
+      "source": "Steve Nison",
+      "integration_role": "confirmation",
+      "status": "PENDING_COMPATIBILITY_AUDIT",
+      "evaluator": null,
+      "decision": "NOT_EVALUABLE",
+      "reason": "No evaluator is assigned by this inventory runner; operationalization requires a compatible existing primitive/adapter.",
+      "governance": {
+        "confirmation_only": true,
+        "no_invented_thresholds": true,
+        "no_invented_lookbacks": true,
+        "no_scoring": true,
+        "no_direction_generation": true,
+        "no_2025_tuning": true,
+        "no_auto_freeze": true
+      }
+    },
+    {
+      "rule_id": "CANDLE_RULE_0025",
+      "source": "Steve Nison",
+      "integration_role": "confirmation",
+      "status": "PENDING_COMPATIBILITY_AUDIT",
+      "evaluator": null,
+      "decision": "NOT_EVALUABLE",
+      "reason": "No evaluator is assigned by this inventory runner; operationalization requires a compatible existing primitive/adapter.",
+      "governance": {
+        "confirmation_only": true,
+        "no_invented_thresholds": true,
+        "no_invented_lookbacks": true,
+        "no_scoring": true,
+        "no_direction_generation": true,
+        "no_2025_tuning": true,
+        "no_auto_freeze": true
+      }
+    },
+    {
+      "rule_id": "CANDLE_RULE_0026",
+      "source": "Steve Nison",
+      "integration_role": "confirmation",
+      "status": "PENDING_COMPATIBILITY_AUDIT",
+      "evaluator": null,
+      "decision": "NOT_EVALUABLE",
+      "reason": "No evaluator is assigned by this inventory runner; operationalization requires a compatible existing primitive/adapter.",
+      "governance": {
+        "confirmation_only": true,
+        "no_invented_thresholds": true,
+        "no_invented_lookbacks": true,
+        "no_scoring": true,
+        "no_direction_generation": true,
+        "no_2025_tuning": true,
+        "no_auto_freeze": true
+      }
+    },
+    {
+      "rule_id": "CANDLE_RULE_0027",
+      "source": "Steve Nison",
+      "integration_role": "confirmation",
+      "status": "PENDING_COMPATIBILITY_AUDIT",
+      "evaluator": null,
+      "decision": "NOT_EVALUABLE",
+      "reason": "No evaluator is assigned by this inventory runner; operationalization requires a compatible existing primitive/adapter.",
+      "governance": {
+        "confirmation_only": true,
+        "no_invented_thresholds": true,
+        "no_invented_lookbacks": true,
+        "no_scoring": true,
+        "no_direction_generation": true,
+        "no_2025_tuning": true,
+        "no_auto_freeze": true
+      }
+    },
+    {
+      "rule_id": "CANDLE_RULE_0028",
+      "source": "Steve Nison",
+      "integration_role": "confirmation",
+      "status": "PENDING_COMPATIBILITY_AUDIT",
+      "evaluator": null,
+      "decision": "NOT_EVALUABLE",
+      "reason": "No evaluator is assigned by this inventory runner; operationalization requires a compatible existing primitive/adapter.",
+      "governance": {
+        "confirmation_only": true,
+        "no_invented_thresholds": true,
+        "no_invented_lookbacks": true,
+        "no_scoring": true,
+        "no_direction_generation": true,
+        "no_2025_tuning": true,
+        "no_auto_freeze": true
+      }
+    },
+    {
+      "rule_id": "CANDLE_RULE_0029",
+      "source": "Steve Nison",
+      "integration_role": "confirmation",
+      "status": "PENDING_COMPATIBILITY_AUDIT",
+      "evaluator": null,
+      "decision": "NOT_EVALUABLE",
+      "reason": "No evaluator is assigned by this inventory runner; operationalization requires a compatible existing primitive/adapter.",
+      "governance": {
+        "confirmation_only": true,
+        "no_invented_thresholds": true,
+        "no_invented_lookbacks": true,
+        "no_scoring": true,
+        "no_direction_generation": true,
+        "no_2025_tuning": true,
+        "no_auto_freeze": true
+      }
+    },
+    {
+      "rule_id": "CANDLE_RULE_0030",
+      "source": "Steve Nison",
+      "integration_role": "confirmation",
+      "status": "PENDING_COMPATIBILITY_AUDIT",
+      "evaluator": null,
+      "decision": "NOT_EVALUABLE",
+      "reason": "No evaluator is assigned by this inventory runner; operationalization requires a compatible existing primitive/adapter.",
+      "governance": {
+        "confirmation_only": true,
+        "no_invented_thresholds": true,
+        "no_invented_lookbacks": true,
+        "no_scoring": true,
+        "no_direction_generation": true,
+        "no_2025_tuning": true,
+        "no_auto_freeze": true
+      }
+    },
+    {
+      "rule_id": "CANDLE_RULE_0031",
+      "source": "Steve Nison",
+      "integration_role": "confirmation",
+      "status": "PENDING_COMPATIBILITY_AUDIT",
+      "evaluator": null,
+      "decision": "NOT_EVALUABLE",
+      "reason": "No evaluator is assigned by this inventory runner; operationalization requires a compatible existing primitive/adapter.",
+      "governance": {
+        "confirmation_only": true,
+        "no_invented_thresholds": true,
+        "no_invented_lookbacks": true,
+        "no_scoring": true,
+        "no_direction_generation": true,
+        "no_2025_tuning": true,
+        "no_auto_freeze": true
+      }
+    },
+    {
+      "rule_id": "CANDLE_RULE_0032",
+      "source": "Steve Nison",
+      "integration_role": "confirmation",
+      "status": "PENDING_COMPATIBILITY_AUDIT",
+      "evaluator": null,
+      "decision": "NOT_EVALUABLE",
+      "reason": "No evaluator is assigned by this inventory runner; operationalization requires a compatible existing primitive/adapter.",
+      "governance": {
+        "confirmation_only": true,
+        "no_invented_thresholds": true,
+        "no_invented_lookbacks": true,
+        "no_scoring": true,
+        "no_direction_generation": true,
+        "no_2025_tuning": true,
+        "no_auto_freeze": true
+      }
+    },
+    {
+      "rule_id": "CANDLE_RULE_0033",
+      "source": "Steve Nison",
+      "integration_role": "confirmation",
+      "status": "PENDING_COMPATIBILITY_AUDIT",
+      "evaluator": null,
+      "decision": "NOT_EVALUABLE",
+      "reason": "No evaluator is assigned by this inventory runner; operationalization requires a compatible existing primitive/adapter.",
+      "governance": {
+        "confirmation_only": true,
+        "no_invented_thresholds": true,
+        "no_invented_lookbacks": true,
+        "no_scoring": true,
+        "no_direction_generation": true,
+        "no_2025_tuning": true,
+        "no_auto_freeze": true
+      }
+    },
+    {
+      "rule_id": "CANDLE_RULE_0034",
+      "source": "Steve Nison",
+      "integration_role": "confirmation",
+      "status": "PENDING_COMPATIBILITY_AUDIT",
+      "evaluator": null,
+      "decision": "NOT_EVALUABLE",
+      "reason": "No evaluator is assigned by this inventory runner; operationalization requires a compatible existing primitive/adapter.",
+      "governance": {
+        "confirmation_only": true,
+        "no_invented_thresholds": true,
+        "no_invented_lookbacks": true,
+        "no_scoring": true,
+        "no_direction_generation": true,
+        "no_2025_tuning": true,
+        "no_auto_freeze": true
+      }
+    },
+    {
+      "rule_id": "CANDLE_RULE_0035",
+      "source": "Steve Nison",
+      "integration_role": "confirmation",
+      "status": "PENDING_COMPATIBILITY_AUDIT",
+      "evaluator": null,
+      "decision": "NOT_EVALUABLE",
+      "reason": "No evaluator is assigned by this inventory runner; operationalization requires a compatible existing primitive/adapter.",
+      "governance": {
+        "confirmation_only": true,
+        "no_invented_thresholds": true,
+        "no_invented_lookbacks": true,
+        "no_scoring": true,
+        "no_direction_generation": true,
+        "no_2025_tuning": true,
+        "no_auto_freeze": true
+      }
+    },
+    {
+      "rule_id": "CANDLE_RULE_0036",
+      "source": "Steve Nison",
+      "integration_role": "confirmation",
+      "status": "PENDING_COMPATIBILITY_AUDIT",
+      "evaluator": null,
+      "decision": "NOT_EVALUABLE",
+      "reason": "No evaluator is assigned by this inventory runner; operationalization requires a compatible existing primitive/adapter.",
+      "governance": {
+        "confirmation_only": true,
+        "no_invented_thresholds": true,
+        "no_invented_lookbacks": true,
+        "no_scoring": true,
+        "no_direction_generation": true,
+        "no_2025_tuning": true,
+        "no_auto_freeze": true
+      }
+    },
+    {
+      "rule_id": "CANDLE_RULE_0037",
+      "source": "Steve Nison",
+      "integration_role": "confirmation",
+      "status": "PENDING_COMPATIBILITY_AUDIT",
+      "evaluator": null,
+      "decision": "NOT_EVALUABLE",
+      "reason": "No evaluator is assigned by this inventory runner; operationalization requires a compatible existing primitive/adapter.",
+      "governance": {
+        "confirmation_only": true,
+        "no_invented_thresholds": true,
+        "no_invented_lookbacks": true,
+        "no_scoring": true,
+        "no_direction_generation": true,
+        "no_2025_tuning": true,
+        "no_auto_freeze": true
+      }
+    },
+    {
+      "rule_id": "CANDLE_RULE_0038",
+      "source": "Steve Nison",
+      "integration_role": "confirmation",
+      "status": "PENDING_COMPATIBILITY_AUDIT",
+      "evaluator": null,
+      "decision": "NOT_EVALUABLE",
+      "reason": "No evaluator is assigned by this inventory runner; operationalization requires a compatible existing primitive/adapter.",
+      "governance": {
+        "confirmation_only": true,
+        "no_invented_thresholds": true,
+        "no_invented_lookbacks": true,
+        "no_scoring": true,
+        "no_direction_generation": true,
+        "no_2025_tuning": true,
+        "no_auto_freeze": true
+      }
+    },
+    {
+      "rule_id": "CANDLE_RULE_0039",
+      "source": "Steve Nison",
+      "integration_role": "confirmation",
+      "status": "PENDING_COMPATIBILITY_AUDIT",
+      "evaluator": null,
+      "decision": "NOT_EVALUABLE",
+      "reason": "No evaluator is assigned by this inventory runner; operationalization requires a compatible existing primitive/adapter.",
+      "governance": {
+        "confirmation_only": true,
+        "no_invented_thresholds": true,
+        "no_invented_lookbacks": true,
+        "no_scoring": true,
+        "no_direction_generation": true,
+        "no_2025_tuning": true,
+        "no_auto_freeze": true
+      }
+    },
+    {
+      "rule_id": "CANDLE_RULE_0040",
+      "source": "Steve Nison",
+      "integration_role": "confirmation",
+      "status": "PENDING_COMPATIBILITY_AUDIT",
+      "evaluator": null,
+      "decision": "NOT_EVALUABLE",
+      "reason": "No evaluator is assigned by this inventory runner; operationalization requires a compatible existing primitive/adapter.",
+      "governance": {
+        "confirmation_only": true,
+        "no_invented_thresholds": true,
+        "no_invented_lookbacks": true,
+        "no_scoring": true,
+        "no_direction_generation": true,
+        "no_2025_tuning": true,
+        "no_auto_freeze": true
+      }
+    },
+    {
+      "rule_id": "CANDLE_RULE_0041",
+      "source": "Steve Nison",
+      "integration_role": "confirmation",
+      "status": "PENDING_COMPATIBILITY_AUDIT",
+      "evaluator": null,
+      "decision": "NOT_EVALUABLE",
+      "reason": "No evaluator is assigned by this inventory runner; operationalization requires a compatible existing primitive/adapter.",
+      "governance": {
+        "confirmation_only": true,
+        "no_invented_thresholds": true,
+        "no_invented_lookbacks": true,
+        "no_scoring": true,
+        "no_direction_generation": true,
+        "no_2025_tuning": true,
+        "no_auto_freeze": true
+      }
+    },
+    {
+      "rule_id": "CANDLE_RULE_0042",
+      "source": "Steve Nison",
+      "integration_role": "confirmation",
+      "status": "PENDING_COMPATIBILITY_AUDIT",
+      "evaluator": null,
+      "decision": "NOT_EVALUABLE",
+      "reason": "No evaluator is assigned by this inventory runner; operationalization requires a compatible existing primitive/adapter.",
+      "governance": {
+        "confirmation_only": true,
+        "no_invented_thresholds": true,
+        "no_invented_lookbacks": true,
+        "no_scoring": true,
+        "no_direction_generation": true,
+        "no_2025_tuning": true,
+        "no_auto_freeze": true
+      }
+    },
+    {
+      "rule_id": "CANDLE_RULE_0043",
+      "source": "Steve Nison",
+      "integration_role": "confirmation",
+      "status": "PENDING_COMPATIBILITY_AUDIT",
+      "evaluator": null,
+      "decision": "NOT_EVALUABLE",
+      "reason": "No evaluator is assigned by this inventory runner; operationalization requires a compatible existing primitive/adapter.",
+      "governance": {
+        "confirmation_only": true,
+        "no_invented_thresholds": true,
+        "no_invented_lookbacks": true,
+        "no_scoring": true,
+        "no_direction_generation": true,
+        "no_2025_tuning": true,
+        "no_auto_freeze": true
+      }
+    },
+    {
+      "rule_id": "CANDLE_RULE_0044",
+      "source": "Steve Nison",
+      "integration_role": "confirmation",
+      "status": "PENDING_COMPATIBILITY_AUDIT",
+      "evaluator": null,
+      "decision": "NOT_EVALUABLE",
+      "reason": "No evaluator is assigned by this inventory runner; operationalization requires a compatible existing primitive/adapter.",
+      "governance": {
+        "confirmation_only": true,
+        "no_invented_thresholds": true,
+        "no_invented_lookbacks": true,
+        "no_scoring": true,
+        "no_direction_generation": true,
+        "no_2025_tuning": true,
+        "no_auto_freeze": true
+      }
+    }
+  ]
+}

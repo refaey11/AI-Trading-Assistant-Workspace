@@ -1,0 +1,591 @@
+{
+  "rule_count": 44,
+  "expected_rule_count": 44,
+  "count_check": true,
+  "registry_total_rule_count": 102,
+  "source_file_count": 925,
+  "rules": [
+    {
+      "rule_id": "CANDLE_RULE_0001",
+      "name": "",
+      "source_reference_files": [
+        "03_Rule_Registry/INTEGRATED_RULE_REGISTRY_V1.json"
+      ],
+      "source_reference_count": 1,
+      "status": "SOURCE_REFERENCED",
+      "semantic_status": "UNASSESSED",
+      "evaluator_status": "UNASSESSED",
+      "qa_status": "UNASSESSED",
+      "freeze_status": "NOT_FROZEN"
+    },
+    {
+      "rule_id": "CANDLE_RULE_0002",
+      "name": "",
+      "source_reference_files": [
+        "03_Rule_Registry/INTEGRATED_RULE_REGISTRY_V1.json"
+      ],
+      "source_reference_count": 1,
+      "status": "SOURCE_REFERENCED",
+      "semantic_status": "UNASSESSED",
+      "evaluator_status": "UNASSESSED",
+      "qa_status": "UNASSESSED",
+      "freeze_status": "NOT_FROZEN"
+    },
+    {
+      "rule_id": "CANDLE_RULE_0003",
+      "name": "",
+      "source_reference_files": [
+        "03_Rule_Registry/INTEGRATED_RULE_REGISTRY_V1.json"
+      ],
+      "source_reference_count": 1,
+      "status": "SOURCE_REFERENCED",
+      "semantic_status": "UNASSESSED",
+      "evaluator_status": "UNASSESSED",
+      "qa_status": "UNASSESSED",
+      "freeze_status": "NOT_FROZEN"
+    },
+    {
+      "rule_id": "CANDLE_RULE_0004",
+      "name": "",
+      "source_reference_files": [
+        "03_Rule_Registry/INTEGRATED_RULE_REGISTRY_V1.json"
+      ],
+      "source_reference_count": 1,
+      "status": "SOURCE_REFERENCED",
+      "semantic_status": "UNASSESSED",
+      "evaluator_status": "UNASSESSED",
+      "qa_status": "UNASSESSED",
+      "freeze_status": "NOT_FROZEN"
+    },
+    {
+      "rule_id": "CANDLE_RULE_0005",
+      "name": "",
+      "source_reference_files": [
+        "03_Rule_Registry/INTEGRATED_RULE_REGISTRY_V1.json"
+      ],
+      "source_reference_count": 1,
+      "status": "SOURCE_REFERENCED",
+      "semantic_status": "UNASSESSED",
+      "evaluator_status": "UNASSESSED",
+      "qa_status": "UNASSESSED",
+      "freeze_status": "NOT_FROZEN"
+    },
+    {
+      "rule_id": "CANDLE_RULE_0006",
+      "name": "",
+      "source_reference_files": [
+        "03_Rule_Registry/INTEGRATED_RULE_REGISTRY_V1.json"
+      ],
+      "source_reference_count": 1,
+      "status": "SOURCE_REFERENCED",
+      "semantic_status": "UNASSESSED",
+      "evaluator_status": "UNASSESSED",
+      "qa_status": "UNASSESSED",
+      "freeze_status": "NOT_FROZEN"
+    },
+    {
+      "rule_id": "CANDLE_RULE_0007",
+      "name": "",
+      "source_reference_files": [
+        "03_Rule_Registry/INTEGRATED_RULE_REGISTRY_V1.json"
+      ],
+      "source_reference_count": 1,
+      "status": "SOURCE_REFERENCED",
+      "semantic_status": "UNASSESSED",
+      "evaluator_status": "UNASSESSED",
+      "qa_status": "UNASSESSED",
+      "freeze_status": "NOT_FROZEN"
+    },
+    {
+      "rule_id": "CANDLE_RULE_0008",
+      "name": "",
+      "source_reference_files": [
+        "03_Rule_Registry/INTEGRATED_RULE_REGISTRY_V1.json"
+      ],
+      "source_reference_count": 1,
+      "status": "SOURCE_REFERENCED",
+      "semantic_status": "UNASSESSED",
+      "evaluator_status": "UNASSESSED",
+      "qa_status": "UNASSESSED",
+      "freeze_status": "NOT_FROZEN"
+    },
+    {
+      "rule_id": "CANDLE_RULE_0009",
+      "name": "",
+      "source_reference_files": [
+        "03_Rule_Registry/INTEGRATED_RULE_REGISTRY_V1.json"
+      ],
+      "source_reference_count": 1,
+      "status": "SOURCE_REFERENCED",
+      "semantic_status": "UNASSESSED",
+      "evaluator_status": "UNASSESSED",
+      "qa_status": "UNASSESSED",
+      "freeze_status": "NOT_FROZEN"
+    },
+    {
+      "rule_id": "CANDLE_RULE_0010",
+      "name": "",
+      "source_reference_files": [
+        "03_Rule_Registry/INTEGRATED_RULE_REGISTRY_V1.json"
+      ],
+      "source_reference_count": 1,
+      "status": "SOURCE_REFERENCED",
+      "semantic_status": "UNASSESSED",
+      "evaluator_status": "UNASSESSED",
+      "qa_status": "UNASSESSED",
+      "freeze_status": "NOT_FROZEN"
+    },
+    {
+      "rule_id": "CANDLE_RULE_0011",
+      "name": "",
+      "source_reference_files": [
+        "03_Rule_Registry/INTEGRATED_RULE_REGISTRY_V1.json"
+      ],
+      "source_reference_count": 1,
+      "status": "SOURCE_REFERENCED",
+      "semantic_status": "UNASSESSED",
+      "evaluator_status": "UNASSESSED",
+      "qa_status": "UNASSESSED",
+      "freeze_status": "NOT_FROZEN"
+    },
+    {
+      "rule_id": "CANDLE_RULE_0012",
+      "name": "",
+      "source_reference_files": [
+        "03_Rule_Registry/INTEGRATED_RULE_REGISTRY_V1.json"
+      ],
+      "source_reference_count": 1,
+      "status": "SOURCE_REFERENCED",
+      "semantic_status": "UNASSESSED",
+      "evaluator_status": "UNASSESSED",
+      "qa_status": "UNASSESSED",
+      "freeze_status": "NOT_FROZEN"
+    },
+    {
+      "rule_id": "CANDLE_RULE_0013",
+      "name": "",
+      "source_reference_files": [
+        "03_Rule_Registry/INTEGRATED_RULE_REGISTRY_V1.json"
+      ],
+      "source_reference_count": 1,
+      "status": "SOURCE_REFERENCED",
+      "semantic_status": "UNASSESSED",
+      "evaluator_status": "UNASSESSED",
+      "qa_status": "UNASSESSED",
+      "freeze_status": "NOT_FROZEN"
+    },
+    {
+      "rule_id": "CANDLE_RULE_0014",
+      "name": "",
+      "source_reference_files": [
+        "03_Rule_Registry/INTEGRATED_RULE_REGISTRY_V1.json"
+      ],
+      "source_reference_count": 1,
+      "status": "SOURCE_REFERENCED",
+      "semantic_status": "UNASSESSED",
+      "evaluator_status": "UNASSESSED",
+      "qa_status": "UNASSESSED",
+      "freeze_status": "NOT_FROZEN"
+    },
+    {
+      "rule_id": "CANDLE_RULE_0015",
+      "name": "",
+      "source_reference_files": [
+        "03_Rule_Registry/INTEGRATED_RULE_REGISTRY_V1.json"
+      ],
+      "source_reference_count": 1,
+      "status": "SOURCE_REFERENCED",
+      "semantic_status": "UNASSESSED",
+      "evaluator_status": "UNASSESSED",
+      "qa_status": "UNASSESSED",
+      "freeze_status": "NOT_FROZEN"
+    },
+    {
+      "rule_id": "CANDLE_RULE_0016",
+      "name": "",
+      "source_reference_files": [
+        "03_Rule_Registry/INTEGRATED_RULE_REGISTRY_V1.json"
+      ],
+      "source_reference_count": 1,
+      "status": "SOURCE_REFERENCED",
+      "semantic_status": "UNASSESSED",
+      "evaluator_status": "UNASSESSED",
+      "qa_status": "UNASSESSED",
+      "freeze_status": "NOT_FROZEN"
+    },
+    {
+      "rule_id": "CANDLE_RULE_0017",
+      "name": "",
+      "source_reference_files": [
+        "03_Rule_Registry/INTEGRATED_RULE_REGISTRY_V1.json"
+      ],
+      "source_reference_count": 1,
+      "status": "SOURCE_REFERENCED",
+      "semantic_status": "UNASSESSED",
+      "evaluator_status": "UNASSESSED",
+      "qa_status": "UNASSESSED",
+      "freeze_status": "NOT_FROZEN"
+    },
+    {
+      "rule_id": "CANDLE_RULE_0018",
+      "name": "",
+      "source_reference_files": [
+        "03_Rule_Registry/INTEGRATED_RULE_REGISTRY_V1.json"
+      ],
+      "source_reference_count": 1,
+      "status": "SOURCE_REFERENCED",
+      "semantic_status": "UNASSESSED",
+      "evaluator_status": "UNASSESSED",
+      "qa_status": "UNASSESSED",
+      "freeze_status": "NOT_FROZEN"
+    },
+    {
+      "rule_id": "CANDLE_RULE_0019",
+      "name": "",
+      "source_reference_files": [
+        "03_Rule_Registry/INTEGRATED_RULE_REGISTRY_V1.json"
+      ],
+      "source_reference_count": 1,
+      "status": "SOURCE_REFERENCED",
+      "semantic_status": "UNASSESSED",
+      "evaluator_status": "UNASSESSED",
+      "qa_status": "UNASSESSED",
+      "freeze_status": "NOT_FROZEN"
+    },
+    {
+      "rule_id": "CANDLE_RULE_0020",
+      "name": "",
+      "source_reference_files": [
+        "03_Rule_Registry/INTEGRATED_RULE_REGISTRY_V1.json"
+      ],
+      "source_reference_count": 1,
+      "status": "SOURCE_REFERENCED",
+      "semantic_status": "UNASSESSED",
+      "evaluator_status": "UNASSESSED",
+      "qa_status": "UNASSESSED",
+      "freeze_status": "NOT_FROZEN"
+    },
+    {
+      "rule_id": "CANDLE_RULE_0021",
+      "name": "",
+      "source_reference_files": [
+        "03_Rule_Registry/INTEGRATED_RULE_REGISTRY_V1.json"
+      ],
+      "source_reference_count": 1,
+      "status": "SOURCE_REFERENCED",
+      "semantic_status": "UNASSESSED",
+      "evaluator_status": "UNASSESSED",
+      "qa_status": "UNASSESSED",
+      "freeze_status": "NOT_FROZEN"
+    },
+    {
+      "rule_id": "CANDLE_RULE_0022",
+      "name": "",
+      "source_reference_files": [
+        "03_Rule_Registry/INTEGRATED_RULE_REGISTRY_V1.json"
+      ],
+      "source_reference_count": 1,
+      "status": "SOURCE_REFERENCED",
+      "semantic_status": "UNASSESSED",
+      "evaluator_status": "UNASSESSED",
+      "qa_status": "UNASSESSED",
+      "freeze_status": "NOT_FROZEN"
+    },
+    {
+      "rule_id": "CANDLE_RULE_0023",
+      "name": "",
+      "source_reference_files": [
+        "03_Rule_Registry/INTEGRATED_RULE_REGISTRY_V1.json"
+      ],
+      "source_reference_count": 1,
+      "status": "SOURCE_REFERENCED",
+      "semantic_status": "UNASSESSED",
+      "evaluator_status": "UNASSESSED",
+      "qa_status": "UNASSESSED",
+      "freeze_status": "NOT_FROZEN"
+    },
+    {
+      "rule_id": "CANDLE_RULE_0024",
+      "name": "",
+      "source_reference_files": [
+        "03_Rule_Registry/INTEGRATED_RULE_REGISTRY_V1.json"
+      ],
+      "source_reference_count": 1,
+      "status": "SOURCE_REFERENCED",
+      "semantic_status": "UNASSESSED",
+      "evaluator_status": "UNASSESSED",
+      "qa_status": "UNASSESSED",
+      "freeze_status": "NOT_FROZEN"
+    },
+    {
+      "rule_id": "CANDLE_RULE_0025",
+      "name": "",
+      "source_reference_files": [
+        "03_Rule_Registry/INTEGRATED_RULE_REGISTRY_V1.json"
+      ],
+      "source_reference_count": 1,
+      "status": "SOURCE_REFERENCED",
+      "semantic_status": "UNASSESSED",
+      "evaluator_status": "UNASSESSED",
+      "qa_status": "UNASSESSED",
+      "freeze_status": "NOT_FROZEN"
+    },
+    {
+      "rule_id": "CANDLE_RULE_0026",
+      "name": "",
+      "source_reference_files": [
+        "03_Rule_Registry/INTEGRATED_RULE_REGISTRY_V1.json"
+      ],
+      "source_reference_count": 1,
+      "status": "SOURCE_REFERENCED",
+      "semantic_status": "UNASSESSED",
+      "evaluator_status": "UNASSESSED",
+      "qa_status": "UNASSESSED",
+      "freeze_status": "NOT_FROZEN"
+    },
+    {
+      "rule_id": "CANDLE_RULE_0027",
+      "name": "",
+      "source_reference_files": [
+        "03_Rule_Registry/INTEGRATED_RULE_REGISTRY_V1.json"
+      ],
+      "source_reference_count": 1,
+      "status": "SOURCE_REFERENCED",
+      "semantic_status": "UNASSESSED",
+      "evaluator_status": "UNASSESSED",
+      "qa_status": "UNASSESSED",
+      "freeze_status": "NOT_FROZEN"
+    },
+    {
+      "rule_id": "CANDLE_RULE_0028",
+      "name": "",
+      "source_reference_files": [
+        "03_Rule_Registry/INTEGRATED_RULE_REGISTRY_V1.json"
+      ],
+      "source_reference_count": 1,
+      "status": "SOURCE_REFERENCED",
+      "semantic_status": "UNASSESSED",
+      "evaluator_status": "UNASSESSED",
+      "qa_status": "UNASSESSED",
+      "freeze_status": "NOT_FROZEN"
+    },
+    {
+      "rule_id": "CANDLE_RULE_0029",
+      "name": "",
+      "source_reference_files": [
+        "03_Rule_Registry/INTEGRATED_RULE_REGISTRY_V1.json"
+      ],
+      "source_reference_count": 1,
+      "status": "SOURCE_REFERENCED",
+      "semantic_status": "UNASSESSED",
+      "evaluator_status": "UNASSESSED",
+      "qa_status": "UNASSESSED",
+      "freeze_status": "NOT_FROZEN"
+    },
+    {
+      "rule_id": "CANDLE_RULE_0030",
+      "name": "",
+      "source_reference_files": [
+        "03_Rule_Registry/INTEGRATED_RULE_REGISTRY_V1.json"
+      ],
+      "source_reference_count": 1,
+      "status": "SOURCE_REFERENCED",
+      "semantic_status": "UNASSESSED",
+      "evaluator_status": "UNASSESSED",
+      "qa_status": "UNASSESSED",
+      "freeze_status": "NOT_FROZEN"
+    },
+    {
+      "rule_id": "CANDLE_RULE_0031",
+      "name": "",
+      "source_reference_files": [
+        "03_Rule_Registry/INTEGRATED_RULE_REGISTRY_V1.json"
+      ],
+      "source_reference_count": 1,
+      "status": "SOURCE_REFERENCED",
+      "semantic_status": "UNASSESSED",
+      "evaluator_status": "UNASSESSED",
+      "qa_status": "UNASSESSED",
+      "freeze_status": "NOT_FROZEN"
+    },
+    {
+      "rule_id": "CANDLE_RULE_0032",
+      "name": "",
+      "source_reference_files": [
+        "03_Rule_Registry/INTEGRATED_RULE_REGISTRY_V1.json"
+      ],
+      "source_reference_count": 1,
+      "status": "SOURCE_REFERENCED",
+      "semantic_status": "UNASSESSED",
+      "evaluator_status": "UNASSESSED",
+      "qa_status": "UNASSESSED",
+      "freeze_status": "NOT_FROZEN"
+    },
+    {
+      "rule_id": "CANDLE_RULE_0033",
+      "name": "",
+      "source_reference_files": [
+        "03_Rule_Registry/INTEGRATED_RULE_REGISTRY_V1.json"
+      ],
+      "source_reference_count": 1,
+      "status": "SOURCE_REFERENCED",
+      "semantic_status": "UNASSESSED",
+      "evaluator_status": "UNASSESSED",
+      "qa_status": "UNASSESSED",
+      "freeze_status": "NOT_FROZEN"
+    },
+    {
+      "rule_id": "CANDLE_RULE_0034",
+      "name": "",
+      "source_reference_files": [
+        "03_Rule_Registry/INTEGRATED_RULE_REGISTRY_V1.json"
+      ],
+      "source_reference_count": 1,
+      "status": "SOURCE_REFERENCED",
+      "semantic_status": "UNASSESSED",
+      "evaluator_status": "UNASSESSED",
+      "qa_status": "UNASSESSED",
+      "freeze_status": "NOT_FROZEN"
+    },
+    {
+      "rule_id": "CANDLE_RULE_0035",
+      "name": "",
+      "source_reference_files": [
+        "03_Rule_Registry/INTEGRATED_RULE_REGISTRY_V1.json"
+      ],
+      "source_reference_count": 1,
+      "status": "SOURCE_REFERENCED",
+      "semantic_status": "UNASSESSED",
+      "evaluator_status": "UNASSESSED",
+      "qa_status": "UNASSESSED",
+      "freeze_status": "NOT_FROZEN"
+    },
+    {
+      "rule_id": "CANDLE_RULE_0036",
+      "name": "",
+      "source_reference_files": [
+        "03_Rule_Registry/INTEGRATED_RULE_REGISTRY_V1.json"
+      ],
+      "source_reference_count": 1,
+      "status": "SOURCE_REFERENCED",
+      "semantic_status": "UNASSESSED",
+      "evaluator_status": "UNASSESSED",
+      "qa_status": "UNASSESSED",
+      "freeze_status": "NOT_FROZEN"
+    },
+    {
+      "rule_id": "CANDLE_RULE_0037",
+      "name": "",
+      "source_reference_files": [
+        "03_Rule_Registry/INTEGRATED_RULE_REGISTRY_V1.json"
+      ],
+      "source_reference_count": 1,
+      "status": "SOURCE_REFERENCED",
+      "semantic_status": "UNASSESSED",
+      "evaluator_status": "UNASSESSED",
+      "qa_status": "UNASSESSED",
+      "freeze_status": "NOT_FROZEN"
+    },
+    {
+      "rule_id": "CANDLE_RULE_0038",
+      "name": "",
+      "source_reference_files": [
+        "03_Rule_Registry/INTEGRATED_RULE_REGISTRY_V1.json"
+      ],
+      "source_reference_count": 1,
+      "status": "SOURCE_REFERENCED",
+      "semantic_status": "UNASSESSED",
+      "evaluator_status": "UNASSESSED",
+      "qa_status": "UNASSESSED",
+      "freeze_status": "NOT_FROZEN"
+    },
+    {
+      "rule_id": "CANDLE_RULE_0039",
+      "name": "",
+      "source_reference_files": [
+        "03_Rule_Registry/INTEGRATED_RULE_REGISTRY_V1.json"
+      ],
+      "source_reference_count": 1,
+      "status": "SOURCE_REFERENCED",
+      "semantic_status": "UNASSESSED",
+      "evaluator_status": "UNASSESSED",
+      "qa_status": "UNASSESSED",
+      "freeze_status": "NOT_FROZEN"
+    },
+    {
+      "rule_id": "CANDLE_RULE_0040",
+      "name": "",
+      "source_reference_files": [
+        "03_Rule_Registry/INTEGRATED_RULE_REGISTRY_V1.json"
+      ],
+      "source_reference_count": 1,
+      "status": "SOURCE_REFERENCED",
+      "semantic_status": "UNASSESSED",
+      "evaluator_status": "UNASSESSED",
+      "qa_status": "UNASSESSED",
+      "freeze_status": "NOT_FROZEN"
+    },
+    {
+      "rule_id": "CANDLE_RULE_0041",
+      "name": "",
+      "source_reference_files": [
+        "03_Rule_Registry/INTEGRATED_RULE_REGISTRY_V1.json"
+      ],
+      "source_reference_count": 1,
+      "status": "SOURCE_REFERENCED",
+      "semantic_status": "UNASSESSED",
+      "evaluator_status": "UNASSESSED",
+      "qa_status": "UNASSESSED",
+      "freeze_status": "NOT_FROZEN"
+    },
+    {
+      "rule_id": "CANDLE_RULE_0042",
+      "name": "",
+      "source_reference_files": [
+        "03_Rule_Registry/INTEGRATED_RULE_REGISTRY_V1.json"
+      ],
+      "source_reference_count": 1,
+      "status": "SOURCE_REFERENCED",
+      "semantic_status": "UNASSESSED",
+      "evaluator_status": "UNASSESSED",
+      "qa_status": "UNASSESSED",
+      "freeze_status": "NOT_FROZEN"
+    },
+    {
+      "rule_id": "CANDLE_RULE_0043",
+      "name": "",
+      "source_reference_files": [
+        "03_Rule_Registry/INTEGRATED_RULE_REGISTRY_V1.json"
+      ],
+      "source_reference_count": 1,
+      "status": "SOURCE_REFERENCED",
+      "semantic_status": "UNASSESSED",
+      "evaluator_status": "UNASSESSED",
+      "qa_status": "UNASSESSED",
+      "freeze_status": "NOT_FROZEN"
+    },
+    {
+      "rule_id": "CANDLE_RULE_0044",
+      "name": "",
+      "source_reference_files": [
+        "03_Rule_Registry/INTEGRATED_RULE_REGISTRY_V1.json"
+      ],
+      "source_reference_count": 1,
+      "status": "SOURCE_REFERENCED",
+      "semantic_status": "UNASSESSED",
+      "evaluator_status": "UNASSESSED",
+      "qa_status": "UNASSESSED",
+      "freeze_status": "NOT_FROZEN"
+    }
+  ],
+  "governance": {
+    "confirmation_only": true,
+    "no_invented_semantics": true,
+    "no_invented_thresholds": true,
+    "no_invented_lookbacks": true,
+    "no_scoring": true,
+    "no_direction_generation": true,
+    "2025_oos": true,
+    "auto_freeze": false
+  }
+}
