@@ -20,11 +20,24 @@ def text_files():
         if p.is_file() and p.suffix.lower() in TEXT_EXTS:
             yield p
 
+def nison_confirmation_rules(data):
+    rules = data if isinstance(data, list) else data.get("rules", [])
+    selected = []
+    for r in rules:
+        source = str(r.get("source", r.get("primary_source", ""))).lower()
+        role = str(r.get("integration_role", "")).lower()
+        if "nison" in source and role == "confirmation":
+            selected.append(r)
+    return selected
+
 def main():
     if not REGISTRY.exists():
         raise SystemExit("Missing extracted Nison registry")
     data = json.loads(REGISTRY.read_text(encoding="utf-8"))
-    rules = data if isinstance(data, list) else data.get("rules", [])
+    rules = nison_confirmation_rules(data)
+    if len(rules) != 44:
+        raise SystemExit(f"FAIL: expected exactly 44 Nison confirmation rules, found {len(rules)}")
+
     files = list(text_files())
     cache = {}
     for p in files:
@@ -32,6 +45,7 @@ def main():
             cache[p] = p.read_text(encoding="utf-8", errors="ignore")
         except Exception:
             cache[p] = ""
+
     rows = []
     for r in rules:
         rid = str(r.get("rule_id", r.get("id", "UNKNOWN")))
@@ -52,10 +66,12 @@ def main():
             "qa_status": "UNASSESSED",
             "freeze_status": "NOT_FROZEN",
         })
+
     report = {
         "rule_count": len(rows),
         "expected_rule_count": 44,
         "count_check": len(rows) == 44,
+        "registry_total_rule_count": len(data) if isinstance(data, list) else len(data.get("rules", [])),
         "source_file_count": len(files),
         "rules": rows,
         "governance": {
@@ -74,12 +90,11 @@ def main():
     print(json.dumps({
         "rule_count": len(rows),
         "count_check": len(rows) == 44,
+        "registry_total_rule_count": report["registry_total_rule_count"],
         "source_file_count": len(files),
         "source_referenced": sum(x["source_reference_count"] > 0 for x in rows),
         "no_source_reference": sum(x["source_reference_count"] == 0 for x in rows),
     }, indent=2))
-    if len(rows) != 44:
-        raise SystemExit("FAIL: expected exactly 44 registry rules")
 
 if __name__ == "__main__":
     main()
