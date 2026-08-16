@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
-"""Execute available shared-accelerator checks for the Murphy 39 batch.
+"""Execute source-backed shared-accelerator checks for the Murphy 39 batch.
 
-Fail-closed by design: missing accelerator-specific checks become NOT_EVALUABLE;
-no semantics, thresholds, box sizes, scores, tuning, or freeze decisions are
-invented here. The runner is an execution/orchestration layer, not a rule
-semantic authority.
+The registry is authoritative for executable entrypoints. Missing entrypoints
+remain NOT_EVALUABLE. This layer never invents semantics, thresholds, box sizes,
+weights, tuning, or freeze decisions.
 """
 from __future__ import annotations
 
@@ -17,6 +16,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 QUEUE = ROOT / "project_state" / "MURPHY_39_BATCH_AUDIT_QUEUE_V1.csv"
 MANIFEST = ROOT / "project_state" / "MURPHY_HYBRID_39_FACTORY_MANIFEST_V1.csv"
+REGISTRY = ROOT / "project_state" / "MURPHY_39_ACCELERATOR_REGISTRY_V1.csv"
 OUT_JSON = ROOT / "project_state" / "MURPHY_39_ACCELERATOR_BATCH_RESULT_V1.json"
 OUT_MD = ROOT / "project_state" / "MURPHY_39_ACCELERATOR_BATCH_RESULT_V1.md"
 
@@ -29,6 +29,7 @@ def read_csv(path: Path) -> list[dict[str, str]]:
 def main() -> int:
     queue = read_csv(QUEUE)
     manifest = {r["rule_id"]: r for r in read_csv(MANIFEST)}
+    registry = {r["accelerator"]: r for r in read_csv(REGISTRY)}
     groups: dict[str, list[str]] = defaultdict(list)
     errors: list[str] = []
 
@@ -44,25 +45,50 @@ def main() -> int:
         groups[m["shared_accelerator"]].append(rid)
 
     results = []
-    # Existing concrete test entrypoints. Other accelerators remain
-    # NOT_EVALUABLE until a source-backed test entrypoint exists.
-    test_map = {
-        "EXISTING_PNF_WORK": ["tests/murphy_0030"],
-    }
-
     for accelerator, rule_ids in sorted(groups.items()):
-        paths = test_map.get(accelerator, [])
-        existing = [ROOT / p for p in paths if (ROOT / p).exists()]
-        if not existing:
+        reg = registry.get(accelerator)
+        if not reg:
             results.append({
                 "accelerator": accelerator,
                 "rules": sorted(rule_ids),
                 "status": "NOT_EVALUABLE",
-                "reason": "No accelerator-specific executable test entrypoint is present; no semantics were invented.",
+                "reason": "No registry entry exists; no executable behavior was inferred.",
             })
             continue
 
-        cmd = ["python", "-m", "pytest", "-q", *[str(p.relative_to(ROOT)) for p in existing]]
+        entrypoint = reg["entrypoint"].strip()
+        if not entrypoint:
+            results.append({
+                "accelerator": accelerator,
+                "rules": sorted(rule_ids),
+                "status": "NOT_EVALUABLE",
+                "reason": "Registry has no source-backed executable entrypoint yet.",
+            })
+            continue
+
+        path = ROOT / entrypoint
+        if not path.exists():
+            results.append({
+                "accelerator": accelerator,
+                "rules": sorted(rule_ids),
+                "status": "NOT_EVALUABLE",
+                "reason": f"Registered entrypoint does not exist: {entrypoint}",
+            })
+            continue
+
+        if reg["entrypoint_type"] == "PYTEST_DIRECTORY":
+            cmd = ["python", "-m", "pytest", "-q", entrypoint]
+        elif reg["entrypoint_type"] == "PYTEST_FILE":
+            cmd = ["python", "-m", "pytest", "-q", entrypoint]
+        else:
+            results.append({
+                "accelerator": accelerator,
+                "rules": sorted(rule_ids),
+                "status": "NOT_EVALUABLE",
+                "reason": f"Unsupported registry entrypoint_type: {reg['entrypoint_type']}",
+            })
+            continue
+
         proc = subprocess.run(cmd, cwd=ROOT, text=True, capture_output=True)
         results.append({
             "accelerator": accelerator,
@@ -91,7 +117,7 @@ def main() -> int:
     lines = [
         "# Murphy 39 Accelerator Batch Result V1", "",
         f"Status: **{result['status']}**", f"Rules: **{len(queue)}**", "",
-        "Missing accelerator entrypoints are NOT_EVALUABLE; this runner never invents semantics or freezes rules.", "",
+        "Registry-backed entrypoints only; missing coverage is NOT_EVALUABLE.", "",
     ]
     for r in results:
         lines.append(f"- **{r['accelerator']}** — {r['status']} — {len(r['rules'])} rules")
