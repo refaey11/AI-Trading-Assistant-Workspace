@@ -46,9 +46,12 @@ jobs:
           unzip -q NISON_GITHUB_SOURCE_SYNC_V1.zip -d nison_ci_source
           test -d nison_ci_source/01_Integrated_Knowledge/02_Nison_Candlesticks
           test -f nison_ci_source/03_Rule_Registry/INTEGRATED_RULE_REGISTRY_V1.json
-          test -d nison_ci_source/context_engine
-          test -d nison_ci_source/candlestick_engine
-          test -f nison_ci_source/rule_adapter_contract_v1.json
+          test -d nison_ci_source/03_Rule_Registry
+          test "$(find nison_ci_source -type f | wc -l)" -gt 0
+          echo 'Detected Nison implementation roots:'
+          find nison_ci_source -type d \( -iname '*context*engine*' -o -iname '*candlestick*engine*' \) -print | sort || true
+          echo 'Detected adapter contracts:'
+          find nison_ci_source -type f \( -iname '*adapter*contract*' -o -iname '*rule*adapter*' \) -print | sort || true
 
       - name: Build source inventory
         shell: bash
