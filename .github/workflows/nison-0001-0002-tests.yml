@@ -1,0 +1,35 @@
+name: Nison 0001-0002 Adapter Gate
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feature/nison-hybrid-44-batch-v1
+    paths:
+      - 'nison_batch/adapter_gate_0001_0002.py'
+      - 'nison_batch/test_adapter_gate_0001_0002.py'
+      - 'nison_batch/test_availability_gate_0001_0002.py'
+      - '.github/workflows/nison-0001-0002-tests.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run Nison 0001-0002 deterministic tests
+        shell: bash
+        run: |
+          set -euo pipefail
+          cd nison_batch
+          python -m pytest -q test_adapter_gate_0001_0002.py test_availability_gate_0001_0002.py
+      - name: Governance check
+        shell: bash
+        run: |
+          set -euo pipefail
+          ! grep -R "2025" nison_batch/adapter_gate_0001_0002.py
+          ! grep -R -E "ATR|pip|lookback|tolerance|score|confidence_delta" nison_batch/adapter_gate_0001_0002.py
+          echo 'Governance gate PASS: no 2025 tuning or invented threshold/score logic in 0001-0002 hard-geometry gate.'
