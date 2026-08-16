@@ -6,7 +6,8 @@ on:
     paths:
       - 'project_state/MURPHY_39_BATCH_AUDIT_QUEUE_V1.csv'
       - 'project_state/MURPHY_HYBRID_39_FACTORY_MANIFEST_V1.csv'
-      - 'tools/run_murphy_39_accelerator_batch.py'
+      - 'tools/run_murphy_accelerator_batch.py'
+      - 'tools/validate_murphy_hybrid_factory_manifest.py'
       - 'tests/**'
       - '.github/workflows/murphy-39-accelerator-batch.yml'
   workflow_dispatch:
@@ -24,7 +25,7 @@ jobs:
       - name: Validate queue
         run: python tools/validate_murphy_39_batch_queue.py
       - name: Validate factory manifest
-        run: python tools/validate_murphy_39_factory_manifest.py
+        run: python tools/validate_murphy_hybrid_factory_manifest.py
       - name: Run accelerator batch
         run: python tools/run_murphy_accelerator_batch.py
       - name: Upload accelerator result
