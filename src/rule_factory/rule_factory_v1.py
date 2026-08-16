@@ -36,11 +36,9 @@ def evaluate_rule(spec: RuleSpec, context: Dict[str, Any]) -> Dict[str, Any]:
         return {"rule_id": spec.rule_id, "status": RuleStatus.FAIL.value,
                 "reason": "canonical_failure", "canonical": canonical}
 
-    # READY_FOR_BACKTEST is a research-state, never a freeze signal.
-    if spec.source_status == "READY_FOR_BACKTEST":
-        return {"rule_id": spec.rule_id, "status": RuleStatus.CANDIDATE.value,
-                "reason": "ready_for_backtest_requires_promotion_gates", "canonical": canonical}
-
+    # All registered gates run before promotion-state classification.
+    # READY_FOR_BACKTEST is a research-state, never a freeze signal, but it
+    # must not bypass tests, historical QA, lookahead, or OOS checks.
     if not spec.tests(context):
         return {"rule_id": spec.rule_id, "status": RuleStatus.FAIL.value,
                 "reason": "tests_failed", "canonical": canonical}
@@ -53,5 +51,10 @@ def evaluate_rule(spec: RuleSpec, context: Dict[str, Any]) -> Dict[str, Any]:
     if not spec.oos_gate(context):
         return {"rule_id": spec.rule_id, "status": RuleStatus.BLOCKED.value,
                 "reason": "oos_gate_failed", "canonical": canonical}
+
+    if spec.source_status == "READY_FOR_BACKTEST":
+        return {"rule_id": spec.rule_id, "status": RuleStatus.CANDIDATE.value,
+                "reason": "ready_for_backtest_requires_promotion_gates", "canonical": canonical}
+
     return {"rule_id": spec.rule_id, "status": RuleStatus.FROZEN.value,
             "reason": "all_registered_promotion_gates_passed", "canonical": canonical}
