@@ -1,7 +1,7 @@
 """Isolated Rule Factory V1.
 
-This is an orchestration layer only. It must not alter canonical rule meaning,
-generate trading direction, or silently tune parameters.
+Orchestration only: never changes canonical meaning, generates direction,
+or silently tunes parameters.
 """
 from dataclasses import dataclass
 from enum import Enum
@@ -23,10 +23,11 @@ class RuleSpec:
     historical_qa: Callable[[Dict[str, Any]], bool]
     lookahead_gate: Callable[[Dict[str, Any]], bool]
     oos_gate: Callable[[Dict[str, Any]], bool]
+    source_status: str = ""
 
 
 def evaluate_rule(spec: RuleSpec, context: Dict[str, Any]) -> Dict[str, Any]:
-    """Run gates in order and stop safely on the first failed gate."""
+    """Run promotion gates without confusing backtest-readiness with freeze."""
     canonical = spec.canonical_evaluator(context)
     if canonical.get("status") in {"BLOCKED", "NOT_EVALUABLE"}:
         return {"rule_id": spec.rule_id, "status": RuleStatus.BLOCKED.value,
@@ -34,6 +35,12 @@ def evaluate_rule(spec: RuleSpec, context: Dict[str, Any]) -> Dict[str, Any]:
     if canonical.get("status") == "FAIL":
         return {"rule_id": spec.rule_id, "status": RuleStatus.FAIL.value,
                 "reason": "canonical_failure", "canonical": canonical}
+
+    # READY_FOR_BACKTEST is a research-state, never a freeze signal.
+    if spec.source_status == "READY_FOR_BACKTEST":
+        return {"rule_id": spec.rule_id, "status": RuleStatus.CANDIDATE.value,
+                "reason": "ready_for_backtest_requires_promotion_gates", "canonical": canonical}
+
     if not spec.tests(context):
         return {"rule_id": spec.rule_id, "status": RuleStatus.FAIL.value,
                 "reason": "tests_failed", "canonical": canonical}
@@ -47,4 +54,4 @@ def evaluate_rule(spec: RuleSpec, context: Dict[str, Any]) -> Dict[str, Any]:
         return {"rule_id": spec.rule_id, "status": RuleStatus.BLOCKED.value,
                 "reason": "oos_gate_failed", "canonical": canonical}
     return {"rule_id": spec.rule_id, "status": RuleStatus.FROZEN.value,
-            "reason": "all_registered_gates_passed", "canonical": canonical}
+            "reason": "all_registered_promotion_gates_passed", "canonical": canonical}
