@@ -2,13 +2,21 @@ name: Nison Hybrid 44 Source Verify
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - feature/nison-hybrid-44-batch-v1
+    paths:
+      - 'NISON_GITHUB_SOURCE_SYNC_V1.zip'
+      - 'nison_batch/source_map_44.py'
+      - '.github/workflows/nison-hybrid-44-source-verify.yml'
   pull_request:
     paths:
       - 'NISON_GITHUB_SOURCE_SYNC_V1.zip'
+      - 'nison_batch/source_map_44.py'
       - '.github/workflows/nison-hybrid-44-source-verify.yml'
 
 permissions:
-  contents: read
+  contents: write
   actions: write
 
 jobs:
@@ -58,6 +66,13 @@ jobs:
           } > nison-source-ci-report.md
           cat nison-source-ci-report.md
 
+      - name: Run source-bounded 44-rule mapping
+        shell: bash
+        run: |
+          set -euo pipefail
+          python nison_batch/source_map_44.py
+          cat nison_batch/artifacts/nison_44_source_map.json
+
       - name: Governance guard
         shell: bash
         run: |
@@ -71,6 +86,23 @@ jobs:
           EOF
           cat nison-governance.txt
 
+      - name: Commit source mapping artifact on feature branch
+        if: github.event_name == 'push' && github.ref == 'refs/heads/feature/nison-hybrid-44-batch-v1'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add nison_batch/artifacts/nison_44_source_map.json
+          if git diff --cached --quiet; then
+            echo 'No source mapping changes.'
+          else
+            git commit -m 'Record Nison 44 source mapping audit'
+            git push origin HEAD:feature/nison-hybrid-44-batch-v1
+          fi
+
       - name: Upload verification artifacts
         uses: actions/upload-artifact@v4
         with:
@@ -78,4 +110,5 @@ jobs:
           path: |
             nison-source-ci-report.md
             nison-governance.txt
+            nison_batch/artifacts/nison_44_source_map.json
           retention-days: 14
