@@ -20,5 +20,7 @@ jobs:
           python-version: '3.11'
       - name: Install pytest
         run: python -m pip install --upgrade pip pytest
-      - name: Run PF-G1 proposal tests
+      - name: Run PF-G1 exact-apex tests
         run: python -m pytest -q tests/murphy_0013/test_pf_g1_exact_apex.py
+      - name: Run source-bounded breakout-window tests
+        run: python -m pytest -q tests/murphy_0013/test_breakout_window_v1.py
