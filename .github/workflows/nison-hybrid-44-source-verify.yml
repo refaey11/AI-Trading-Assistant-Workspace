@@ -1,0 +1,81 @@
+name: Nison Hybrid 44 Source Verify
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'NISON_GITHUB_SOURCE_SYNC_V1.zip'
+      - '.github/workflows/nison-hybrid-44-source-verify.yml'
+
+permissions:
+  contents: read
+  actions: write
+
+jobs:
+  verify-source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify Nison source archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f NISON_GITHUB_SOURCE_SYNC_V1.zip
+          echo 'Archive SHA-256:'
+          sha256sum NISON_GITHUB_SOURCE_SYNC_V1.zip
+          unzip -t NISON_GITHUB_SOURCE_SYNC_V1.zip
+
+      - name: Extract source
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm -rf nison_ci_source
+          mkdir -p nison_ci_source
+          unzip -q NISON_GITHUB_SOURCE_SYNC_V1.zip -d nison_ci_source
+          test -d nison_ci_source/01_Integrated_Knowledge/02_Nison_Candlesticks
+          test -f nison_ci_source/03_Rule_Registry/INTEGRATED_RULE_REGISTRY_V1.json
+          test -d nison_ci_source/context_engine
+          test -d nison_ci_source/candlestick_engine
+          test -f nison_ci_source/rule_adapter_contract_v1.json
+
+      - name: Build source inventory
+        shell: bash
+        run: |
+          set -euo pipefail
+          {
+            echo '# Nison Source CI Inventory'
+            echo
+            echo "archive_sha256=$(sha256sum NISON_GITHUB_SOURCE_SYNC_V1.zip | awk '{print $1}')"
+            echo "file_count=$(find nison_ci_source -type f | wc -l)"
+            echo "source_bytes=$(du -sb nison_ci_source | cut -f1)"
+            echo
+            echo '## Required roots'
+            find nison_ci_source -maxdepth 2 -type d | sort
+          } > nison-source-ci-report.md
+          cat nison-source-ci-report.md
+
+      - name: Governance guard
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat > nison-governance.txt <<'EOF'
+          Nison is confirmation/evidence only.
+          No invented thresholds, tolerances, lookbacks, scoring, or direction.
+          Unsupported clauses remain NOT_EVALUABLE/BLOCKED.
+          2025 is OOS and cannot be used for tuning/calibration/selection/optimization.
+          CI must not auto-freeze rules.
+          EOF
+          cat nison-governance.txt
+
+      - name: Upload verification artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: nison-source-verification
+          path: |
+            nison-source-ci-report.md
+            nison-governance.txt
+          retention-days: 14
