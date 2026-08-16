@@ -27,6 +27,7 @@ def main() -> int:
     registry = {r["accelerator"]: r for r in read_csv(REGISTRY)}
     groups: dict[str, list[str]] = defaultdict(list)
     errors: list[str] = []
+    execution_failures: list[str] = []
 
     if len(queue) != 39:
         errors.append(f"queue cardinality={len(queue)}; expected 39")
@@ -65,23 +66,30 @@ def main() -> int:
         passed = proc.returncode == 0
         policy = reg.get("status_policy", "NO_INVENTION")
         status = "PASS_INTEGRATION_ONLY" if passed and policy == "INTEGRATION_ONLY" else ("PASS" if passed else "BLOCKED")
+        if not passed:
+            execution_failures.append(accelerator)
         results.append({"accelerator": accelerator, "rules": sorted(rule_ids), "status": status, "status_policy": policy, "command": cmd, "stdout_tail": proc.stdout[-4000:], "stderr_tail": proc.stderr[-4000:]})
 
+    # NOT_EVALUABLE means evidence is absent by governance; it is not a CI error.
+    # A real executable test failure remains a CI failure and is reported as BLOCKED.
+    ci_failure = bool(errors or execution_failures)
     result = {
-        "status": "BLOCKED" if errors or any(r["status"] == "BLOCKED" for r in results) else "PASS",
+        "status": "BLOCKED" if ci_failure else "PASS",
+        "ci_status": "FAILURE" if ci_failure else "SUCCESS",
         "rule_count": len(queue),
         "accelerator_count": len(results),
         "errors": errors,
+        "execution_failures": execution_failures,
         "results": results,
-        "governance": {"no_auto_freeze": True, "no_invented_semantics": True, "2025_oos": True, "not_evaluable_on_missing_entrypoint": True, "integration_only_never_means_rule_pass": True},
+        "governance": {"no_auto_freeze": True, "no_invented_semantics": True, "2025_oos": True, "not_evaluable_on_missing_entrypoint": True, "integration_only_never_means_rule_pass": True, "missing_evidence_is_not_ci_failure": True},
     }
     OUT_JSON.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
-    lines = ["# Murphy 39 Accelerator Batch Result V1", "", f"Status: **{result['status']}**", f"Rules: **{len(queue)}**", "", "Registry-backed entrypoints only; integration-only checks never imply Murphy rule PASS.", ""]
+    lines = ["# Murphy 39 Accelerator Batch Result V1", "", f"Status: **{result['status']}**", f"CI Status: **{result['ci_status']}**", f"Rules: **{len(queue)}**", "", "Registry-backed entrypoints only; integration-only checks never imply Murphy rule PASS.", "NOT_EVALUABLE means missing executable evidence and is not itself a CI failure.", ""]
     for r in results:
         lines.append(f"- **{r['accelerator']}** — {r['status']} — {len(r['rules'])} rules")
     OUT_MD.write_text("\n".join(lines) + "\n", encoding="utf-8")
-    print(f"MURPHY_39_ACCELERATOR_BATCH status={result['status']} rules={len(queue)} accelerators={len(results)}")
-    return 0 if result["status"] == "PASS" else 1
+    print(f"MURPHY_39_ACCELERATOR_BATCH status={result['status']} ci_status={result['ci_status']} rules={len(queue)} accelerators={len(results)}")
+    return 1 if ci_failure else 0
 
 
 if __name__ == "__main__":
