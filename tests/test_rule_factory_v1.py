@@ -30,9 +30,29 @@ def test_all_gates_pass_to_frozen():
     assert result["status"] == RuleStatus.FROZEN.value
 
 
-def test_ready_for_backtest_is_candidate_not_frozen():
+def test_ready_for_backtest_is_candidate_after_gates():
     result = evaluate_rule(_spec(source_status="READY_FOR_BACKTEST"), {})
     assert result["status"] == RuleStatus.CANDIDATE.value
+
+
+def test_ready_for_backtest_does_not_bypass_failed_tests():
+    result = evaluate_rule(_spec(source_status="READY_FOR_BACKTEST", tests=lambda ctx: False), {})
+    assert result["status"] == RuleStatus.FAIL.value
+
+
+def test_ready_for_backtest_does_not_bypass_historical_qa():
+    result = evaluate_rule(_spec(source_status="READY_FOR_BACKTEST", historical_qa=lambda ctx: False), {})
+    assert result["status"] == RuleStatus.CANDIDATE.value
+
+
+def test_ready_for_backtest_does_not_bypass_lookahead():
+    result = evaluate_rule(_spec(source_status="READY_FOR_BACKTEST", lookahead_gate=lambda ctx: False), {})
+    assert result["status"] == RuleStatus.BLOCKED.value
+
+
+def test_ready_for_backtest_does_not_bypass_oos():
+    result = evaluate_rule(_spec(source_status="READY_FOR_BACKTEST", oos_gate=lambda ctx: False), {})
+    assert result["status"] == RuleStatus.BLOCKED.value
 
 
 def test_failed_lookahead_blocks_freeze():
