@@ -1,0 +1,58 @@
+name: Murphy 0030 Compatibility Executor
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feature/murphy-hybrid-rule-factory-v1
+    paths:
+      - 'src/murphy_0030/**'
+      - 'tests/murphy_0030/**'
+      - '.github/workflows/murphy-0030-compatibility-executor.yml'
+
+jobs:
+  compatibility-executor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install governance test dependencies
+        run: python -m pip install --upgrade pip pytest
+
+      - name: Run 0030 governance gate tests
+        run: python -m pytest -q tests/murphy_0030/test_hybrid_compatibility_gate.py
+
+      - name: Install external candidate for compatibility evidence
+        run: python -m pip install 'pnf-chart-system==0.2.0'
+
+      - name: Run candidate API smoke tests
+        run: python -m pytest -q tests/murphy_0030/test_pypnf_candidate_smoke.py
+
+      - name: Emit fail-closed compatibility checkpoint
+        run: |
+          cat > 0030_COMPATIBILITY_CHECKPOINT.md <<'EOF'
+          # Murphy 0030 Compatibility Checkpoint
+
+          The executor confirms only the currently implemented governance gate
+          and candidate API smoke tests.
+
+          C1 3-box HighLow equivalence: NOT_EVALUABLE
+          C2 lowest-O-column bullish support equivalence: NOT_EVALUABLE
+          C3 availability/no-lookahead: NOT_EVALUABLE
+          C4 deterministic replay: NOT_EVALUABLE
+          C5 source-faithful box-size policy: NOT_EVALUABLE
+
+          No semantic equivalence is inferred from smoke-test success.
+          No box-size policy is selected or tuned.
+          2025 remains OOS.
+          No rule freeze or progression to 0031 is authorized by this workflow.
+          EOF
+
+      - name: Upload compatibility checkpoint
+        uses: actions/upload-artifact@v4
+        with:
+          name: murphy-0030-compatibility-checkpoint
+          path: 0030_COMPATIBILITY_CHECKPOINT.md
