@@ -8,6 +8,8 @@ from pathlib import Path
 
 
 HARNESS = Path("project_state/MURPHY_0030_EXTERNAL_PNF_COMPATIBILITY_HARNESS_V1.md")
+REGISTRY = Path("project_state/MURPHY_39_ACCELERATOR_REGISTRY_V1.csv")
+PNF_TEST = Path("tests/murphy_0030_0032/test_pnf_3box_reference.py")
 
 
 def test_harness_requires_c1_to_c4_and_box_size_neutrality():
@@ -32,3 +34,14 @@ def test_integration_rule_requires_smallest_adapter_only():
     text = HARNESS.read_text(encoding="utf-8")
     assert "smallest project adapter" in text
     assert "Do not rebuild the P&F engine." in text
+
+
+def test_registry_points_to_existing_pnf_reference_test():
+    registry = REGISTRY.read_text(encoding="utf-8")
+    assert "EXISTING_PNF_WORK,tests/murphy_0030_0032/test_pnf_3box_reference.py,PYTEST_FILE" in registry
+    assert PNF_TEST.is_file()
+
+
+def test_pnf_reference_test_is_not_marked_as_freeze_authority():
+    text = PNF_TEST.read_text(encoding="utf-8")
+    assert "freeze" not in text.lower()
