@@ -1,0 +1,23 @@
+name: Murphy 0030 - pypnf Candidate Smoke
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'tests/murphy_0030/test_pypnf_candidate_smoke.py'
+      - '.github/workflows/murphy-0030-pypnf-candidate-smoke.yml'
+
+jobs:
+  smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install candidate and test dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install 'pnf-chart-system==0.2.0' pytest
+      - name: Run candidate smoke tests
+        run: python -m pytest -q tests/murphy_0030/test_pypnf_candidate_smoke.py
