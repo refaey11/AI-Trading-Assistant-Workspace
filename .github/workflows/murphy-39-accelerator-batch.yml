@@ -6,6 +6,7 @@ on:
     paths:
       - 'project_state/MURPHY_39_BATCH_AUDIT_QUEUE_V1.csv'
       - 'project_state/MURPHY_HYBRID_39_FACTORY_MANIFEST_V1.csv'
+      - 'project_state/MURPHY_39_ACCELERATOR_REGISTRY_V1.csv'
       - 'tools/run_murphy_accelerator_batch.py'
       - 'tools/validate_murphy_hybrid_factory_manifest.py'
       - 'tests/**'
