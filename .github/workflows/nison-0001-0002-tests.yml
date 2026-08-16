@@ -26,19 +26,24 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
-      - name: Install test runner
-        shell: bash
-        run: python -m pip install --upgrade pytest
-      - name: Run Nison 0001-0002 deterministic tests
+
+      - name: Run deterministic tests without external test runner
         shell: bash
         run: |
           set -euo pipefail
           cd nison_batch
-          python -m pytest -q test_adapter_gate_0001_0002.py test_availability_gate_0001_0002.py
+          python -m unittest discover -p 'test_*0001_0002.py' -v
+
       - name: Governance check
         shell: bash
         run: |
           set -euo pipefail
-          ! grep -R "2025" nison_batch/adapter_gate_0001_0002.py
-          ! grep -R -E "ATR|pip|lookback|tolerance|score|confidence_delta" nison_batch/adapter_gate_0001_0002.py
-          echo 'Governance gate PASS: no 2025 tuning or invented threshold/score logic in 0001-0002 hard-geometry gate.'
+          python - <<'PY'
+          from pathlib import Path
+          text = Path('nison_batch/adapter_gate_0001_0002.py').read_text(encoding='utf-8')
+          forbidden = ('2025', 'ATR', 'pip', 'lookback', 'tolerance', 'score', 'confidence_delta')
+          bad = [x for x in forbidden if x in text]
+          if bad:
+              raise SystemExit('Governance violation: ' + ', '.join(bad))
+          print('Governance gate PASS: no 2025 tuning or invented threshold/score logic in 0001-0002 hard-geometry gate.')
+          PY
