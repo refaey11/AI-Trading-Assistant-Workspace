@@ -10,6 +10,12 @@ on:
       - 'nison_batch/test_adapter_gate_0001_0002.py'
       - 'nison_batch/test_availability_gate_0001_0002.py'
       - '.github/workflows/nison-0001-0002-tests.yml'
+  pull_request:
+    branches:
+      - main
+    paths:
+      - 'nison_batch/**'
+      - '.github/workflows/nison-0001-0002-tests.yml'
 
 permissions:
   contents: read
@@ -20,6 +26,9 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+      - name: Install test runner
+        shell: bash
+        run: python -m pip install --upgrade pytest
       - name: Run Nison 0001-0002 deterministic tests
         shell: bash
         run: |
