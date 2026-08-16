@@ -1,0 +1,63 @@
+name: Nison 44 Rule Batch
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feature/nison-hybrid-44-batch-v1
+    paths:
+      - 'NISON_GITHUB_SOURCE_SYNC_V1.zip'
+      - 'nison_batch/**'
+      - '.github/workflows/nison-44-batch.yml'
+
+permissions:
+  contents: read
+  actions: write
+
+jobs:
+  inventory:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Verify source archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f NISON_GITHUB_SOURCE_SYNC_V1.zip
+          unzip -t NISON_GITHUB_SOURCE_SYNC_V1.zip
+          rm -rf nison_ci_source
+          mkdir -p nison_ci_source
+          unzip -q NISON_GITHUB_SOURCE_SYNC_V1.zip -d nison_ci_source
+          test -f nison_ci_source/03_Rule_Registry/INTEGRATED_RULE_REGISTRY_V1.json
+
+      - name: Run source-bounded 44-rule inventory
+        shell: bash
+        run: |
+          set -euo pipefail
+          python nison_batch/run_nison_44_inventory.py
+
+      - name: Governance gate
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f nison_batch/artifacts/nison_44_batch_inventory.json
+          python - <<'PY'
+          import json
+          p='nison_batch/artifacts/nison_44_batch_inventory.json'
+          d=json.load(open(p, encoding='utf-8'))
+          assert d['count_check'] is True
+          assert d['nison_rule_count'] == 44
+          assert all(r['decision'] == 'NOT_EVALUABLE' for r in d['rules'])
+          assert all(r['governance']['confirmation_only'] for r in d['rules'])
+          print('Governance gate PASS: 44 rules inventoried; no invented evaluators/thresholds.')
+          PY
+
+      - name: Upload batch artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: nison-44-batch-inventory
+          path: nison_batch/artifacts/nison_44_batch_inventory.json
+          retention-days: 30
