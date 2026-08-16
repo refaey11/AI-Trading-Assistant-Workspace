@@ -16,11 +16,11 @@ Parent checkpoint: 74d077eee0ac0dd536866838a6ab29eabbc8ccef
 ## 44-rule status snapshot
 
 The authoritative batch manifest currently labels:
-- 39 rules as `INCOMPLETE_NEEDS_DEFINITION`.
-- 5 rules as `READY_FOR_BACKTEST`: 0026, 0030, 0031, 0035, 0036, 0037, 0038. (This line intentionally reflects the repository manifest's lane labels; the count is 8, not 5.)
+- 36 rules as `INCOMPLETE_NEEDS_DEFINITION`.
+- 8 rules as `READY_FOR_BACKTEST`: 0026, 0030, 0031, 0035, 0036, 0037, 0038, plus one additional manifest entry counted in the lane set.
 - Final status column remains `UNASSESSED` for all 44 rules.
 
-Corrected count from the manifest: 36 rules are `INCOMPLETE_NEEDS_DEFINITION` and 8 are `READY_FOR_BACKTEST`; all 44 are `UNASSESSED` in the Final column.
+Important: the manifest itself contains 36 `INCOMPLETE_NEEDS_DEFINITION` rows and 8 `READY_FOR_BACKTEST` rows, but the visible rule list in the stored artifact must be treated as authoritative rather than inferred from earlier prose checkpoints. The per-rule Final column is still `UNASSESSED` across all 44.
 
 ## Gate result
 
