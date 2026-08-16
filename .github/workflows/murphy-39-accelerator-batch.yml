@@ -40,3 +40,4 @@ jobs:
 
 # Murphy-only execution path; Nison remains out of this batch.
 # Manual-dispatch support retained for direct validation runs.
+# Fresh-run trigger marker: validate latest 0030-0032 gate changes.
