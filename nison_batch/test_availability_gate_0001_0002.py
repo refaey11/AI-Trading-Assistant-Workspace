@@ -1,3 +1,4 @@
+import unittest
 from dataclasses import dataclass
 
 
@@ -11,16 +12,19 @@ def is_available(evidence: Evidence, evaluation_availability_timestamp: str) -> 
     return evidence.availability_timestamp <= evaluation_availability_timestamp
 
 
-def test_same_timestamp_is_available():
-    e = Evidence("2024-01-02T10:00:00", "2024-01-02T10:00:00")
-    assert is_available(e, "2024-01-02T10:00:00") is True
+class AvailabilityGateTests(unittest.TestCase):
+    def test_same_timestamp_is_available(self):
+        e = Evidence("2024-01-02T10:00:00", "2024-01-02T10:00:00")
+        self.assertTrue(is_available(e, "2024-01-02T10:00:00"))
+
+    def test_future_availability_is_rejected(self):
+        e = Evidence("2024-01-02T10:00:00", "2024-01-02T10:05:00")
+        self.assertFalse(is_available(e, "2024-01-02T10:00:00"))
+
+    def test_later_evidence_cannot_leak_backward(self):
+        e = Evidence("2024-01-02T10:00:00", "2024-01-02T10:01:00")
+        self.assertFalse(is_available(e, "2024-01-02T10:00:30"))
 
 
-def test_future_availability_is_rejected():
-    e = Evidence("2024-01-02T10:00:00", "2024-01-02T10:05:00")
-    assert is_available(e, "2024-01-02T10:00:00") is False
-
-
-def test_later_evidence_cannot_leak_backward():
-    e = Evidence("2024-01-02T10:00:00", "2024-01-02T10:01:00")
-    assert is_available(e, "2024-01-02T10:00:30") is False
+if __name__ == "__main__":
+    unittest.main()
