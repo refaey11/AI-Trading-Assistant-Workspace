@@ -10,7 +10,6 @@ import json
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-ARCHIVE = ROOT / "NISON_GITHUB_SOURCE_SYNC_V1.zip"
 OUT = ROOT / "nison_batch" / "artifacts"
 REGISTRY_CANDIDATES = [
     ROOT / "nison_ci_source/03_Rule_Registry/INTEGRATED_RULE_REGISTRY_V1.json",
@@ -25,7 +24,12 @@ def load_registry():
 
 def main():
     registry, source = load_registry()
-    rules = registry.get("rules", registry if isinstance(registry, list) else [])
+    if isinstance(registry, list):
+        rules = registry
+    elif isinstance(registry, dict):
+        rules = registry.get("rules", [])
+    else:
+        raise TypeError(f"Unsupported registry JSON type: {type(registry).__name__}")
     nison = []
     for r in rules:
         source_name = str(r.get("source", r.get("primary_source", ""))).lower()
