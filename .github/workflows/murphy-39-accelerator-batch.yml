@@ -1,0 +1,37 @@
+name: Murphy 39 Accelerator Batch
+
+on:
+  push:
+    branches: [feature/murphy-hybrid-rule-factory-v1]
+    paths:
+      - 'project_state/MURPHY_39_BATCH_AUDIT_QUEUE_V1.csv'
+      - 'project_state/MURPHY_HYBRID_39_FACTORY_MANIFEST_V1.csv'
+      - 'tools/run_murphy_39_accelerator_batch.py'
+      - 'tests/**'
+      - '.github/workflows/murphy-39-accelerator-batch.yml'
+  workflow_dispatch:
+
+jobs:
+  accelerator-batch:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install test runner
+        run: python -m pip install --upgrade pip pytest
+      - name: Validate queue
+        run: python tools/validate_murphy_39_batch_queue.py
+      - name: Validate factory manifest
+        run: python tools/validate_murphy_39_factory_manifest.py
+      - name: Run accelerator batch
+        run: python tools/run_murphy_accelerator_batch.py
+      - name: Upload accelerator result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: murphy-39-accelerator-batch-result
+          path: |
+            project_state/MURPHY_39_ACCELERATOR_BATCH_RESULT_V1.json
+            project_state/MURPHY_39_ACCELERATOR_BATCH_RESULT_V1.md
