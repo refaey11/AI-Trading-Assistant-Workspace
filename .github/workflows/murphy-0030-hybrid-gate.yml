@@ -1,0 +1,27 @@
+name: Murphy 0030 Hybrid Compatibility Gate
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feature/murphy-hybrid-rule-factory-v1
+    paths:
+      - 'src/murphy_0030/**'
+      - 'tests/murphy_0030/**'
+      - '.github/workflows/murphy-0030-hybrid-gate.yml'
+  pull_request:
+    paths:
+      - 'src/murphy_0030/**'
+      - 'tests/murphy_0030/**'
+      - '.github/workflows/murphy-0030-hybrid-gate.yml'
+
+jobs:
+  hybrid-gate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Run 0030 hybrid governance tests
+        run: python -m pytest -q tests/murphy_0030/test_hybrid_compatibility_gate.py
