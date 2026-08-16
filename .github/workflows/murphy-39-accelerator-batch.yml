@@ -39,3 +39,4 @@ jobs:
             project_state/MURPHY_39_ACCELERATOR_BATCH_RESULT_V1.md
 
 # Murphy-only execution path; Nison remains out of this batch.
+# Manual-dispatch support retained for direct validation runs.
