@@ -9,6 +9,7 @@ def _spec(**overrides):
         historical_qa=lambda ctx: True,
         lookahead_gate=lambda ctx: True,
         oos_gate=lambda ctx: True,
+        source_status="",
     )
     base.update(overrides)
     return RuleSpec(**base)
@@ -27,6 +28,11 @@ def test_canonical_failure_is_not_rescued():
 def test_all_gates_pass_to_frozen():
     result = evaluate_rule(_spec(), {})
     assert result["status"] == RuleStatus.FROZEN.value
+
+
+def test_ready_for_backtest_is_candidate_not_frozen():
+    result = evaluate_rule(_spec(source_status="READY_FOR_BACKTEST"), {})
+    assert result["status"] == RuleStatus.CANDIDATE.value
 
 
 def test_failed_lookahead_blocks_freeze():
