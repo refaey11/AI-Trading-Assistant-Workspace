@@ -1,0 +1,29 @@
+name: Murphy 39 Accelerator Implementation Inventory
+
+on:
+  push:
+    branches: [feature/murphy-hybrid-rule-factory-v1]
+    paths:
+      - 'project_state/MURPHY_39_ACCELERATOR_REGISTRY_V1.csv'
+      - 'tools/scan_murphy_accelerator_implementations.py'
+      - 'src/**'
+      - 'tests/**'
+  pull_request:
+    paths:
+      - 'project_state/MURPHY_39_ACCELERATOR_REGISTRY_V1.csv'
+      - 'tools/scan_murphy_accelerator_implementations.py'
+      - 'src/**'
+      - 'tests/**'
+
+jobs:
+  inventory:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Run fail-closed implementation inventory
+        run: python tools/scan_murphy_accelerator_implementations.py
+      - name: Upload inventory
+        uses: actions/upload-artifact@v4
+        with:
+          name: murphy-39-accelerator-implementation-inventory
+          path: project_state/MURPHY_39_ACCELERATOR_IMPLEMENTATION_INVENTORY_V1.json
