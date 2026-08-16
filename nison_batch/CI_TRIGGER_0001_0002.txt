@@ -1,0 +1,1 @@
+CI trigger marker: run the Nison 0001-0002 adapter and availability tests on this commit. No semantic or production-rule change.
