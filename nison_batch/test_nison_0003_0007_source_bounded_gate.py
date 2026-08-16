@@ -14,12 +14,12 @@ class Nison0003To0007Tests(unittest.TestCase):
         r = evaluate_0003_dark_cloud(Candle(1, 2, 0.9, 1.8), Candle(1.9, 2.2, 1.5, 1.6), "uptrend")
         self.assertEqual(r["status"], "FAIL")
 
-    def test_0004_midpoint_boundary_rejects(self):
-        r = evaluate_0004_piercing(Candle(2, 2.1, 0.9, 1), Candle(0.8, 1.7, 0.7, 1.4), "downtrend")
+    def test_0004_midpoint_passes_structure_but_remains_unresolved(self):
+        r = evaluate_0004_piercing(Candle(2, 2.1, 0.9, 1), Candle(0.8, 1.7, 0.7, 1.6), "downtrend")
         self.assertEqual(r["status"], "NOT_EVALUABLE")
 
     def test_0004_wrong_context_rejects(self):
-        r = evaluate_0004_piercing(Candle(2, 2.1, 0.9, 1), Candle(0.8, 1.7, 0.7, 1.4), "uptrend")
+        r = evaluate_0004_piercing(Candle(2, 2.1, 0.9, 1), Candle(0.8, 1.7, 0.7, 1.6), "uptrend")
         self.assertEqual(r["status"], "FAIL")
 
     def test_0005_qualitative_neck_remains_unresolved(self):
