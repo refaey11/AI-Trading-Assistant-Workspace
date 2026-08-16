@@ -1,1 +1,5 @@
-PLACEHOLDER
+[
+  {
+    "note": "Canonical Nison registry content is stored in the project source package. This file will be populated from the uploaded source package before CI execution."
+  }
+]
