@@ -1,10 +1,5 @@
 #!/usr/bin/env python3
-"""Execute source-backed shared-accelerator checks for the Murphy 39 batch.
-
-The registry is authoritative for executable entrypoints. Missing entrypoints
-remain NOT_EVALUABLE. This layer never invents semantics, thresholds, box sizes,
-weights, tuning, or freeze decisions.
-"""
+"""Execute source-backed shared-accelerator checks for the Murphy 39 batch."""
 from __future__ import annotations
 
 import csv
@@ -48,56 +43,29 @@ def main() -> int:
     for accelerator, rule_ids in sorted(groups.items()):
         reg = registry.get(accelerator)
         if not reg:
-            results.append({
-                "accelerator": accelerator,
-                "rules": sorted(rule_ids),
-                "status": "NOT_EVALUABLE",
-                "reason": "No registry entry exists; no executable behavior was inferred.",
-            })
+            results.append({"accelerator": accelerator, "rules": sorted(rule_ids), "status": "NOT_EVALUABLE", "reason": "No registry entry exists; no executable behavior was inferred."})
             continue
 
         entrypoint = reg["entrypoint"].strip()
         if not entrypoint:
-            results.append({
-                "accelerator": accelerator,
-                "rules": sorted(rule_ids),
-                "status": "NOT_EVALUABLE",
-                "reason": "Registry has no source-backed executable entrypoint yet.",
-            })
+            results.append({"accelerator": accelerator, "rules": sorted(rule_ids), "status": "NOT_EVALUABLE", "reason": "Registry has no source-backed executable entrypoint yet."})
             continue
 
         path = ROOT / entrypoint
         if not path.exists():
-            results.append({
-                "accelerator": accelerator,
-                "rules": sorted(rule_ids),
-                "status": "NOT_EVALUABLE",
-                "reason": f"Registered entrypoint does not exist: {entrypoint}",
-            })
+            results.append({"accelerator": accelerator, "rules": sorted(rule_ids), "status": "NOT_EVALUABLE", "reason": f"Registered entrypoint does not exist: {entrypoint}"})
             continue
 
-        if reg["entrypoint_type"] == "PYTEST_DIRECTORY":
-            cmd = ["python", "-m", "pytest", "-q", entrypoint]
-        elif reg["entrypoint_type"] == "PYTEST_FILE":
-            cmd = ["python", "-m", "pytest", "-q", entrypoint]
-        else:
-            results.append({
-                "accelerator": accelerator,
-                "rules": sorted(rule_ids),
-                "status": "NOT_EVALUABLE",
-                "reason": f"Unsupported registry entrypoint_type: {reg['entrypoint_type']}",
-            })
+        if reg["entrypoint_type"] not in {"PYTEST_DIRECTORY", "PYTEST_FILE"}:
+            results.append({"accelerator": accelerator, "rules": sorted(rule_ids), "status": "NOT_EVALUABLE", "reason": f"Unsupported registry entrypoint_type: {reg['entrypoint_type']}"})
             continue
 
+        cmd = ["python", "-m", "pytest", "-q", entrypoint]
         proc = subprocess.run(cmd, cwd=ROOT, text=True, capture_output=True)
-        results.append({
-            "accelerator": accelerator,
-            "rules": sorted(rule_ids),
-            "status": "PASS" if proc.returncode == 0 else "BLOCKED",
-            "command": cmd,
-            "stdout_tail": proc.stdout[-4000:],
-            "stderr_tail": proc.stderr[-4000:],
-        })
+        passed = proc.returncode == 0
+        policy = reg.get("status_policy", "NO_INVENTION")
+        status = "PASS_INTEGRATION_ONLY" if passed and policy == "INTEGRATION_ONLY" else ("PASS" if passed else "BLOCKED")
+        results.append({"accelerator": accelerator, "rules": sorted(rule_ids), "status": status, "status_policy": policy, "command": cmd, "stdout_tail": proc.stdout[-4000:], "stderr_tail": proc.stderr[-4000:]})
 
     result = {
         "status": "BLOCKED" if errors or any(r["status"] == "BLOCKED" for r in results) else "PASS",
@@ -105,20 +73,10 @@ def main() -> int:
         "accelerator_count": len(results),
         "errors": errors,
         "results": results,
-        "governance": {
-            "no_auto_freeze": True,
-            "no_invented_semantics": True,
-            "2025_oos": True,
-            "not_evaluable_on_missing_entrypoint": True,
-        },
+        "governance": {"no_auto_freeze": True, "no_invented_semantics": True, "2025_oos": True, "not_evaluable_on_missing_entrypoint": True, "integration_only_never_means_rule_pass": True},
     }
     OUT_JSON.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
-
-    lines = [
-        "# Murphy 39 Accelerator Batch Result V1", "",
-        f"Status: **{result['status']}**", f"Rules: **{len(queue)}**", "",
-        "Registry-backed entrypoints only; missing coverage is NOT_EVALUABLE.", "",
-    ]
+    lines = ["# Murphy 39 Accelerator Batch Result V1", "", f"Status: **{result['status']}**", f"Rules: **{len(queue)}**", "", "Registry-backed entrypoints only; integration-only checks never imply Murphy rule PASS.", ""]
     for r in results:
         lines.append(f"- **{r['accelerator']}** — {r['status']} — {len(r['rules'])} rules")
     OUT_MD.write_text("\n".join(lines) + "\n", encoding="utf-8")
