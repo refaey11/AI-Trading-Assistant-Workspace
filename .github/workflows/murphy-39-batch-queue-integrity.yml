@@ -1,0 +1,27 @@
+name: Murphy 39 Batch Queue Integrity
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feature/murphy-39-rule-batch-audit-v1
+    paths:
+      - 'project_state/MURPHY_39_BATCH_AUDIT_QUEUE_V1.csv'
+      - 'tools/validate_murphy_39_batch_queue.py'
+      - '.github/workflows/murphy-39-batch-queue-integrity.yml'
+  pull_request:
+    paths:
+      - 'project_state/MURPHY_39_BATCH_AUDIT_QUEUE_V1.csv'
+      - 'tools/validate_murphy_39_batch_queue.py'
+      - '.github/workflows/murphy-39-batch-queue-integrity.yml'
+
+jobs:
+  queue-integrity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Validate frozen-rule exclusion and batch cardinality
+        run: python tools/validate_murphy_39_batch_queue.py
