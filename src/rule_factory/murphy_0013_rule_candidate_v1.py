@@ -18,12 +18,20 @@ def evaluate_0013_rule_candidate(
     boundary_available: bool,
     closes: Sequence[float],
     direction: str,
+    close_available_timestamps: Sequence[Any] | None = None,
 ) -> Dict[str, Any]:
     structural = evaluate_0013(upper, lower, decision_time)
     if structural.get("status") != "CONFIRMED":
         return {"status": structural.get("status"), "stage": "STRUCTURAL", "detail": structural}
 
-    b1 = evaluate_0013_b1_candidate(boundary, boundary_available, closes, direction)
+    b1 = evaluate_0013_b1_candidate(
+        boundary,
+        boundary_available,
+        closes,
+        direction,
+        close_available_timestamps,
+        decision_time,
+    )
     if b1.get("status") != "DECISIVE_BREAK_CONFIRMED":
         return {"status": b1.get("status"), "stage": "B1", "detail": b1}
 
