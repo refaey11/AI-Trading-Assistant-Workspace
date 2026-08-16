@@ -10,7 +10,7 @@ from enum import Enum
 from typing import Any, Dict, Optional
 
 
-class PF B1Status(str, Enum):
+class PFB1Status(str, Enum):
     CONFIRMED = "CONFIRMED"
     NOT_CONFIRMED = "NOT_CONFIRMED"
     NOT_EVALUABLE = "NOT_EVALUABLE"
@@ -34,7 +34,7 @@ def evaluate_pf_b1(boundary_id: str, direction: str, policy: Optional[BreakoutPo
         return {
             "boundary_id": boundary_id,
             "direction": direction,
-            "status": PF_B1Status.NOT_EVALUABLE.value,
+            "status": PFB1Status.NOT_EVALUABLE.value,
             "reason": "approved_breakout_policy_missing",
         }
 
@@ -42,7 +42,7 @@ def evaluate_pf_b1(boundary_id: str, direction: str, policy: Optional[BreakoutPo
         return {
             "boundary_id": boundary_id,
             "direction": direction,
-            "status": PF_B1Status.NOT_EVALUABLE.value,
+            "status": PFB1Status.NOT_EVALUABLE.value,
             "reason": "unsupported_policy_family",
         }
 
@@ -53,7 +53,7 @@ def evaluate_pf_b1(boundary_id: str, direction: str, policy: Optional[BreakoutPo
         return {
             "boundary_id": boundary_id,
             "direction": direction,
-            "status": PF_B1Status.CONFIRMED.value,
+            "status": PFB1Status.CONFIRMED.value,
             "raw_break_timestamp": evidence.get("raw_break_timestamp"),
             "confirmation_timestamp": evidence.get("confirmation_timestamp"),
             "availability_timestamp": evidence.get("availability_timestamp"),
@@ -62,7 +62,7 @@ def evaluate_pf_b1(boundary_id: str, direction: str, policy: Optional[BreakoutPo
     return {
         "boundary_id": boundary_id,
         "direction": direction,
-        "status": PF_B1Status.NOT_CONFIRMED.value,
+        "status": PFB1Status.NOT_CONFIRMED.value,
         "reason": "approved_policy_not_satisfied",
         "availability_timestamp": evidence.get("availability_timestamp"),
     }
