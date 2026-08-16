@@ -1,0 +1,28 @@
+name: Rule Factory V1 Pilot
+
+on:
+  push:
+    branches:
+      - pilot/rule-factory-v1
+    paths:
+      - 'src/rule_factory/**'
+      - 'tests/test_rule_factory_v1.py'
+      - '.github/workflows/rule-factory-v1-pilot.yml'
+  pull_request:
+    paths:
+      - 'src/rule_factory/**'
+      - 'tests/test_rule_factory_v1.py'
+      - '.github/workflows/rule-factory-v1-pilot.yml'
+
+jobs:
+  pilot-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install test runner
+        run: python -m pip install --upgrade pip pytest
+      - name: Run Rule Factory V1 tests
+        run: python -m pytest -q tests/test_rule_factory_v1.py
