@@ -1,0 +1,29 @@
+name: Murphy Hybrid 39 Factory Integrity
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feature/murphy-hybrid-rule-factory-v1
+    paths:
+      - 'contracts/MURPHY_HYBRID_RULE_EVALUATOR_ARCHITECTURE_V1.md'
+      - 'project_state/MURPHY_HYBRID_39_FACTORY_MANIFEST_V1.csv'
+      - 'tools/validate_murphy_hybrid_factory_manifest.py'
+      - '.github/workflows/murphy-hybrid-39-factory-integrity.yml'
+  pull_request:
+    paths:
+      - 'contracts/MURPHY_HYBRID_RULE_EVALUATOR_ARCHITECTURE_V1.md'
+      - 'project_state/MURPHY_HYBRID_39_FACTORY_MANIFEST_V1.csv'
+      - 'tools/validate_murphy_hybrid_factory_manifest.py'
+      - '.github/workflows/murphy-hybrid-39-factory-integrity.yml'
+
+jobs:
+  factory-integrity:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Validate hybrid factory manifest
+        run: python tools/validate_murphy_hybrid_factory_manifest.py
