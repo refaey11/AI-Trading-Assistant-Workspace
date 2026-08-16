@@ -1,0 +1,1 @@
+CI trigger probe. This file intentionally exists only to trigger the Rule Factory V1 Pilot workflow on push to pilot/rule-factory-v1.
