@@ -1,0 +1,64 @@
+# Nison 44 — Execution Ledger V1
+
+**Inventory:** 44/44. **Production freeze:** none. **Historical QA:** not granted. **2025:** OOS.
+
+| ID | Rule | Current stage | Historical QA | Freeze |
+|---|---|---|---|---|
+| CANDLE_RULE_0001 | Bullish Engulfing | HARD_GEOMETRY_GATE_IMPLEMENTED | NOT_GRANTED | NO |
+| CANDLE_RULE_0002 | Bearish Engulfing | HARD_GEOMETRY_GATE_IMPLEMENTED | NOT_GRANTED | NO |
+| CANDLE_RULE_0003 | Dark Cloud Cover | COMPATIBILITY_SOURCE_GATE | NOT_GRANTED | NO |
+| CANDLE_RULE_0004 | Piercing Pattern | COMPATIBILITY_SOURCE_GATE | NOT_GRANTED | NO |
+| CANDLE_RULE_0005 | On Neck | COMPATIBILITY_SOURCE_GATE | NOT_GRANTED | NO |
+| CANDLE_RULE_0006 | In Neck | COMPATIBILITY_SOURCE_GATE | NOT_GRANTED | NO |
+| CANDLE_RULE_0007 | Thrusting | COMPATIBILITY_SOURCE_GATE | NOT_GRANTED | NO |
+| CANDLE_RULE_0008 | Morning Star | COMPATIBILITY_SOURCE_GATE | NOT_GRANTED | NO |
+| CANDLE_RULE_0009 | Evening Star | COMPATIBILITY_SOURCE_GATE | NOT_GRANTED | NO |
+| CANDLE_RULE_0010 | Morning Doji Star | COMPATIBILITY_SOURCE_GATE | NOT_GRANTED | NO |
+| CANDLE_RULE_0011 | Evening Doji Star | COMPATIBILITY_SOURCE_GATE | NOT_GRANTED | NO |
+| CANDLE_RULE_0012 | Abandoned Baby | COMPATIBILITY_SOURCE_GATE | NOT_GRANTED | NO |
+| CANDLE_RULE_0013 | Harami | COMPATIBILITY_SOURCE_GATE | NOT_GRANTED | NO |
+| CANDLE_RULE_0014 | Harami Cross | COMPATIBILITY_SOURCE_GATE | NOT_GRANTED | NO |
+| CANDLE_RULE_0015 | Tweezers Top | COMPATIBILITY_SOURCE_GATE | NOT_GRANTED | NO |
+| CANDLE_RULE_0016 | Tweezers Bottom | COMPATIBILITY_SOURCE_GATE | NOT_GRANTED | NO |
+| CANDLE_RULE_0017 | Upside Gap Two Crows | COMPATIBILITY_SOURCE_GATE | NOT_GRANTED | NO |
+| CANDLE_RULE_0018 | Three Black Crows | COMPATIBILITY_SOURCE_GATE | NOT_GRANTED | NO |
+| CANDLE_RULE_0019 | Bullish Counterattack Lines | COMPATIBILITY_SOURCE_GATE | NOT_GRANTED | NO |
+| CANDLE_RULE_0020 | Bearish Counterattack Lines | COMPATIBILITY_SOURCE_GATE | NOT_GRANTED | NO |
+| CANDLE_RULE_0021 | Three Mountains | COMPATIBILITY_SOURCE_GATE | NOT_GRANTED | NO |
+| CANDLE_RULE_0022 | Three Rivers | COMPATIBILITY_SOURCE_GATE | NOT_GRANTED | NO |
+| CANDLE_RULE_0023 | Three Buddha Tops | COMPATIBILITY_SOURCE_GATE | NOT_GRANTED | NO |
+| CANDLE_RULE_0024 | Three Buddha Bottoms | COMPATIBILITY_SOURCE_GATE | NOT_GRANTED | NO |
+| CANDLE_RULE_0025 | Dumpling Top | COMPATIBILITY_SOURCE_GATE | NOT_GRANTED | NO |
+| CANDLE_RULE_0026 | Fry Pan Bottom | COMPATIBILITY_SOURCE_GATE | NOT_GRANTED | NO |
+| CANDLE_RULE_0027 | Tower Top | COMPATIBILITY_SOURCE_GATE | NOT_GRANTED | NO |
+| CANDLE_RULE_0028 | Tower Bottom | COMPATIBILITY_SOURCE_GATE | NOT_GRANTED | NO |
+| CANDLE_RULE_0029 | Unique Three River Bottom | COMPATIBILITY_SOURCE_GATE | NOT_GRANTED | NO |
+| CANDLE_RULE_0030 | Three Rising Methods | COMPATIBILITY_SOURCE_GATE | NOT_GRANTED | NO |
+| CANDLE_RULE_0031 | Three Falling Methods | COMPATIBILITY_SOURCE_GATE | NOT_GRANTED | NO |
+| CANDLE_RULE_0032 | Three White Soldiers | COMPATIBILITY_SOURCE_GATE | NOT_GRANTED | NO |
+| CANDLE_RULE_0033 | Advance Block (Stalled Pattern) | COMPATIBILITY_SOURCE_GATE | NOT_GRANTED | NO |
+| CANDLE_RULE_0034 | Separating Lines | COMPATIBILITY_SOURCE_GATE | NOT_GRANTED | NO |
+| CANDLE_RULE_0035 | Tasuki Gap | EXISTING_EVALUATOR_PENDING_GATES | NOT_GRANTED | NO |
+| CANDLE_RULE_0036 | Gapping Play | EXISTING_EVALUATOR_PENDING_GATES | NOT_GRANTED | NO |
+| CANDLE_RULE_0037 | Side-by-Side White Lines | EXISTING_EVALUATOR_PENDING_GATES | NOT_GRANTED | NO |
+| CANDLE_RULE_0038 | Windows | EXISTING_EVALUATOR_PENDING_GATES | NOT_GRANTED | NO |
+| CANDLE_RULE_0039 | Multiple Technical Techniques | DECOMPOSITION_REQUIRED | NOT_GRANTED | NO |
+| CANDLE_RULE_0040 | Candlestick Clusters | DECOMPOSITION_REQUIRED | NOT_GRANTED | NO |
+| CANDLE_RULE_0041 | Trend Lines | DECOMPOSITION_REQUIRED | NOT_GRANTED | NO |
+| CANDLE_RULE_0042 | Support/Resistance | DECOMPOSITION_REQUIRED | NOT_GRANTED | NO |
+| CANDLE_RULE_0043 | False Breakouts | DECOMPOSITION_REQUIRED | NOT_GRANTED | NO |
+| CANDLE_RULE_0044 | Polarity Principle | DECOMPOSITION_REQUIRED | NOT_GRANTED | NO |
+
+## Governance gates
+- Nison = confirmation/evidence only.
+- No invented thresholds, tolerances, lookbacks, scoring, or direction generation.
+- 2025 excluded from tuning/selection/calibration/optimization.
+- Existing project primitives are reused only after compatibility is proven.
+- Unit tests do not grant production freeze.
+
+## Next execution order
+1. Run 0001–0002 CI tests and availability gate.
+2. Source-contract + adapter gates for 0003–0034 in batches.
+3. Close existing evaluator gates for 0035–0038.
+4. Decompose 0039–0044 into atomic source-bounded clauses.
+5. Only complete contracts enter 2016–2024 historical QA.
