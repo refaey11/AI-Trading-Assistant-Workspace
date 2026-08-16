@@ -1,6 +1,7 @@
 name: Rule Factory V1 Pilot
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - pilot/rule-factory-v1
