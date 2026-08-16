@@ -7,11 +7,12 @@ on:
       - feature/nison-hybrid-44-batch-v1
     paths:
       - 'NISON_GITHUB_SOURCE_SYNC_V1.zip'
-      - 'nison_batch/**'
+      - 'nison_batch/run_nison_44_inventory.py'
+      - 'nison_batch/source_map_44.py'
       - '.github/workflows/nison-44-batch.yml'
 
 permissions:
-  contents: read
+  contents: write
   actions: write
 
 jobs:
@@ -39,25 +40,51 @@ jobs:
           set -euo pipefail
           python nison_batch/run_nison_44_inventory.py
 
+      - name: Run source-bounded 44-rule source map
+        shell: bash
+        run: |
+          set -euo pipefail
+          python nison_batch/source_map_44.py
+          cat nison_batch/artifacts/nison_44_source_map.json
+
       - name: Governance gate
         shell: bash
         run: |
           set -euo pipefail
           test -f nison_batch/artifacts/nison_44_batch_inventory.json
+          test -f nison_batch/artifacts/nison_44_source_map.json
           python - <<'PY'
           import json
-          p='nison_batch/artifacts/nison_44_batch_inventory.json'
-          d=json.load(open(p, encoding='utf-8'))
-          assert d['count_check'] is True
-          assert d['nison_rule_count'] == 44
-          assert all(r['decision'] == 'NOT_EVALUABLE' for r in d['rules'])
-          assert all(r['governance']['confirmation_only'] for r in d['rules'])
-          print('Governance gate PASS: 44 rules inventoried; no invented evaluators/thresholds.')
+          inv=json.load(open('nison_batch/artifacts/nison_44_batch_inventory.json', encoding='utf-8'))
+          src=json.load(open('nison_batch/artifacts/nison_44_source_map.json', encoding='utf-8'))
+          assert inv['count_check'] is True and inv['nison_rule_count'] == 44
+          assert src['count_check'] is True and src['rule_count'] == 44
+          assert all(r['decision'] == 'NOT_EVALUABLE' for r in inv['rules'])
+          assert all(r['governance']['confirmation_only'] for r in inv['rules'])
+          assert all(r['freeze_status'] == 'NOT_FROZEN' for r in src['rules'])
+          print('Governance gate PASS: 44 rules inventoried and source-mapped; no invented evaluators/thresholds; no freeze.')
           PY
 
-      - name: Upload batch artifact
+      - name: Commit source mapping checkpoint on feature branch
+        if: github.event_name == 'push' && github.ref == 'refs/heads/feature/nison-hybrid-44-batch-v1'
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add nison_batch/artifacts/nison_44_batch_inventory.json nison_batch/artifacts/nison_44_source_map.json
+          if git diff --cached --quiet; then
+            echo 'No checkpoint changes.'
+          else
+            git commit -m 'Record Nison 44 source mapping checkpoint'
+            git push origin HEAD:feature/nison-hybrid-44-batch-v1
+          fi
+
+      - name: Upload batch artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: nison-44-batch-inventory
-          path: nison_batch/artifacts/nison_44_batch_inventory.json
+          name: nison-44-batch-source-mapping
+          path: |
+            nison_batch/artifacts/nison_44_batch_inventory.json
+            nison_batch/artifacts/nison_44_source_map.json
           retention-days: 30
