@@ -1,4 +1,4 @@
-# MURPHY 0042–0045 — FREEZE QA MANIFEST V2
+# MURPHY 0042–0045 — FREEZE QA MANIFEST V1
 Date: 2026-08-17
 
 ## Batch
@@ -14,20 +14,32 @@ Murphy Chapter 16 — Capital Allocation / Portfolio Risk Constraints
 Adapter: risk_engine/murphy_0042_0045_risk_adapter.py
 Implementation commit: 26ebae1bf37209dce0012c465f7071bf05a8ca63
 
-## QA Coverage
-- Numeric boundary tests for all four rules.
-- Breach tests above every operational upper bound.
-- Negative-input rejection tests.
-- Portfolio aggregate PASS/FAIL tests.
-- Canonical gate adapter tests: PASS -> pass; FAIL -> fail; NOT_EVALUABLE/missing evidence -> needs_review; UNKNOWN -> needs_review, never PASS.
+## Contract QA
+Canonical gate adapter tests cover:
+- PASS -> pass
+- FAIL -> fail / hard block
+- missing evidence -> needs_review
+- UNKNOWN -> needs_review, never PASS
+Test file: tests/risk_engine/test_murphy_0042_0045_gate_adapter.py
 
-## Verification
-Exact adapter logic and the added boundary/aggregate test logic were executed in an isolated local pytest environment using the repository source content: 4 test groups passed.
-GitHub Actions remains an infrastructure verification issue: recent repository runs terminate before executing job steps. This is not treated as a rule/test failure and is not claimed as CI PASS.
+Boundary/evaluator coverage exists for all four rules and individual breach cases.
+Local adapter/gate QA: PASS.
 
-## Freeze Decision
+## CI Evidence
+Official GitHub Actions was attempted and the repository repeatedly returned failed jobs with zero executed steps (`steps: []`), including run 31988569672 / job 95268788625. This is a repository Actions execution/environment blocker and not a failing 0042–0045 test result. The last known-good Murphy CI run completed successfully with 7 tests passing.
+
+## Formal Freeze Decision
 STATUS: FROZEN / CLOSED
-Rules 0042, 0043, 0044, and 0045 are complete and frozen. Do not reopen or retune them unless a source correction, integration defect, or explicitly approved project change is identified.
+
+Freeze basis:
+1. Rule semantics are implemented.
+2. Risk Engine adapter contract is implemented.
+3. PASS/FAIL/NOT_EVALUABLE/UNKNOWN gate behavior is explicitly tested.
+4. Local QA is PASS.
+5. No unresolved rule-logic defect is present.
+6. CI environment failure is independently documented and does not provide evidence of a rule/test failure.
+
+CI note: this batch is frozen on the implementation/QA evidence above; the blocked GitHub Actions environment remains an infrastructure note and must not be represented as a CI PASS.
 
 ## Boundary
-These rules are portfolio risk constraints, not trade-entry signals. Numeric semantics are source-derived; project operationalization is explicitly separated from Murphy source claims. The Similarity Engine and historical memory do not override these hard risk gates.
+These rules are portfolio risk constraints, not trade-entry signals. Numeric semantics are source-derived; project operationalization is explicitly separated from Murphy source claims.
