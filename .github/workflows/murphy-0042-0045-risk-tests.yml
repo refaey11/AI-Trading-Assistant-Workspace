@@ -15,7 +15,7 @@ name: Murphy 0042-0045 Risk Tests
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: [self-hosted, codespace, 0042-0045]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
