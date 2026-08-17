@@ -1,0 +1,32 @@
+{
+  "version": "NISON_SHARED_CANDLE_OPERATOR_LAYER_V1",
+  "source_of_truth": "MASTER_TRADING_RULES_V2.json Formation_Rules",
+  "scope": "Nison candle formation rules only; no direction generation",
+  "operators": {
+    "candle_color": ["bullish", "bearish"],
+    "body_relation": ["equal", "larger_than", "smaller_than", "similarity_unspecified"],
+    "open_relation": ["equal", "above", "below", "relation_unspecified"],
+    "close_relation": ["above_open", "below_open", "above_prior_close", "below_prior_close"],
+    "high_low_relation": ["higher_high", "lower_low", "inside", "outside"],
+    "sequence": ["two_candle", "three_candle", "multi_candle"],
+    "window": ["rising_window", "falling_window", "gap_present", "gap_direction_unspecified"],
+    "swing_structure": ["three_peaks", "three_troughs", "middle_peak_highest", "middle_trough_lowest"],
+    "context": ["trend_required", "support_required", "resistance_required", "context_unspecified"]
+  },
+  "semantic_policy": {
+    "qualitative_terms": ["long", "small", "strong", "near", "similar", "approximately", "sharp", "gradually", "ideally"],
+    "handling": "preserve as unresolved unless a canonical operational definition is explicitly source-locked",
+    "no_invented_thresholds": true
+  },
+  "rule_output": {
+    "formation_state": ["MATCH", "NO_MATCH", "NOT_EVALUABLE"],
+    "confirmation_state": ["SUPPORTED", "CONTRADICTED", "NOT_EVALUABLE"],
+    "direction": "NEUTRAL"
+  },
+  "governance": {
+    "nison_role": "confirmation_only",
+    "oos_year": 2025,
+    "tuning_on_oos": false,
+    "freeze_requires": ["source_reference", "operator_contract", "tests", "historical_qa", "no_lookahead"]
+  }
+}
