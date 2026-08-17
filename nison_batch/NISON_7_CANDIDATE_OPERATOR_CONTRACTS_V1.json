@@ -1,0 +1,19 @@
+{
+  "version": "1.0",
+  "role": "candidate_operator_contracts",
+  "governance": {
+    "nison_role": "confirmation_only",
+    "creates_direction": false,
+    "invent_thresholds": false,
+    "2025_oos_lock": true
+  },
+  "rules": [
+    {"rule_id":"CANDLE_RULE_0012","name":"Abandoned Baby","status":"CANDIDATE","operators":["trend_context","three_candle_sequence","doji_middle","gap_below_or_above_middle","middle_candle_isolated"],"unknowns":["canonical_definition_of_long_candle"]},
+    {"rule_id":"CANDLE_RULE_0021","name":"Three Mountains","status":"CANDIDATE","operators":["trend_context","three_peaks","resistance_test","bearish_confirmation_evidence"],"unknowns":["canonical peak clustering / resistance identity if not supplied by Market Reader"]},
+    {"rule_id":"CANDLE_RULE_0023","name":"Three Buddha Tops","status":"CANDIDATE","operators":["trend_context","three_peaks","middle_peak_highest","outer_peaks_lower"],"unknowns":[]},
+    {"rule_id":"CANDLE_RULE_0024","name":"Three Buddha Bottoms","status":"CANDIDATE","operators":["trend_context","three_troughs","middle_trough_lowest","outer_troughs_higher"],"unknowns":[]},
+    {"rule_id":"CANDLE_RULE_0034","name":"Separating Lines","status":"CANDIDATE","operators":["uptrend_context","previous_candle_bearish","next_candle_bullish","equal_open_exact","next_close_above_open"],"unknowns":[]},
+    {"rule_id":"CANDLE_RULE_0035","name":"Tasuki Gap","status":"CANDIDATE","operators":["trend_context","window_gap","retracement_candle_color_opposite","open_inside_prior_candle","close_inside_window","window_not_closed","trend_resumption"],"unknowns":["existing evaluator still contains unresolved canonical body-size handling from prior QA"]},
+    {"rule_id":"CANDLE_RULE_0038","name":"Windows","status":"CANDIDATE","operators":["trend_context","gap_up_or_down","window_open","window_as_support_or_resistance","trend_continuation"],"unknowns":[]}
+  ]
+}
