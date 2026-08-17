@@ -1,6 +1,7 @@
 name: Murphy 0042-0045 Risk Tests
 
 on:
+  workflow_dispatch:
   push:
     paths:
       - 'risk_engine/**'
