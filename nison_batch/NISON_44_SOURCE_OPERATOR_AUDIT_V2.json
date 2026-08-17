@@ -1,0 +1,10 @@
+{
+  "version": "V2",
+  "purpose": "Source-backed audit of all 44 Nison rules before evaluator implementation.",
+  "governance": ["Workspace/source files are authoritative", "Nison confirmation-only", "2025 OOS", "No invented thresholds/operators/timeframes"],
+  "summary": {"total":44,"deterministic_candidates":6,"partial_structural_with_qualitative_gates":32,"context_rules_without_pattern_formation":6},
+  "deterministic_candidates": ["CANDLE_RULE_0021","CANDLE_RULE_0023","CANDLE_RULE_0024","CANDLE_RULE_0034","CANDLE_RULE_0035","CANDLE_RULE_0038"],
+  "context_rules": ["CANDLE_RULE_0039","CANDLE_RULE_0040","CANDLE_RULE_0041","CANDLE_RULE_0042","CANDLE_RULE_0043","CANDLE_RULE_0044"],
+  "partial_structural_policy": "Implement observable structural predicates where source supports them; keep qualitative gates as NOT_EVALUABLE until an approved comparator/contract exists.",
+  "note": "The audit is generated from the supplied 3-book integration source pack and Master KB mapping, not from backtest optimization."
+}
