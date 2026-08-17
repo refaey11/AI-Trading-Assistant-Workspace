@@ -11,16 +11,26 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "nison_batch" / "artifacts"
-REGISTRY_CANDIDATES = [
-    ROOT / "nison_ci_source/03_Rule_Registry/INTEGRATED_RULE_REGISTRY_V1.json",
-    ROOT / "03_Rule_Registry/INTEGRATED_RULE_REGISTRY_V1.json",
-]
+REGISTRY_NAME = "INTEGRATED_RULE_REGISTRY_V1.json"
+
 
 def load_registry():
-    for p in REGISTRY_CANDIDATES:
-        if p.exists():
-            return json.loads(p.read_text(encoding="utf-8")), p
-    raise FileNotFoundError("Nison registry is not extracted; source verification must run first")
+    candidates = [
+        ROOT / "nison_ci_source" / "03_Rule_Registry" / REGISTRY_NAME,
+        ROOT / "03_Rule_Registry" / REGISTRY_NAME,
+    ]
+    candidates.extend(sorted((ROOT / "nison_ci_source").rglob(REGISTRY_NAME)) if (ROOT / "nison_ci_source").exists() else [])
+    candidates.extend(sorted(ROOT.rglob(REGISTRY_NAME)))
+
+    seen = set()
+    for p in candidates:
+        p = p.resolve()
+        if p in seen or not p.is_file():
+            continue
+        seen.add(p)
+        return json.loads(p.read_text(encoding="utf-8")), p
+    raise FileNotFoundError("Nison registry was not found after source archive extraction")
+
 
 def main():
     registry, source = load_registry()
@@ -69,6 +79,7 @@ def main():
     print(json.dumps({"nison_rule_count": len(rows), "count_check": len(rows) == 44, "output": str(OUT / 'nison_44_batch_inventory.json')}, indent=2))
     if len(rows) != 44:
         raise SystemExit("FAIL: expected exactly 44 Nison confirmation rules")
+
 
 if __name__ == "__main__":
     main()
