@@ -1,0 +1,31 @@
+{
+  "contract_id": "NISON_SHARED_OPERATORS_V1",
+  "purpose": "Reusable deterministic operator layer for the 44 Steve Nison confirmation rules",
+  "allowed_status": ["PASS", "FAIL", "NOT_EVALUABLE"],
+  "operators": {
+    "trend_context": "Read existing trend evidence only; never infer direction from Nison alone.",
+    "candle_count": "Validate required number of candles in the pattern window.",
+    "candle_color": "Validate bullish/bearish/white/black candle color from OHLC.",
+    "open_relation": "Compare opens only where the source explicitly requires the relationship.",
+    "close_relation": "Compare closes only where the source explicitly requires the relationship.",
+    "body_geometry": "Evaluate real-body relationships; qualitative source wording must remain NOT_EVALUABLE until source-locked.",
+    "high_low_relation": "Evaluate high/low ordering and breakout relationships.",
+    "window_gap": "Detect and track Window/Gap state without lookahead.",
+    "support_resistance": "Consume existing S/R evidence; do not create independent direction.",
+    "swing_structure": "Evaluate source-defined peak/bottom structures from completed data only.",
+    "candle_sequence": "Evaluate ordered multi-candle formations.",
+    "confirmation_state": "Emit confirmation evidence only; never LONG/SHORT or confidence uplift by itself."
+  },
+  "forbidden": [
+    "invented numeric thresholds",
+    "future candles",
+    "2025 OOS tuning",
+    "Nison-generated direction",
+    "Nison-only trade decisions"
+  ],
+  "boundary": {
+    "module": "nison_confirmation",
+    "decision_hint": "neutral",
+    "confidence_delta": 0.0
+  }
+}
