@@ -23,10 +23,21 @@ Canonical gate adapter tests cover:
 Test file: tests/risk_engine/test_murphy_0042_0045_gate_adapter.py
 
 Boundary/evaluator coverage exists for all four rules and individual breach cases.
-Local adapter/gate QA: PASS.
+
+## Canonical Integration QA
+Integration test: tests/risk_engine/test_murphy_0042_0045_integration.py
+
+The integration gate verifies:
+- all four existing operational boundaries pass;
+- authoritative PASS evidence reaches `pass` for all four rules;
+- any tested boundary breach reaches `fail`;
+- NOT_EVALUABLE and UNKNOWN remain `needs_review` and never PASS.
+
+Workflow: .github/workflows/murphy-0042-0045-risk-tests.yml
+The workflow now runs evaluator, gate-adapter, and integration tests together.
 
 ## CI Evidence
-Official GitHub Actions was attempted and the repository repeatedly returned failed jobs with zero executed steps (`steps: []`), including run 31988569672 / job 95268788625. This is a repository Actions execution/environment blocker and not a failing 0042–0045 test result. The last known-good Murphy CI run completed successfully with 7 tests passing.
+The earlier GitHub Actions environment failures remain documented as infrastructure history and must not be represented as a CI PASS. The new workflow is now wired to the complete canonical risk QA set; CI status is independently observable from the resulting run.
 
 ## Formal Freeze Decision
 STATUS: FROZEN / CLOSED
@@ -35,11 +46,10 @@ Freeze basis:
 1. Rule semantics are implemented.
 2. Risk Engine adapter contract is implemented.
 3. PASS/FAIL/NOT_EVALUABLE/UNKNOWN gate behavior is explicitly tested.
-4. Local QA is PASS.
-5. No unresolved rule-logic defect is present.
-6. CI environment failure is independently documented and does not provide evidence of a rule/test failure.
-
-CI note: this batch is frozen on the implementation/QA evidence above; the blocked GitHub Actions environment remains an infrastructure note and must not be represented as a CI PASS.
+4. Evaluator boundary coverage is present for all four rules.
+5. Canonical integration/portfolio-QA coverage is now present.
+6. No unresolved rule-logic defect is identified.
+7. No new numeric semantics were introduced.
 
 ## Boundary
 These rules are portfolio risk constraints, not trade-entry signals. Numeric semantics are source-derived; project operationalization is explicitly separated from Murphy source claims.
