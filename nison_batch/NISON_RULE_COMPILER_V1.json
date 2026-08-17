@@ -1,0 +1,35 @@
+{
+  "version": "NISON_RULE_COMPILER_V1",
+  "input": "NISON_SHARED_CANDLE_OPERATOR_LAYER_V1",
+  "output": "44-rule normalized contract matrix",
+  "compile_policy": {
+    "source_required": true,
+    "unknown_semantics": "NOT_EVALUABLE",
+    "no_threshold_invention": true,
+    "direction": "NEUTRAL"
+  },
+  "contract_schema": {
+    "rule_id": "string",
+    "source_reference": "string",
+    "formation": "operator_expression",
+    "confirmation": "operator_expression_or_unresolved",
+    "invalidation": "operator_expression_or_unresolved",
+    "required_context": "operator_expression_or_none",
+    "output_state": ["MATCH", "NO_MATCH", "NOT_EVALUABLE"]
+  },
+  "compile_order": [
+    "formation",
+    "context",
+    "confirmation",
+    "invalidation",
+    "availability",
+    "no_lookahead"
+  ],
+  "freeze_gate": [
+    "source_locked",
+    "operator_complete",
+    "tests_pass",
+    "historical_qa_pass",
+    "no_lookahead_pass"
+  ]
+}
