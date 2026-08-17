@@ -1,11 +1,11 @@
 name: Murphy Evidence Adapter Tests
 
-'on':
-  workflow_dispatch:
+on:
   push:
     paths:
       - 'src/murphy_0006_0007/**'
       - 'tests/test_murphy_0006_0007_evidence_adapter.py'
+      - 'tests/test_murphy_0006_0007_decision_brain_adapter.py'
       - 'risk_engine/**'
       - 'tests/risk_engine/test_murphy_0042_0045_gate_adapter.py'
       - '.github/workflows/murphy-evidence-adapter-tests.yml'
@@ -13,6 +13,7 @@ name: Murphy Evidence Adapter Tests
     paths:
       - 'src/murphy_0006_0007/**'
       - 'tests/test_murphy_0006_0007_evidence_adapter.py'
+      - 'tests/test_murphy_0006_0007_decision_brain_adapter.py'
       - 'risk_engine/**'
       - 'tests/risk_engine/test_murphy_0042_0045_gate_adapter.py'
       - '.github/workflows/murphy-evidence-adapter-tests.yml'
@@ -21,15 +22,11 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-      - name: Setup Python
-        uses: actions/setup-python@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
         with:
           python-version: '3.11'
       - name: Install pytest
         run: python -m pip install --upgrade pip pytest
-      - name: Run Murphy 0006/0007 evidence adapter tests
-        run: python -m pytest -q tests/test_murphy_0006_0007_evidence_adapter.py
-      - name: Run Murphy 0042-0045 gate tests
-        run: python -m pytest -q tests/risk_engine/test_murphy_0042_0045_gate_adapter.py
+      - name: Run Murphy adapter tests
+        run: python -m pytest -q tests/test_murphy_0006_0007_evidence_adapter.py tests/test_murphy_0006_0007_decision_brain_adapter.py tests/risk_engine/test_murphy_0042_0045_gate_adapter.py
