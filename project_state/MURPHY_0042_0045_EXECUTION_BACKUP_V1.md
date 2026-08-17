@@ -1,9 +1,9 @@
-# Murphy 0042-0045 Execution Backup V1
+# Murphy 0042-0045 Execution Backup V2
 
 Date: 2026-08-17
 
 ## Scope
-Batch implementation for Murphy Chapter 16 Capital Allocation rules 0042-0045.
+Final execution backup for Murphy Chapter 16 Capital Allocation / Portfolio Risk rules 0042-0045.
 
 ## Source-derived constraints
 - 0042 Capital reserve: total investment <= 50% of available capital.
@@ -14,28 +14,41 @@ Batch implementation for Murphy Chapter 16 Capital Allocation rules 0042-0045.
 ## Architecture
 These are portfolio-level NO_TRADE / risk constraints, not entry signals. They are isolated in `risk_engine/murphy_0042_0045_risk_adapter.py` and do not alter Murphy direction, confirmation, or entry logic.
 
+## Implementation
+- Risk adapter: `risk_engine/murphy_0042_0045_risk_adapter.py`
+- Evaluator tests: `tests/risk_engine/test_murphy_0042_0045.py`
+- Gate-adapter tests: `tests/risk_engine/test_murphy_0042_0045_gate_adapter.py`
+- Canonical integration tests: `tests/risk_engine/test_murphy_0042_0045_integration.py`
+- CI workflow: `.github/workflows/murphy-0042-0045-risk-tests.yml`
+
 ## Problems and solutions
-1. The rules were represented as incomplete in the generic trading-rules schema. Solution: implement them as a dedicated portfolio-risk adapter rather than forcing them into indicator/backtest semantics.
-2. Murphy gives ranges for 0043 and 0045 rather than a single project execution number. Solution: preserve the source range and use only the upper boundary as the conservative operational maximum; do not claim that 15% or 25% is a universal Murphy law beyond the source wording.
+1. The rules were incomplete in the generic trading-rules schema. Solution: dedicated portfolio-risk adapter.
+2. Murphy gives ranges for 0043 and 0045 rather than one project execution number. Solution: preserve source ranges and use only the upper boundary as the conservative operational maximum.
 3. These rules do not generate BUY/SELL signals. Solution: evaluator returns constraint pass/fail only.
 
-## Tests
-Existing local pytest evidence: 5/5 PASS for boundary/evaluator coverage.
-Existing gate tests cover PASS, FAIL, NOT_EVALUABLE, and UNKNOWN behavior.
+## QA evidence
+- Existing local evaluator QA: 5/5 PASS.
+- Gate adapter tests cover PASS, FAIL, NOT_EVALUABLE, and UNKNOWN behavior.
+- Canonical integration QA covers all four rules, boundary behavior, hard-fail behavior, and missing/unknown evidence.
+- CI workflow is configured to execute evaluator, gate-adapter, and integration tests together.
+- GitHub Actions execution evidence must not be called CI PASS unless an actual successful run is present.
 
-New canonical integration QA:
-- `tests/risk_engine/test_murphy_0042_0045_integration.py`
-- all four boundaries pass through the evaluator;
-- authoritative PASS maps to `pass` for all four rules;
-- a boundary breach maps to `fail`;
-- missing/unknown evidence maps to `needs_review`.
+## Freeze
+STATUS: PRODUCTION FROZEN / CLOSED.
 
-The CI workflow now executes evaluator, gate-adapter, and integration tests together.
+Freeze boundary:
+- Rule semantics implemented.
+- Risk adapter contract implemented.
+- Evaluator and gate behavior tested.
+- Canonical integration QA added.
+- Registry synchronization completed.
+- No unresolved rule-logic defect identified.
+- No new numeric semantics or tuning introduced.
 
-## Freeze boundary
-The previously identified integration/portfolio-QA gate is closed at the repository's canonical risk-adapter boundary. No new risk implementation or numeric semantics were introduced.
+## Governance
+- These rules remain portfolio-risk constraints, not trade-entry signals.
+- 2025 is OOS and was not used for tuning, selection, calibration, optimization, or status decisions.
+- Existing components were integrated rather than rebuilt.
 
-STATUS: PRODUCTION FROZEN / CLOSED pending registry synchronization in the same workflow.
-
-## 2025
-No tuning or selection uses 2025.
+## Recovery instruction
+If this batch needs to be restored, use the files listed in the Implementation section together with the canonical Murphy 51 status registry. Do not reopen 0042-0045 as routine cleanup.
