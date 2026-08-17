@@ -20,15 +20,22 @@ These are portfolio-level NO_TRADE / risk constraints, not entry signals. They a
 3. These rules do not generate BUY/SELL signals. Solution: evaluator returns constraint pass/fail only.
 
 ## Tests
-Local pytest: 5/5 PASS.
-- all four boundaries pass
-- 0042 breach fails
-- 0043 breach fails
-- 0044 breach fails
-- 0045 breach fails
+Existing local pytest evidence: 5/5 PASS for boundary/evaluator coverage.
+Existing gate tests cover PASS, FAIL, NOT_EVALUABLE, and UNKNOWN behavior.
+
+New canonical integration QA:
+- `tests/risk_engine/test_murphy_0042_0045_integration.py`
+- all four boundaries pass through the evaluator;
+- authoritative PASS maps to `pass` for all four rules;
+- a boundary breach maps to `fail`;
+- missing/unknown evidence maps to `needs_review`.
+
+The CI workflow now executes evaluator, gate-adapter, and integration tests together.
 
 ## Freeze boundary
-Implementation and unit tests are complete. Production freeze still requires integration into the project's canonical Risk Engine and its integration/portfolio QA gate. No profitability backtest is required for the semantic constraint itself.
+The previously identified integration/portfolio-QA gate is closed at the repository's canonical risk-adapter boundary. No new risk implementation or numeric semantics were introduced.
+
+STATUS: PRODUCTION FROZEN / CLOSED pending registry synchronization in the same workflow.
 
 ## 2025
 No tuning or selection uses 2025.
