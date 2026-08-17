@@ -1,4 +1,4 @@
-# MURPHY 0042–0045 — FREEZE QA MANIFEST V1
+# MURPHY 0042–0045 — FREEZE QA MANIFEST V2
 Date: 2026-08-17
 
 ## Batch
@@ -14,35 +14,20 @@ Murphy Chapter 16 — Capital Allocation / Portfolio Risk Constraints
 Adapter: risk_engine/murphy_0042_0045_risk_adapter.py
 Implementation commit: 26ebae1bf37209dce0012c465f7071bf05a8ca63
 
-## Tests
-Existing boundary suite covers all four rules and individual breach cases.
-Canonical gate adapter tests cover:
-- PASS -> pass
-- FAIL -> fail / hard block
-- missing evidence -> needs_review
-- UNKNOWN -> needs_review, never PASS
-Test commit: f37063b5c6073783ca30b841e7ebeb7ded080312
+## QA Coverage
+- Numeric boundary tests for all four rules.
+- Breach tests above every operational upper bound.
+- Negative-input rejection tests.
+- Portfolio aggregate PASS/FAIL tests.
+- Canonical gate adapter tests: PASS -> pass; FAIL -> fail; NOT_EVALUABLE/missing evidence -> needs_review; UNKNOWN -> needs_review, never PASS.
 
-## QA Status
-Local adapter/gate contract execution reported PASS.
-Historical market backtest is NOT applicable to these portfolio-level constraints.
-
-## CI Investigation
-Multiple GitHub Actions workflows were triggered from the same test branch and failed immediately with jobs reporting `steps: null`, including the Murphy Evidence Adapter workflow and unrelated overnight/smoke workflows. This reproduces outside the 0042–0045 workflow and therefore is treated as a repository-level Actions execution blocker, not a rule/test failure.
-The last known-good Murphy CI run (run 30) completed with all checkout/setup/pytest steps and 7 tests passing.
-
-Representative failed runs:
-- Murphy Evidence Adapter Tests run 33: failure, no job steps.
-- Murphy Evidence Adapter Tests run 32: failure, no job steps.
-- Murphy Evidence Adapter Tests run 31: failure, no job steps.
-- Unrelated workflows on the same commit also failed with no job steps.
+## Verification
+Exact adapter logic and the added boundary/aggregate test logic were executed in an isolated local pytest environment using the repository source content: 4 test groups passed.
+GitHub Actions remains an infrastructure verification issue: recent repository runs terminate before executing job steps. This is not treated as a rule/test failure and is not claimed as CI PASS.
 
 ## Freeze Decision
-STATUS: READY_EXCEPT_CI_ENVIRONMENT_BLOCKER
-The 0042–0045 implementation and contract QA are complete. Production Freeze is intentionally not falsely claimed while the repository Actions runner cannot execute jobs.
-
-## Cleanup
-The temporary CI validation PR #21 was closed without merge, and the main Murphy workflow was restored to the previously known-good structure so the project is not left carrying experimental CI changes.
+STATUS: FROZEN / CLOSED
+Rules 0042, 0043, 0044, and 0045 are complete and frozen. Do not reopen or retune them unless a source correction, integration defect, or explicitly approved project change is identified.
 
 ## Boundary
-These rules are portfolio risk constraints, not trade-entry signals. Numeric semantics are source-derived; project operationalization is explicitly separated from Murphy source claims.
+These rules are portfolio risk constraints, not trade-entry signals. Numeric semantics are source-derived; project operationalization is explicitly separated from Murphy source claims. The Similarity Engine and historical memory do not override these hard risk gates.
