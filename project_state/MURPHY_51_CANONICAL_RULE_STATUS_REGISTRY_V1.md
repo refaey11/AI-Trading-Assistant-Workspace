@@ -1,5 +1,4 @@
 # MURPHY 51 — CANONICAL RULE STATUS REGISTRY V1
-
 Date: 2026-08-17
 Authority: **Canonical project-status registry**
 
@@ -24,13 +23,14 @@ Do NOT answer those questions from model memory, old chat handoffs, old snapshot
 
 ## Current headline state
 - Total Murphy rules: **51**
-- Production Frozen: **15**
-- Remaining / not yet Production Frozen: **36**
+- Production Frozen: **19**
+- Remaining / not yet Production Frozen: **32**
 - Current next rule: **0033**
 - 0030–0032 current state: **PRODUCTION FROZEN**
+- 0042–0045 current state: **PRODUCTION FROZEN**
 - Frozen rules are CLOSED and must not be reworked as routine cleanup.
 
-## Production Frozen — 15/51
+## Production Frozen — 19/51
 | Rule | Status | Action |
 |---|---|---|
 | 0003 | PRODUCTION FROZEN | CLOSED |
@@ -48,11 +48,15 @@ Do NOT answer those questions from model memory, old chat handoffs, old snapshot
 | 0030 | PRODUCTION FROZEN | CLOSED |
 | 0031 | PRODUCTION FROZEN | CLOSED |
 | 0032 | PRODUCTION FROZEN | CLOSED |
+| 0042 | PRODUCTION FROZEN | CLOSED |
+| 0043 | PRODUCTION FROZEN | CLOSED |
+| 0044 | PRODUCTION FROZEN | CLOSED |
+| 0045 | PRODUCTION FROZEN | CLOSED |
 
-## Remaining — 36/51
+## Remaining — 32/51
 The remaining set is exactly:
 
-**0001, 0002, 0005, 0009, 0010, 0011, 0012, 0013, 0014, 0015, 0016, 0017, 0018, 0019, 0020, 0024, 0027, 0033, 0034, 0035, 0036, 0037, 0038, 0039, 0040, 0041, 0042, 0043, 0044, 0045, 0046, 0047, 0048, 0049, 0050, 0051**
+**0001, 0002, 0005, 0009, 0010, 0011, 0012, 0013, 0014, 0015, 0016, 0017, 0018, 0019, 0020, 0024, 0027, 0033, 0034, 0035, 0036, 0037, 0038, 0039, 0040, 0041, 0046, 0047, 0048, 0049, 0050, 0051**
 
 ### Next queue position
 **0033 is the next rule to audit and close.**
@@ -68,6 +72,17 @@ Frozen scope:
 The GBPUSD box-size and bootstrap definitions are explicitly labeled **PROJECT_OPERATIONALIZATION** and are not claimed as Murphy/Tower source numeric truth.
 
 Technical evidence includes the existing shared 3-box P&F implementation, deterministic 7/7 local QA, 2,544 canonical D1 rows for 2016–2024, and calibration-only 2019–2024 deterministic/prefix-replay evidence. No 2025 data was used.
+
+## Frozen feature record: 0042–0045
+The portfolio-risk path is frozen by `project_state/MURPHY_0042_0045_FREEZE_QA_MANIFEST_V1.md` and the canonical integration QA record `project_state/MURPHY_0042_0045_CANONICAL_INTEGRATION_QA_V1.md`.
+
+Frozen scope:
+- 0042: total investment <= 50%.
+- 0043: single-market exposure; source range 10–15%, operational upper bound 15%.
+- 0044: risk per market <= 5%.
+- 0045: total margin; source range 20–25%, operational upper bound 25%.
+
+These are portfolio-level risk/NO_TRADE constraints, not trade-entry signals. Source ranges remain explicitly separated from project operationalization.
 
 ## Status semantics for the remaining set
 For a remaining rule, use the project's latest authoritative evidence to assign one of these states when supported:
@@ -91,10 +106,11 @@ Do not convert NOT_EVALUABLE/PARTIAL/BLOCKED into a guessed completion state.
 - Murphy supplies technical context/market structure; Nison supplies confirmation.
 
 ## Anti-confusion rule
-If asked only “what is left?”, answer from the **Remaining — 36/51** list above.
+If asked only “what is left?”, answer from the **Remaining — 32/51** list above.
 If asked “what is next?”, answer **0033**.
 If asked “what happened to 0030–0032?”, answer **PRODUCTION FROZEN** and use the freeze record.
-If asked “how many are frozen?”, answer **15/51**.
+If asked “what happened to 0042–0045?”, answer **PRODUCTION FROZEN** and use the freeze/integration QA records.
+If asked “how many are frozen?”, answer **19/51**.
 If asked for a specific rule, use this registry for its headline state and then open the rule-specific evidence.
 
 ## Continuity reference
