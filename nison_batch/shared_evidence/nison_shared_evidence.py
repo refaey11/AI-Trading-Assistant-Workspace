@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 from typing import Sequence
 
+
 @dataclass(frozen=True)
 class EvidenceEvent:
     kind: str
@@ -9,27 +10,36 @@ class EvidenceEvent:
     source: str = ""
     independent: bool = True
     available: bool = True
+    zone_id: str = ""
 
 
 def _ordered(events: Sequence[EvidenceEvent]) -> bool:
+    """Validate causal order exactly as received; never sort before validation."""
     return all(a.timestamp < b.timestamp for a, b in zip(events, events[1:]))
 
 
 def cluster_evidence(events: Sequence[EvidenceEvent]) -> dict:
-    """Nison 0040: evidence-only. Caller supplies canonical zone membership."""
+    """Nison 0040: evidence-only; caller supplies canonical zone membership."""
     if not events or not all(e.available for e in events):
         return {"available": False, "direction": "neutral", "statement": "insufficient cluster evidence"}
-    ordered = sorted(events, key=lambda e: e.timestamp)
-    if not _ordered(ordered):
-        return {"available": False, "direction": "neutral", "statement": "invalid chronology"}
+    if not _ordered(events):
+        return {"available": False, "direction": "neutral", "statement": "invalid received chronology"}
+    if not all(e.zone_id for e in events) or len({e.zone_id for e in events}) != 1:
+        return {"available": False, "direction": "neutral", "statement": "canonical zone membership is missing or inconsistent"}
+    if not all(e.independent for e in events):
+        return {"available": False, "direction": "neutral", "statement": "independent-signal evidence is missing"}
     return {"available": True, "direction": "neutral", "statement": "candlestick cluster evidence present"}
 
 
 def confluence_evidence(events: Sequence[EvidenceEvent]) -> dict:
-    """Nison 0039: no invented score/count; requires independently supplied evidence."""
-    usable = [e for e in events if e.available and e.independent]
-    if not usable:
+    """Nison 0039: no invented score/count; preserve independent evidence only."""
+    if not events or not all(e.available for e in events):
         return {"available": False, "direction": "neutral", "statement": "insufficient confluence evidence"}
+    if not _ordered(events):
+        return {"available": False, "direction": "neutral", "statement": "invalid received chronology"}
+    usable = [e for e in events if e.independent]
+    if not usable:
+        return {"available": False, "direction": "neutral", "statement": "independent confluence evidence is missing"}
     return {"available": True, "direction": "neutral", "statement": "multiple independent technical evidence items present"}
 
 
