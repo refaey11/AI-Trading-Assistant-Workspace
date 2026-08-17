@@ -9,16 +9,25 @@ import json, re
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
-SRC = ROOT / "nison_ci_source"
+SRC_ROOT = ROOT / "nison_ci_source"
 OUT = ROOT / "nison_batch" / "artifacts"
-REGISTRY = SRC / "03_Rule_Registry" / "INTEGRATED_RULE_REGISTRY_V1.json"
 
 TEXT_EXTS = {".md", ".json", ".txt", ".csv", ".py", ".yaml", ".yml", ".xml", ".html"}
 
-def text_files():
-    for p in SRC.rglob("*"):
+
+def locate_registry() -> tuple[Path, Path]:
+    candidates = sorted(SRC_ROOT.rglob("INTEGRATED_RULE_REGISTRY_V1.json"))
+    if not candidates:
+        raise SystemExit("Missing extracted Nison registry: INTEGRATED_RULE_REGISTRY_V1.json")
+    registry = candidates[0]
+    return registry, registry.parent.parent
+
+
+def text_files(src: Path):
+    for p in src.rglob("*"):
         if p.is_file() and p.suffix.lower() in TEXT_EXTS:
             yield p
+
 
 def nison_confirmation_rules(data):
     rules = data if isinstance(data, list) else data.get("rules", [])
@@ -30,15 +39,15 @@ def nison_confirmation_rules(data):
             selected.append(r)
     return selected
 
+
 def main():
-    if not REGISTRY.exists():
-        raise SystemExit("Missing extracted Nison registry")
-    data = json.loads(REGISTRY.read_text(encoding="utf-8"))
+    registry, src = locate_registry()
+    data = json.loads(registry.read_text(encoding="utf-8"))
     rules = nison_confirmation_rules(data)
     if len(rules) != 44:
         raise SystemExit(f"FAIL: expected exactly 44 Nison confirmation rules, found {len(rules)}")
 
-    files = list(text_files())
+    files = list(text_files(src))
     cache = {}
     for p in files:
         try:
@@ -54,7 +63,7 @@ def main():
         hits = []
         for p, txt in cache.items():
             if any(t and re.search(re.escape(t), txt, re.I) for t in terms):
-                hits.append(str(p.relative_to(SRC)))
+                hits.append(str(p.relative_to(src)))
         rows.append({
             "rule_id": rid,
             "name": name,
@@ -71,6 +80,7 @@ def main():
         "rule_count": len(rows),
         "expected_rule_count": 44,
         "count_check": len(rows) == 44,
+        "registry_path": str(registry.relative_to(SRC_ROOT)),
         "registry_total_rule_count": len(data) if isinstance(data, list) else len(data.get("rules", [])),
         "source_file_count": len(files),
         "rules": rows,
@@ -90,11 +100,13 @@ def main():
     print(json.dumps({
         "rule_count": len(rows),
         "count_check": len(rows) == 44,
+        "registry_path": report["registry_path"],
         "registry_total_rule_count": report["registry_total_rule_count"],
         "source_file_count": len(files),
         "source_referenced": sum(x["source_reference_count"] > 0 for x in rows),
         "no_source_reference": sum(x["source_reference_count"] == 0 for x in rows),
     }, indent=2))
+
 
 if __name__ == "__main__":
     main()
