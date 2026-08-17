@@ -10,13 +10,14 @@ Parent checkpoint: `63c43dd0760e9592bf7bcd531c7c08a6650b6cb1`
 
 ## Repair
 - Updated `nison_batch/run_nison_44_inventory.py` to discover `INTEGRATED_RULE_REGISTRY_V1.json` under the extracted source tree instead of assuming one archive-internal path.
+- Repair commit: `3d09e2e06b8d60f358a064f663275e2f4f5a300b`.
 - No Nison semantics, thresholds, tolerances, lookbacks, scoring, direction, evaluator behavior, or rule definitions were changed.
 - No new upstream primitive was created and no Murphy logic was substituted for Nison evidence.
 
-## Validation state
-- Repair commit: `3d09e2e06b8d60f358a064f663275e2f4f5a300b`
-- Nison 44 Rule Batch Run #9 is queued on the repaired commit; no PASS is claimed until the workflow completes.
-- Previous Run 8 failure remains recorded and is not overwritten.
+## Run 9 result
+- Nison 44 Rule Batch Run #9 was created from the repaired commit.
+- The `inventory` job did not start because GitHub Actions reported an account billing/spending-limit failure. This is an infrastructure/account blocker, not a Nison semantic or code result.
+- Therefore no inventory, source-map, compatibility, QA, availability/no-lookahead, or historical-QA PASS is claimed from Run 9.
 
 ## Current rule state carried forward
 - Inventory target: 44/44 Nison confirmation rules.
@@ -35,4 +36,5 @@ Parent checkpoint: `63c43dd0760e9592bf7bcd531c7c08a6650b6cb1`
 - Missing authoritative evidence remains fail-closed.
 
 ## Next action
-- Complete Run 9 from inventory through source mapping and governance. If those gates pass, continue independently into compatibility/evaluator/availability/no-lookahead/deterministic QA/historical QA for rules with evidenced compatible assets. Keep unsupported rules NOT_EVALUABLE rather than inventing semantics.
+- Resolve the GitHub Actions billing/spending-limit blocker, then rerun the repaired Nison batch from this checkpoint.
+- Once execution is available, continue independently through compatibility/evaluator/availability/no-lookahead/deterministic QA/historical QA for rules with evidenced compatible assets. Keep unsupported rules NOT_EVALUABLE rather than inventing semantics.
