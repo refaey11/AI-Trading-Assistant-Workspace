@@ -32,7 +32,9 @@ jobs:
           rm -rf nison_ci_source
           mkdir -p nison_ci_source
           unzip -q NISON_GITHUB_SOURCE_SYNC_V1.zip -d nison_ci_source
-          test -f nison_ci_source/03_Rule_Registry/INTEGRATED_RULE_REGISTRY_V1.json
+          registry="$(find nison_ci_source -type f -name 'INTEGRATED_RULE_REGISTRY_V1.json' -print -quit)"
+          test -n "$registry"
+          echo "Found Nison registry at: $registry"
 
       - name: Run source-bounded 44-rule inventory
         shell: bash
