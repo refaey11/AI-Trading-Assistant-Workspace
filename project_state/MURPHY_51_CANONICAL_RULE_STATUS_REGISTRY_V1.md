@@ -1,6 +1,6 @@
 # MURPHY 51 — CANONICAL RULE STATUS REGISTRY V1
 
-Date: 2026-08-15
+Date: 2026-08-17
 Authority: **Canonical project-status registry**
 
 ## Purpose
@@ -24,13 +24,13 @@ Do NOT answer those questions from model memory, old chat handoffs, old snapshot
 
 ## Current headline state
 - Total Murphy rules: **51**
-- Production Frozen: **12**
-- Remaining / not yet Production Frozen: **39**
-- Current next rule: **0030**
-- 0030 current work state: **IN PROGRESS — COMPATIBILITY AUDIT**
+- Production Frozen: **15**
+- Remaining / not yet Production Frozen: **36**
+- Current next rule: **0033**
+- 0030–0032 current state: **PRODUCTION FROZEN**
 - Frozen rules are CLOSED and must not be reworked as routine cleanup.
 
-## Production Frozen — 12/51
+## Production Frozen — 15/51
 | Rule | Status | Action |
 |---|---|---|
 | 0003 | PRODUCTION FROZEN | CLOSED |
@@ -45,28 +45,29 @@ Do NOT answer those questions from model memory, old chat handoffs, old snapshot
 | 0026 | PRODUCTION FROZEN | CLOSED |
 | 0028 | PRODUCTION FROZEN | CLOSED |
 | 0029 | PRODUCTION FROZEN | CLOSED |
+| 0030 | PRODUCTION FROZEN | CLOSED |
+| 0031 | PRODUCTION FROZEN | CLOSED |
+| 0032 | PRODUCTION FROZEN | CLOSED |
 
-## Remaining — 39/51
+## Remaining — 36/51
 The remaining set is exactly:
 
-**0001, 0002, 0005, 0009, 0010, 0011, 0012, 0013, 0014, 0015, 0016, 0017, 0018, 0019, 0020, 0024, 0027, 0030, 0031, 0032, 0033, 0034, 0035, 0036, 0037, 0038, 0039, 0040, 0041, 0042, 0043, 0044, 0045, 0046, 0047, 0048, 0049, 0050, 0051**
+**0001, 0002, 0005, 0009, 0010, 0011, 0012, 0013, 0014, 0015, 0016, 0017, 0018, 0019, 0020, 0024, 0027, 0033, 0034, 0035, 0036, 0037, 0038, 0039, 0040, 0041, 0042, 0043, 0044, 0045, 0046, 0047, 0048, 0049, 0050, 0051**
 
 ### Next queue position
-**0030 is the next rule to audit and close.**
+**0033 is the next rule to audit and close.**
 
-No work should jump to another remaining rule unless the project explicitly changes scope.
+## Frozen feature record: 0030–0032
+The shared P&F production path is frozen by `project_state/MURPHY_0030_0032_PRODUCTION_FREEZE_V1_2026-08-17.md`.
 
-## Current active rule: 0030
-- Rule identity: P&F bullish support.
-- Source: Murphy Chapter 11 / Point & Figure.
-- Source-derived structural semantics: 3-box-reversal P&F bullish support line; 45-degree upward support line from under the lowest O column; bullish while price remains above the line.
-- Master KB rule record has been recovered and is still UNTESTED.
-- A reusable external P&F implementation candidate has been discovered and is undergoing compatibility audit.
-- Do not choose box size by backtest optimization.
-- Do not invent a project box-size policy, proxy, or fixed timeframe.
-- Do not integrate the external engine until source/behavior/availability compatibility is proven.
-- Next exact gate: deterministic compatibility harness against canonical GBPUSD data.
-- Artifact: `project_state/MURPHY_0030_COMPATIBILITY_AUDIT_V2_FINDINGS_2026-08-15.md`.
+Frozen scope:
+- 0030: P&F bullish support reference.
+- 0031: P&F long stop reference below previous O column.
+- 0032: P&F short stop reference above previous X column.
+
+The GBPUSD box-size and bootstrap definitions are explicitly labeled **PROJECT_OPERATIONALIZATION** and are not claimed as Murphy/Tower source numeric truth.
+
+Technical evidence includes the existing shared 3-box P&F implementation, deterministic 7/7 local QA, 2,544 canonical D1 rows for 2016–2024, and calibration-only 2019–2024 deterministic/prefix-replay evidence. No 2025 data was used.
 
 ## Status semantics for the remaining set
 For a remaining rule, use the project's latest authoritative evidence to assign one of these states when supported:
@@ -90,15 +91,14 @@ Do not convert NOT_EVALUABLE/PARTIAL/BLOCKED into a guessed completion state.
 - Murphy supplies technical context/market structure; Nison supplies confirmation.
 
 ## Anti-confusion rule
-If asked only “what is left?”, answer from the **Remaining — 39/51** list above.
-If asked “what is next?”, answer **0030**.
-If asked “what is happening on 0030?”, answer **IN PROGRESS — COMPATIBILITY AUDIT** and use the rule-specific 0030 audit artifact.
-If asked “how many are frozen?”, answer **12/51**.
+If asked only “what is left?”, answer from the **Remaining — 36/51** list above.
+If asked “what is next?”, answer **0033**.
+If asked “what happened to 0030–0032?”, answer **PRODUCTION FROZEN** and use the freeze record.
+If asked “how many are frozen?”, answer **15/51**.
 If asked for a specific rule, use this registry for its headline state and then open the rule-specific evidence.
-Never use an older count such as 10/51 or 11/51 when this registry is available.
 
 ## Continuity reference
-The companion package `MURPHY_12_FROZEN_CONTINUITY_BACKUP_V1` records the problems, solutions, evidence, boundaries, and do-not-repeat instructions for the 12 frozen rules.
+The companion package `MURPHY_12_FROZEN_CONTINUITY_BACKUP_V1` records the problems, solutions, evidence, boundaries, and do-not-repeat instructions for the original 12 frozen rules.
 
 ## Update rule
-Whenever a rule changes status, update THIS registry in the same change set as the rule's canonical freeze/provenance record. A status change is not considered complete until this registry is updated.
+Whenever a rule changes status, update THIS registry in the same workflow as the rule's canonical freeze/provenance record.
