@@ -1,0 +1,8 @@
+rule_id,setup_name,status,required_evidence,source_workspace_basis,current_result_state
+PSY_0001,PREDEFINE_RISK,MAPPING_REQUIRED,"risk_plan_defined_before_entry; stop_loss_plan_defined; take_profit_plan_defined","Authoritative runtime field for defined-before-entry is not explicitly present; reuse Risk/Execution only when contract proves it.",NOT_EVALUABLE
+PSY_0002,ACCEPT_RISK,CANDIDATE_OPERATOR_VALIDATED,trading_zone.risk_accepted,"Existing runtime field; true -> PASS, false -> FAIL, missing -> NOT_EVALUABLE.",CANDIDATE_NOT_FROZEN
+PSY_0003,INDEPENDENT_OUTCOMES,PROCESS_ONLY,outcome_independence_record,"Do not derive from OHLC or prior trade direction; process memory only.",PROCESS_ONLY
+PSY_0004,NO_CERTAINTY,MAPPING_REQUIRED,certainty_state,"No source-approved numeric threshold; broad process_state/rule_adherence cannot prove this rule.",NOT_EVALUABLE
+PSY_0005,CUT_LOSS_RULE,MAPPING_REQUIRED,"predefined_invalidation_reached + exit_reason_matches_plan","SL mechanics remain Risk/Execution; TIZ evaluates adherence only when authoritative plan-vs-actual evidence exists.",NOT_EVALUABLE
+PSY_0006,SYSTEMATIC_PROFIT,MAPPING_REQUIRED,"profit_taking_event_reached + profit_method_defined + profit_action_matches_plan","TP mechanics remain Risk/Execution; no TIZ-specific adherence evidence is currently authoritative.",NOT_EVALUABLE
+PSY_0007,RULE_DISCIPLINE,CANDIDATE_OPERATOR_VALIDATED,"rule_adherence + impulse_override + loss_chasing + revenge_trade","PASS only when adherence=true and all violation flags=false; explicit violation -> FAIL; missing required evidence -> NOT_EVALUABLE.",CANDIDATE_NOT_FROZEN
