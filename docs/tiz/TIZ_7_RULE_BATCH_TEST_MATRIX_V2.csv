@@ -1,0 +1,14 @@
+case,rule_id,expected,evidence
+risk_true,PSY_0002,PASS,risk_accepted=true
+risk_false,PSY_0002,FAIL,risk_accepted=false
+risk_missing,PSY_0002,NOT_EVALUABLE,risk_accepted missing
+discipline_clean,PSY_0007,PASS,"rule_adherence=true; impulse_override=false; loss_chasing=false; revenge_trade=false"
+discipline_revenge,PSY_0007,FAIL,revenge_trade=true
+discipline_loss_chasing,PSY_0007,FAIL,loss_chasing=true
+discipline_impulse,PSY_0007,FAIL,impulse_override=true
+discipline_missing,PSY_0007,NOT_EVALUABLE,required evidence missing
+all_missing,PSY_0001,NOT_EVALUABLE,authoritative risk-definition evidence missing
+independent_outcomes,PSY_0003,PROCESS_ONLY,process memory; no OHLC operator
+certainty_missing,PSY_0004,NOT_EVALUABLE,certainty_state unavailable
+cut_loss_mechanics_only,PSY_0005,NOT_EVALUABLE,stop_loss mechanics present without adherence evidence
+profit_mechanics_only,PSY_0006,NOT_EVALUABLE,take_profit mechanics present without adherence evidence
