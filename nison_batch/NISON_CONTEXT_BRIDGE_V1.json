@@ -1,0 +1,34 @@
+{
+  "name": "NISON_CONTEXT_BRIDGE_V1",
+  "status": "COMPATIBILITY_READY_NOT_FROZEN",
+  "purpose": "Supply market context to Nison without redefining Nison patterns or allowing Nison to create direction.",
+  "upstream_provider": "MARKET_STRUCTURE_GBPUSD_ALL_TF_V1 -> PIVOT_SEQUENCE_V2",
+  "source_principles": [
+    "Nison candlesticks must be read in market context and with confluence.",
+    "Murphy defines directional context from successive market peaks and troughs."
+  ],
+  "allowed_context": ["uptrend", "downtrend", "range_or_unknown", "support", "resistance", "unknown"],
+  "pattern_context_mapping": {
+    "bullish_reversal": {"preferred_trend": "downtrend", "preferred_level": "support"},
+    "bearish_reversal": {"preferred_trend": "uptrend", "preferred_level": "resistance"},
+    "bullish_continuation": {"preferred_trend": "uptrend"},
+    "bearish_continuation": {"preferred_trend": "downtrend"}
+  },
+  "critical_boundary": "The bridge supplies context evidence; it does not turn context into a trade direction and does not replace the Nison source rule.",
+  "forbidden_substitutions": [
+    "ADX-only trend classification",
+    "ATR-derived trend thresholds",
+    "invented lookbacks",
+    "backtest-selected thresholds",
+    "2025-derived operator selection"
+  ],
+  "missing_context_policy": "NOT_EVALUABLE",
+  "availability_policy": "Nison may consume context only at the upstream Market Structure availability timestamp.",
+  "freeze_requirements": [
+    "upstream Market Structure provenance verified",
+    "compatibility tests",
+    "2016-2024 historical QA",
+    "no-lookahead audit",
+    "canonical freeze manifest"
+  ]
+}
