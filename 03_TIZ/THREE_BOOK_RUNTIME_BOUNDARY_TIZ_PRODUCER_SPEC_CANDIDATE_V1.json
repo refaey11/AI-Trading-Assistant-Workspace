@@ -1,0 +1,50 @@
+{
+  "version": "1.0",
+  "status": "CANDIDATE_NOT_AUTHORITATIVE",
+  "source_basis": "THREE_BOOK_INTEGRATION.json",
+  "role": "Trading in the Zone supplies execution psychology and process discipline; it never creates market direction.",
+  "outputs": [
+    "pre_trade_state_gate",
+    "risk_acceptance",
+    "rule_adherence",
+    "loss_sequence_control",
+    "post_trade_review",
+    "no_impulsive_override"
+  ],
+  "decision_semantics": {
+    "direction": "NEUTRAL",
+    "missing_evidence": "NOT_EVALUABLE",
+    "may_generate_buy_sell": false,
+    "may_override_technical_direction": false
+  },
+  "implementation_policy": {
+    "do_not_invent_source_semantics": true,
+    "do_not_add_psychological_numeric_thresholds": true,
+    "stop_loss_and_take_profit_mechanics_remain_in_risk_execution": true,
+    "authoritative_producer_required_before_freeze": true
+  },
+  "evidence_contract_candidate": {
+    "value": "required",
+    "availability": "required",
+    "timestamp": "required",
+    "provenance": "required",
+    "state_semantics": "required"
+  },
+  "rule_mapping": {
+    "PSY_0001": {"output_scope": "pre_trade_state_gate", "status": "EVIDENCE_GAP"},
+    "PSY_0002": {"output_scope": "risk_acceptance", "status": "CANDIDATE_OPERATOR"},
+    "PSY_0003": {"output_scope": "post_trade_review", "status": "PROCESS_ONLY"},
+    "PSY_0004": {"output_scope": "pre_trade_state_gate", "status": "EVIDENCE_GAP"},
+    "PSY_0005": {"output_scope": "loss_sequence_control", "status": "EVIDENCE_GAP"},
+    "PSY_0006": {"output_scope": "post_trade_review", "status": "EVIDENCE_GAP"},
+    "PSY_0007": {"output_scope": "rule_adherence; no_impulsive_override", "status": "CANDIDATE_OPERATOR"}
+  },
+  "freeze_gate": [
+    "authoritative producer implementation",
+    "deterministic evaluator",
+    "adapter integration",
+    "historical QA",
+    "2025 locked OOS protection",
+    "cross-file consistency audit"
+  ]
+}
