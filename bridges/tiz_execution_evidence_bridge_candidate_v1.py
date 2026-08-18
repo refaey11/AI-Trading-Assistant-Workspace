@@ -1,20 +1,19 @@
 """Bridge an execution record into the TIZ evidence envelope.
 
-This is deliberately a candidate integration boundary. It only consumes fields
-explicitly present in the execution record; it never derives missing psychology
-from mechanical outcomes.
+Candidate integration boundary. It only consumes fields explicitly present in
+the execution record and never derives missing psychology from mechanics.
 """
 
-from 03_TIZ.tiz_execution_evidence_producer_candidate_v1 import build_evidence
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "03_TIZ"))
+from tiz_execution_evidence_producer_candidate_v1 import build_evidence
 
 
 def enrich_execution_record(record, *, timestamp=None,
                             provenance="execution_record_producer_v1"):
-    """Return a copy of an execution record with explicit TIZ evidence.
-
-    The caller must supply the pre-entry plan fields and post-exit actual fields.
-    Missing values remain unavailable and therefore cannot become a TIZ PASS.
-    """
+    """Return a copy with explicit TIZ execution evidence attached."""
     evidence = build_evidence(
         loss_exit_plan=record.get("loss_exit_plan"),
         actual_exit_reason=record.get("actual_exit_reason"),
