@@ -1,0 +1,19 @@
+{
+  "date": "2026-08-18",
+  "book": "Trading in the Zone",
+  "rule_count": 7,
+  "role": "PSYCHOLOGY_PROCESS_GATE_ONLY",
+  "direction": "neutral",
+  "overall_status": "NOT_FROZEN",
+  "validated_candidates": ["PSY_0002", "PSY_0007"],
+  "process_only": ["PSY_0003"],
+  "mapping_required": ["PSY_0001", "PSY_0004", "PSY_0005", "PSY_0006"],
+  "non_negotiables": [
+    "Missing evidence => NOT_EVALUABLE",
+    "No psychological numeric thresholds",
+    "No SL/TP mechanics under TIZ",
+    "TIZ cannot generate direction",
+    "2025 locked OOS"
+  ],
+  "next_gate": "Authoritative producer/contract provenance -> smallest missing evidence extension -> deterministic evaluator -> adapter integration -> historical QA -> freeze"
+}
