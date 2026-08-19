@@ -1,0 +1,21 @@
+{
+  "date": "2026-08-19",
+  "status": "ACTIVE_WORKSTREAM_NOT_PROJECT_BLOCKER",
+  "rule_status": {
+    "PSY_0001": "NOT_EVALUABLE",
+    "PSY_0002": "CANDIDATE_VALIDATED",
+    "PSY_0003": "PROCESS_ONLY",
+    "PSY_0004": "NOT_EVALUABLE",
+    "PSY_0005": "NOT_EVALUABLE",
+    "PSY_0006": "NOT_EVALUABLE",
+    "PSY_0007": "CANDIDATE_VALIDATED"
+  },
+  "next": "Continue the main Decision Brain build in parallel; return to TIZ for evidence-driven QA and freeze when authoritative runtime evidence exists.",
+  "non_negotiables": [
+    "TIZ direction-neutral",
+    "missing evidence => NOT_EVALUABLE",
+    "no psychological evidence fabrication",
+    "mechanical SL/TP does not prove adherence",
+    "2025 OOS and excluded from tuning/selection/calibration/optimization"
+  ]
+}
