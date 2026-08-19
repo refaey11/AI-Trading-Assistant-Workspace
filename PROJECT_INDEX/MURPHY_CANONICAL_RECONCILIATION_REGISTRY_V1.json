@@ -1,7 +1,7 @@
 {
   "registry": "MURPHY_CANONICAL_RECONCILIATION_REGISTRY_V1",
-  "version": "V1.1",
-  "purpose": "Separate historical freeze evidence from the current 51-rule audit without silently rewriting either source, while recording explicitly approved project-governance freezes.",
+  "version": "V1.2",
+  "purpose": "Separate historical freeze evidence from the current 51-rule audit without silently rewriting either source, while recording explicitly approved and evidence-reconciled project freezes.",
   "freeze_backup": "MURPHY_33_MASTER_FREEZE_MANIFEST_V1",
   "current_audit": "MURPHY_51_MASTER_AUDIT.csv",
   "approved_additions": [
@@ -22,22 +22,30 @@
       "audit_overwritten": false
     }
   ],
+  "evidence_reconciled_additions": {
+    "manifest": "MURPHY_0033_0045_0047_0051_EVIDENCE_RECONCILIATION_V1.json",
+    "ids": ["MURPHY_0033","MURPHY_0034","MURPHY_0035","MURPHY_0036","MURPHY_0037","MURPHY_0038","MURPHY_0039","MURPHY_0040","MURPHY_0041","MURPHY_0047","MURPHY_0048","MURPHY_0049","MURPHY_0050","MURPHY_0051"],
+    "state": "EVIDENCE_RECONCILED_FROZEN",
+    "historical_audit_overwritten": false,
+    "integrity_note": "0047 occurrence count differs between two closure artifacts; closure state remains CLOSED and the discrepancy is preserved for archival cleanup."
+  },
   "policy": {
     "ALIGNED_FROZEN": "Freeze backup assertion and current master audit agree.",
-    "CONFLICT_REQUIRES_RECONCILIATION": "The two historical sources disagree; do not upgrade or downgrade silently.",
+    "EVIDENCE_RECONCILED_FROZEN": "A previously conflicting historical audit state is reconciled by directly supplied freeze/closure evidence; the historical audit snapshot is preserved.",
     "MASTER_AUDIT_ONLY": "Current audit has a status but the 33-rule backup makes no assertion.",
     "EXPLICITLY_APPROVED_FROZEN": "A later explicit project-governance approval freezes the rule without rewriting the historical master-audit snapshot."
   },
   "counts": {
     "aligned_frozen": 19,
     "explicitly_approved_frozen": 2,
-    "confirmed_frozen_total": 21,
-    "conflicts": 14,
+    "evidence_reconciled_frozen": 14,
+    "confirmed_frozen_total": 35,
+    "conflicts_remaining": 0,
     "master_audit_only": 16,
     "total_rules": 51
   },
   "explicitly_approved_ids": ["MURPHY_0018","MURPHY_0019"],
-  "conflict_ids": ["MURPHY_0033","MURPHY_0034","MURPHY_0035","MURPHY_0036","MURPHY_0037","MURPHY_0038","MURPHY_0039","MURPHY_0040","MURPHY_0041","MURPHY_0047","MURPHY_0048","MURPHY_0049","MURPHY_0050","MURPHY_0051"],
+  "evidence_reconciled_ids": ["MURPHY_0033","MURPHY_0034","MURPHY_0035","MURPHY_0036","MURPHY_0037","MURPHY_0038","MURPHY_0039","MURPHY_0040","MURPHY_0041","MURPHY_0047","MURPHY_0048","MURPHY_0049","MURPHY_0050","MURPHY_0051"],
   "controls": {
     "historical_artifacts_preserved": true,
     "master_audit_overwritten": false,
