@@ -1,23 +1,48 @@
 {
   "registry": "MURPHY_CANONICAL_RECONCILIATION_REGISTRY_V1",
-  "purpose": "Separate historical freeze evidence from the current 51-rule audit without silently rewriting either source.",
+  "version": "V1.1",
+  "purpose": "Separate historical freeze evidence from the current 51-rule audit without silently rewriting either source, while recording explicitly approved project-governance freezes.",
   "freeze_backup": "MURPHY_33_MASTER_FREEZE_MANIFEST_V1",
   "current_audit": "MURPHY_51_MASTER_AUDIT.csv",
+  "approved_additions": [
+    {
+      "rule_id": "MURPHY_0018",
+      "rule_name": "Falling Wedge",
+      "state": "PRODUCTION_FROZEN",
+      "basis": "Approved project-governance/integration freeze; raw breakout is evidence, volume remains evidence-only, Nison remains confirmation-only, Risk/Process remain hard gates, and 2025 remains OOS.",
+      "audit_status_at_last_snapshot": "UNBLOCKED",
+      "audit_overwritten": false
+    },
+    {
+      "rule_id": "MURPHY_0019",
+      "rule_name": "Rising Wedge",
+      "state": "PRODUCTION_FROZEN",
+      "basis": "Approved project-governance/integration freeze; raw breakout is evidence, volume remains evidence-only, Nison remains confirmation-only, Risk/Process remain hard gates, and 2025 remains OOS.",
+      "audit_status_at_last_snapshot": "UNBLOCKED",
+      "audit_overwritten": false
+    }
+  ],
   "policy": {
     "ALIGNED_FROZEN": "Freeze backup assertion and current master audit agree.",
-    "CONFLICT_REQUIRES_RECONCILIATION": "The two sources disagree; do not upgrade or downgrade silently.",
-    "MASTER_AUDIT_ONLY": "Current audit has a status but the 33-rule backup makes no assertion."
+    "CONFLICT_REQUIRES_RECONCILIATION": "The two historical sources disagree; do not upgrade or downgrade silently.",
+    "MASTER_AUDIT_ONLY": "Current audit has a status but the 33-rule backup makes no assertion.",
+    "EXPLICITLY_APPROVED_FROZEN": "A later explicit project-governance approval freezes the rule without rewriting the historical master-audit snapshot."
   },
   "counts": {
     "aligned_frozen": 19,
+    "explicitly_approved_frozen": 2,
+    "confirmed_frozen_total": 21,
     "conflicts": 14,
-    "master_audit_only": 18
+    "master_audit_only": 16,
+    "total_rules": 51
   },
+  "explicitly_approved_ids": ["MURPHY_0018","MURPHY_0019"],
   "conflict_ids": ["MURPHY_0033","MURPHY_0034","MURPHY_0035","MURPHY_0036","MURPHY_0037","MURPHY_0038","MURPHY_0039","MURPHY_0040","MURPHY_0041","MURPHY_0047","MURPHY_0048","MURPHY_0049","MURPHY_0050","MURPHY_0051"],
   "controls": {
     "historical_artifacts_preserved": true,
     "master_audit_overwritten": false,
     "2025_used_for_tuning": false,
-    "nison_mixed_into_murphy": false
+    "nison_mixed_into_murphy": false,
+    "0018_0019_recorded_before_conflict_reconciliation": true
   }
 }
