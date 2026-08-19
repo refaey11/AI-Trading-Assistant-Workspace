@@ -1,0 +1,23 @@
+{
+  "registry": "MURPHY_CANONICAL_RECONCILIATION_REGISTRY_V1",
+  "purpose": "Separate historical freeze evidence from the current 51-rule audit without silently rewriting either source.",
+  "freeze_backup": "MURPHY_33_MASTER_FREEZE_MANIFEST_V1",
+  "current_audit": "MURPHY_51_MASTER_AUDIT.csv",
+  "policy": {
+    "ALIGNED_FROZEN": "Freeze backup assertion and current master audit agree.",
+    "CONFLICT_REQUIRES_RECONCILIATION": "The two sources disagree; do not upgrade or downgrade silently.",
+    "MASTER_AUDIT_ONLY": "Current audit has a status but the 33-rule backup makes no assertion."
+  },
+  "counts": {
+    "aligned_frozen": 19,
+    "conflicts": 14,
+    "master_audit_only": 18
+  },
+  "conflict_ids": ["MURPHY_0033","MURPHY_0034","MURPHY_0035","MURPHY_0036","MURPHY_0037","MURPHY_0038","MURPHY_0039","MURPHY_0040","MURPHY_0041","MURPHY_0047","MURPHY_0048","MURPHY_0049","MURPHY_0050","MURPHY_0051"],
+  "controls": {
+    "historical_artifacts_preserved": true,
+    "master_audit_overwritten": false,
+    "2025_used_for_tuning": false,
+    "nison_mixed_into_murphy": false
+  }
+}
