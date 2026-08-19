@@ -1,0 +1,34 @@
+{
+  "scope": "MURPHY_0013_0020",
+  "branch": "murphy-0013-0020-external-research-v1",
+  "status": "IMPLEMENTATION_SPEC_READY_TEST_EXECUTION_BLOCKED_BY_MISSING_AUTHORITATIVE_COMPONENTS",
+  "primitives": {
+    "PF-H1": "CONTRACT_WRAPPER_DEFINED; requires existing Pivot Sequence V2/SR implementation",
+    "PF-G1": "CONTRACT_WRAPPER_DEFINED; requires existing TRENDLINE_GEOMETRY_V1 implementation",
+    "PF-B1": "CONTRACT_WRAPPER_DEFINED; requires existing breakout boundary/evidence fields",
+    "PF-F1": "CONTRACT_WRAPPER_DEFINED; requires existing flagpole/structure evidence"
+  },
+  "tests": {
+    "unit_test_spec": "CREATED",
+    "availability_no_lookahead_spec": "CREATED",
+    "2016_2024_qa": "NOT_RUN",
+    "2025": "OOS_NOT_USED"
+  },
+  "reason_not_run": "The current accessible repository snapshot does not expose the authoritative Pivot Sequence V2, TRENDLINE_GEOMETRY_V1, breakout, and flagpole implementation files required to execute the wrappers without inventing substitute logic.",
+  "rule_status": {
+    "0013": "BLOCKED_BY_G1_B1_COMPONENT_ACCESS",
+    "0014": "BLOCKED_BY_H1_B1_COMPONENT_ACCESS",
+    "0015": "BLOCKED_BY_H1_B1_COMPONENT_ACCESS",
+    "0016": "BLOCKED_BY_F1_G1_B1_COMPONENT_ACCESS",
+    "0017": "BLOCKED_BY_F1_G1_B1_COMPONENT_ACCESS",
+    "0018": "BLOCKED_BY_G1_B1_COMPONENT_ACCESS",
+    "0019": "BLOCKED_BY_G1_B1_COMPONENT_ACCESS",
+    "0020": "BLOCKED_BY_H1_B1_COMPONENT_ACCESS"
+  },
+  "non_negotiables": [
+    "do_not_invent_thresholds",
+    "do_not_tune_on_2025",
+    "do_not_modify_33_frozen_rules",
+    "missing_or_ambiguous_evidence_is_NOT_EVALUABLE"
+  ]
+}
