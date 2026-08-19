@@ -1,83 +1,74 @@
 # START HERE — AI Trading Assistant / Decision Brain
 
-**Updated:** 2026-08-15
-**Purpose:** Prevent any new chat/agent from giving an outdated answer, reopening frozen work, or repeating completed audits.
+**Updated:** 2026-08-19
+**Purpose:** One control point for every new chat/agent. Prevent stale snapshots, duplicate work, accidental reopening of frozen work, and status confusion.
 
-## MANDATORY FIRST STEP FOR ANY NEW CHAT
+## MANDATORY FIRST STEP
 
-Before answering project-status questions, rule-status questions, or starting work on a Murphy rule, read:
+Before answering project-status questions or starting new work, read:
 
-1. `project_state/MURPHY_51_CURRENT_STATUS_V6_2026-08-15.md` — current canonical status.
-2. `MURPHY_12_FROZEN_CONTINUITY_BACKUP_V1` / the latest 12-rule continuity backup — problems, solutions, evidence, and do-not-repeat history.
-3. The dedicated rule freeze/provenance record if the question concerns a specific frozen rule.
+1. `PROJECT_INDEX/MASTER_PROJECT_STATE_2026-08-19.md`
+2. `PROJECT_INDEX/DO_NOT_TOUCH.md`
+3. The relevant component's latest canonical freeze/status record.
 
-**Do not answer from an older chat message, older snapshot, memory, or filename alone when a newer canonical record exists.**
+Do **not** answer from an older chat message, old snapshot, memory, or filename alone when a newer canonical record exists.
 
-## CURRENT CANONICAL STATE
+## CURRENT OPERATIONAL STATE — 2026-08-19
 
-**12 / 51 rules are frozen/closed.**
+### Murphy
+**33 / 51 CLOSED** according to the latest consolidated `MURPHY_33_MASTER_FREEZE_MANIFEST_V1`.
 
-Frozen/closed rules:
-- 0003
-- 0004
-- 0006
-- 0007
-- 0008
-- 0021
-- 0022
-- 0023
-- 0025
-- 0026
-- 0028
-- 0029
+Do not reopen the 33 merely because older status files show 12/51 or another lower count. Those are historical snapshots.
 
-**Next rule: 0030.**
+The remaining Murphy work is the **18-rule closure track**. It is allowed to proceed in parallel with Decision Brain integration and baseline work.
 
-## DO NOT REOPEN THE 12
+### Nison
+**44 / 44 FROZEN** according to `NISON/NISON_STATUS_CHECKPOINT_2026-08-19.md`.
 
-A frozen rule must NOT be re-audited, rebuilt, retuned, or re-derived merely because a new chat cannot find its history. Only reopen if there is:
-- new contradictory evidence,
-- an approved semantic change,
-- or a formal change request requiring compatibility audit + re-freeze.
+Do not reopen the 44 because of older incomplete snapshots.
 
-## HOW TO ANSWER A QUESTION ABOUT A FROZEN RULE
+### Trading in the Zone
+Process/psychology gate only. It cannot generate directional trade signals.
 
-The response must distinguish:
-- **Current canonical status**
-- **What was actually tested/validated**
-- **Problem found**
-- **Solution used**
-- **Known historical documentation conflicts**
-- **What must not be repeated**
+### Similarity Engine
+Historical evidence/memory only. It can support or weaken a decision but cannot be the sole decision maker or override hard gates.
 
-If the available project records do not support a claim, say so. Do not invent missing evidence.
+### Risk
+Hard gate. Risk failure blocks execution.
 
-## GLOBAL PROJECT GOVERNANCE
+### Official Baseline
+`V2 + 4H` remains **CANDIDATE**, not official. The required uniform walk-forward and leakage audit must pass before the label becomes OFFICIAL BASELINE.
+
+### 2025
+**OOS. Never use 2025 for tuning, calibration, selection, or optimization.**
+
+## ACTIVE WORK ORDER
+
+1. Keep the 33 Murphy rules and 44 Nison entries protected.
+2. Continue the 18 Murphy closure track in parallel.
+3. Validate the Rule Adapter against the existing contracts.
+4. Integrate the frozen evidence into the Decision Brain without duplicating the 102 registry rules.
+5. Run the uniform V2 + 4H baseline protocol.
+6. Run leakage/robustness gates.
+7. Only then consider the official baseline and final Decision Brain release gate.
+
+## SOURCE-OF-TRUTH RULE
+
+Latest authoritative project-state/freeze record wins for current operational status. Older files remain historical evidence and must not be silently deleted or rewritten.
+
+## ANTI-CONFUSION RULE
+
+If two artifacts disagree:
+- preserve both historical artifacts;
+- identify the newer authoritative record;
+- record the conflict in the reconciliation registry;
+- never silently downgrade a newer freeze state;
+- never invent missing evidence.
+
+## GLOBAL GOVERNANCE
 
 - Audit existing project knowledge before rebuilding anything.
 - Compatibility audit is mandatory before new integration.
 - Do not invent operators, thresholds, tolerances, timeframes, lookbacks, or proxies.
-- 2025 is OOS and must not be used for tuning, selection, calibration, or optimization.
 - NOT_EVALUABLE is preferred over fabricated evidence.
-- Frozen rules require a new compatibility audit and explicit re-freeze for semantic changes.
-- Murphy = technical context/market structure.
-- Nison = confirmation.
-- Trading in the Zone = psychology/process gate; it cannot generate direction.
-- Similarity Engine = historical evidence only; never sole decision maker.
-- Decision Brain combines current market evidence, book knowledge, historical memory, and risk.
-
-## IMPORTANT 0028 / 0029 HANDOFF
-
-### 0028
-Production Frozen. Controlled RSI(14) recovery was performed for the 2016–2019 historical gap, reverse-validated against the existing 2020–2024 divergence artifact, followed by full 2016–2024 QA and availability/no-lookahead checks. Do not rebuild it.
-
-### 0029
-Production Frozen. Existing shared 0027–0029 evaluator and existing divergence evidence were reconciled; 0029 was evaluated as BULLISH + LOW, followed by full 2016–2024 QA and availability/no-lookahead checks. Do not rebuild it.
-
-## IF A NEW CHAT SAYS 'WHAT DO WE DO NEXT?'
-
-Answer: **Start 0030 with a Compatibility Audit. Do not touch the 12 frozen rules.**
-
-## SOURCE-OF-TRUTH RULE
-
-The latest canonical project-state record is authoritative for current status. Older snapshots are historical evidence only and must not downgrade a newer freeze state.
+- Frozen rules require compatibility audit + explicit re-freeze for semantic changes.
