@@ -1,0 +1,34 @@
+{
+  "artifact": "MURPHY_0033_0045_0047_0051_EVIDENCE_RECONCILIATION_V1",
+  "purpose": "Record uploaded local freeze/closure evidence used to reconcile historical conflicts without overwriting the original 51-rule audit snapshot.",
+  "reconciled_ids": ["MURPHY_0033","MURPHY_0034","MURPHY_0035","MURPHY_0036","MURPHY_0037","MURPHY_0038","MURPHY_0039","MURPHY_0040","MURPHY_0041","MURPHY_0047","MURPHY_0048","MURPHY_0049","MURPHY_0050","MURPHY_0051"],
+  "state": "EVIDENCE_RECONCILED_FROZEN",
+  "evidence": {
+    "MURPHY_0033": {
+      "package": "MURPHY_0033_LOCAL_FREEZE_V1",
+      "status": "LOCAL_PRODUCTION_FROZEN",
+      "controls": ["source-bounded contract","Murphy/Nison mapping","2016-2024 replay","prefix/no-lookahead PASS","2025 excluded from tuning"]
+    },
+    "MURPHY_0034_0045": {
+      "package": "MURPHY_BATCH_0034_0045_PRODUCTION_FREEZE_V1",
+      "status": "LOCAL_PRODUCTION_FROZEN",
+      "scope": "rule-contract/evidence freeze; not a profitability claim",
+      "controls": ["fail-closed where upstream evidence is absent","2025 excluded from tuning","historical replay is evidence only","candidate Elliott labels are not ground truth"]
+    },
+    "MURPHY_0047_0049": {
+      "package": "MURPHY_0047_0049_CLOSED_FINAL_V1",
+      "status": "CLOSED_BATCH",
+      "coverage": "2016-01-04 to 2020-02-10",
+      "controls": ["2025 not used","no synthetic rows","no proxy substitution","no new thresholds","no new timeframes"],
+      "integrity_note": "CLOSURE.md reports 0047 occurrences=24 while CLOSURE_STATUS.json reports 25. Closure state is CLOSED in both; the occurrence-count discrepancy remains documented for later archival cleanup."
+    },
+    "MURPHY_0050_0051": {
+      "package": "MURPHY_0050_0051_FINAL_CLOSURE_V1",
+      "status": "PROCESS_GATE_FROZEN",
+      "qa": {"0050": "4/4 deterministic tests PASS", "0051": "3/3 deterministic tests PASS"},
+      "controls": ["non-directional gates","no synthetic history","2025 not used","no invented market thresholds/timeframes"]
+    }
+  },
+  "historical_audit_preserved": true,
+  "master_audit_overwritten": false
+}
