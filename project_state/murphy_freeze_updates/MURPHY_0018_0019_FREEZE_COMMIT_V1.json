@@ -1,0 +1,30 @@
+{
+  "artifact": "MURPHY_0018_0019_FREEZE_COMMIT_V1",
+  "status": "PRODUCTION_FROZEN_PROJECT_GOVERNANCE_INTEGRATION",
+  "rules": {
+    "0018": {
+      "name": "Falling Wedge",
+      "state": "PRODUCTION_FROZEN",
+      "direction_hint": "BULLISH"
+    },
+    "0019": {
+      "name": "Rising Wedge",
+      "state": "PRODUCTION_FROZEN",
+      "direction_hint": "BEARISH"
+    }
+  },
+  "boundaries": [
+    "Murphy supplies wedge direction and raw breakout context.",
+    "Raw breakout alone cannot auto-trade.",
+    "Volume is evidence-only; no invented numeric Murphy threshold.",
+    "Nison is confirmation-only and cannot create wedge direction.",
+    "Decision Brain synthesizes evidence.",
+    "Risk and process remain hard gates.",
+    "2025 remains OOS and excluded from tuning/calibration."
+  ],
+  "qa": {
+    "integration": "PASS",
+    "tests": "7/7"
+  },
+  "registry_note": "Added as a reconciliation-safe update. This file does not overwrite unresolved historical canonical registry claims."
+}
