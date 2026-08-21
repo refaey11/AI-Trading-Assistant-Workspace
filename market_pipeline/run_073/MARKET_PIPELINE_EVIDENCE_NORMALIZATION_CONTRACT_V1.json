@@ -1,0 +1,30 @@
+{
+  "artifact": "MARKET_PIPELINE_EVIDENCE_NORMALIZATION_CONTRACT_V1",
+  "run": "RUN_073",
+  "purpose": "Normalize existing Market Pipeline outputs into governed evidence for Knowledge Alignment and the Decision Brain without modifying source modules or allowing upstream modules to make the final trade decision.",
+  "governance": [
+    "Existing source modules are not overwritten.",
+    "Market State and MTF outputs are descriptive evidence, not final trade decisions.",
+    "Scenario decisions are normalized as candidate/context evidence only and cannot bypass Knowledge Alignment or the Contradiction Gate.",
+    "No BUY/SELL, entry, stop-loss, take-profit, or position size may be emitted by this adapter.",
+    "Murphy remains primary technical context when official book-rule outputs are connected.",
+    "Nison remains confirmation/contradiction only when official book-rule outputs are connected.",
+    "Trading in the Zone remains a process/psychology gate only when connected.",
+    "Similarity remains historical evidence only.",
+    "2025 remains OOS and cannot be used for tuning or calibration.",
+    "M15 must remain unavailable until real approved M15 data exists; it must not be fabricated from H1."
+  ],
+  "time_context_schema": {
+    "available_timeframes": ["H4", "H1"],
+    "H4_role": "higher-timeframe context",
+    "H1_role": "local structure",
+    "M15_status": "unavailable_requires_real_data",
+    "standalone_time_engine": "not_implemented"
+  },
+  "output": {
+    "status": ["OK", "OOS_READ_ONLY", "INSUFFICIENT_DATA", "NEEDS_REVIEW"],
+    "final_decision": "not_generated",
+    "candidate_context": "allowed_but_non_binding",
+    "knowledge_alignment": "next_layer"
+  }
+}
