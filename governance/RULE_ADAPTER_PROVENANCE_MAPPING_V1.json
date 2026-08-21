@@ -1,6 +1,7 @@
 {
   "artifact": "RULE_ADAPTER_PROVENANCE_MAPPING_V1",
-  "status": "ACTIVE_GOVERNANCE_MAPPING_STARTED",
+  "version": "V1.1",
+  "status": "MURPHY_EXACT_CLOSED_IDS_RESOLVED_NISON_RANGE_GOVERNED",
   "purpose": "Connect only existing authoritative book-rule outputs to the Rule Adapter without copying or rebuilding book rules.",
   "canonical_inventory_ref": "governance/BOOK_RULE_CANONICAL_STATUS_INVENTORY_V1.md",
   "canonical_totals": {
@@ -18,7 +19,7 @@
     "status": "44/44_FROZEN",
     "integration_role": "confirmation_or_contradiction_only",
     "direction_generation": false,
-    "source_rule_logic": "NOT_COPIED_HERE_USE_EXISTING_SOURCE_LOCKED_OUTPUTS"
+    "per_rule_activation": "Governed by existing source-locked outputs; V1.1 does not copy Nison rule logic into this registry."
   },
   "murphy_mapping": {
     "universe": "MURPHY_0001..MURPHY_0051",
@@ -26,17 +27,17 @@
     "canonical_open_deferred_count": 16,
     "integration_role": "primary_technical_context",
     "direction_generation": "candidate_context_only_not_final_trade_decision",
-    "exact_closed_id_list": "PENDING_PROVENANCE_EXTRACTION_FROM_LATEST_AUTHORITATIVE_CLOSURE_RECORDS",
-    "safety_rule": "Do not infer the 35 IDs from count alone; resolve exact IDs from latest closure evidence before per-rule activation."
+    "exact_closed_ids": ["MURPHY_0003","MURPHY_0004","MURPHY_0006","MURPHY_0007","MURPHY_0008","MURPHY_0018","MURPHY_0019","MURPHY_0021","MURPHY_0022","MURPHY_0023","MURPHY_0025","MURPHY_0026","MURPHY_0028","MURPHY_0029","MURPHY_0030","MURPHY_0031","MURPHY_0032","MURPHY_0033","MURPHY_0034","MURPHY_0035","MURPHY_0036","MURPHY_0037","MURPHY_0038","MURPHY_0039","MURPHY_0040","MURPHY_0041","MURPHY_0042","MURPHY_0043","MURPHY_0044","MURPHY_0045","MURPHY_0047","MURPHY_0048","MURPHY_0049","MURPHY_0050","MURPHY_0051"],
+    "closure_provenance": {
+      "aligned_frozen": {"count": 19, "source": "MURPHY_33_MASTER_FREEZE_MANIFEST_V1 + MURPHY_51_MASTER_AUDIT.csv"},
+      "explicitly_approved_frozen": {"count": 2, "ids": ["MURPHY_0018","MURPHY_0019"], "source": "MURPHY_CANONICAL_RECONCILIATION_REGISTRY_V1.json"},
+      "evidence_reconciled_frozen": {"count": 14, "ids": ["MURPHY_0033","MURPHY_0034","MURPHY_0035","MURPHY_0036","MURPHY_0037","MURPHY_0038","MURPHY_0039","MURPHY_0040","MURPHY_0041","MURPHY_0047","MURPHY_0048","MURPHY_0049","MURPHY_0050","MURPHY_0051"], "source": "MURPHY_0033_0045_0047_0051_EVIDENCE_RECONCILIATION_V1.json"}
+    },
+    "authoritative_reconciliation_commit": "4be77bbb46dd6b2b97bc9b198416620af79e779d",
+    "integrity_controls": ["historical_artifacts_preserved", "master_audit_not_overwritten", "2025_oos_not_used_for_tuning"]
   },
   "trading_in_the_zone_mapping": {
-    "PSY_0001": "DEFERRED_NOT_EVALUABLE",
-    "PSY_0002": "DEFERRED_CANDIDATE_NOT_AUTHORITATIVE",
-    "PSY_0003": "DEFERRED_PROCESS_ONLY",
-    "PSY_0004": "DEFERRED_NOT_EVALUABLE",
-    "PSY_0005": "DEFERRED_NOT_EVALUABLE",
-    "PSY_0006": "DEFERRED_NOT_EVALUABLE",
-    "PSY_0007": "DEFERRED_CANDIDATE_NOT_AUTHORITATIVE",
+    "status": "7_DEFERRED_NOT_AUTHORITATIVE_NOW",
     "integration_role": "process_psychology_gate_only",
     "direction_generation": false
   },
@@ -48,5 +49,5 @@
     "2025 remains OOS read-only and cannot be used for tuning or calibration.",
     "Existing book evaluators and frozen source knowledge must not be rebuilt."
   ],
-  "next_required_step": "Extract exact Murphy closed-rule IDs and source artifact/commit references from the latest authoritative closure records, then complete the per-rule provenance table before declaring all 79 individually mapped."
+  "next_required_step": "Complete per-rule artifact/commit pointers for the 44 frozen Nison rules and then run a 79-rule provenance completeness audit before declaring the adapter fully per-rule mapped."
 }
