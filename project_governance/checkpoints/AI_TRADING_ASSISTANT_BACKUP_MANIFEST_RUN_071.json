@@ -1,0 +1,35 @@
+{
+  "artifact": "AI_TRADING_ASSISTANT_MASTER_CHECKPOINT_RUN_071",
+  "created_utc": "20260821T011743Z",
+  "status": "ACTIVE_PROJECT_CHECKPOINT",
+  "completed": [
+    "Similarity evidence governance",
+    "Historical Context Memory integration",
+    "Historical Outcome Memory integration",
+    "AS-OF / future-leakage guards",
+    "2025 OOS lock preservation",
+    "Decision Brain historical evidence integration RUN_070 PASS",
+    "GitHub persistence for RUN_070 artifacts"
+  ],
+  "next": [
+    "Market Pipeline compatibility audit",
+    "Current market evidence integration",
+    "Murphy + Nison + Trading in the Zone integration",
+    "Knowledge Alignment",
+    "Evidence Agreement / Contradiction Gate",
+    "End-to-end Decision Brain",
+    "Risk Engine + Position Sizing",
+    "Backtest / Robustness",
+    "2025 OOS",
+    "Contract freeze",
+    "MT5 Demo + monitoring"
+  ],
+  "backup_protocol": "After every completed part: checkpoint + manifest + GitHub + Dropbox + local ZIP backup before proceeding.",
+  "governance": {
+    "murphy": "technical context / market structure",
+    "nison": "confirmation / contradiction",
+    "trading_in_the_zone": "psychology/process gate only; non-directional",
+    "similarity": "historical evidence only",
+    "2025": "OOS; never tuning/calibration"
+  }
+}
