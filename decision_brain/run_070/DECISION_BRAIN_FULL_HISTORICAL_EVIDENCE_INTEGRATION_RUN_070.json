@@ -1,0 +1,42 @@
+{
+  "artifact": "DECISION_BRAIN_FULL_HISTORICAL_EVIDENCE_INTEGRATION_RUN_070",
+  "status": "PASS",
+  "test_type": "integration smoke test using real project historical memory artifacts + synthetic Decision Brain input row",
+  "query": {
+    "pair": "EURUSD",
+    "timestamp": "2016-04-28T18:00:00+00:00"
+  },
+  "retrieval": {
+    "returned": 20,
+    "all_candidates_before_query": true
+  },
+  "outcome_bridge": {
+    "status": "OK",
+    "eligible_cases": 17,
+    "all_pre2025": true,
+    "mean_return_24h": -0.000151382631202515,
+    "positive_rate": 0.47058823529411764,
+    "negative_rate": 0.5294117647058824
+  },
+  "context_memory": {
+    "coverage": 1.0,
+    "eligible_context_cases": 17
+  },
+  "decision_brain": {
+    "called": true,
+    "market_state": "trend",
+    "directional_bias": "bullish",
+    "confidence": 1.0,
+    "similarity_predicted_return_used": false,
+    "similarity_changed_direction": false
+  },
+  "governance": {
+    "legacy_decision_brain_modified": false,
+    "similarity_evidence_only": true,
+    "outcome_evidence_attached": true,
+    "context_evidence_attached": true,
+    "no_2025_calibration_leakage": true,
+    "no_buy_sell_entry_sl_tp_generated": true
+  },
+  "next_gate": "Connect a real current Market Reader row and the official Murphy/Nison outputs before promoting this smoke-tested evidence integration to end-to-end Decision Brain runtime."
+}
