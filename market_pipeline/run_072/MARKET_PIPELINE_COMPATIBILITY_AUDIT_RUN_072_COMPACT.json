@@ -1,0 +1,40 @@
+{
+  "artifact": "MARKET_PIPELINE_COMPATIBILITY_AUDIT_RUN_072",
+  "status": "PARTIAL_PASS_WITH_BLOCKERS",
+  "scope": [
+    "Market Reader V1",
+    "Market State Reader V1",
+    "Market Scenario Engine V1",
+    "Multi-Timeframe Reader V1",
+    "Context-Aware Retrieval V2"
+  ],
+  "pair_alignment": {
+    "state_pairs": ["EURUSD", "GBPUSD", "USDCAD", "USDJPY", "XAUUSD"],
+    "mtf_pairs": ["EURUSD", "GBPUSD", "USDCAD", "USDJPY", "XAUUSD"],
+    "scenario_pairs": ["EURUSD", "GBPUSD", "USDCAD", "USDJPY", "XAUUSD"],
+    "context_pairs": ["EURUSD", "GBPUSD", "USDCAD", "USDJPY", "XAUUSD"],
+    "all_pair_sets_match": true,
+    "latest_state_mtf_timestamps_match": true,
+    "timestamp": ["2025-12-31 16:00:00+00:00"]
+  },
+  "blockers": [
+    {"id": "MP-004", "finding": "A normalization/adapter boundary is required before direct Decision Brain integration so upstream Market Reader outputs do not become the final decision maker."},
+    {"id": "MP-005", "finding": "No standalone Dynamic Time / Time Context contract was found; available MTF context is H4/H1 only."},
+    {"id": "MP-006", "finding": "M15 is not implemented and must not be fabricated from H1."},
+    {"id": "MP-007", "finding": "Latest audited readings are 2025-12-31 and remain OOS; they cannot be used for tuning/calibration."}
+  ],
+  "warnings": [
+    {"id": "MP-008", "finding": "Zero/absent volume fields must be represented explicitly and not silently interpreted as market facts."},
+    {"id": "MP-009", "finding": "Scenario and Context-Aware decisions/confidence must be normalized as evidence or candidate context and must not bypass Knowledge Alignment / Contradiction Gate."}
+  ],
+  "approved_current_flow": [
+    "Market Reader / Market State",
+    "H4/H1 Multi-Timeframe Context",
+    "Scenario / Context-Aware evidence",
+    "Evidence Normalization Adapter (next)",
+    "Knowledge Alignment (after book-contract integration)",
+    "Contradiction Gate",
+    "Decision Brain"
+  ],
+  "next_action": "Build the Market Pipeline Evidence Normalization Contract/Adapter without altering the audited source modules."
+}
