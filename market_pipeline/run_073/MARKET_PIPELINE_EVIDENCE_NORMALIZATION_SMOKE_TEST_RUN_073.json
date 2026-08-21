@@ -1,0 +1,25 @@
+{
+  "artifact": "MARKET_PIPELINE_EVIDENCE_NORMALIZATION_SMOKE_TEST_RUN_073",
+  "created_utc": "20260821T012716Z",
+  "status": "PASS_WITH_OOS_READ_ONLY_GOVERNANCE",
+  "test_basis": "Real existing Market State + MTF + Scenario artifacts; no tuning, calibration, or source-module modification.",
+  "pairs": {
+    "EURUSD": {"status": "OOS_READ_ONLY", "evidence_count": 12, "directions": ["bearish", "mixed", "neutral"], "warnings": ["FEATURE_COVERAGE_WARNING", "M15_UNAVAILABLE"], "final_decision": null, "next_layer": "knowledge_alignment"},
+    "GBPUSD": {"status": "OOS_READ_ONLY", "evidence_count": 12, "directions": ["bullish", "mixed", "neutral"], "warnings": ["FEATURE_COVERAGE_WARNING", "M15_UNAVAILABLE"], "final_decision": null, "next_layer": "knowledge_alignment"},
+    "USDCAD": {"status": "OOS_READ_ONLY", "evidence_count": 12, "directions": ["bearish", "mixed", "neutral"], "warnings": ["FEATURE_COVERAGE_WARNING", "M15_UNAVAILABLE"], "final_decision": null, "next_layer": "knowledge_alignment"},
+    "USDJPY": {"status": "OOS_READ_ONLY", "evidence_count": 12, "directions": ["bullish", "neutral"], "warnings": ["FEATURE_COVERAGE_WARNING", "M15_UNAVAILABLE"], "final_decision": null, "next_layer": "knowledge_alignment"},
+    "XAUUSD": {"status": "OOS_READ_ONLY", "evidence_count": 12, "directions": ["bearish", "mixed", "neutral"], "warnings": ["FEATURE_COVERAGE_WARNING", "M15_UNAVAILABLE"], "final_decision": null, "next_layer": "knowledge_alignment"}
+  },
+  "assertions": {
+    "same_pair_coverage_across_inputs": true,
+    "no_final_trade_decision": true,
+    "no_buy_sell_entry_sl_tp_position_size_generated": true,
+    "scenario_output_non_binding": true,
+    "2025_marked_oos_read_only": true,
+    "no_2025_tuning_or_calibration": true,
+    "M15_not_fabricated": true,
+    "legacy_source_modules_modified": false,
+    "next_layer_is_knowledge_alignment": true
+  },
+  "next_gate": "Connect official Murphy/Nison/Trading in the Zone rule outputs through the existing rule_adapter_contract_v1, then run Knowledge Alignment compatibility testing."
+}
