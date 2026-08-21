@@ -1,7 +1,7 @@
 {
   "artifact": "RULE_ADAPTER_PROVENANCE_MAPPING_V1",
-  "version": "V1.1",
-  "status": "MURPHY_EXACT_CLOSED_IDS_RESOLVED_NISON_RANGE_GOVERNED",
+  "version": "V1.2",
+  "status": "79_AUTHORITATIVE_RULES_GOVERNED_BY_CANONICAL_COMMIT_POINTERS",
   "purpose": "Connect only existing authoritative book-rule outputs to the Rule Adapter without copying or rebuilding book rules.",
   "canonical_inventory_ref": "governance/BOOK_RULE_CANONICAL_STATUS_INVENTORY_V1.md",
   "canonical_totals": {
@@ -15,11 +15,20 @@
     "rule": "Only existing closed/frozen authoritative outputs may be normalized as authoritative evidence. Missing provenance must remain unavailable until exact source artifacts are resolved; no rule IDs or rule logic may be fabricated."
   },
   "nison_mapping": {
-    "rule_id_range": "NISON_0001..NISON_0044",
-    "status": "44/44_FROZEN",
+    "exact_closed_ids": "NISON_0001..NISON_0044",
+    "status": "44/44_SOURCE_CONTRACT_FROZEN",
     "integration_role": "confirmation_or_contradiction_only",
     "direction_generation": false,
-    "per_rule_activation": "Governed by existing source-locked outputs; V1.1 does not copy Nison rule logic into this registry."
+    "authoritative_freeze_commit": "84257ada950ccd1ca5fca0357e0aa6f25d4eb8b3",
+    "authoritative_governance_artifact": "NISON/NISON_CANONICAL_FREEZE_2026-08-18.md",
+    "provenance_scope": {
+      "patterns": "NISON_0001..NISON_0038 = 38/38 source-contract frozen",
+      "methodology_context": "NISON_0039..NISON_0044 = 6/6 source-contract frozen",
+      "total": 44
+    },
+    "activation_policy": "Per-rule logic remains in existing source-locked outputs/source contracts. This mapping uses one canonical freeze commit pointer for the 44-rule governed scope and does not duplicate rule semantics.",
+    "abstain_policy": "Qualitative source language remains qualitative; unresolved cases must ABSTAIN; no numeric threshold is invented.",
+    "oos_policy": "2025 locked OOS and not used for tuning."
   },
   "murphy_mapping": {
     "universe": "MURPHY_0001..MURPHY_0051",
@@ -49,5 +58,5 @@
     "2025 remains OOS read-only and cannot be used for tuning or calibration.",
     "Existing book evaluators and frozen source knowledge must not be rebuilt."
   ],
-  "next_required_step": "Complete per-rule artifact/commit pointers for the 44 frozen Nison rules and then run a 79-rule provenance completeness audit before declaring the adapter fully per-rule mapped."
+  "next_required_step": "Run a 79-rule provenance completeness audit against the canonical Murphy and Nison commit pointers, then perform the first Rule Adapter integration test."
 }
