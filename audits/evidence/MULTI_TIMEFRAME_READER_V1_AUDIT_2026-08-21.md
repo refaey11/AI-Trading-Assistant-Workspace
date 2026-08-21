@@ -1,17 +1,27 @@
-# MULTI_TIMEFRAME_READER_V1 — Audit Evidence
+# MULTI_TIMEFRAME_READER_V1 — Audit Evidence (Corrected)
 
 Date: 2026-08-21
-Status: PARTIAL
+Status: PARTIAL — MODULE SCOPE AUDITED / PROJECT-LEVEL 6-TF EVIDENCE PRESERVED
+
+## Correction notice
+A prior audit conclusion incorrectly treated this module's explicit H4/H1 implementation as evidence that the project's six-timeframe architecture was only partially proven. That was a scope error.
+
+The correct distinction is:
+
+- `MULTI_TIMEFRAME_READER_V1` module scope: H4 + H1 only.
+- Project-level Decision Brain architecture: six timeframes are already established and separately evidenced in the project record.
+
+This audit does not revoke, downgrade, or overwrite the existing project-level six-timeframe evidence.
 
 ## Archive evidence
 Archive contents include five pair-level `*_MTF_H4_H1.csv` outputs, `CONTRACT.json`, `README.md`, coverage, and latest readings.
 
 ## Contract
 - Status: `RESEARCH_ONLY`
-- Implemented timeframes: H4 and H1
+- Implemented timeframes in this module: H4 and H1
 - H4: higher-timeframe context
 - H1: local market structure
-- M15: explicitly not implemented because the available master datasets are H1; M15 must not be fabricated from H1
+- M15: explicitly not implemented because the available master datasets for this module are H1; M15 must not be fabricated from H1
 - Trade decision: not generated
 
 ## Output schema
@@ -35,10 +45,15 @@ All five pair outputs were directly checked.
 | USDCAD | 61,420 | 0 | PASS | 2016-01-03 to 2025-12-31 |
 | XAUUSD | 58,504 | 0 | PASS | 2016-01-03 to 2025-12-31 |
 
-## Key compatibility finding
-The module is explicitly a **two-timeframe implementation: H4 + H1 only**. It does not implement M15 and explicitly refuses to fabricate M15 from H1.
+## Correct compatibility finding
+This module is explicitly a **two-timeframe implementation: H4 + H1**. Its refusal to fabricate M15 from H1 is correct for this module's own data boundary.
 
-Therefore this module must not be represented as the final six-timeframe reader without a compatibility layer or later real-data implementation for the additional timeframes.
+This does **not** mean the overall project lacks six-timeframe evidence. The correct project-level position is:
+
+- Six-timeframe architecture/evidence: **PROVEN / RECORDED separately at project level**.
+- H4/H1 scope of `MULTI_TIMEFRAME_READER_V1`: **PROVEN**.
+- Requirement that this specific module itself implement all six timeframes: **NOT REQUIRED**.
+- Remaining integration question: whether downstream pipeline contracts consume the separately evidenced six-timeframe context correctly. This belongs to the later cross-module compatibility audit, not to a downgrade of the six-timeframe evidence.
 
 ## AS-OF / no-lookahead finding
 For every checked row, `h4_time <= timestamp`; however `h4_time + 4h > timestamp` for every row. This is consistent with `h4_time` representing an H4 bucket/start label, but the archived outputs alone do not prove whether the H4 fields were derived only from completed H4 bars or from information inside an H4 bar that was still forming.
@@ -53,12 +68,13 @@ No generator/source code is present in this archive. Therefore:
 Historical outputs extend into 2025. For project QA and any later fitting/tuning, use 2016–2024 only. Preserve 2025 as final OOS and do not tune on it.
 
 ## Final verdict
-- Contract/design: PASS
+- Contract/design within H4/H1 module scope: PASS
 - Historical output integrity: PASS
 - H4/H1 context classification: PASS as archived runtime output
-- Six-timeframe compatibility: PARTIAL / additional timeframes not implemented here
+- Project-level six-timeframe architecture: PROVEN / RECORDED separately; not downgraded by this audit
+- Requirement for this module to implement all six timeframes: NOT REQUIRED
 - AS-OF/no-lookahead provenance: UNPROVEN
-- Final status: **PARTIAL — AUDITED / GAPS REGISTERED**
+- Final module status: **PARTIAL — AUDITED / GAPS REGISTERED**
 
 ## Resume point
-Do not rebuild this module. Keep the explicit H4/H1 scope. Continue the Market Pipeline audit with **Time / Dynamic Timeframe Context**, then perform the cross-module compatibility matrix and close only proven gaps.
+Do not rebuild this module. Preserve the existing six-timeframe project evidence and the explicit H4/H1 scope of this module. Continue the Market Pipeline audit with **Time / Dynamic Timeframe Context**, then perform the cross-module compatibility matrix to verify how all separately proven timeframe components are consumed together.
