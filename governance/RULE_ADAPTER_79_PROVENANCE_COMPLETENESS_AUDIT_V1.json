@@ -1,0 +1,58 @@
+{
+  "artifact": "RULE_ADAPTER_79_PROVENANCE_COMPLETENESS_AUDIT_V1",
+  "status": "PASS_AT_CANONICAL_SCOPE_LEVEL",
+  "scope": {
+    "authoritative_rules_expected": 79,
+    "murphy": {"expected": 35, "resolved": 35, "missing": 0},
+    "nison": {"expected": 44, "resolved": 44, "missing": 0},
+    "total_missing": 0
+  },
+  "murphy_verification": {
+    "canonical_reconciliation_commit": "4be77bbb46dd6b2b97bc9b198416620af79e779d",
+    "verified_counts": {
+      "aligned_frozen": 19,
+      "explicitly_approved_frozen": 2,
+      "evidence_reconciled_frozen": 14,
+      "confirmed_frozen_total": 35,
+      "open_deferred": 16
+    },
+    "integrity_controls": [
+      "historical_artifacts_preserved",
+      "master_audit_not_overwritten",
+      "2025_oos_not_used_for_tuning"
+    ]
+  },
+  "nison_verification": {
+    "canonical_freeze_commit": "84257ada950ccd1ca5fca0357e0aa6f25d4eb8b3",
+    "governance_artifact": "NISON/NISON_CANONICAL_FREEZE_2026-08-18.md",
+    "verified_counts": {
+      "patterns_0001_0038": 38,
+      "methodology_context_0039_0044": 6,
+      "confirmed_frozen_total": 44
+    },
+    "integrity_controls": [
+      "source_contract_frozen",
+      "qualitative_language_not_numerically_invented",
+      "unresolved_cases_abstain",
+      "2025_oos_not_used_for_tuning",
+      "not_standalone_direction_generator"
+    ]
+  },
+  "excluded_from_authoritative_adapter_scope": {
+    "murphy_open_deferred": 16,
+    "trading_in_the_zone_deferred": 7,
+    "total": 23,
+    "policy": "Excluded rules must remain explicitly unavailable/deferred. No synthetic substitute or inferred rule logic is permitted."
+  },
+  "boundary_checks": {
+    "duplicate_rule_scope_detected": false,
+    "authoritative_scope_count_matches": true,
+    "missing_canonical_scope_pointer": false,
+    "final_trade_decision_generated_by_audit": false,
+    "nison_can_create_direction_alone": false,
+    "titz_can_create_direction": false
+  },
+  "result": "PASS_FOR_RULE_ADAPTER_INTEGRATION_TEST",
+  "limitation": "This audit proves completeness at the canonical scope/commit-pointer level. It does not claim that every individual rule output has already been executed end-to-end in one live market pipeline.",
+  "next_required_step": "Run the first integration test using representative Murphy and Nison evidence through the existing Rule Adapter -> Knowledge Alignment boundary, while asserting that unavailable/deferred rules cannot become authoritative."
+}
