@@ -1,0 +1,127 @@
+# 79-Rule Knowledge Alignment State — Evidence Correction
+Date: 2026-08-21
+Status: AUTHORITATIVE BACKUP EVIDENCE VERIFIED
+
+## Purpose
+Correct the current project audit path using the three uploaded backups dated 2026-08-21. This record supersedes the earlier attempt to reopen the legacy 102-rule registry as the current Knowledge Alignment work item.
+
+## Backups examined
+1. `AI_TRADING_ASSISTANT_79_RULE_AUDIT_BACKUP_20260821T020032Z`
+2. `AI_TRADING_ASSISTANT_FULL_79_RULE_BACKUP_20260821T020306Z`
+3. `AI_TRADING_ASSISTANT_COMPLETE_MILESTONE_BACKUP_79RULE_RISK_20260821T022022Z`
+
+The milestone backup contains the 79-rule audit artifacts and additional Risk Engine / boundary integration artifacts, providing the latest snapshot in this evidence set.
+
+## Evidence A — 79-rule provenance completeness
+`RULE_79_PROVENANCE_COMPLETENESS_AUDIT_V1.json`
+
+Status: `PASS`
+
+| Source | Required | Verified | Missing |
+|---|---:|---:|---:|
+| Murphy | 35 | 35 | 0 |
+| Nison | 44 | 44 | 0 |
+| Authoritative total | 79 | 79 | 0 |
+
+Also recorded:
+- Unavailable total: 23
+- Murphy open/deferred: 16
+- Trading in the Zone deferred: 7
+
+This is a provenance-completeness result. It does not claim that all project rules are available; deferred rules remain unavailable.
+
+Referenced provenance commits inside the audit artifact:
+- Murphy canonical reconciliation: `4be77bbb46dd6b2b97bc9b198416620af79e779d`
+- Nison canonical freeze: `84257ada950ccd1ca5fca0357e0aa6f25d4eb8b3`
+- Rule adapter provenance mapping: `e631e3f03a9ae52663e70f10272d98069f7baa29`
+- 79-rule provenance completeness audit: `29e01c8b328d689c96847bdbec2e0d61df944722`
+
+## Evidence B — Knowledge Alignment RUN 074
+`KNOWLEDGE_ALIGNMENT_COMPATIBILITY_REPORT_RUN_074.json`
+
+Status: `PASS_FOR_EVIDENCE_ALIGNMENT_BOUNDARY`
+
+What passed:
+- Murphy establishes candidate directional context only from frozen evidence.
+- Source-locked Nison confirms or contradicts but cannot create direction alone.
+- Non-frozen Nison evidence abstains and cannot silently become authoritative.
+- Trading in the Zone process failure blocks the path.
+- Alignment emits no final BUY/SELL decision.
+- Similarity remains non-binding historical evidence.
+
+Tested states include:
+- `ALIGNED`
+- `NISON_CONTRADICTION`
+- `MURPHY_ONLY`
+- `PROCESS_BLOCKED`
+- `INSUFFICIENT_BOOK_EVIDENCE`
+
+Every tested case recorded `final_trade_decision: null`.
+
+## Evidence C — Canonical role boundaries
+`KNOWLEDGE_ALIGNMENT_CONTRACT_V1.json`
+
+The contract explicitly defines:
+- Murphy: primary technical context; may establish or invalidate directional setup.
+- Nison: confirmation/contradiction only; cannot create direction alone.
+- Trading in the Zone: process/psychology gate only; cannot create direction.
+- Similarity: historical evidence only; cannot override hard gates.
+- Risk: hard gate downstream of alignment.
+- Decision Brain: final synthesis downstream; Knowledge Alignment does not emit BUY/SELL.
+
+Hard precedence includes:
+- Process gate failure blocks execution.
+- Murphy invalidation blocks directional setup.
+- Nison contradiction rejects/blocks an existing candidate setup but cannot create the opposite direction.
+- Nison confirmation can strengthen an existing Murphy direction but cannot create one.
+- 2025 is OOS and cannot be used for tuning, calibration, threshold selection, or implementation selection.
+
+## Evidence D — Legacy 102-rule registry correction
+`THREE_BOOK_RULE_ADAPTER_COMPATIBILITY_AUDIT_RUN_074.json` records the old integrated registry as:
+- 102 registry rules
+- 44 Steve Nison
+- 7 Trading in the Zone
+- 51 unattributed
+
+However, the same artifact states that the later canonical Nison project state supersedes the old registry snapshot as current closure authority. `KNOWLEDGE_ALIGNMENT_COMPATIBILITY_REPORT_RUN_074` further states that the old 102-rule registry is a historical integration snapshot and does not reflect the later canonical Nison frozen state.
+
+Therefore:
+
+`102-rule registry = legacy/historical provenance snapshot`
+
+It must NOT be reopened as the current authoritative Knowledge Alignment closure task merely because it contains 51 unattributed entries.
+
+## Correction to prior project direction
+The prior direction to review the 51 unattributed rules now is withdrawn.
+
+Do NOT:
+- rebuild the three book integrations;
+- reopen all 51 unattributed legacy entries as a new closure requirement;
+- duplicate book rules into a new Brain registry;
+- treat the old 102-rule snapshot as the current canonical authority.
+
+## Current verified state
+```text
+79-rule provenance audit                 PASS
+Murphy provenance                        35 / 35 verified
+Nison provenance                         44 / 44 verified
+Knowledge Alignment RUN 074              PASS for evidence-alignment boundary
+Three-book role boundaries               PASS / explicitly governed
+Final BUY/SELL from alignment            NOT GENERATED by design
+2025 OOS                                 RESERVED / no tuning
+```
+
+## Remaining boundaries (not falsely claimed as complete)
+RUN 074 explicitly does NOT claim:
+- full end-to-end profitability validation;
+- official baseline freeze;
+- complete Risk Engine validation;
+- final Decision Brain execution authorization.
+
+## Verified next safe action
+The evidence set states the next safe action as:
+
+**Audit the existing Risk Engine and existing Decision Brain V1/V1.1 contracts against the new Market Evidence + Knowledge Alignment boundaries, then run a compatibility test without rebuilding either module.**
+
+## Governance
+Before any new integration, perform a compatibility audit. Do not rebuild existing project knowledge from scratch. Preserve role separation: Murphy = technical context/structure; Nison = confirmation/contradiction; Trading in the Zone = process gate only; Similarity = historical evidence only and never sole decision-maker.
