@@ -1,0 +1,30 @@
+{
+  "artifact": "RULE_ADAPTER_KNOWLEDGE_ALIGNMENT_INTEGRATION_TEST_V1",
+  "status": "PASS",
+  "scope": "Boundary integration test using representative authoritative evidence shapes; this does not claim all 79 rule evaluators executed live in one runtime.",
+  "canonical_scope": {
+    "murphy_authoritative": 35,
+    "nison_authoritative": 44,
+    "authoritative_total": 79,
+    "excluded_unavailable": 23
+  },
+  "checks": [
+    {"name":"murphy_only_context","expected_state":"MURPHY_ONLY","pass":true},
+    {"name":"aligned_confirmation","expected_state":"ALIGNED","pass":true},
+    {"name":"nison_contradiction","expected_state":"NISON_CONTRADICTION","pass":true},
+    {"name":"nison_cannot_create_direction","expected_state":"INSUFFICIENT_BOOK_EVIDENCE","pass":true},
+    {"name":"unfrozen_nison_abstains","expected_state":"MURPHY_ONLY","pass":true},
+    {"name":"process_fail_blocks","expected_state":"PROCESS_BLOCKED","pass":true}
+  ],
+  "passed": 6,
+  "total": 6,
+  "hard_boundaries_verified": [
+    "Nison cannot create direction alone",
+    "Frozen Nison contradiction is surfaced",
+    "Unfrozen Nison abstains",
+    "Process failure blocks",
+    "No final BUY/SELL decision is emitted"
+  ],
+  "correction_log": "Initial test draft expected NISON_CONTRADICTION to degrade to MURPHY_ONLY. Adapter behavior correctly surfaced NISON_CONTRADICTION, so the test expectation was corrected; no rule or adapter logic was changed.",
+  "next_step": "Audit existing Risk Engine and existing Decision Brain input contract against this boundary before live evaluator wiring."
+}
