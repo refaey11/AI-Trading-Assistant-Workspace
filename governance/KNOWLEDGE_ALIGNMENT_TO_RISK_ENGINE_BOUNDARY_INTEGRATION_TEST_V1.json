@@ -1,0 +1,27 @@
+{
+  "artifact": "KNOWLEDGE_ALIGNMENT_TO_RISK_ENGINE_BOUNDARY_INTEGRATION_TEST_V1",
+  "status": "PASS",
+  "passed": 8,
+  "total": 8,
+  "scope": "Boundary integration test only; does not promote the recovered Risk Engine research prototype to live execution.",
+  "tests": [
+    {"name":"aligned_valid_research_candidate","expected":"PASS_RESEARCH_ONLY","actual":"PASS_RESEARCH_ONLY","pass":true},
+    {"name":"missing_stop_distance","expected":"NOT_READY_INSUFFICIENT_INPUT","actual":"NOT_READY_INSUFFICIENT_INPUT","pass":true},
+    {"name":"stop_below_half_atr","expected":"FAIL_HARD_GATE","actual":"FAIL_HARD_GATE","pass":true},
+    {"name":"stop_above_four_atr","expected":"FAIL_HARD_GATE","actual":"FAIL_HARD_GATE","pass":true},
+    {"name":"undefined_take_profit","expected":"FAIL_HARD_GATE","actual":"FAIL_HARD_GATE","pass":true},
+    {"name":"risk_not_fixed","expected":"FAIL_HARD_GATE","actual":"FAIL_HARD_GATE","pass":true},
+    {"name":"nison_contradiction_not_promoted","expected":"NOT_READY_INSUFFICIENT_INPUT","actual":"NOT_READY_INSUFFICIENT_INPUT","pass":true},
+    {"name":"process_blocked","expected":"NOT_READY_INSUFFICIENT_INPUT","actual":"NOT_READY_INSUFFICIENT_INPUT","pass":true}
+  ],
+  "hard_boundaries_verified": [
+    "No BUY/SELL output emitted",
+    "Risk engine does not create market direction",
+    "Nison contradiction is not promoted into a trade candidate",
+    "Missing required data abstains",
+    "Research hard gates remain boundary gates only",
+    "Live execution requirements remain unresolved"
+  ],
+  "live_execution": "NOT_EXECUTION_READY",
+  "next_step": "Audit the existing Decision Brain input/output contract against the completed Knowledge Alignment and Risk boundaries before any live evaluator wiring."
+}
