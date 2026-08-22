@@ -12,7 +12,7 @@ Single entry point for the live project state. When multiple versions exist, rea
 6. Historical audits and recovery files
 
 ## Active runtime count
-**20 Runtime Implemented / 35 active-rule scope**
+**22 Runtime Implemented / 35 active-rule scope**
 
 ## Rule 0018 / 0019 — LIVE STATUS
 - Governance/source semantics: **FROZEN**
@@ -20,8 +20,10 @@ Single entry point for the live project state. When multiple versions exist, rea
 - Executable evaluator module: `MURPHY_EVALUATORS_V1/murphy_0018_0019_evaluator.py`
 - Exact semantics: 0018 = converging boundaries + both slopes negative; 0019 = converging boundaries + both slopes positive.
 - Missing evidence: `NOT_EVALUABLE`.
-- Runtime integration tests: present in `MURPHY_EVALUATORS_V1/test_murphy_0018_0019_evaluator.py`.
-- Official runtime count: remains **20** until the repository-level unified runtime entry point consumes these evaluators and the full integration path passes.
+- Upstream binding: `TRENDLINE_GEOMETRY → Convergence Adapter → 0018/0019 Evaluator`.
+- Repository runtime entry point: `MURPHY_EVALUATORS_V1/murphy_0018_0019_runtime_entry.py`.
+- Full-path integration: recorded PASS (6/6 test cases).
+- Runtime status: **IMPLEMENTED**.
 
 ## Historical evidence order for 0018/0019
 ### CURRENT EVIDENCE
@@ -33,12 +35,9 @@ Single entry point for the live project state. When multiple versions exist, rea
   - 2025 remains OOS
 - `CURRENT_MURPHY_0018_0019_FINAL_FREEZE_RECORD_2026-08-22.md`
   - Explicit owner-authorized final freeze promotion for governance/source semantics
-
-### HISTORICAL / SUPERSEDED FOR LIVE-STATE PURPOSES
-- `MURPHY_0018_0019_RULE_ADAPTER_COMPATIBILITY_AUDIT_V1(4)` — earlier adapter limitation
-- `MURPHY_0018_0019_GOVERNANCE_DECISION_PACKET_V1(4)` — earlier governance stage
-- `MURPHY_0018_0019_FINAL_GATE_STATUS_V1(4)` — earlier gate snapshot
-- `MURPHY_0018_0019_PFB1_FULL_COVERAGE_REEXEC_V4(3)` — technical re-execution evidence
+- Runtime integration commits:
+  - `19574e6f8a6b65069ba0c4104f5ac34e6e1cc1b2` — geometry/convergence binding
+  - `33316a927b28efd6924a49e92da83dac8ca412f3` — runtime entry point
 
 ## Workspace rule
 - `PROJECT_STATE/` = live current status only.
@@ -47,4 +46,4 @@ Single entry point for the live project state. When multiple versions exist, rea
 - Historical artifacts cannot change live status unless explicitly promoted here.
 
 ## Immediate next work
-Locate the repository-level runtime entry point, register Rules 0018 and 0019 through that entry point, and run the full integration path. Only then may the runtime count move from 20 to 22.
+Proceed to the next highest-priority unresolved Murphy runtime rules from the current exact mappings, starting with a compatibility audit before any new integration.
