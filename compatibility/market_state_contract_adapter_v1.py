@@ -1,8 +1,11 @@
 """Contract-bound adapter for existing Market State Reader outputs.
 
 This adapter does not recreate the Market State Reader or invent calculations.
-It normalizes an existing source-derived state row to the frozen Market State
-contract and fails closed when required evidence is missing.
+It normalizes a source-derived state row to the frozen Market State contract
+and fails closed when required evidence is missing.
+
+Volume semantics are provenance-aware: an explicitly supplied non-null volume
+value is evaluable even when volume_ratio is unavailable for the first bar.
 """
 from __future__ import annotations
 
@@ -34,9 +37,10 @@ def normalize_market_state(row: Mapping[str, Any]) -> MarketStateResult:
     if trend not in VALID_TRENDS:
         return MarketStateResult("NOT_EVALUABLE", {}, False)
 
+    # Base volume is evaluable whenever the source explicitly supplies a value.
+    # A missing ratio does not erase availability of the underlying volume.
     volume = row.get("volume")
-    volume_ratio = row.get("volume_ratio")
-    volume_evaluable = bool(volume not in (None, 0, 0.0) and volume_ratio not in (None, 0, 0.0))
+    volume_evaluable = volume is not None
 
     state = {
         "timestamp": row["timestamp"],
