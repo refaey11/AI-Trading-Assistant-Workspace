@@ -1,0 +1,97 @@
+{
+  "name": "GBPUSD AI Trading Brain V1",
+  "purpose": "Combine independent market evidence into a structured market-state assessment.",
+  "principle": "Similarity is historical memory, not the decision maker.",
+  "modules": {
+    "market_structure": {
+      "inputs": [
+        "M5_trend_regime",
+        "M15_trend_regime",
+        "M30_trend_regime",
+        "H1_trend_regime",
+        "H4_trend_regime",
+        "D1_trend_regime"
+      ],
+      "output": "structure_state"
+    },
+    "mtf_context": {
+      "inputs": [
+        "mtf_trend_score",
+        "mtf_bullish_count",
+        "mtf_bearish_count",
+        "mtf_neutral_count",
+        "mtf_context_code"
+      ],
+      "output": "mtf_state"
+    },
+    "volatility": {
+      "inputs": [
+        "M5_volatility_regime",
+        "M15_volatility_regime",
+        "M30_volatility_regime",
+        "H1_volatility_regime",
+        "H4_volatility_regime",
+        "D1_volatility_regime"
+      ],
+      "output": "volatility_state"
+    },
+    "volume": {
+      "inputs": [
+        "*_relative_volume_20",
+        "*_volume_regime"
+      ],
+      "availability_rule": "Only active when volume_available=true.",
+      "output": "volume_state"
+    },
+    "historical_memory": {
+      "inputs": [
+        "Similarity Engine V1"
+      ],
+      "output": "historical_scenarios",
+      "rule": "Never override current market structure; provide historical evidence and uncertainty."
+    },
+    "knowledge": {
+      "inputs": [
+        "Trading books / curated knowledge base"
+      ],
+      "output": "contextual_explanations",
+      "rule": "Knowledge explains patterns and conditions; it does not invent market data."
+    },
+    "risk": {
+      "inputs": [
+        "structure_state",
+        "volatility_state",
+        "historical_scenarios"
+      ],
+      "output": "risk_context",
+      "rule": "Risk is evaluated after market understanding; no automatic execution in V1."
+    }
+  },
+  "outputs": {
+    "market_state": [
+      "trend",
+      "range",
+      "transition",
+      "uncertain"
+    ],
+    "directional_bias": [
+      "bullish",
+      "bearish",
+      "neutral",
+      "conflicted"
+    ],
+    "evidence": "List of supporting and contradicting evidence with source module.",
+    "scenario_distribution": "Bull/base/bear scenario probabilities after calibration.",
+    "confidence": "Calibrated confidence, not a raw indicator score.",
+    "no_trade_reasons": "Explicit reasons why evidence is insufficient or conflicting.",
+    "explanation": "Human-readable reasoning trace."
+  },
+  "hard_rules": [
+    "No future data in any input.",
+    "2025 remains OOS and is not used for calibration.",
+    "Volume unavailable is not equal to zero.",
+    "Similarity is evidence, not a standalone signal.",
+    "No automatic BUY/SELL execution in V1.",
+    "Every conclusion must cite its evidence modules."
+  ]
+}
