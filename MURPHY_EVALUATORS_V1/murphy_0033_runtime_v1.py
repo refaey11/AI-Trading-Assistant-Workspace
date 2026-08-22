@@ -1,7 +1,10 @@
 from __future__ import annotations
 from typing import Any, Dict
+import importlib
 
-from rules.murphy.0033.evaluator_candidate_v1 import Input, evaluate
+_eval_mod = importlib.import_module("rules.murphy.0033.evaluator_candidate_v1")
+Input = _eval_mod.Input
+evaluate = _eval_mod.evaluate
 
 
 def evaluate_0033(payload: Dict[str, Any]) -> Dict[str, Any]:
