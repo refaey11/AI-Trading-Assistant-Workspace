@@ -92,6 +92,20 @@ jobs:
           name: Run Dynamic MTF binding adapter tests
           command: python -m pytest -q tests/compatibility/test_dynamic_mtf_binding_adapter_v1.py
 
+  market_state_contract_v1:
+    docker:
+      - image: cimg/python:3.12
+    steps:
+      - checkout
+      - run:
+          name: Install pytest
+          command: |
+            python -m pip install --upgrade pip
+            python -m pip install pytest
+      - run:
+          name: Run Market State contract adapter tests
+          command: python -m pytest -q tests/compatibility/test_market_state_contract_adapter_v1.py
+
 workflows:
   build_and_test:
     jobs:
@@ -100,3 +114,4 @@ workflows:
       - nison_runtime_0021_0030
       - nison_runtime_0031_0044
       - dynamic_mtf_runtime_v1
+      - market_state_contract_v1
