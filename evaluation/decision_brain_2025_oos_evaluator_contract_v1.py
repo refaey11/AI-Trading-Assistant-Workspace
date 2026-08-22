@@ -21,7 +21,7 @@ def validate_oos_record(record: Dict[str, Any]) -> Dict[str, Any]:
     missing = sorted(REQUIRED_DECISION_FIELDS - set(record))
     if missing:
         return {
-            "status": "NOT_EVALUABLE",
+            "status": "REJECTED",
             "execution_allowed": False,
             "reason": "MISSING_FROZEN_DECISION_FIELDS",
             "missing": missing,
