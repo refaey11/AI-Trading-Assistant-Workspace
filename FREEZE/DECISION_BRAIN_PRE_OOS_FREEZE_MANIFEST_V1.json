@@ -1,0 +1,21 @@
+{
+  "project": "AI Trading Assistant — Decision Brain",
+  "freeze_candidate_date": "2026-08-22",
+  "freeze_stage": "PRE_OOS",
+  "base_checkpoint": "CircleCI #107 Final E2E readiness PASS",
+  "oos_year": 2025,
+  "development_years": "pre-2025 only",
+  "rules": {
+    "no_2025_tuning": true,
+    "no_2025_calibration": true,
+    "no_2025_threshold_selection": true,
+    "no_future_data": true,
+    "similarity_is_evidence_only": true,
+    "historical_memory_is_evidence_only": true,
+    "tiz_generates_direction": false,
+    "risk_overridable": false,
+    "source_truth_preserved": true
+  },
+  "status": "CANDIDATE_PENDING_FREEZE_GUARD_PASS",
+  "note": "This manifest defines the intended pre-OOS freeze boundary. The freeze becomes active only after the corresponding CI guard passes."
+}
