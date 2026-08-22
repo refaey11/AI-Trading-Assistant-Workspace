@@ -1,0 +1,30 @@
+name: Decision Brain Progressive Gate 01
+
+on:
+  push:
+    paths:
+      - 'decision_brain.py'
+      - 'compatibility/knowledge_decision_handoff.py'
+      - 'compatibility/run_knowledge_decision_brain.py'
+      - 'tests/test_progressive_decision_brain_gate_01_2026-08-22.py'
+      - '.github/workflows/decision-brain-progressive-gate.yml'
+  pull_request:
+    paths:
+      - 'decision_brain.py'
+      - 'compatibility/knowledge_decision_handoff.py'
+      - 'compatibility/run_knowledge_decision_brain.py'
+      - 'tests/test_progressive_decision_brain_gate_01_2026-08-22.py'
+      - '.github/workflows/decision-brain-progressive-gate.yml'
+
+jobs:
+  gate01:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install pytest
+        run: python -m pip install --upgrade pip pytest
+      - name: Run Gate 01 boundary tests
+        run: python -m pytest -q tests/test_knowledge_decision_handoff.py tests/test_knowledge_decision_brain_runtime.py tests/test_progressive_decision_brain_gate_01_2026-08-22.py
