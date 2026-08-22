@@ -6,11 +6,12 @@ Single entry point for the live project state. When multiple versions exist, rea
 ## Current operational source of truth
 1. This index
 2. `PROJECT_STATE/CURRENT_MURPHY_25_RUNTIME_STATUS_2026-08-22.md`
-3. `PROJECT_STATE/CURRENT_PF_B1_H1_GOVERNANCE_FREEZE_2026-08-22.md`
-4. `PROJECT_STATE/CURRENT_MURPHY_0018_0019_FINAL_FREEZE_RECORD_2026-08-22.md`
-5. Rule-specific newest explicit final/approval record
-6. Canonical/frozen source artifacts
-7. Historical audits and recovery files
+3. `PROJECT_STATE/CURRENT_MURPHY_0025_0026_RUNTIME_AUDIT_2026-08-22.md`
+4. `PROJECT_STATE/CURRENT_PF_B1_H1_GOVERNANCE_FREEZE_2026-08-22.md`
+5. `PROJECT_STATE/CURRENT_MURPHY_0018_0019_FINAL_FREEZE_RECORD_2026-08-22.md`
+6. Rule-specific newest final/approval record
+7. Canonical/frozen source artifacts
+8. Historical audits and recovery files
 
 ## Active runtime count
 **25 Runtime Implemented / 35 active-rule scope**
@@ -39,6 +40,16 @@ Single entry point for the live project state. When multiple versions exist, rea
 - Upstream binding: `TRENDLINE_GEOMETRY → Convergence Adapter → 0018/0019 Evaluator`.
 - Full-path integration: recorded PASS (6/6 test cases).
 - Runtime status: **IMPLEMENTED**.
+
+## Rules 0025 / 0026 — LIVE STATUS
+- Governance/source status: **PRODUCTION FROZEN / COMPLETED**.
+- Evidence: evaluator + deterministic tests + full 2016–2024 replay + availability/no-lookahead + freeze record.
+- 0025: current High >= preceding four completed ISO calendar weeks' High -> Bullish.
+- 0026: current Low <= preceding four completed ISO calendar weeks' Low -> Bearish.
+- Missing four-week reference: `NOT_EVALUABLE`.
+- Historical QA: 55,192 H1 rows; 0025 = 6,024 PASS / 48,801 FAIL / 367 NOT_EVALUABLE; 0026 = 5,718 PASS / 49,107 FAIL / 367 NOT_EVALUABLE; 10/10 deterministic tests; 8/8 replay checks; 8/8 availability/no-lookahead checks; 0 future-reference violations; 0 2025 rows.
+- Runtime status: **NOT_PROVEN** for both rules because unified runtime entry-point/wiring evidence has not been demonstrated.
+- Runtime count remains 25/35.
 
 ## Current runtime set
 0003, 0004, 0006, 0007, 0008, 0018, 0019, 0021, 0022, 0023, 0028, 0029, 0034–0045, 0050
