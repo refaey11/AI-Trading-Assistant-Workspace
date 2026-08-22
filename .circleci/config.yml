@@ -272,6 +272,20 @@ jobs:
           name: Run runtime allowlist gate tests
           command: python -m pytest -q tests/compatibility/test_rule_adapter_allowlist_runtime_gate_v1.py
 
+  frozen_decision_execution_bridge_v1:
+    docker:
+      - image: cimg/python:3.12
+    steps:
+      - checkout
+      - run:
+          name: Install pytest
+          command: |
+            python -m pip install --upgrade pip
+            python -m pip install pytest
+      - run:
+          name: Run frozen Decision-to-execution bridge tests
+          command: python -m pytest -q tests/evaluation/test_frozen_decision_execution_bridge_v1.py
+
 workflows:
   build_and_test:
     jobs:
@@ -293,3 +307,4 @@ workflows:
       - decision_brain_pre_oos_freeze_guard_v1
       - decision_brain_rule_allowlist_v1
       - rule_adapter_allowlist_runtime_gate_v1
+      - frozen_decision_execution_bridge_v1
