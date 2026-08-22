@@ -39,13 +39,21 @@ Verified safety behavior:
 - Unknown rule IDs are rejected.
 - Fail-closed behavior is preserved for invalid/unsupported inputs.
 
-## Runtime execution log — Breakout Family start
-### 0008 — decisive breakout
-- Started source lookup against the current GitHub workspace.
-- Current repository code search returned no direct `0008`/`MURPHY_0008` evaluator hit.
-- Therefore 0008 is NOT marked runtime-verified from GitHub source alone.
-- Next recovery action: inspect the reconstructed readable workspace artifacts and the approved source registry for the 0008 evaluator/payload before assigning a final runtime state.
-- No frozen rule definition was changed.
+## Runtime execution result — Breakout / Role-Reversal Family
+### 0008 — Role reversal: support to resistance
+Cross-source recovery completed against the reconstructed workspace, source registry, GitHub, and Dropbox metadata.
+
+Findings:
+- GitHub code search: no direct `MURPHY_0008` evaluator artifact found in the current repository index.
+- Reconstructed workspace: `MURPHY_51_RULE_TO_MTF_FUNCTION_MAP_V1.csv` lists MURPHY_0008 as `setup_or_confirmation`, using `risk,support_resistance,trend`; its timeframe resolution is `UNRESOLVED_BY_RULE` and requires an explicit MTF policy/contract.
+- Reconstructed workspace: `MURPHY_51_EXACT_CONDITION_PREP_V1.csv` lists MURPHY_0008 as `PARTIALLY_EVALUABLE`, with condition families `trend;support_resistance;risk_process`; missing feature family `risk_process`; timeframe policy `DYNAMIC_MTF_POLICY_V1_DRAFT`; note: do not mark PASS/FAIL until exact rule conditions are mapped.
+- Reconstructed workspace compatibility audit: MURPHY_0008 is `SUPPORTED_PRIMITIVE` because support/resistance primitives exist (`support_20`, `support_50`, `support_100`, `resistance_20`, `resistance_50`, `resistance_100`).
+- Reconstructed source rule registry: the frozen/source rule requires a support level to be decisively broken downward and later rallied toward, with broken support acting as resistance. The source rule does not itself supply the missing runtime definition needed to operationalize `decisively broken` or the exact MTF policy.
+- Dropbox: newer workspace parts dated 2026-08-20 were found, but the available Dropbox text extractor cannot read the ~199 MB archive part directly; this does not override the already reconstructed readable workspace evidence.
+
+Final current status: PARTIAL / NOT FINAL-PASS.
+Reason: primitives exist, but the exact runtime binding for decisive break, risk/process dependency, and explicit MTF policy is not yet frozen/bound. No PASS/FAIL trade outcome is assigned.
+No frozen rule definition was changed.
 
 ## Current next work
 Continue remaining Murphy rules by shared dependency family, then bind the recovered runtime outputs into the broader path:
