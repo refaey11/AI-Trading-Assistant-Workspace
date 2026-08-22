@@ -1,0 +1,72 @@
+from datetime import datetime, timezone
+
+import decision_brain
+from compatibility.decision_brain_final_e2e_readiness_v1 import run_final_e2e_readiness
+
+
+def _row():
+    return {
+        "mtf_trend_score": 0.7,
+        "M5_trend_regime": 0.4,
+        "M15_trend_regime": 0.3,
+        "M30_trend_regime": 0.2,
+        "H1_trend_regime": 0.4,
+        "H4_trend_regime": 0.5,
+        "D1_trend_regime": 0.3,
+        "volume_available": True,
+        "M5_volume_regime": 0.2,
+        "M15_volume_regime": 0.2,
+        "M30_volume_regime": 0.1,
+        "H1_volume_regime": 0.1,
+        "H4_volume_regime": 0.2,
+        "D1_volume_regime": 0.2,
+    }
+
+
+def test_pre_2025_readiness_passes_and_is_not_profitability_claim():
+    result = run_final_e2e_readiness(
+        decision_brain,
+        row=_row(),
+        query_as_of=datetime(2024, 12, 31, tzinfo=timezone.utc),
+        murphy_evidence={"rules": ["MURPHY_0003"], "attributed": True},
+        nison_evidence={"confirmation": "CONFIRMED", "contradiction": False},
+        tiz_evidence={"authoritative": False, "status": "NOT_EVALUABLE"},
+        risk_evidence={"authoritative": False, "status": "NOT_EVALUABLE"},
+        historical_evidence={"retrieval_status": "PASS", "candidate_count": 20},
+    )
+    assert result["status"] == "PASS"
+    assert result["execution"]["eligible"] is False
+    assert "TIZ_NOT_PRODUCTION_AUTHORIZED" in result["execution"]["needs_review"]
+    assert "RISK_NOT_PRODUCTION_AUTHORIZED" in result["execution"]["needs_review"]
+    assert result["governance"]["final_e2e_is_profitability_test"] is False
+    assert result["governance"]["production_execution_claimed"] is False
+
+
+def test_2025_development_is_locked():
+    result = run_final_e2e_readiness(
+        decision_brain,
+        row=_row(),
+        query_as_of=datetime(2025, 6, 1, tzinfo=timezone.utc),
+        murphy_evidence={},
+        nison_evidence={},
+        tiz_evidence={},
+        risk_evidence={},
+        historical_evidence={},
+    )
+    assert result["status"] == "NOT_EVALUABLE"
+    assert result["reason"] == "2025_OOS_LOCKED"
+
+
+def test_future_data_is_forbidden():
+    result = run_final_e2e_readiness(
+        decision_brain,
+        row=_row(),
+        query_as_of=datetime(2026, 1, 1, tzinfo=timezone.utc),
+        murphy_evidence={},
+        nison_evidence={},
+        tiz_evidence={},
+        risk_evidence={},
+        historical_evidence={},
+    )
+    assert result["status"] == "NOT_EVALUABLE"
+    assert result["reason"] == "2025_OOS_LOCKED"
