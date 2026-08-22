@@ -4,6 +4,7 @@ from MURPHY_EVALUATORS_V1.murphy_0006_0007_runtime_v1 import evaluate_0006, eval
 from MURPHY_EVALUATORS_V1.murphy_0025_0026_runtime_v1 import evaluate_0025, evaluate_0026
 from MURPHY_EVALUATORS_V1.murphy_0030_0032_runtime_v1 import evaluate_0030, evaluate_0031, evaluate_0032
 from MURPHY_EVALUATORS_V1.murphy_0033_runtime_v1 import evaluate_0033
+from MURPHY_EVALUATORS_V1.murphy_0047_runtime_v1 import evaluate_0047
 from TRENDLINE_CONVERGENCE_V1.trendline_convergence_adapter import evaluate_convergence
 from MURPHY_EVALUATORS_V1.murphy_0018_0019_evaluator import dispatch
 
@@ -25,6 +26,8 @@ def evaluate_rule(rule_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
         return evaluate_0032(payload)
     if rule_id == 'MURPHY_0033':
         return evaluate_0033(payload)
+    if rule_id == 'MURPHY_0047':
+        return evaluate_0047(payload)
     if rule_id not in {'MURPHY_0018', 'MURPHY_0019'}:
         return {'rule_id':rule_id,'status':'NOT_EVALUABLE','reason':'Rule is not registered in this runtime entry point.'}
     upper = payload.get('upper_line'); lower = payload.get('lower_line')
