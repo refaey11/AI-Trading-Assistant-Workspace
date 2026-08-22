@@ -8,6 +8,7 @@ from nison_0001_0002_engulfing import (
 from nison_0003_0010_runtime import evaluate_rule as evaluate_0003_0010
 from nison_0011_0020_runtime import evaluate_rule as evaluate_0011_0020
 from nison_0021_0030_runtime import evaluate_rule as evaluate_0021_0030
+from nison_0031_0044_runtime import evaluate_rule as evaluate_0031_0044
 
 
 def _to_engulfing_candles(payload: Dict[str, Any]):
@@ -49,4 +50,10 @@ def evaluate_rule(rule_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
             return evaluate_0011_0020(rule_id, payload)
         if 21 <= numeric <= 30:
             return evaluate_0021_0030(rule_id, payload)
+        if 31 <= numeric <= 38:
+            return evaluate_0031_0044(rule_id, payload)
+    if rule_id.startswith("NISON_MODULE_00"):
+        numeric = int(rule_id[-4:])
+        if 39 <= numeric <= 44:
+            return evaluate_0031_0044(rule_id, payload)
     return {"rule_id": rule_id, "status": "NOT_EVALUABLE", "reason": "unsupported rule id"}
