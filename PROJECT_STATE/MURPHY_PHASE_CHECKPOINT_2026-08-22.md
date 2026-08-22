@@ -111,31 +111,27 @@ Completed at the governance/reconciliation level:
 - decision that existing adapter files must be audited before patching;
 - decision to patch only verified compatibility gaps.
 
-Still pending runtime validation:
-1. Locate/audit the existing adapter implementation against the contract.
-2. Identify only verified gaps; do not invent a parallel adapter architecture.
-3. Confirm 35/35 registry coverage for the active closed scope.
-4. Run normalized contract tests.
-5. Run authority-boundary tests.
-6. Run conflict/precedence tests.
-7. Run NOT_EVALUABLE / fail-closed tests.
-8. Run process-gate tests.
-9. Run risk hard-veto tests.
-10. Run end-to-end wiring tests.
-11. Validate on 2016–2024 under availability rules.
-12. Preserve 2025 exclusively for final OOS testing; do not tune on it.
+## Runtime status correction — authoritative for this checkpoint
+The GitHub artifact `PROJECT_STATE/MURPHY_35_RUNTIME_BATCH_AUDIT_2026-08-22.md` is the runtime-status authority for the active 35-rule scope. It supersedes any conversational claim that the 35-rule Murphy runtime was already 35/35 complete.
 
-## Test expectations
-The integration test suite must be able to establish at minimum:
-- Murphy alone != final BUY/SELL.
-- Nison alone != direction generator.
-- Similarity alone != final decision.
-- Trading in the Zone alone != direction generator.
-- Risk failure = NO TRADE / veto regardless of other evidence.
-- Insufficient evidence = NOT_EVALUABLE, not fabricated PASS.
-- Strong confidence evidence cannot override a no_trade state by itself.
-- Historical data must respect point-in-time availability.
-- 2025 must remain isolated from tuning and operator selection.
+Current factual status:
+- 35-rule knowledge/governance scope: CLOSED/FROZEN and preserved.
+- 35-rule runtime: NOT YET 35/35 COMPLETE according to the recorded batch audit.
+- Missing runtime work is dependency binding/recovery by shared module family, not reopening or rewriting the source rules.
+- No rule may be promoted to PASS merely because a related feature exists.
+- Missing evidence remains PARTIAL or NOT_EVALUABLE until an approved project artifact or governed implementation decision supplies the required binding.
+
+The batch audit groups the remaining runtime work by reusable dependency families:
+1. Pivot/geometry: 0003, 0004, 0006, 0007, 0018, 0019.
+2. Breakout/filter: 0008.
+3. Volume/OI: 0021, 0022, 0023.
+4. Four-week/divergence/indicator: 0025, 0026, 0028, 0029, 0041.
+5. Pattern/context: 0033, 0037.
+6. P&F/Elliott/cycle: 0030–0038 where required features are absent.
+7. Risk/process: 0039, 0042–0045, 0050, 0051.
+8. Market breadth: 0047–0049.
+
+This correction does not reopen the 35-rule governance freeze. It only prevents the project record from falsely claiming runtime completion without executed runtime evidence.
 
 ## Historical validation boundary
 - Development/validation window: 2016–2024, subject to project availability/provenance rules.
@@ -186,6 +182,7 @@ A status note alone is not sufficient when there is a concrete artifact, contrac
 
 ## Current canonical next work
 1. Treat this record as the comprehensive Murphy handoff/state record.
-2. Continue with Nison audit from existing files and closure evidence.
-3. In parallel or as the next Murphy integration gate, audit the existing Rule Adapter implementation and run only verified compatibility patches/tests.
-4. Record actual test outputs and implementation artifacts in GitHub when completed.
+2. Do not reopen the 35 frozen rules.
+3. Treat `MURPHY_35_RUNTIME_BATCH_AUDIT_2026-08-22.md` as the current runtime gap inventory until superseded by executed implementation/test evidence.
+4. Continue Nison audit from existing files and closure evidence.
+5. In parallel or as the next Murphy integration gate, implement only verified shared dependency bindings in the existing Rule Adapter architecture, then record actual test outputs in GitHub.
