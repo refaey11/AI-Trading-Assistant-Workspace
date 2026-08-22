@@ -17,8 +17,11 @@ Single entry point for the live project state. When multiple versions exist, rea
 ## Rule 0018 / 0019 — LIVE STATUS
 - Governance/source semantics: **FROZEN**
 - Freeze record: `CURRENT_MURPHY_0018_0019_FINAL_FREEZE_RECORD_2026-08-22.md`
-- Runtime binding: **PENDING EXECUTABLE INTEGRATION**
-- Official runtime count: still **20**, and must not become 22 until executable binding and integration tests pass.
+- Executable evaluator module: `MURPHY_EVALUATORS_V1/murphy_0018_0019_evaluator.py`
+- Exact semantics: 0018 = converging boundaries + both slopes negative; 0019 = converging boundaries + both slopes positive.
+- Missing evidence: `NOT_EVALUABLE`.
+- Runtime integration tests: present in `MURPHY_EVALUATORS_V1/test_murphy_0018_0019_evaluator.py`.
+- Official runtime count: remains **20** until the repository-level unified runtime entry point consumes these evaluators and the full integration path passes.
 
 ## Historical evidence order for 0018/0019
 ### CURRENT EVIDENCE
@@ -44,4 +47,4 @@ Single entry point for the live project state. When multiple versions exist, rea
 - Historical artifacts cannot change live status unless explicitly promoted here.
 
 ## Immediate next work
-Bind frozen Rules 0018 and 0019 into the unified runtime and run integration tests. Only after a real executable binding and passing tests may the runtime count move from 20 to 22.
+Locate the repository-level runtime entry point, register Rules 0018 and 0019 through that entry point, and run the full integration path. Only then may the runtime count move from 20 to 22.
