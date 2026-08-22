@@ -1,32 +1,35 @@
-# Murphy 20-Rule Unified Runtime Status — 2026-08-22
+# Murphy Runtime — CURRENT STATUS (2026-08-22)
+
+> This file is the current operational status for the active 35-rule scope. Older status files, audits, and recovery notes are historical evidence only and must not override a newer canonical record.
 
 ## Runtime-implemented set
-Total: 20 rules
+**Total: 20 rules**
 
-### Existing verified runtime set (8)
+### Runtime set (8)
 0003, 0004, 0021, 0022, 0023, 0028, 0029, 0050
 
-### Newly integrated runtime batch (12)
+### Integrated runtime batch (12)
 0034, 0035, 0036, 0037, 0038, 0039, 0040, 0041, 0042, 0043, 0044, 0045
 
-## Integration status
-- Unified dispatcher coverage: 20 rules.
-- Integration tests: PASS for all 20 dispatcher routes.
-- New batch evaluator tests: 12/12 PASS.
-- Missing/insufficient evidence remains fail-closed as NOT_EVALUABLE.
-- No frozen rule semantics were intentionally changed.
+## 0018 / 0019 — current canonical status
+- Latest governance record: `APPROVED` for scope 0018 and 0019.
+- Current wording: **approved project-governance integration and prepared as freeze candidates**.
+- The current record does **not** itself claim `FROZEN`.
+- Therefore: **not counted in the 20 Runtime Implemented total until executable runtime binding/integration evidence is recorded**.
+- Older `NOT_FROZEN` / `DESIGN_ONLY` adapter audit records remain historical evidence and must not override the later approval record; they also do not by themselves establish runtime implementation.
 
 ## Counting convention
-`20 Runtime Implemented` means the 20 rules have executable runtime routing and integration-test coverage.
-It does NOT mean all 20 have completed production/historical performance verification.
+`20 Runtime Implemented` means executable runtime routing and integration-test coverage are recorded for the 20 rules above. It does not mean all 20 have completed production/historical performance verification.
 
-## Remaining in the active 35-rule scope
-35 - 20 = 15 rules remaining for runtime implementation/recovery.
+## Current source-precedence rule
+For any conflicting project artifact:
+1. Use the newest explicit final/current status for the same scope.
+2. Prefer explicit decisions over intermediate audit findings.
+3. Do not upgrade beyond what the newest record actually states.
+4. Preserve older artifacts as history; do not let them silently override current state.
+5. A newer status must be recorded in `PROJECT_STATE/CURRENT_STATE_INDEX_2026-08-22.md` before it becomes operationally authoritative.
 
-## Next execution target
-Work the remaining 15 active rules as the next batch, using existing artifacts first; recover missing implementations only from canonical/frozen rule definitions without inventing semantics.
-
-## Hard boundaries
+## Active boundaries
 - Parked 16 remain out of scope.
 - 2025 remains OOS and must not be used for tuning.
 - Historical/similarity layers remain evidence only and cannot independently create direction.
