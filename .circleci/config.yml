@@ -132,6 +132,20 @@ jobs:
           name: Run Market Scenario contract adapter tests
           command: python -m pytest -q tests/compatibility/test_market_scenario_contract_adapter_v1.py
 
+  historical_context_memory_v1:
+    docker:
+      - image: cimg/python:3.12
+    steps:
+      - checkout
+      - run:
+          name: Install pytest
+          command: |
+            python -m pip install --upgrade pip
+            python -m pip install pytest
+      - run:
+          name: Run Historical Context Memory boundary tests
+          command: python -m pytest -q tests/compatibility/test_historical_context_memory_boundary_v1.py
+
 workflows:
   build_and_test:
     jobs:
@@ -143,3 +157,4 @@ workflows:
       - market_state_contract_v1
       - market_reader_contract_v1
       - market_scenario_contract_v1
+      - historical_context_memory_v1
