@@ -39,6 +39,14 @@ Verified safety behavior:
 - Unknown rule IDs are rejected.
 - Fail-closed behavior is preserved for invalid/unsupported inputs.
 
+## Runtime execution log — Breakout Family start
+### 0008 — decisive breakout
+- Started source lookup against the current GitHub workspace.
+- Current repository code search returned no direct `0008`/`MURPHY_0008` evaluator hit.
+- Therefore 0008 is NOT marked runtime-verified from GitHub source alone.
+- Next recovery action: inspect the reconstructed readable workspace artifacts and the approved source registry for the 0008 evaluator/payload before assigning a final runtime state.
+- No frozen rule definition was changed.
+
 ## Current next work
 Continue remaining Murphy rules by shared dependency family, then bind the recovered runtime outputs into the broader path:
 
