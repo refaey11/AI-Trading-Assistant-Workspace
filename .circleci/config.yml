@@ -160,6 +160,20 @@ jobs:
           name: Run Historical Outcome Memory boundary tests
           command: python -m pytest -q tests/compatibility/test_historical_outcome_memory_boundary_v1.py
 
+  similarity_memory_v2:
+    docker:
+      - image: cimg/python:3.12
+    steps:
+      - checkout
+      - run:
+          name: Install pytest
+          command: |
+            python -m pip install --upgrade pip
+            python -m pip install pytest
+      - run:
+          name: Run Similarity Memory V2 boundary tests
+          command: python -m pytest -q tests/compatibility/test_similarity_memory_v2_boundary.py
+
 workflows:
   build_and_test:
     jobs:
@@ -173,3 +187,4 @@ workflows:
       - market_scenario_contract_v1
       - historical_context_memory_v1
       - historical_outcome_memory_v1
+      - similarity_memory_v2
