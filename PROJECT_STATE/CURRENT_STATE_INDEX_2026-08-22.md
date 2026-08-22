@@ -5,9 +5,9 @@ Single entry point for the live project state. When multiple versions exist, rea
 
 ## Current operational source of truth
 1. This index
-2. `PROJECT_STATE/CURRENT_MURPHY_31_RUNTIME_STATUS_2026-08-22.md`
-3. `PROJECT_STATE/CURRENT_MURPHY_0030_0033_RUNTIME_AUDIT_2026-08-22.md`
-4. `PROJECT_STATE/CURRENT_MURPHY_0047_0049_RUNTIME_AUDIT_2026-08-22.md`
+2. `PROJECT_STATE/CURRENT_MURPHY_34_RUNTIME_STATUS_2026-08-22.md`
+3. `PROJECT_STATE/CURRENT_MURPHY_0047_0049_RUNTIME_AUDIT_2026-08-22.md`
+4. `PROJECT_STATE/CURRENT_MURPHY_0030_0033_RUNTIME_AUDIT_2026-08-22.md`
 5. `PROJECT_STATE/CURRENT_MURPHY_0047_0049_RECONCILIATION_2026-08-22.md`
 6. `PROJECT_STATE/CURRENT_MURPHY_27_RUNTIME_STATUS_2026-08-22.md`
 7. `PROJECT_STATE/CURRENT_MURPHY_0025_0026_RUNTIME_AUDIT_2026-08-22.md`
@@ -18,7 +18,7 @@ Single entry point for the live project state. When multiple versions exist, rea
 12. Historical audits and recovery files
 
 ## Active runtime count
-**32 Runtime Implemented / 35 active-rule scope**
+**34 Runtime Implemented / 35 active-rule scope**
 
 ## Newly Runtime Implemented
 - 0006 — executable evaluator + tests + repository runtime entry-point integration
@@ -31,6 +31,8 @@ Single entry point for the live project state. When multiple versions exist, rea
 - 0032 — frozen P&F short stop reference adapter + unified runtime entry-point wiring; smoke PASS
 - 0033 — frozen contextual candle-filter evaluator adapter + unified runtime entry-point wiring; smoke PASS
 - 0047 — normalized index/A-D divergence evaluator + unified runtime entry-point wiring; 4/4 smoke PASS; 25/25 historical replay labels reconciled
+- 0048 — Murphy TRIN 10-day MA > 1.20 evaluator + tests + unified runtime entry-point wiring; 186/186 historical labels reconciled
+- 0049 — Murphy TRIN < 0.70 evaluator + tests + unified runtime entry-point wiring; 122/122 historical labels reconciled
 
 ## Rule 0008 — LIVE STATUS
 - Runtime status: **IMPLEMENTED**
@@ -45,46 +47,31 @@ Single entry point for the live project state. When multiple versions exist, rea
 
 ## Rules 0025 / 0026 — LIVE STATUS
 - Governance/source status: **PRODUCTION FROZEN / COMPLETED**.
-- Evidence: evaluator + deterministic tests + full 2016–2024 replay + availability/no-lookahead + freeze record.
-- 0025: current High >= preceding four completed ISO calendar weeks' High -> Bullish.
-- 0026: current Low <= preceding four completed ISO calendar weeks' Low -> Bearish.
-- Missing four-week reference: `NOT_EVALUABLE`.
-- Historical QA: 55,192 H1 rows; 0025 = 6,024 PASS / 48,801 FAIL / 367 NOT_EVALUABLE; 0026 = 5,718 PASS / 49,107 FAIL / 367 NOT_EVALUABLE; 10/10 deterministic tests; 8/8 replay checks; 8/8 availability/no-lookahead checks; 0 future-reference violations; 0 2025 rows.
 - Runtime status: **VERIFIED**.
-- Entry-point smoke test: PASS for 0025 PASS/FAIL/NOT_EVALUABLE cases and 0026 PASS/FAIL/NOT_EVALUABLE cases.
 
 ## Rules 0030–0032 — LIVE STATUS
 - Governance/source status: **PRODUCTION FROZEN**.
-- Shared core: `src/murphy_0030_0032/pnf_3box_reference.py`.
-- Rule semantics: 0030 = P&F bullish support reference; 0031 = BELOW_PREVIOUS_O_COLUMN; 0032 = ABOVE_PREVIOUS_X_COLUMN.
-- Project operationalization (bootstrap/box scaling) remains explicitly project-defined, not Murphy/Tower numeric source truth.
-- Runtime adapters: `MURPHY_EVALUATORS_V1/murphy_0030_0032_runtime_v1.py`.
-- Unified entry point integrated: `MURPHY_EVALUATORS_V1/murphy_runtime_entrypoint_v1.py`.
-- Smoke verification: PASS for all three outputs and missing-evidence NOT_EVALUABLE behavior.
-- 2025 remains OOS; no profitability-based parameter selection.
+- Runtime status: **VERIFIED**.
 
 ## Rule 0033 — LIVE STATUS
 - Governance/source status: **LOCAL_PRODUCTION_FROZEN** in the canonical workspace; GitHub preserves the implementation/provenance mirror.
-- Semantics: neutral contextual candle filter; reversal candle + short-term trend + Stochastics %D presignal; no independent BUY/SELL generation.
-- Runtime adapter: `MURPHY_EVALUATORS_V1/murphy_0033_runtime_v1.py`.
-- Unified entry point integrated and smoke-verified.
-- Historical QA: 273,387 rows, 2016–2024; prefix/no-lookahead PASS; 2025 excluded.
+- Runtime status: **VERIFIED**.
 
 ## Rule 0047 — LIVE STATUS
-- Governance/source status: historical closure evidence reconciled.
 - Runtime status: **VERIFIED**.
 - Operator: `index_new_high AND ad_fails_high` from normalized canonical replay evidence.
 - Historical reconciliation: 25 expected condition rows vs 25 `rule_0047` rows; 0 mismatches.
-- Runtime evaluator: `MURPHY_EVALUATORS_V1/murphy_0047_runtime_v1.py`.
-- Unified entry point: `MURPHY_EVALUATORS_V1/murphy_runtime_entrypoint_v1.py`.
-- Deterministic smoke: 4/4 PASS.
-- 2025 not used.
 
 ## Rules 0048 / 0049 — LIVE STATUS
-- Historical closure counts remain 186 / 122 and source TRIN evidence is available.
-- Exact source-locked rule operators are not recovered in the current runtime audit.
-- Runtime status: **NOT_EVALUABLE / UNPROVEN**.
-- No inferred/common-market TRIN thresholds or proxy logic allowed.
+- Historical closure counts: 0048 = **186**, 0049 = **122**.
+- 0048 operator: `trin_ma10 > 1.20`.
+- 0049 operator: `trin < 0.70`.
+- Final replay reconciliation: 0048 = **186/186 exact**, 0049 = **122/122 exact**; 0 mismatches for either rule.
+- Runtime evaluator: `MURPHY_EVALUATORS_V1/murphy_0048_0049_runtime_v1.py`.
+- Unified entry point: `MURPHY_EVALUATORS_V1/murphy_runtime_entrypoint_v1.py`.
+- Unit tests: 6/6 PASS.
+- Runtime status: **VERIFIED**.
+- Murphy source thresholds only; no inferred/common-market substitute logic.
 
 ## Historical 0047–0049 closure reconciliation
 - Final occurrence counts: 0047 = **25**, 0048 = **186**, 0049 = **122**.
@@ -93,10 +80,10 @@ Single entry point for the live project state. When multiple versions exist, rea
 - Synthetic rows: false. Proxy substitution: false. New thresholds: false. New timeframes: false.
 
 ## Current runtime set
-0003, 0004, 0006, 0007, 0008, 0018, 0019, 0021, 0022, 0023, 0025, 0026, 0028, 0029, 0030, 0031, 0032, 0033, 0047, 0034–0045, 0050
+0003, 0004, 0006, 0007, 0008, 0018, 0019, 0021, 0022, 0023, 0025, 0026, 0028, 0029, 0030, 0031, 0032, 0033, 0047, 0048, 0049, 0034–0045, 0050
 
 ## Remaining frozen-only / runtime-unproven rules
-0048, 0049, 0051
+0051
 
 ## Workspace rule
 - `PROJECT_STATE/` = live current status only.
@@ -105,4 +92,4 @@ Single entry point for the live project state. When multiple versions exist, rea
 - Historical artifacts cannot change live status unless explicitly promoted here.
 
 ## Immediate next work
-Proceed to 0048–0049 operator-contract investigation, then 0051. 2025 remains OOS and must not be used for tuning or selection.
+Proceed to 0051 compatibility audit, evaluator integration, deterministic tests, and unified runtime verification. 2025 remains OOS and must not be used for tuning or selection.
