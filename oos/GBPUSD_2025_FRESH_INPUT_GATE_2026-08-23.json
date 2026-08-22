@@ -1,0 +1,22 @@
+{
+  "gate": "PASS",
+  "scope": "Fresh GBPUSD 2025 OOS input gate",
+  "master_rows_2025": 372632,
+  "duplicate_timestamps_2025": 0,
+  "zero_volume_2025": 0,
+  "null_volume_2025": 0,
+  "source_period": "TitanFX_2020_2026",
+  "source_period_all_titanfx": true,
+  "h1_rows": 6216,
+  "h1_duplicates": 0,
+  "h1_zero_volume": 0,
+  "h1_null_volume": 0,
+  "h4_rows": 1554,
+  "h4_duplicates": 0,
+  "h4_zero_volume": 0,
+  "h4_null_volume": 0,
+  "master_csv_sha256": "e0383c003fdb08e8776e68a4e8d1cc30529c0be55799295c0ffbdd52a80e1bb8",
+  "h1_sha256": "31c388aebfa249bfda37b546d0cdefe0defb96b5c38fad7588b9b7b440f9f677",
+  "h4_sha256": "3cb1f921ec0df85b12442e45789bacd7f3656a4a3465e62a38d26f797ee682fb",
+  "governance": "2025 is OOS-only; no tuning, calibration, threshold selection, or future-data use."
+}
