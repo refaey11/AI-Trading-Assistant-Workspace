@@ -34,16 +34,19 @@ Single entry point for the live project state. When multiple versions exist, rea
 - 0048 — Murphy TRIN 10-day MA > 1.20 evaluator + tests + unified runtime entry-point wiring; 186/186 historical labels reconciled
 - 0049 — Murphy TRIN < 0.70 evaluator + tests + unified runtime entry-point wiring; 122/122 historical labels reconciled
 
-## Rule 0008 — LIVE STATUS
-- Runtime status: **IMPLEMENTED**
-- Governance dependency: `CURRENT_PF_B1_H1_GOVERNANCE_FREEZE_2026-08-22.md`
-- Evaluator: `MURPHY_EVALUATORS_V1/murphy_0008_runtime.py`
-- Runtime entry point: `MURPHY_EVALUATORS_V1/murphy_0008_runtime_entry.py`
-- Exact role-reversal evidence requires strictly ordered completed-bar events: breakout → retest → role reversal.
-- Missing/ambiguous evidence: `NOT_EVALUABLE`.
-- No ATR, percentage, pip, volume, or other invented numeric threshold.
-- Historical replay evidence 2020–2024: 39 matched breakout events; 36 role-reversal candidates; 3 no-retest; 0 chronology violations.
-- 2025 excluded from tuning/evaluation.
+## Rule 0051 — LIVE STATUS
+- Governance/source status: **PROCESS_GATE_FROZEN / CLOSED**.
+- Gate: `PLAN_COMPLETE`.
+- Required fields: direction, stance, position_size, acceptable_loss, profit_objective, entry, order_type, stop_loss.
+- PASS: all eight fields explicitly present and non-empty.
+- FAIL: any required field explicitly missing/empty.
+- NOT_EVALUABLE: required field status unknown/unavailable.
+- Direction generation: **false**; the gate checks completeness of an already-produced plan and does not generate BUY/SELL or invent risk/execution policy.
+- Source QA from `MURPHY_0051_PROCESS_GATE_CONTRACT_FINAL.json` / `FINAL_QA_AND_CLOSURE.json`: deterministic tests 3/3 PASS; historical market replay NOT_APPLICABLE_AS_MARKET_SIGNAL; 2025 not used.
+- Runtime evaluator: `MURPHY_EVALUATORS_V1/murphy_0051_runtime_v1.py`.
+- Runtime tests: `MURPHY_EVALUATORS_V1/test_murphy_0051_runtime_v1.py`.
+- Unified entry point: `MURPHY_EVALUATORS_V1/murphy_runtime_entrypoint_v1.py`.
+- Current runtime status: **WIRED / FULL-PATH VERIFICATION PENDING**. The adapter and three deterministic cases are implemented, but the full repository entry-point execution was not run in this environment.
 
 ## Rules 0025 / 0026 — LIVE STATUS
 - Governance/source status: **PRODUCTION FROZEN / COMPLETED**.
@@ -92,4 +95,4 @@ Single entry point for the live project state. When multiple versions exist, rea
 - Historical artifacts cannot change live status unless explicitly promoted here.
 
 ## Immediate next work
-Proceed to 0051 compatibility audit, evaluator integration, deterministic tests, and unified runtime verification. 2025 remains OOS and must not be used for tuning or selection.
+Run the full repository entry-point smoke test for 0051. If PASS, promote the rule and the active runtime count to **35/35**. 2025 remains OOS and must not be used for tuning or selection.
