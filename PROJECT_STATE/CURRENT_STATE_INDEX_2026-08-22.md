@@ -7,13 +7,14 @@ Single entry point for the live project state. When multiple versions exist, rea
 1. This index
 2. `PROJECT_STATE/CURRENT_MURPHY_31_RUNTIME_STATUS_2026-08-22.md`
 3. `PROJECT_STATE/CURRENT_MURPHY_0030_0033_RUNTIME_AUDIT_2026-08-22.md`
-4. `PROJECT_STATE/CURRENT_MURPHY_27_RUNTIME_STATUS_2026-08-22.md`
-5. `PROJECT_STATE/CURRENT_MURPHY_0025_0026_RUNTIME_AUDIT_2026-08-22.md`
-6. `PROJECT_STATE/CURRENT_PF_B1_H1_GOVERNANCE_FREEZE_2026-08-22.md`
-7. `PROJECT_STATE/CURRENT_MURPHY_0018_0019_FINAL_FREEZE_RECORD_2026-08-22.md`
-8. Rule-specific newest final/approval record
-9. Canonical/frozen source artifacts
-10. Historical audits and recovery files
+4. `PROJECT_STATE/CURRENT_MURPHY_0047_0049_RECONCILIATION_2026-08-22.md`
+5. `PROJECT_STATE/CURRENT_MURPHY_27_RUNTIME_STATUS_2026-08-22.md`
+6. `PROJECT_STATE/CURRENT_MURPHY_0025_0026_RUNTIME_AUDIT_2026-08-22.md`
+7. `PROJECT_STATE/CURRENT_PF_B1_H1_GOVERNANCE_FREEZE_2026-08-22.md`
+8. `PROJECT_STATE/CURRENT_MURPHY_0018_0019_FINAL_FREEZE_RECORD_2026-08-22.md`
+9. Rule-specific newest final/approval record
+10. Canonical/frozen source artifacts
+11. Historical audits and recovery files
 
 ## Active runtime count
 **31 Runtime Implemented / 35 active-rule scope**
@@ -67,6 +68,13 @@ Single entry point for the live project state. When multiple versions exist, rea
 - Unified entry point integrated and smoke-verified.
 - Historical QA: 273,387 rows, 2016–2024; prefix/no-lookahead PASS; 2025 excluded.
 
+## Rules 0047–0049 — LIVE STATUS
+- Historical closure batch: **RECONCILED**.
+- Final occurrence counts: 0047 = **25**, 0048 = **186**, 0049 = **122**.
+- The `24` stated for 0047 in `CLOSURE.md` is a stale metadata typo; both `CLOSURE_STATUS.json`, `RULE_0047_FINAL_OCCURRENCES.csv`, and the final replay support **25**.
+- Coverage: 2016-01-04 through 2020-02-10; 1,033 final trading-day replay rows; 6 NYSE closure rows excluded.
+- Runtime status: **NOT_PROVEN**; reconciliation does not itself promote the rules.
+
 ## Current runtime set
 0003, 0004, 0006, 0007, 0008, 0018, 0019, 0021, 0022, 0023, 0025, 0026, 0028, 0029, 0030, 0031, 0032, 0033, 0034–0045, 0050
 
@@ -80,4 +88,4 @@ Single entry point for the live project state. When multiple versions exist, rea
 - Historical artifacts cannot change live status unless explicitly promoted here.
 
 ## Immediate next work
-Proceed to the next highest-priority unresolved Murphy runtime rules from the current exact mappings, starting with compatibility audit before any new integration. 2025 remains OOS and must not be used for tuning.
+Proceed to 0047–0049 compatibility audit, evaluator integration, deterministic tests, and unified runtime verification. 2025 remains OOS and must not be used for tuning or selection.
