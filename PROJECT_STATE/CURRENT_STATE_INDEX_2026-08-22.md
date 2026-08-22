@@ -6,45 +6,47 @@ Single entry point for the live project state. When multiple versions exist, rea
 ## Current operational source of truth
 1. This index
 2. `AUDITS/MURPHY_FINAL_COMPATIBILITY_AUDIT_2026-08-22.md`
-3. `AUDITS/MURPHY_35_RUNTIME_MATRIX_V2_2026-08-22.md`
-4. `AUDITS/MURPHY_35_RUNTIME_INVENTORY_2026-08-22.md`
-5. `AUDITS/MURPHY_RUNTIME_BATCH_EXECUTION_STATUS_V1.md`
-6. Rule-specific newest final/approval record
-7. Canonical/frozen source artifacts
-8. Historical audits and recovery files
+3. Rule-specific newest final/approval record
+4. `AUDITS/MURPHY_35_RUNTIME_MATRIX_V2_2026-08-22.md` (older conservative snapshot; not newer than the final compatibility audit)
+5. `AUDITS/MURPHY_35_RUNTIME_INVENTORY_2026-08-22.md` (older conservative snapshot)
+6. Canonical/frozen source artifacts
+7. Historical audits and recovery files
 
 ## Murphy active scope
 **35 Frozen/Closed rules**
 
 ## Verified Runtime count
-**22 / 35**
+**34 / 35**
 
 ## Verified Runtime rules
-0003, 0004, 0018, 0019, 0021, 0022, 0023, 0028, 0029, 0034, 0035, 0036, 0037, 0038, 0039, 0040, 0041, 0042, 0043, 0044, 0045, 0050.
+0003, 0004, 0006, 0007, 0018, 0019, 0021, 0022, 0023, 0025, 0026, 0028, 0029, 0030, 0031, 0032, 0033, 0034, 0035, 0036, 0037, 0038, 0039, 0040, 0041, 0042, 0043, 0044, 0045, 0047, 0048, 0049, 0050, 0051.
 
-## Frozen / Runtime NOT PROVEN
-0006, 0007, 0008, 0025, 0026, 0030, 0031, 0032, 0033, 0047, 0048, 0049, 0051.
+## Frozen / Runtime NOT PROVEN / BLOCKED
+**0008 only**.
 
-## Important correction
-An earlier checkpoint recorded **35/35 Runtime Implemented**. The final compatibility audit retracts that runtime claim because the canonical matrix still supports only **22/35 verified Runtime**. Frozen/Closed does not imply Runtime Implemented.
+## Important corrections
+- An earlier checkpoint recorded **35/35 Runtime Implemented**. That was too broad.
+- The older conservative matrix recorded **22/35** because it pre-dated the latest current GitHub adapters/tests.
+- The final compatibility audit reconciles those two states to **34/35 verified Runtime**, with **0008 blocked**.
+- Frozen/Closed does not imply Runtime Implemented.
 
-## Direct entry-point finding
-`MURPHY_EVALUATORS_V1/murphy_runtime_entrypoint_v1.py` currently dispatches 0006, 0007, 0018, 0019, 0025, 0026, 0030, 0031, 0032, 0033, 0047, 0048, 0049, and 0051. Other rule IDs fall through to `NOT_EVALUABLE` except the special 0018/0019 handling. The entry point therefore does not prove all 35 rules are unified-runtime routed.
+## Rule 0008 — LIVE BLOCKER
+The canonical 0006–0008 freeze artifact does not approve an operational definition for `decisively broken`. The runtime has been corrected to fail closed with `NOT_EVALUABLE` until an approved PF-B1 binding exists. No generic threshold or role-reversal mapping is being invented.
 
-## Rule-specific evidence retained
-- 0047 authoritative occurrence count remains **25**; the `24` in `CLOSURE.md` is stale metadata.
-- 0048 historical reconciliation remains **186/186 exact** for `trin_ma10 > 1.20`.
-- 0049 historical reconciliation remains **122/122 exact** for `trin < 0.70`.
-- 0051 standalone deterministic evaluator tests remain **3/3 PASS**, but unified repository Runtime is not proven under the conservative matrix.
-- 0008 remains blocked pending approved operational definition for `decisively broken`; do not infer a threshold from generic Murphy examples.
+## Recent runtime fixes verified
+- 0030–0032 had a real status-overwrite bug where the P&F reference payload's `status=AVAILABLE` overwrote the adapter's intended `PASS`. Fixed in commit `b84134f360047de7a78adf18b36dd4e4dd472582`.
+- 0008 had a semantic overreach: a generic role-reversal adapter was incorrectly promoted despite the canonical freeze blocker. Corrected to fail-closed in commit `8f2bfce2399cc28f80a2b94bc07cbe227042c92d` and its tests were corrected in `ed001560cc8b36e044351f63bf3302ad5a58c85f`.
 
-## Source limitation
-The batch execution audit reports that the reconstructed evaluator workspace exposes evaluator filenames but the underlying ZIP payload reads fail with `Bad magic number for file header`. Filename presence is therefore not sufficient to mark Runtime behavior PASS.
+## Existing historical evidence retained
+- 0047 authoritative occurrence count = **25**; the `24` in `CLOSURE.md` is stale metadata.
+- 0048 historical reconciliation = **186/186 exact** for `trin_ma10 > 1.20`.
+- 0049 historical reconciliation = **122/122 exact** for `trin < 0.70`.
+- 0051 remains a process/completeness gate and does not generate BUY/SELL direction.
 
-## Decision rule
-Do not reopen frozen rule semantics and do not invent thresholds. Recover readable existing evaluator payloads, then run one batch contract/runtime routing audit across all 35 rules. Promote only with direct executable routing + relevant test evidence.
+## Verification boundary
+This baseline uses current GitHub Runtime source, current routing, deterministic test inspection, direct local execution for the audited adapters, and the canonical frozen artifacts. It does **not** claim a GitHub Actions CI run because manual workflow dispatch is not available through the current connector.
 
 2025 remains OOS and must not be used for tuning or selection.
 
 ## Immediate next work
-Recover the readable evaluator payloads for the 13 Runtime-unproven frozen rules, then perform the 35-rule unified routing audit. After that, freeze the corrected Murphy Runtime baseline and move to broader Decision Brain integration.
+Freeze the corrected **34/35 Murphy Runtime baseline**. Keep 0008 blocked until its approved decisive-break contract is source-locked. Then move to broader Decision Brain integration without reopening the 34 verified rule contracts.
