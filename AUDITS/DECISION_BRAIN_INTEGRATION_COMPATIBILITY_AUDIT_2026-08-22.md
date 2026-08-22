@@ -1,95 +1,117 @@
 # Decision Brain Integration Compatibility Audit — 2026-08-22
 
 ## Result
-Status: BLOCKED_PENDING_SOURCE_RECOVERY
-Primary classification: MISSING_SOURCE
-Secondary classifications: ADAPTER_REQUIRED
+Status: SOURCE_RECOVERED_PENDING_ADAPTER
+Primary classification: ADAPTER_REQUIRED
+Known conflicts: SIMILARITY_INPUT, MISSING_SECURITY_GATES, SPEC_IMPLEMENTATION_GAPS
 
-## Source-of-truth rule
-Workspace / File Library / project backup artifacts remain the source of truth. GitHub is the development/provenance mirror. No original Decision Brain implementation was modified or rebuilt during this audit.
+## Recovered authoritative candidate source
+Recovered from Dropbox project source:
+- `/decision_brain.py`
+- `/DECISION_BRAIN_V1_SPEC.json`
 
-## Existing Decision Brain evidence found in GitHub
-The live `decision_brain/` directory contains only `run_070` artifacts in the current repository view:
-- `decision_brain/run_070/decision_brain_historical_evidence_integration.py`
-- `decision_brain/run_070/DECISION_BRAIN_FULL_HISTORICAL_EVIDENCE_INTEGRATION_RUN_070.json`
+A provenance mirror was added to GitHub under:
+- `RECOVERED_SOURCES/DECISION_BRAIN_V1/decision_brain.py`
+- `RECOVERED_SOURCES/DECISION_BRAIN_V1/DECISION_BRAIN_V1_SPEC.json`
 
-The Run 070 wrapper explicitly acts as a historical-evidence integration wrapper and calls the legacy Decision Brain assessment boundary without allowing similarity to change direction. It records governance that similarity predicted return is not used as direction, historical evidence is not the final decision, and the legacy Decision Brain is not modified.
+The original Dropbox source files were not modified.
 
-The actual authoritative `decision_brain.py` / V1/V1.1 implementation and its canonical input/output contracts were not found in the live GitHub `decision_brain/` directory. Therefore the Brain contract cannot be safely inferred from the wrapper.
+## What the recovered V1 actually is
+The source docstring defines V1 as an evidence aggregator that produces a market-state assessment, not an automatic trading signal generator. Its output is `MarketAssessment` with market_state, directional_bias, confidence, evidence, contradictions, and no_trade_reasons.
 
-## Completed layer compatibility
-### Market / MTF
-Status: COMPATIBLE at adapter level.
-- Dynamic MTF runtime gate passed.
-- Market State contract passed.
-- Market Reader contract passed.
-- Market Scenario contract passed.
+This is therefore a recoverable Decision Brain V1 assessment layer, but not yet the final integrated Decision Brain runtime.
 
-### Historical Memory
-Status: COMPATIBLE at evidence-package boundary.
-- Historical Context = evidence only.
-- Historical Outcome = descriptive evidence only.
-- Similarity Memory V2 = retrieval/evidence only.
-- Memory Evidence Package enforces `memory_role = EVIDENCE_ONLY`, no direction, no final trade decision, and separate development vs `oos_evaluation` mode.
-- 2025 remains locked for development/tuning.
+## Source vs implementation compatibility
+### Market structure / MTF
+Classification: COMPATIBLE at V1 assessment level.
+- Code consumes M5/M15/M30/H1/H4/D1 trend regime values and `mtf_trend_score`.
+- V1 spec also defines MTF context and market-structure modules.
 
-### Outcome -> Scenario
-Status: COMPATIBLE at boundary level.
-- Historical Outcome cannot alter scenario scores/confidence.
-- Historical Outcome cannot create direction or final trade decision.
+### Volatility
+Classification: MISSING_IMPLEMENTATION.
+- V1 spec defines volatility inputs and `volatility_state`.
+- Recovered `decision_brain.py` does not currently consume the volatility regime fields.
 
-### Nison
-Status: ADAPTER_REQUIRED for full integration.
-- Canonical Nison contract: confirmation / contradiction only.
-- Unified runtime artifact states missing/invalid candle inputs must return `NOT_EVALUABLE`.
-- Nison cannot independently create final trade direction.
-- Current runtime evidence is promotion-ready for unified integration, but full repository CI for all Nison runtime was not claimed in the canonical Nison runtime note.
+### Volume
+Classification: ADAPTER_REQUIRED / SEMANTIC_GAP.
+- Spec says volume is active only when `volume_available=true`.
+- Code follows the availability flag, which is good.
+- Code currently adds a no-trade reason whenever volume is unavailable. The spec only states unavailable is not equivalent to zero; it does not define volume-unavailable as an unconditional no-trade gate. This must not be silently promoted to a hard execution rule.
 
-### Trading in the Zone
-Status: MISSING_SOURCE / ADAPTER_REQUIRED.
-- Current repository artifact explicitly states `CANDIDATE_NOT_AUTHORITATIVE`.
-- It defines psychology/process outputs and says TIZ cannot generate BUY/SELL and cannot override technical direction.
-- Multiple TIZ rules remain evidence gaps / candidate operators.
-- Authoritative producer, deterministic evaluator, adapter integration, historical QA, and cross-file consistency are still listed as freeze requirements.
-- Therefore TIZ cannot honestly be promoted to a production/frozen runtime gate from this audit alone.
+### Historical / Similarity Memory
+Classification: CONFLICT / ADAPTER_REQUIRED.
+- Recovered code accepts `similarity["predicted_return"]` and converts its sign into bullish/bearish evidence.
+- Current project Memory Evidence Package explicitly forbids predicted return from being used as direction.
+- Current Run 070 wrapper calls the legacy Decision Brain with `similarity=None` and records that similarity cannot change direction.
+- Required fix: boundary adapter must pass historical evidence metadata only (retrieval status, distances, evidence ids/time range, outcome evidence), never `predicted_return` as directional input.
+
+### Knowledge
+Classification: MISSING_IMPLEMENTATION.
+- V1 spec defines a knowledge module that provides contextual explanations and must not invent market data.
+- Recovered code does not consume a knowledge/alignment output.
 
 ### Risk
-Status: MISSING_PRODUCTION_SOURCE / ADAPTER_REQUIRED.
-- Current project handoff classifies `RISK_ENGINE_SPEC_V1` as a research prototype, not execution-ready.
-- Research-only parameters must not be promoted to production constants.
-- Unresolved live requirements include costs, spread, slippage, leverage, contract size, and broker-specific pip value.
-- Risk is architecturally a hard gate, but the production execution contract is not yet available from the current source set.
+Classification: MISSING_INTEGRATION.
+- V1 spec defines risk_context and says no automatic execution in V1.
+- Recovered code has no Risk Engine input or hard-gate handling.
+- Current project Risk source is still research-only / not execution-ready; its research parameters must not be promoted to production constants.
 
-### Murphy
-Status: ADAPTER_REQUIRED / PARTIAL SOURCE CLOSURE.
-- Project handoff records 35/51 Murphy rules as currently authoritative/frozen and 16 deferred/open.
-- The current `MURPHY_51_MASTER_AUDIT.csv` contains multiple rules still `REVIEW`, `UNBLOCKED`, `PARTIAL`, or `NOT_EVALUABLE`.
-- This does not block using already-frozen Murphy evidence, but it prevents claiming that all 51 Murphy rules form a production-frozen Brain input universe.
-- 2025 remains excluded from tuning/selection.
+### Nison
+Classification: ADAPTER_REQUIRED.
+- V1 source does not consume a Nison confirmation/contradiction object.
+- Existing project contract requires Nison to confirm or contradict only, never generate direction alone.
+- Nison handoff input/output must be added through a small adapter rather than modifying Nison semantics.
 
-## Governing architecture confirmed
+### Trading in the Zone
+Classification: ADAPTER_REQUIRED / MISSING_AUTHORITATIVE_PRODUCER.
+- V1 source does not consume TIZ process-gate outputs.
+- Current TIZ producer search says no authoritative producer exists; candidate producers are not authoritative.
+- Therefore a production TIZ gate cannot be fabricated during this integration.
+
+### Provenance / anti-leakage
+Classification: MISSING_IMPLEMENTATION.
+- V1 spec requires no future data, 2025 excluded from calibration, and every conclusion citing evidence modules.
+- Recovered code has no explicit timestamp guard, 2025 OOS guard, or source-provenance references in the returned assessment.
+- These controls belong in the integration boundary and must be tested before runtime promotion.
+
+### Confidence
+Classification: SPEC/IMPLEMENTATION MISMATCH.
+- Spec says confidence is calibrated, not a raw indicator score.
+- Recovered code computes a direct bullish-vs-bearish gap and uses a V1 threshold of 0.25.
+- No calibration contract was recovered in this audit. Do not tune or replace the threshold from 2025 or invent a new calibration method.
+
+### Scenario distribution / explanation
+Classification: MISSING_IMPLEMENTATION.
+- Spec declares `scenario_distribution` and `explanation` outputs.
+- Recovered code does not return them.
+
+## Governance-compatible architecture to preserve
 - Murphy = technical context / market structure evidence.
 - Nison = confirmation / contradiction only.
 - TIZ = psychology / process gate only.
 - Historical / Similarity Memory = evidence only and never sole decision maker.
-- Risk = hard gate.
-- Decision Brain = synthesis layer for current market evidence + book knowledge + historical evidence + risk.
-- `ABSTAIN` is valid.
+- Risk = hard gate when an authoritative Risk runtime contract exists.
+- Decision Brain = synthesis / assessment layer.
+- `ABSTAIN` / `NO_TRADE` remains valid.
 - 2025 = OOS and cannot be used for tuning, calibration, optimization, or implementation selection.
 
-## Required next action
-1. Recover the authoritative/original Decision Brain artifact from Workspace / File Library / project backup assets.
-2. Extract the actual input contract and output contract from source.
-3. Reconcile that contract against the completed Market/Memory adapters, Knowledge Alignment boundary, Nison boundary, TIZ boundary, and Risk hard-gate boundary.
-4. Create only the minimum adapter(s) required by actual contract mismatches.
-5. Add representative integration tests.
-6. Add a CircleCI Decision Brain integration job only after the real contract is recovered.
-7. Record and sync the next verified checkpoint in GitHub and Dropbox.
+## Required next adapter scope
+Create the smallest integration boundary around the recovered V1 source that:
+1. Validates timestamp / availability and blocks future data.
+2. Enforces the 2025 development OOS lock.
+3. Converts current Market Reader / Market State / Scenario outputs into the V1 row fields without inventing semantics.
+4. Adapts Murphy evidence into attributed evidence objects.
+5. Adapts Nison as confirmation/contradiction only.
+6. Attaches TIZ/process evidence only when an authoritative producer is actually available; otherwise fail closed / `NOT_EVALUABLE`.
+7. Attaches Risk as a hard gate only when authoritative Risk evidence is available; otherwise `NOT_EVALUABLE` for execution.
+8. Passes historical evidence metadata without predicted-return direction leakage.
+9. Preserves source module/rule provenance in every conclusion.
+10. Leaves the recovered V1 source unchanged.
 
 ## Explicit non-actions
-- Do not rebuild `decision_brain.py` from the wrapper.
-- Do not invent Brain scoring/thresholds.
-- Do not convert Historical Outcome or Similarity into independent direction.
-- Do not promote TIZ candidate semantics to authoritative production semantics.
+- Do not edit `decision_brain.py` directly.
+- Do not create new Brain thresholds from 2025.
+- Do not use Similarity predicted return as directional input.
+- Do not fabricate TIZ producer semantics.
 - Do not promote Risk research parameters to live execution constants.
-- Do not use 2025 for tuning or implementation selection.
+- Do not claim the final Decision Brain is runtime-verified yet.
