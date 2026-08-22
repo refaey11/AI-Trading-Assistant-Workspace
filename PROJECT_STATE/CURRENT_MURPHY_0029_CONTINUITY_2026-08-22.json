@@ -1,0 +1,32 @@
+{
+  "name": "MURPHY_0029_CONTINUITY_BACKUP_V1",
+  "source_date": "2026-08-15",
+  "current_review_date": "2026-08-22",
+  "status": "FREEZE_CANDIDATE",
+  "problem": "0029 required reconciliation and final historical/availability QA before freeze; no independent 0029 artifact was found in the GitHub code-search surface.",
+  "solution": "Reuse the existing shared evaluator and existing confirmed divergence evidence; evaluate 0029 only as BULLISH + LOW; run full 2016-2024 QA and availability/no-lookahead gates without changing semantics.",
+  "verified_replay": {
+    "rows": 5819,
+    "pass_0029": 2930,
+    "fail_0029": 2889,
+    "duplicates": 0,
+    "missing_required_fields": 0,
+    "availability_before_pivot1": 0,
+    "availability_before_pivot2": 0,
+    "2025_rows": 0,
+    "out_of_scope_rows": 0,
+    "semantics_match_existing_column": true
+  },
+  "artifact_sha256": {
+    "MURPHY_0029_FULL_HISTORICAL_QA_2016_2024_V1.json": "558c8166d49b4b37d13d77af47d9aaa2f9ae40514685e67e0685d083ad01527a",
+    "MURPHY_0029_EVALUATION_2016_2024_V1.csv": "08a48d7fd8b6a89470660049e228a37b80fb99d5273fb8a6b172bb4214fbcc44",
+    "MURPHY_0029_PROVENANCE_FREEZE_CANDIDATE_V1.json": "758e7eafc2e9bd281024073912da9eedd4885c6c9d711c338d941567e9ed9dcc"
+  },
+  "do_not_repeat": [
+    "Do not restart 0029 from scratch.",
+    "Do not rebuild the shared evaluator.",
+    "Do not tune on 2025.",
+    "Do not alter thresholds, semantics, timeframe, lookback, or divergence definitions."
+  ],
+  "next_step": "Canonical governance freeze after explicit approval; runtime integration may proceed using the existing shared evaluator/bridge."
+}
