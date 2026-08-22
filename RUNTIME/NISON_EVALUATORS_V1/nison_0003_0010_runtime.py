@@ -2,6 +2,10 @@
 
 Qualitative source language is supplied as categorical upstream facts; no
 new numeric tolerances are invented here.
+
+Integration contract: these evaluators require an explicit upstream
+confirmation gate. The gate is intentionally generic (confirmation=True)
+and does not invent a pattern-specific confirmation method.
 """
 from __future__ import annotations
 from dataclasses import dataclass
@@ -24,6 +28,10 @@ def _result(rule_id: str, status: str, reason: str) -> Dict[str, Any]:
 def _require_trend(ctx: Dict[str, Any], expected: str) -> bool:
     return ctx.get("trend") == expected
 
+def _require_confirmation(ctx: Dict[str, Any]) -> bool:
+    confirmation = ctx.get("confirmation", {})
+    return bool(confirmation.get("confirmed", False))
+
 def eval_rule(rule_id: str, candles: list[Candle], ctx: Dict[str, Any]) -> Dict[str, Any]:
     if rule_id in {"CANDLE_RULE_0003","CANDLE_RULE_0004","CANDLE_RULE_0005","CANDLE_RULE_0006","CANDLE_RULE_0007"}:
         if len(candles) != 2: return _result(rule_id,"NOT_EVALUABLE","requires exactly 2 candles")
@@ -33,6 +41,9 @@ def eval_rule(rule_id: str, candles: list[Candle], ctx: Dict[str, Any]) -> Dict[
         a,b,c=candles
     else:
         return _result(rule_id,"NOT_EVALUABLE","unsupported rule id")
+
+    if not _require_confirmation(ctx):
+        return _result(rule_id, "FAIL", "confirmation required by source contract")
 
     if rule_id == "CANDLE_RULE_0003":
         midpoint = (a.open + a.close) / 2.0
