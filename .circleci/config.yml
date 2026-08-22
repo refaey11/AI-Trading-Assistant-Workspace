@@ -202,6 +202,20 @@ jobs:
           name: Run Outcome to Scenario Evidence Policy tests
           command: python -m pytest -q tests/compatibility/test_outcome_to_scenario_evidence_policy_v1.py
 
+  decision_brain_v1_integration:
+    docker:
+      - image: cimg/python:3.12
+    steps:
+      - checkout
+      - run:
+          name: Install pytest
+          command: |
+            python -m pip install --upgrade pip
+            python -m pip install pytest
+      - run:
+          name: Run governed Decision Brain V1 integration tests
+          command: python -m pytest -q tests/compatibility/test_decision_brain_v1_handoff_adapter.py
+
 workflows:
   build_and_test:
     jobs:
@@ -218,3 +232,4 @@ workflows:
       - similarity_memory_v2
       - memory_integration_v1
       - outcome_to_scenario_evidence_policy_v1
+      - decision_brain_v1_integration
