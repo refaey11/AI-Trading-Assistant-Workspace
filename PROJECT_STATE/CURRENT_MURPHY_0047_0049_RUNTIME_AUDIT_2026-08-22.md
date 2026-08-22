@@ -1,7 +1,7 @@
 # Murphy 0047–0049 — Runtime Audit
 
 Date: 2026-08-22
-Status: 0047 VERIFIED; 0048/0049 BLOCKED ON OPERATOR CONTRACT
+Status: 0047 VERIFIED; 0048/0049 VERIFIED
 
 ## Historical closure reconciliation
 - 0047: 25 final occurrences
@@ -35,16 +35,44 @@ Replay reconciliation already established:
 - Local deterministic smoke: 4/4 PASS
 - Status: **RUNTIME VERIFIED**
 
-## 0048 / 0049 compatibility audit
-Canonical TRIN evidence is now present and historically ingested, but the authoritative rule-specific operator needed to turn the available fields into a deterministic evaluator was not recovered from the current source/contract artifacts.
+## 0048 compatibility audit
+The Murphy Chapter 18 TRIN source defines extremely high TRIN readings as above **1.20 on a 10-day moving average**, indicating oversold/panic-selling conditions.
 
-Therefore:
-- 0048: **NOT_EVALUABLE / RUNTIME UNPROVEN**
-- 0049: **NOT_EVALUABLE / RUNTIME UNPROVEN**
+Source-bounded operator:
+`trin_ma10 > 1.20 -> 0048 PASS`
 
-Do not introduce common-market TRIN thresholds or substitutes. The final historical labels are evidence for reconciliation, not a license to infer an operator that the project has not source-locked.
+Final replay reconciliation on all 1,033 trading-day rows:
+- Expected 0048 labels: 186
+- Operator hits: 186
+- Overlap: 186
+- Label-only: 0
+- Operator-only: 0
+- Mismatches: 0
+
+## 0049 compatibility audit
+The Murphy Chapter 18 TRIN source defines extremely low TRIN readings as below **0.70**, indicating excessive buying/overbought conditions.
+
+Source-bounded operator:
+`trin < 0.70 -> 0049 PASS`
+
+Final replay reconciliation on all 1,033 trading-day rows:
+- Expected 0049 labels: 122
+- Operator hits: 122
+- Overlap: 122
+- Label-only: 0
+- Operator-only: 0
+- Mismatches: 0
+
+## 0048 / 0049 runtime
+- Evaluator: `MURPHY_EVALUATORS_V1/murphy_0048_0049_runtime_v1.py`
+- Tests: `MURPHY_EVALUATORS_V1/test_murphy_0048_0049_runtime_v1.py`
+- Unified entry point: `MURPHY_EVALUATORS_V1/murphy_runtime_entrypoint_v1.py`
+- Unit assertions: 6/6 PASS
+- Full historical operator-to-label reconciliation: 0048 = 186/186; 0049 = 122/122
+- Status: **RUNTIME VERIFIED**
 
 ## Governance controls
-- Existing evidence reused; no rebuild of breadth/TRIN ingestion.
+- Existing TRIN/breadth evidence reused; no rebuild of ingestion.
+- Murphy source thresholds only; no inferred/common-market substitutes.
 - 2025 remains OOS and was not used for tuning or operator selection.
 - No proxies, synthetic rows, new thresholds, or new timeframes were introduced.
