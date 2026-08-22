@@ -5,16 +5,18 @@ Single entry point for the live project state. When multiple versions exist, rea
 
 ## Current operational source of truth
 1. This index
-2. `PROJECT_STATE/CURRENT_MURPHY_27_RUNTIME_STATUS_2026-08-22.md`
-3. `PROJECT_STATE/CURRENT_MURPHY_0025_0026_RUNTIME_AUDIT_2026-08-22.md`
-4. `PROJECT_STATE/CURRENT_PF_B1_H1_GOVERNANCE_FREEZE_2026-08-22.md`
-5. `PROJECT_STATE/CURRENT_MURPHY_0018_0019_FINAL_FREEZE_RECORD_2026-08-22.md`
-6. Rule-specific newest final/approval record
-7. Canonical/frozen source artifacts
-8. Historical audits and recovery files
+2. `PROJECT_STATE/CURRENT_MURPHY_31_RUNTIME_STATUS_2026-08-22.md`
+3. `PROJECT_STATE/CURRENT_MURPHY_0030_0033_RUNTIME_AUDIT_2026-08-22.md`
+4. `PROJECT_STATE/CURRENT_MURPHY_27_RUNTIME_STATUS_2026-08-22.md`
+5. `PROJECT_STATE/CURRENT_MURPHY_0025_0026_RUNTIME_AUDIT_2026-08-22.md`
+6. `PROJECT_STATE/CURRENT_PF_B1_H1_GOVERNANCE_FREEZE_2026-08-22.md`
+7. `PROJECT_STATE/CURRENT_MURPHY_0018_0019_FINAL_FREEZE_RECORD_2026-08-22.md`
+8. Rule-specific newest final/approval record
+9. Canonical/frozen source artifacts
+10. Historical audits and recovery files
 
 ## Active runtime count
-**27 Runtime Implemented / 35 active-rule scope**
+**31 Runtime Implemented / 35 active-rule scope**
 
 ## Newly Runtime Implemented
 - 0006 — executable evaluator + tests + repository runtime entry-point integration
@@ -22,6 +24,10 @@ Single entry point for the live project state. When multiple versions exist, rea
 - 0008 — PF-H1/PF-B1 promoted minimal contracts + role-reversal evaluator + tests + runtime entry-point integration
 - 0025 — executable evaluator + tests + unified runtime entry-point wiring; entry-point smoke test PASS
 - 0026 — executable evaluator + tests + unified runtime entry-point wiring; entry-point smoke test PASS
+- 0030 — frozen P&F bullish support reference adapter + unified runtime entry-point wiring; smoke PASS
+- 0031 — frozen P&F long stop reference adapter + unified runtime entry-point wiring; smoke PASS
+- 0032 — frozen P&F short stop reference adapter + unified runtime entry-point wiring; smoke PASS
+- 0033 — frozen contextual candle-filter evaluator adapter + unified runtime entry-point wiring; smoke PASS
 
 ## Rule 0008 — LIVE STATUS
 - Runtime status: **IMPLEMENTED**
@@ -44,11 +50,28 @@ Single entry point for the live project state. When multiple versions exist, rea
 - Runtime status: **VERIFIED**.
 - Entry-point smoke test: PASS for 0025 PASS/FAIL/NOT_EVALUABLE cases and 0026 PASS/FAIL/NOT_EVALUABLE cases.
 
+## Rules 0030–0032 — LIVE STATUS
+- Governance/source status: **PRODUCTION FROZEN**.
+- Shared core: `src/murphy_0030_0032/pnf_3box_reference.py`.
+- Rule semantics: 0030 = P&F bullish support reference; 0031 = BELOW_PREVIOUS_O_COLUMN; 0032 = ABOVE_PREVIOUS_X_COLUMN.
+- Project operationalization (bootstrap/box scaling) remains explicitly project-defined, not Murphy/Tower numeric source truth.
+- Runtime adapters: `MURPHY_EVALUATORS_V1/murphy_0030_0032_runtime_v1.py`.
+- Unified entry point integrated: `MURPHY_EVALUATORS_V1/murphy_runtime_entrypoint_v1.py`.
+- Smoke verification: PASS for all three outputs and missing-evidence NOT_EVALUABLE behavior.
+- 2025 remains OOS; no profitability-based parameter selection.
+
+## Rule 0033 — LIVE STATUS
+- Governance/source status: **LOCAL_PRODUCTION_FROZEN** in the canonical workspace; GitHub preserves the implementation/provenance mirror.
+- Semantics: neutral contextual candle filter; reversal candle + short-term trend + Stochastics %D presignal; no independent BUY/SELL generation.
+- Runtime adapter: `MURPHY_EVALUATORS_V1/murphy_0033_runtime_v1.py`.
+- Unified entry point integrated and smoke-verified.
+- Historical QA: 273,387 rows, 2016–2024; prefix/no-lookahead PASS; 2025 excluded.
+
 ## Current runtime set
-0003, 0004, 0006, 0007, 0008, 0018, 0019, 0021, 0022, 0023, 0025, 0026, 0028, 0029, 0034–0045, 0050
+0003, 0004, 0006, 0007, 0008, 0018, 0019, 0021, 0022, 0023, 0025, 0026, 0028, 0029, 0030, 0031, 0032, 0033, 0034–0045, 0050
 
 ## Remaining frozen-only / runtime-unproven rules
-0030, 0031, 0032, 0033, 0047, 0048, 0049, 0051
+0047, 0048, 0049, 0051
 
 ## Workspace rule
 - `PROJECT_STATE/` = live current status only.
