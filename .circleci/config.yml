@@ -40,8 +40,28 @@ jobs:
           working_directory: RUNTIME/NISON_EVALUATORS_V1
           command: python test_nison_router_smoke_0011_0020.py
 
+  nison_runtime_0021_0030:
+    docker:
+      - image: cimg/python:3.12
+    steps:
+      - checkout
+      - run:
+          name: Install pytest
+          command: |
+            python -m pip install --upgrade pip
+            python -m pip install pytest
+      - run:
+          name: Run Nison unit tests 0021-0030
+          working_directory: RUNTIME/NISON_EVALUATORS_V1
+          command: python -m pytest -q test_nison_0021_0030_runtime.py
+      - run:
+          name: Run unified router smoke 0021-0030
+          working_directory: RUNTIME/NISON_EVALUATORS_V1
+          command: python test_nison_router_smoke_0021_0030.py
+
 workflows:
   build_and_test:
     jobs:
       - nison_runtime_0001_0010
       - nison_runtime_0011_0020
+      - nison_runtime_0021_0030
