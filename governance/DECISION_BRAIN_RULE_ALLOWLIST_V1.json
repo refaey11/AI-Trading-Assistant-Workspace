@@ -1,0 +1,49 @@
+{
+  "name": "Decision Brain Rule Allowlist V1",
+  "date": "2026-08-22",
+  "status": "FROZEN_FOR_INTEGRATION",
+  "purpose": "Deny-by-default runtime boundary: only independently verified runtime rules may enter Decision Brain rule-adapter flow.",
+  "verified_runtime_count": 78,
+  "verified_runtime": {
+    "MURPHY": [
+      "MURPHY_0003", "MURPHY_0004", "MURPHY_0006", "MURPHY_0007",
+      "MURPHY_0018", "MURPHY_0019", "MURPHY_0021", "MURPHY_0022", "MURPHY_0023",
+      "MURPHY_0025", "MURPHY_0026", "MURPHY_0028", "MURPHY_0029",
+      "MURPHY_0030", "MURPHY_0031", "MURPHY_0032", "MURPHY_0033", "MURPHY_0034", "MURPHY_0035",
+      "MURPHY_0036", "MURPHY_0037", "MURPHY_0038", "MURPHY_0039", "MURPHY_0040", "MURPHY_0041",
+      "MURPHY_0042", "MURPHY_0043", "MURPHY_0044", "MURPHY_0045",
+      "MURPHY_0047", "MURPHY_0048", "MURPHY_0049", "MURPHY_0050", "MURPHY_0051"
+    ],
+    "NISON": [
+      "NISON_0001", "NISON_0002", "NISON_0003", "NISON_0004", "NISON_0005", "NISON_0006", "NISON_0007", "NISON_0008", "NISON_0009", "NISON_0010",
+      "NISON_0011", "NISON_0012", "NISON_0013", "NISON_0014", "NISON_0015", "NISON_0016", "NISON_0017", "NISON_0018", "NISON_0019", "NISON_0020",
+      "NISON_0021", "NISON_0022", "NISON_0023", "NISON_0024", "NISON_0025", "NISON_0026", "NISON_0027", "NISON_0028", "NISON_0029", "NISON_0030",
+      "NISON_0031", "NISON_0032", "NISON_0033", "NISON_0034", "NISON_0035", "NISON_0036", "NISON_0037", "NISON_0038", "NISON_0039", "NISON_0040",
+      "NISON_0041", "NISON_0042", "NISON_0043", "NISON_0044"
+    ]
+  },
+  "explicitly_blocked": [
+    {
+      "rule_id": "MURPHY_0008",
+      "status": "NOT_EVALUABLE",
+      "reason": "Approved deterministic definition for 'decisively broken' is absent from canonical freeze evidence."
+    }
+  ],
+  "governance": {
+    "deny_by_default": true,
+    "unknown_rule_id": "REJECT",
+    "rule_not_in_allowlist": "REJECT",
+    "2025_oos": true,
+    "nison_role": "confirmation_or_contradiction_only",
+    "similarity_role": "historical_evidence_only",
+    "tiz_role": "process_psychology_gate_only",
+    "risk_role": "hard_gate"
+  },
+  "source_evidence": {
+    "murphy_baseline_commit": "3c346b4debd6346e9ccaad2241399b334f17beef",
+    "murphy_runtime_status_source": "PROJECT_STATE/CURRENT_MURPHY_24_RUNTIME_STATUS_2026-08-22.md",
+    "nison_final_audit_commit": "896f25204be686fef6c97322a87bb2d5f2a69039",
+    "nison_final_audit_source": "AUDITS/NISON_FINAL_STATUS_AUDIT_2026-08-22.md"
+  },
+  "important_correction": "The current corrected runtime-verified count is 78, not 79: 44 Nison + 34 Murphy. Murphy 0008 is blocked."
+}
