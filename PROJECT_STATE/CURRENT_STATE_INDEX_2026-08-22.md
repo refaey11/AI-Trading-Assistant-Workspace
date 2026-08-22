@@ -5,18 +5,31 @@ Single entry point for the live project state. When multiple versions exist, rea
 
 ## Current operational source of truth
 1. This index
-2. `PROJECT_STATE/CURRENT_MURPHY_24_RUNTIME_STATUS_2026-08-22.md`
-3. `PROJECT_STATE/CURRENT_MURPHY_0018_0019_FINAL_FREEZE_RECORD_2026-08-22.md`
-4. Rule-specific newest explicit final/approval record
-5. Canonical/frozen source artifacts
-6. Historical audits and recovery files
+2. `PROJECT_STATE/CURRENT_MURPHY_25_RUNTIME_STATUS_2026-08-22.md`
+3. `PROJECT_STATE/CURRENT_PF_B1_H1_GOVERNANCE_FREEZE_2026-08-22.md`
+4. `PROJECT_STATE/CURRENT_MURPHY_0018_0019_FINAL_FREEZE_RECORD_2026-08-22.md`
+5. Rule-specific newest explicit final/approval record
+6. Canonical/frozen source artifacts
+7. Historical audits and recovery files
 
 ## Active runtime count
-**24 Runtime Implemented / 35 active-rule scope**
+**25 Runtime Implemented / 35 active-rule scope**
 
 ## Newly Runtime Implemented
 - 0006 — executable evaluator + tests + repository runtime entry-point integration
 - 0007 — executable evaluator + tests + repository runtime entry-point integration
+- 0008 — PF-H1/PF-B1 promoted minimal contracts + role-reversal evaluator + tests + runtime entry-point integration
+
+## Rule 0008 — LIVE STATUS
+- Runtime status: **IMPLEMENTED**
+- Governance dependency: `CURRENT_PF_B1_H1_GOVERNANCE_FREEZE_2026-08-22.md`
+- Evaluator: `MURPHY_EVALUATORS_V1/murphy_0008_runtime.py`
+- Runtime entry point: `MURPHY_EVALUATORS_V1/murphy_0008_runtime_entry.py`
+- Exact role-reversal evidence requires strictly ordered completed-bar events: breakout → retest → role reversal.
+- Missing/ambiguous evidence: `NOT_EVALUABLE`.
+- No ATR, percentage, pip, volume, or other invented numeric threshold.
+- Historical replay evidence 2020–2024: 39 matched breakout events; 36 role-reversal candidates; 3 no-retest; 0 chronology violations.
+- 2025 excluded from tuning/evaluation.
 
 ## Rule 0018 / 0019 — LIVE STATUS
 - Governance/source semantics: **FROZEN**
@@ -28,10 +41,10 @@ Single entry point for the live project state. When multiple versions exist, rea
 - Runtime status: **IMPLEMENTED**.
 
 ## Current runtime set
-0003, 0004, 0006, 0007, 0018, 0019, 0021, 0022, 0023, 0028, 0029, 0034–0045, 0050
+0003, 0004, 0006, 0007, 0008, 0018, 0019, 0021, 0022, 0023, 0028, 0029, 0034–0045, 0050
 
 ## Remaining frozen-only / runtime-unproven rules
-0008, 0025, 0026, 0030, 0031, 0032, 0033, 0047, 0048, 0049, 0051
+0025, 0026, 0030, 0031, 0032, 0033, 0047, 0048, 0049, 0051
 
 ## Workspace rule
 - `PROJECT_STATE/` = live current status only.
