@@ -3,6 +3,7 @@
   "freeze_candidate_date": "2026-08-22",
   "freeze_stage": "PRE_OOS",
   "base_checkpoint": "CircleCI #107 Final E2E readiness PASS",
+  "oos_guard_checkpoint": "CircleCI #112 pre-OOS Decision Brain guard PASS",
   "oos_year": 2025,
   "development_years": "pre-2025 only",
   "rules": {
@@ -16,6 +17,6 @@
     "risk_overridable": false,
     "source_truth_preserved": true
   },
-  "status": "CANDIDATE_PENDING_FREEZE_GUARD_PASS",
-  "note": "This manifest defines the intended pre-OOS freeze boundary. The freeze becomes active only after the corresponding CI guard passes."
+  "status": "ACTIVE_PRE_OOS_FREEZE",
+  "note": "The pre-OOS freeze guard passed in CircleCI #112. 2025 is now evaluation-only and cannot be used for tuning, calibration, threshold selection, or implementation selection."
 }
