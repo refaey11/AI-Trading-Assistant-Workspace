@@ -328,6 +328,62 @@ jobs:
           name: Run governed Three-Book Decision evaluator tests
           command: python -m pytest -q tests/evaluation/test_three_book_decision_evaluator_v1.py
 
+  nison_2025_full_production_v1:
+    docker:
+      - image: cimg/python:3.12
+    steps:
+      - checkout
+      - run:
+          name: Install runtime dependencies
+          command: |
+            python -m pip install --upgrade pip
+            python -m pip install pandas
+      - run:
+          name: Acquire authoritative 2025 source
+          command: |
+            set -euo pipefail
+            mkdir -p /tmp/nison_2025
+            if [ -n "${NISON_2025_SOURCE_URL:-}" ]; then
+              curl -L --fail --silent --show-error "$NISON_2025_SOURCE_URL" -o /tmp/nison_2025/source.zip
+            elif [ -n "${DROPBOX_ACCESS_TOKEN:-}" ]; then
+              curl -L --fail --silent --show-error https://content.dropboxapi.com/2/files/download \
+                -H "Authorization: Bearer ${DROPBOX_ACCESS_TOKEN}" \
+                -H 'Dropbox-API-Arg: {"path":"/GBPUSD_H1_2016_2025_MASTER.zip"}' \
+                -o /tmp/nison_2025/source.zip
+            else
+              echo 'BLOCKED: configure CircleCI project secret NISON_2025_SOURCE_URL or DROPBOX_ACCESS_TOKEN.'
+              exit 2
+            fi
+            unzip -q /tmp/nison_2025/source.zip -d /tmp/nison_2025/unpacked
+            SOURCE_CSV=$(find /tmp/nison_2025/unpacked -type f -name 'GBPUSD_H1_2016_2025_MASTER.csv' | head -1)
+            if [ -z "$SOURCE_CSV" ]; then
+              echo 'BLOCKED: authoritative GBPUSD_H1_2016_2025_MASTER.csv was not found in source archive.'
+              exit 3
+            fi
+            echo "export NISON_SOURCE_CSV=$SOURCE_CSV" >> "$BASH_ENV"
+      - run:
+          name: Run full governed Nison 2025 production
+          command: |
+            set -euo pipefail
+            mkdir -p artifacts/nison_2025
+            python OOS_2025/run_nison_2025_full_production_v1.py \
+              --input "$NISON_SOURCE_CSV" \
+              --output artifacts/nison_2025/NISON_2025_FULL_EVIDENCE.csv \
+              --manifest artifacts/nison_2025/NISON_2025_FULL_EVIDENCE_MANIFEST.json
+            python - <<'PY'
+            import json
+            p='artifacts/nison_2025/NISON_2025_FULL_EVIDENCE_MANIFEST.json'
+            m=json.load(open(p))
+            assert m['input_rows_2025'] == 6216, m['input_rows_2025']
+            assert m['evidence_rows'] == 6216 * 44, m['evidence_rows']
+            assert m['nison_rules'] == 44, m['nison_rules']
+            print('FULL_2025_NISON_PRODUCTION=PASS')
+            print(json.dumps(m, indent=2, sort_keys=True))
+            PY
+      - store_artifacts:
+          path: artifacts/nison_2025
+          destination: nison_2025
+
 workflows:
   build_and_test:
     jobs:
@@ -353,3 +409,4 @@ workflows:
       - frozen_decision_execution_bridge_v1
       - frozen_decision_2025_oos_evaluator_contract_v1
       - three_book_decision_evaluator_v1
+      - nison_2025_full_production_v1
