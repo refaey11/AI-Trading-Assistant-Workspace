@@ -87,6 +87,14 @@ jobs:
   three_book_decision_evaluator_v1:
     docker: [{image: cimg/python:3.12}]
     steps: [checkout, {run: python -m pip install pytest && python -m pytest -q tests/evaluation/test_three_book_decision_evaluator_v1.py}]
+  nison_evidence_aggregate_v1:
+    docker: [{image: cimg/python:3.12}]
+    steps:
+      - checkout
+      - run: python -m pip install --upgrade pip pytest pandas
+      - run:
+          name: Test governed Nison evidence aggregate
+          command: python -m pytest -q tests/compatibility/test_nison_2025_evidence_aggregate_v1.py
   nison_2025_full_production_v1:
     docker: [{image: cimg/python:3.12}]
     steps:
@@ -109,12 +117,24 @@ jobs:
             mkdir -p artifacts/nison_2025
             python OOS_2025/run_nison_2025_full_production_v1.py --input "$NISON_SOURCE_CSV" --output artifacts/nison_2025/NISON_2025_FULL_EVIDENCE.csv --manifest artifacts/nison_2025/NISON_2025_FULL_EVIDENCE_MANIFEST.json
             python OOS_2025/verify_nison_2025_full_production_v1.py artifacts/nison_2025/NISON_2025_FULL_EVIDENCE_MANIFEST.json
+      - run:
+          name: Aggregate governed Nison evidence
+          command: |
+            set -eu
+            python - <<'PY'
+            from OOS_2025.nison_2025_evidence_aggregate_v1 import write_aggregate
+            write_aggregate(
+                'artifacts/nison_2025/NISON_2025_FULL_EVIDENCE.csv',
+                'artifacts/nison_2025/NISON_2025_EVIDENCE_BY_TIMESTAMP.csv',
+                'artifacts/nison_2025/NISON_2025_EVIDENCE_BY_TIMESTAMP_MANIFEST.json',
+            )
+            PY
       - store_artifacts:
           path: artifacts/nison_2025
           destination: nison_2025
 
 workflows:
   build_and_test:
-    jobs: [nison_runtime_0001_0010, nison_runtime_0011_0020, nison_runtime_0021_0030, nison_runtime_0031_0044, dynamic_mtf_runtime_v1, market_state_contract_v1, market_reader_contract_v1, market_scenario_contract_v1, historical_context_memory_v1, historical_outcome_memory_v1, similarity_memory_v2, memory_integration_v1, outcome_to_scenario_evidence_policy_v1, decision_brain_v1_integration, decision_brain_final_e2e_readiness_v1, risk_execution_runtime_v1, decision_brain_pre_oos_freeze_guard_v1, decision_brain_rule_allowlist_v1, rule_adapter_allowlist_runtime_gate_v1, frozen_decision_execution_bridge_v1, frozen_decision_2025_oos_evaluator_contract_v1, three_book_decision_evaluator_v1]
+    jobs: [nison_runtime_0001_0010, nison_runtime_0011_0020, nison_runtime_0021_0030, nison_runtime_0031_0044, dynamic_mtf_runtime_v1, market_state_contract_v1, market_reader_contract_v1, market_scenario_contract_v1, historical_context_memory_v1, historical_outcome_memory_v1, similarity_memory_v2, memory_integration_v1, outcome_to_scenario_evidence_policy_v1, decision_brain_v1_integration, decision_brain_final_e2e_readiness_v1, risk_execution_runtime_v1, decision_brain_pre_oos_freeze_guard_v1, decision_brain_rule_allowlist_v1, rule_adapter_allowlist_runtime_gate_v1, frozen_decision_execution_bridge_v1, frozen_decision_2025_oos_evaluator_contract_v1, three_book_decision_evaluator_v1, nison_evidence_aggregate_v1]
   nison_2025_full_production:
     jobs: [nison_2025_full_production_v1]
