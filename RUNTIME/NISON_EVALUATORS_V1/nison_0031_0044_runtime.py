@@ -16,17 +16,7 @@ MODULE_RULES = {f"NISON_MODULE_{i:04d}" for i in range(39, 45)}
 
 
 def _result(rule_id: str, status: str, reason: str) -> Dict[str, Any]:
-    return {
-        "rule_id": rule_id,
-        "status": status,
-        "reason": reason,
-        "provenance": {
-            "source": "Steve Nison",
-            "lookahead": "none",
-            "numeric_thresholds_invented": False,
-            "standalone_direction": False,
-        },
-    }
+    return {"rule_id": rule_id, "status": status, "reason": reason, "provenance": {"source": "Steve Nison", "lookahead": "none", "numeric_thresholds_invented": False, "standalone_direction": False}}
 
 
 def _ctx(payload: Dict[str, Any]) -> Dict[str, Any]:
@@ -40,9 +30,7 @@ def _confirmed(ctx: Dict[str, Any]) -> bool:
 
 def _candles(payload: Dict[str, Any], minimum: int) -> Sequence[Dict[str, Any]] | None:
     candles = payload.get("candles", []) or []
-    if len(candles) < minimum:
-        return None
-    return candles
+    return candles if len(candles) >= minimum else None
 
 
 def _color(c: Dict[str, Any]) -> str:
@@ -55,10 +43,6 @@ def _body(c: Dict[str, Any]) -> str:
 
 def _inside_range(c: Dict[str, Any], first: Dict[str, Any]) -> bool:
     return c.get("high") <= first.get("high") and c.get("low") >= first.get("low")
-
-
-def _require_pattern_fact(ctx: Dict[str, Any]) -> bool:
-    return ctx.get("formation_confirmed") is True
 
 
 def evaluate_rule(rule_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
@@ -82,17 +66,13 @@ def evaluate_rule(rule_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
         direction = ctx.get("direction")
         if not prev or not cur or direction not in {"bullish", "bearish"}:
             return _result(rule_id, "NOT_EVALUABLE", "requires previous/current session OHLC and direction")
-        if direction == "bullish":
-            ok = prev.get("high") < cur.get("low")
-        else:
-            ok = cur.get("high") < prev.get("low")
+        ok = prev.get("high") < cur.get("low") if direction == "bullish" else cur.get("high") < prev.get("low")
         return _result(rule_id, "PASS" if ok else "FAIL", "source-mapped Window structural geometry; sessionization remains upstream")
 
-    # 0036 is intentionally context-driven: the governed upstream Window and
-    # trend-resumption facts are sufficient evidence, so do not require raw
-    # candle history before evaluating this rule.
     if rule_id == "CANDLE_RULE_0036":
         trend = ctx.get("trend")
+        if trend is None:
+            return _result(rule_id, "NOT_EVALUABLE", "requires existing trend")
         if trend not in {"Uptrend", "Downtrend"}:
             return _result(rule_id, "FAIL", "requires existing trend")
         if ctx.get("window_formed") is not True:
@@ -111,7 +91,6 @@ def evaluate_rule(rule_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
     if candles is None:
         return _result(rule_id, "NOT_EVALUABLE", "insufficient candle history")
 
-    # 0031 — Three Falling Methods
     if rule_id == "CANDLE_RULE_0031":
         if len(candles) < 5:
             return _result(rule_id, "NOT_EVALUABLE", "requires five-candle continuation structure")
@@ -133,12 +112,11 @@ def evaluate_rule(rule_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
             return _result(rule_id, "FAIL", "confirmation required by source contract")
         return _result(rule_id, "PASS", "Three Falling Methods source-backed formation")
 
-    # 0032 — Three White Soldiers
     if rule_id == "CANDLE_RULE_0032":
         if len(candles) < 3:
             return _result(rule_id, "NOT_EVALUABLE", "requires three candles")
         a, b, c = candles[-3:]
-        if not (all(_color(x) == "bullish" and _body(x) == "long" for x in (a, b, c))):
+        if not all(_color(x) == "bullish" and _body(x) == "long" for x in (a, b, c)):
             return _result(rule_id, "FAIL", "requires three consecutive long white candles")
         if not (b.get("close", 0) > a.get("close", 0) and c.get("close", 0) > b.get("close", 0)):
             return _result(rule_id, "FAIL", "closes must progress higher")
@@ -150,7 +128,6 @@ def evaluate_rule(rule_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
             return _result(rule_id, "FAIL", "confirmation required by source contract")
         return _result(rule_id, "PASS", "Three White Soldiers source-backed formation")
 
-    # 0033 — Advance Block / Stalled Pattern
     if rule_id == "CANDLE_RULE_0033":
         if len(candles) < 3:
             return _result(rule_id, "NOT_EVALUABLE", "requires three candles")
@@ -169,10 +146,7 @@ def evaluate_rule(rule_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
             return _result(rule_id, "FAIL", "confirmation required by source contract")
         return _result(rule_id, "PASS", "Advance Block source-backed formation")
 
-    # 0034 — Separating Lines
     if rule_id == "CANDLE_RULE_0034":
-        if len(candles) < 2:
-            return _result(rule_id, "NOT_EVALUABLE", "requires two candles")
         a, b = candles[-2:]
         if ctx.get("trend") != "Uptrend":
             return _result(rule_id, "FAIL", "requires existing Uptrend")
@@ -180,29 +154,28 @@ def evaluate_rule(rule_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
             return _result(rule_id, "FAIL", "requires opposite-color black then white candles")
         if a.get("open") != b.get("open"):
             return _result(rule_id, "FAIL", "second candle must open at the same price")
-        if not (b.get("close", 0) > b.get("open", 0)):
+        if b.get("close", 0) <= b.get("open", 0):
             return _result(rule_id, "FAIL", "second candle must close above its open")
         if not _confirmed(ctx):
             return _result(rule_id, "FAIL", "confirmation required by source contract")
         return _result(rule_id, "PASS", "Separating Lines source-backed formation")
 
-    # 0035 — Tasuki Gap
     if rule_id == "CANDLE_RULE_0035":
         if len(candles) < 3:
             return _result(rule_id, "NOT_EVALUABLE", "requires three candles")
-        a, b, c = candles[-3:]
+        _, b, c = candles[-3:]
         trend = ctx.get("trend")
         if trend == "Uptrend":
             if not (_color(b) == "bullish" and _color(c) == "bearish"):
                 return _result(rule_id, "FAIL", "bullish Tasuki requires bullish window candle then bearish counter-candle")
-            if not (b.get("gap_class") == "gap_above_previous_high"):
+            if b.get("gap_class") != "gap_above_previous_high":
                 return _result(rule_id, "NOT_EVALUABLE", "bullish Window fact required upstream")
             if not (c.get("open_inside_previous_body") is True and c.get("close_inside_window") is True and c.get("window_closed") is False):
                 return _result(rule_id, "NOT_EVALUABLE", "Tasuki window-open/inside-window categorical facts required upstream")
         elif trend == "Downtrend":
             if not (_color(b) == "bearish" and _color(c) == "bullish"):
                 return _result(rule_id, "FAIL", "bearish Tasuki requires bearish window candle then bullish counter-candle")
-            if not (b.get("gap_class") == "gap_below_previous_low"):
+            if b.get("gap_class") != "gap_below_previous_low":
                 return _result(rule_id, "NOT_EVALUABLE", "bearish Window fact required upstream")
             if not (c.get("open_inside_previous_body") is True and c.get("close_inside_window") is True and c.get("window_closed") is False):
                 return _result(rule_id, "NOT_EVALUABLE", "Tasuki window-open/inside-window categorical facts required upstream")
@@ -212,10 +185,7 @@ def evaluate_rule(rule_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
             return _result(rule_id, "FAIL", "confirmation required by source contract")
         return _result(rule_id, "PASS", "Tasuki Gap source-backed continuation formation")
 
-    # 0037 — Side-by-Side White Lines
     if rule_id == "CANDLE_RULE_0037":
-        if len(candles) < 2:
-            return _result(rule_id, "NOT_EVALUABLE", "requires two candles")
         a, b = candles[-2:]
         if ctx.get("trend") != "Uptrend":
             return _result(rule_id, "FAIL", "bullish Side-by-Side White Lines requires Uptrend")
@@ -223,9 +193,9 @@ def evaluate_rule(rule_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
             return _result(rule_id, "NOT_EVALUABLE", "requires an open bullish Window fact")
         if not (_color(a) == "bullish" and _color(b) == "bullish"):
             return _result(rule_id, "FAIL", "requires two white candles")
-        if a.get("opens_at_approximately_same_price_as_previous") is not True or b.get("opens_at_approximately_same_price_as_previous") is not True:
+        if not (a.get("opens_at_approximately_same_price_as_previous") is True and b.get("opens_at_approximately_same_price_as_previous") is True):
             return _result(rule_id, "NOT_EVALUABLE", "source phrase 'approximately the same price' requires upstream categorical fact")
-        if a.get("body_similar_to_previous") is not True or b.get("body_similar_to_previous") is not True:
+        if not (a.get("body_similar_to_previous") is True and b.get("body_similar_to_previous") is True):
             return _result(rule_id, "NOT_EVALUABLE", "source phrase 'similar in size' requires upstream categorical fact")
         if not _confirmed(ctx):
             return _result(rule_id, "FAIL", "confirmation required by source contract")
