@@ -88,6 +88,25 @@ def evaluate_rule(rule_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
             ok = cur.get("high") < prev.get("low")
         return _result(rule_id, "PASS" if ok else "FAIL", "source-mapped Window structural geometry; sessionization remains upstream")
 
+    # 0036 is intentionally context-driven: the governed upstream Window and
+    # trend-resumption facts are sufficient evidence, so do not require raw
+    # candle history before evaluating this rule.
+    if rule_id == "CANDLE_RULE_0036":
+        trend = ctx.get("trend")
+        if trend not in {"Uptrend", "Downtrend"}:
+            return _result(rule_id, "FAIL", "requires existing trend")
+        if ctx.get("window_formed") is not True:
+            return _result(rule_id, "NOT_EVALUABLE", "requires source-backed Window formation fact")
+        if ctx.get("window_closed") is True:
+            return _result(rule_id, "FAIL", "Window is completely closed")
+        if ctx.get("window_held_as_support_or_resistance") is not True:
+            return _result(rule_id, "NOT_EVALUABLE", "requires upstream Window support/resistance hold fact")
+        if ctx.get("trend_resumed") is not True:
+            return _result(rule_id, "NOT_EVALUABLE", "requires upstream trend-resumption fact")
+        if not _confirmed(ctx):
+            return _result(rule_id, "FAIL", "confirmation required by source contract")
+        return _result(rule_id, "PASS", "Gapping Play source-backed continuation formation")
+
     candles = _candles(payload, 2)
     if candles is None:
         return _result(rule_id, "NOT_EVALUABLE", "insufficient candle history")
@@ -192,23 +211,6 @@ def evaluate_rule(rule_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
         if not _confirmed(ctx):
             return _result(rule_id, "FAIL", "confirmation required by source contract")
         return _result(rule_id, "PASS", "Tasuki Gap source-backed continuation formation")
-
-    # 0036 — Gapping Play
-    if rule_id == "CANDLE_RULE_0036":
-        trend = ctx.get("trend")
-        if trend not in {"Uptrend", "Downtrend"}:
-            return _result(rule_id, "FAIL", "requires existing trend")
-        if ctx.get("window_formed") is not True:
-            return _result(rule_id, "NOT_EVALUABLE", "requires source-backed Window formation fact")
-        if ctx.get("window_closed") is True:
-            return _result(rule_id, "FAIL", "Window is completely closed")
-        if ctx.get("window_held_as_support_or_resistance") is not True:
-            return _result(rule_id, "NOT_EVALUABLE", "requires upstream Window support/resistance hold fact")
-        if ctx.get("trend_resumed") is not True:
-            return _result(rule_id, "NOT_EVALUABLE", "requires upstream trend-resumption fact")
-        if not _confirmed(ctx):
-            return _result(rule_id, "FAIL", "confirmation required by source contract")
-        return _result(rule_id, "PASS", "Gapping Play source-backed continuation formation")
 
     # 0037 — Side-by-Side White Lines
     if rule_id == "CANDLE_RULE_0037":
