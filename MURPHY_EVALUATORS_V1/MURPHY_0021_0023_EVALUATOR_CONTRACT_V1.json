@@ -1,0 +1,16 @@
+{
+  "module": "MURPHY_0021_0023_EVALUATOR_V1",
+  "status": "IMPLEMENTED_AND_UNIT_TESTED",
+  "rules": ["MURPHY_0021", "MURPHY_0022", "MURPHY_0023"],
+  "operationalization": {
+    "price_rising_falling": "current completed close compared with previous completed close",
+    "volume_rising": "existing project volume_direction == UP",
+    "oi_rising": "existing CFTC futures oi_direction == UP",
+    "thresholds_added": false,
+    "proxy_oi": false
+  },
+  "timeframe_policy": "Runtime/Dynamic MTF; evaluator accepts a selected timeframe and does not hard-code an execution timeframe.",
+  "oi_scope": "CME British Pound futures 096742; not spot-FX OI.",
+  "2025_used": false,
+  "fresh_2025_status": "0021 can be fresh-produced from the governed 2025 spot-FX volume context; 0022/0023 remain blocked without approved futures OI."
+}
