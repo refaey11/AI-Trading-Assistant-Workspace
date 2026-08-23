@@ -14,7 +14,7 @@ from OOS_2025.nison_2025_runtime_producer_v1 import run_ohlcv_for_year
 
 REQUIRED = {"timestamp", "open", "high", "low", "close"}
 EXPECTED_RULES = 44
-DEFAULT_MARKET_STATE_DROPBOX_PATH = "/AI_Trading_Assistant_FULL_PROJECT_V1/AI_Trading_Assistant_MARKET_STATE_READER_V1/GBPUSD_MARKET_STATE.csv"
+DEFAULT_MARKET_STATE_DROPBOX_PATH = "/ai_trading_assistant_full_project_v1/AI_Trading_Assistant_MARKET_STATE_READER_V1/GBPUSD_MARKET_STATE.csv"
 
 
 def load_csv(path: Path) -> pd.DataFrame:
