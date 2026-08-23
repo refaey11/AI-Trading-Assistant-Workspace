@@ -32,6 +32,25 @@ def test_volume_direction_uses_canonical_m1_derived_h1_context(tmp_path):
     assert "M1_TitanFX" in manifest["volume_semantics"]
 
 
+def test_missing_canonical_volume_context_stays_not_evaluable(tmp_path):
+    src = tmp_path / "h1.csv"
+    m1 = tmp_path / "m1.csv"
+    pd.DataFrame([
+        {"timestamp": "2025-01-01T00:00:00Z", "open": 1, "high": 2, "low": 0.5, "close": 1.5},
+        {"timestamp": "2025-01-01T01:00:00Z", "open": 1.5, "high": 2.5, "low": 1.2, "close": 2.0},
+    ]).to_csv(src, index=False)
+    pd.DataFrame([
+        {"timestamp": "2025-01-01T00:00:00Z", "open": 1, "high": 2, "low": 0.5, "close": 1.5, "volume": 20},
+    ]).to_csv(m1, index=False)
+
+    out, manifest = run(src, m1)
+    assert len(out) == 2
+    assert out.iloc[1]["status"] == "NOT_EVALUABLE"
+    assert out.iloc[1]["directional_confirmation"] == "UNKNOWN"
+    assert manifest["missing_canonical_volume_context_rows"] == 2
+    assert manifest["tuning"] is False
+
+
 def test_evaluator_never_promotes_missing_volume_direction():
     result = evaluate_0021({"close": 2.0, "previous_close": 1.0, "volume_direction": None})
     assert result["status"] == "NOT_EVALUABLE"
