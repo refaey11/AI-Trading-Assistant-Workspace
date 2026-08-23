@@ -35,12 +35,9 @@ def _load_ohlcv(path: str | Path, required: set[str]) -> pd.DataFrame:
     return df.sort_values("timestamp").reset_index(drop=True)
 
 
-def load_2025_h1(path: str | Path) -> pd.DataFrame:
-    df = _load_ohlcv(path, REQUIRED_H1)
-    df = df[df["timestamp"].dt.year.eq(2025)].copy().reset_index(drop=True)
-    if df.empty:
-        raise ValueError("No 2025 rows found")
-    return df
+def load_h1(path: str | Path) -> pd.DataFrame:
+    """Load the full H1 history so 2025 rows can use the last prior completed H1 bar."""
+    return _load_ohlcv(path, REQUIRED_H1)
 
 
 def build_canonical_h1_volume_context(m1_path: str | Path) -> pd.DataFrame:
@@ -68,7 +65,18 @@ def build_canonical_h1_volume_context(m1_path: str | Path) -> pd.DataFrame:
 
 
 def run(path: str | Path, m1_path: str | Path) -> tuple[pd.DataFrame, dict]:
-    df = load_2025_h1(path)
+    full_h1 = load_h1(path)
+    df = full_h1[full_h1["timestamp"].dt.year.eq(2025)].copy().reset_index(drop=True)
+    if df.empty:
+        raise ValueError("No 2025 rows found")
+
+    # Price context is source-faithful: carry the immediately preceding
+    # completed H1 close into the first 2025 row when it exists. This avoids
+    # treating the 2025 boundary itself as missing evidence when the source
+    # contains the prior completed H1 bar.
+    full_h1["previous_close"] = full_h1["close"].shift(1)
+    df = full_h1[full_h1["timestamp"].dt.year.eq(2025)].copy().reset_index(drop=True)
+
     volume_context = build_canonical_h1_volume_context(m1_path)
     volume_2025 = volume_context[volume_context["h1_timestamp"].dt.year.eq(2025)].copy()
     if volume_2025.empty:
@@ -82,8 +90,6 @@ def run(path: str | Path, m1_path: str | Path) -> tuple[pd.DataFrame, dict]:
         validate="one_to_one",
     )
     missing_volume_context_rows = int(merged["volume_direction"].isna().sum())
-
-    merged["previous_close"] = merged["close"].shift(1)
 
     rows = []
     for row in merged.itertuples(index=False):
@@ -111,6 +117,7 @@ def run(path: str | Path, m1_path: str | Path) -> tuple[pd.DataFrame, dict]:
         "not_evaluable_rows": int(counts.get("NOT_EVALUABLE", 0)),
         "missing_canonical_volume_context_rows": missing_volume_context_rows,
         "lookahead_policy": "previous completed bar only",
+        "price_context_policy": "carry immediately preceding completed H1 close from the source history into the first 2025 row when available",
         "volume_semantics": "canonical project VOLUME_CONFIRMATION_V2: M1_TitanFX volume aggregated to H1, then current H1 volume versus previous completed H1 volume",
         "volume_source": "GBPUSD M1 master, source-faithful aggregation; no new threshold",
         "m1_rows_total": int(len(pd.read_csv(m1_path))),
