@@ -1,0 +1,37 @@
+{
+  "version": "2.0",
+  "status": "AUTHORITATIVE_BOUNDARY",
+  "resolution": "TIZ is an execution/process-discipline boundary, not a market-derived direction producer.",
+  "source_basis": "Trading in the Zone principles already integrated in THREE_BOOK_INTEGRATION.json and preserved by the existing TIZ fail-closed and optional-evaluation contracts.",
+  "role": "process_only",
+  "direction": "NEUTRAL",
+  "market_derived": false,
+  "producer_kind": "PROCESS_EVIDENCE_INTERFACE",
+  "semantics": {
+    "pre_trade_state_gate": "observable process evidence only",
+    "risk_acceptance": "consume authoritative Risk boundary result; do not recreate Risk",
+    "rule_adherence": "consume authoritative selected-rule/execution evidence; do not infer intent",
+    "impulse_override": "explicit process-event evidence only; otherwise NOT_EVALUABLE",
+    "loss_sequence_control": "explicit process-event evidence only; otherwise NOT_EVALUABLE",
+    "revenge_trade": "explicit process-event evidence only; otherwise NOT_EVALUABLE",
+    "post_trade_review": "record-only process output; never direction logic",
+    "no_impulsive_override": "explicit process-event evidence only; otherwise NOT_EVALUABLE"
+  },
+  "producer_rules": {
+    "no_market_price_inference_for_psychology": true,
+    "no_new_psychological_numeric_thresholds": true,
+    "no_direction_generation": true,
+    "no_direction_override": true,
+    "missing_process_evidence": "NOT_EVALUABLE",
+    "unsupported_process_semantics": "NOT_EVALUABLE",
+    "fail_closed_in_canonical_mode": true,
+    "optional_in_oos_evaluation_mode": true
+  },
+  "oos_policy": {
+    "2025_is_read_only": true,
+    "tiz_unavailable_action": "ALLOW_WITH_UNVERIFIED_TIZ_FLAG",
+    "tiz_available_action": "EVALUATE_AND_RECORD",
+    "performance_run_must_not_tune_tiz": true
+  },
+  "closure_statement": "The previous blocker was caused by treating TIZ as if it required a market-data-derived psychological producer. The authoritative boundary is now resolved as a process-evidence interface. A historical market series cannot legitimately manufacture private psychological state; when such process evidence is absent, TIZ remains NOT_EVALUABLE. This does not block the isolated 2025 OOS evaluation mode, while canonical three-book production remains fail-closed."
+}
