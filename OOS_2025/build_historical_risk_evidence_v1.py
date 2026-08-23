@@ -9,6 +9,15 @@ import pandas as pd
 from risk_engine.risk_execution_runtime_v1 import RiskRequest, evaluate_risk
 
 
+def _normalize_direction(value: object) -> str | None:
+    raw = str(value or "").upper()
+    if raw in {"BUY", "BULLISH"}:
+        return "BUY"
+    if raw in {"SELL", "BEARISH"}:
+        return "SELL"
+    return None
+
+
 def build(*, context: Path, murphy: Path, output: Path, year: int, equity: float = 10000.0) -> dict:
     ctx = pd.read_csv(context)
     murphy_df = pd.read_csv(murphy)
@@ -33,10 +42,10 @@ def build(*, context: Path, murphy: Path, output: Path, year: int, equity: float
 
     rows = []
     for _, row in merged.sort_values("timestamp").iterrows():
-        direction = str(row["direction"]).upper()
+        direction = _normalize_direction(row["direction"])
         entry = float(row["entry_price"])
         atr = float(row["atr"])
-        if direction not in {"BUY", "SELL"}:
+        if direction is None:
             rows.append({"timestamp": row["timestamp"], "risk_status": "FAIL", "reason": "INVALID_DIRECTION"})
             continue
         stop_distance = 0.75 * atr
@@ -74,6 +83,7 @@ def build(*, context: Path, murphy: Path, output: Path, year: int, equity: float
         "risk_profile": 0.005,
         "stop_atr": 0.75,
         "target_r": 2.0,
+        "direction_adapter": "BUY/SELL plus existing BULLISH/BEARISH evidence labels",
         "source_backed_inputs_only": True,
         "new_strategy_semantics": False,
     }
