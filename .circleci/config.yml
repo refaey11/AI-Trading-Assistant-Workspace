@@ -122,9 +122,7 @@ jobs:
             python OOS_2025/verify_nison_2025_full_production_v1.py artifacts/nison_2025/NISON_2025_FULL_EVIDENCE_MANIFEST.json
       - run:
           name: Aggregate governed Nison evidence
-          command: |
-            set -eu
-            python -c "from OOS_2025.nison_2025_evidence_aggregate_v1 import write_aggregate; write_aggregate('artifacts/nison_2025/NISON_2025_FULL_EVIDENCE.csv','artifacts/nison_2025/NISON_2025_EVIDENCE_BY_TIMESTAMP.csv','artifacts/nison_2025/NISON_2025_EVIDENCE_BY_TIMESTAMP_MANIFEST.json')"
+          command: python -c "from OOS_2025.nison_2025_evidence_aggregate_v1 import write_aggregate; write_aggregate('artifacts/nison_2025/NISON_2025_FULL_EVIDENCE.csv','artifacts/nison_2025/NISON_2025_EVIDENCE_BY_TIMESTAMP.csv','artifacts/nison_2025/NISON_2025_EVIDENCE_BY_TIMESTAMP_MANIFEST.json')"
       - store_artifacts:
           path: artifacts/nison_2025
           destination: nison_2025
@@ -155,6 +153,33 @@ jobs:
       - store_artifacts:
           path: artifacts/oos_78
           destination: oos_2025_78_coverage
+  murphy_0021_2025_fresh_v1:
+    docker: [{image: cimg/python:3.12}]
+    steps:
+      - checkout
+      - run: python -m pip install --upgrade pip pandas pytest
+      - run:
+          name: Acquire authoritative 2025 source
+          command: |
+            set -eu
+            mkdir -p /tmp/murphy_2025_0021/unpacked
+            if [ -n "${NISON_2025_SOURCE_URL:-}" ]; then curl -L --fail --silent --show-error "$NISON_2025_SOURCE_URL" -o /tmp/murphy_2025_0021/source.zip; elif [ -n "${DROPBOX_ACCESS_TOKEN:-}" ]; then curl -L --fail --silent --show-error https://content.dropboxapi.com/2/files/download -H "Authorization: Bearer ${DROPBOX_ACCESS_TOKEN}" -H 'Dropbox-API-Arg: {"path":"/GBPUSD_H1_2016_2025_MASTER.zip"}' -o /tmp/murphy_2025_0021/source.zip; else echo 'BLOCKED: configure CircleCI project secret NISON_2025_SOURCE_URL or DROPBOX_ACCESS_TOKEN.'; exit 2; fi
+            unzip -q /tmp/murphy_2025_0021/source.zip -d /tmp/murphy_2025_0021/unpacked
+            SOURCE_CSV=$(find /tmp/murphy_2025_0021/unpacked -type f -name 'GBPUSD_H1_2016_2025_MASTER.csv' | head -1)
+            test -n "$SOURCE_CSV"
+            echo "export MURPHY_SOURCE_CSV=$SOURCE_CSV" >> "$BASH_ENV"
+      - run:
+          name: Run fresh Murphy 0021 2025 producer
+          command: |
+            set -eu
+            mkdir -p artifacts/murphy_0021_2025
+            python OOS_2025/run_murphy_0021_2025_fresh_v1.py --input "$MURPHY_SOURCE_CSV" --output artifacts/murphy_0021_2025/MURPHY_0021_2025.csv --manifest artifacts/murphy_0021_2025/MURPHY_0021_2025_MANIFEST.json
+      - run:
+          name: Verify Murphy 0021 producer tests
+          command: python -m pytest -q tests/evaluation/test_murphy_0021_2025_fresh_v1.py
+      - store_artifacts:
+          path: artifacts/murphy_0021_2025
+          destination: murphy_0021_2025
 
 workflows:
   build_and_test:
@@ -163,3 +188,5 @@ workflows:
     jobs: [nison_2025_full_production_v1]
   oos_2025_78_rule_coverage:
     jobs: [oos_2025_78_rule_coverage_v1]
+  murphy_2025_fresh:
+    jobs: [murphy_0021_2025_fresh_v1]
