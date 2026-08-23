@@ -10,6 +10,7 @@ def test_volume_direction_uses_canonical_m1_derived_h1_context(tmp_path):
     src = tmp_path / "h1.csv"
     m1 = tmp_path / "m1.csv"
     pd.DataFrame([
+        {"timestamp": "2024-12-31T23:00:00Z", "open": 0.9, "high": 1.1, "low": 0.8, "close": 1.0},
         {"timestamp": "2025-01-01T00:00:00Z", "open": 1, "high": 2, "low": 0.5, "close": 1.5},
         {"timestamp": "2025-01-01T01:00:00Z", "open": 1.5, "high": 2.5, "low": 1.2, "close": 2.0},
         {"timestamp": "2025-01-01T02:00:00Z", "open": 2.0, "high": 2.2, "low": 1.4, "close": 1.8},
@@ -30,12 +31,14 @@ def test_volume_direction_uses_canonical_m1_derived_h1_context(tmp_path):
     assert out.iloc[2]["status"] == "FAIL"
     assert manifest["tuning"] is False
     assert "M1_TitanFX" in manifest["volume_semantics"]
+    assert "preceding completed H1 close" in manifest["price_context_policy"]
 
 
 def test_missing_canonical_volume_context_stays_not_evaluable(tmp_path):
     src = tmp_path / "h1.csv"
     m1 = tmp_path / "m1.csv"
     pd.DataFrame([
+        {"timestamp": "2024-12-31T23:00:00Z", "open": 0.9, "high": 1.1, "low": 0.8, "close": 1.0},
         {"timestamp": "2025-01-01T00:00:00Z", "open": 1, "high": 2, "low": 0.5, "close": 1.5},
         {"timestamp": "2025-01-01T01:00:00Z", "open": 1.5, "high": 2.5, "low": 1.2, "close": 2.0},
     ]).to_csv(src, index=False)
