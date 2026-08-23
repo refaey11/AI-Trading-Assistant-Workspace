@@ -69,6 +69,9 @@ jobs:
   risk_execution_runtime_v1:
     docker: [{image: cimg/python:3.12}]
     steps: [checkout, {run: python -m pip install pytest && python -m pytest -q risk_engine/test_risk_execution_runtime_v1.py tests/compatibility/test_decision_brain_final_e2e_readiness_v1.py}]
+  tiz_optional_execution_adapter_v2:
+    docker: [{image: cimg/python:3.12}]
+    steps: [checkout, {run: python -m pip install pytest && python -m pytest -q tests/evaluation/test_tiz_optional_execution_adapter_v2.py}]
   decision_brain_pre_oos_freeze_guard_v1:
     docker: [{image: cimg/python:3.12}]
     steps: [checkout, {run: python -m pip install pytest && python -m pytest -q tests/compatibility/test_decision_brain_pre_oos_freeze_guard_v1.py}]
@@ -87,9 +90,6 @@ jobs:
   three_book_decision_evaluator_v1:
     docker: [{image: cimg/python:3.12}]
     steps: [checkout, {run: python -m pip install pytest && python -m pytest -q tests/evaluation/test_three_book_decision_evaluator_v1.py}]
-  tiz_optional_execution_adapter_v2:
-    docker: [{image: cimg/python:3.12}]
-    steps: [checkout, {run: python -m pip install pytest && python -m pytest -q tests/evaluation/test_tiz_optional_execution_adapter_v2.py}]
   nison_evidence_aggregate_v1:
     docker: [{image: cimg/python:3.12}]
     steps:
@@ -124,7 +124,7 @@ jobs:
           name: Aggregate governed Nison evidence
           command: |
             set -eu
-            python - \<<'PY'
+            python - <<'PY'
             from OOS_2025.nison_2025_evidence_aggregate_v1 import write_aggregate
             write_aggregate(
                 'artifacts/nison_2025/NISON_2025_FULL_EVIDENCE.csv',
@@ -135,9 +135,39 @@ jobs:
       - store_artifacts:
           path: artifacts/nison_2025
           destination: nison_2025
+  oos_2025_78_rule_coverage_v1:
+    docker: [{image: cimg/python:3.12}]
+    steps:
+      - checkout
+      - run: python -m pip install --upgrade pip pandas
+      - run:
+          name: Acquire authoritative 2025 source
+          command: |
+            set -eu
+            mkdir -p /tmp/nison_2025/unpacked
+            if [ -n "${NISON_2025_SOURCE_URL:-}" ]; then curl -L --fail --silent --show-error "$NISON_2025_SOURCE_URL" -o /tmp/nison_2025/source.zip; elif [ -n "${DROPBOX_ACCESS_TOKEN:-}" ]; then curl -L --fail --silent --show-error https://content.dropboxapi.com/2/files/download -H "Authorization: Bearer ${DROPBOX_ACCESS_TOKEN}" -H 'Dropbox-API-Arg: {"path":"/GBPUSD_H1_2016_2025_MASTER.zip"}' -o /tmp/nison_2025/source.zip; else echo 'BLOCKED: configure CircleCI project secret NISON_2025_SOURCE_URL or DROPBOX_ACCESS_TOKEN.'; exit 2; fi
+            unzip -q /tmp/nison_2025/source.zip -d /tmp/nison_2025/unpacked
+            SOURCE_CSV=$(find /tmp/nison_2025/unpacked -type f -name 'GBPUSD_H1_2016_2025_MASTER.csv' | head -1)
+            test -n "$SOURCE_CSV"
+            echo "export NISON_SOURCE_CSV=$SOURCE_CSV" >> "$BASH_ENV"
+      - run:
+          name: Generate current governed Nison 2025 output
+          command: |
+            set -eu
+            mkdir -p artifacts/oos_78
+            python OOS_2025/run_nison_2025_full_production_v1.py --input "$NISON_SOURCE_CSV" --output artifacts/oos_78/NISON_2025_FULL_EVIDENCE.csv --manifest artifacts/oos_78/NISON_2025_FULL_EVIDENCE_MANIFEST.json
+      - run:
+          name: Build explicit 78-rule coverage report
+          command: |
+            python OOS_2025/run_current_78_rule_coverage_v1.py --nison-csv artifacts/oos_78/NISON_2025_FULL_EVIDENCE.csv --murphy-snapshot OOS_2025/MURPHY_2025_COVERAGE_SNAPSHOT_V1.json --output artifacts/oos_78/FULL_78_RULE_2025_COVERAGE_CURRENT.json
+      - store_artifacts:
+          path: artifacts/oos_78
+          destination: oos_2025_78_coverage
 
 workflows:
   build_and_test:
     jobs: [nison_runtime_0001_0010, nison_runtime_0011_0020, nison_runtime_0021_0030, nison_runtime_0031_0044, dynamic_mtf_runtime_v1, market_state_contract_v1, market_reader_contract_v1, market_scenario_contract_v1, historical_context_memory_v1, historical_outcome_memory_v1, similarity_memory_v2, memory_integration_v1, outcome_to_scenario_evidence_policy_v1, decision_brain_v1_integration, decision_brain_final_e2e_readiness_v1, risk_execution_runtime_v1, tiz_optional_execution_adapter_v2, decision_brain_pre_oos_freeze_guard_v1, decision_brain_rule_allowlist_v1, rule_adapter_allowlist_runtime_gate_v1, frozen_decision_execution_bridge_v1, frozen_decision_2025_oos_evaluator_contract_v1, three_book_decision_evaluator_v1, nison_evidence_aggregate_v1]
   nison_2025_full_production:
     jobs: [nison_2025_full_production_v1]
+  oos_2025_78_rule_coverage:
+    jobs: [oos_2025_78_rule_coverage_v1]
