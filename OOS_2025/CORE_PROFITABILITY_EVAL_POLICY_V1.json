@@ -1,0 +1,33 @@
+{
+  "version": "1.0",
+  "status": "EVALUATION_ONLY",
+  "mode": "CORE_PROFITABILITY_EVAL",
+  "purpose": "Measure the existing frozen candidate protocol on 2025 OOS without promoting it to the canonical three-book mode.",
+  "basis": {
+    "three_book_decision_contract": "medium confirmation permits a valid Murphy setup with no contradictory Nison signal; Nison confirmation is confirmation/context and cannot generate direction",
+    "official_baseline_audit": "candidate V2+4H protocol uses 0.75 ATR stop and 2R target; baseline is not yet official"
+  },
+  "required": ["murphy_setup_valid", "unambiguous_direction", "risk_pass"],
+  "nison": {
+    "confirmation": "optional_when_absent",
+    "contradiction": "REJECT",
+    "may_generate_direction": false
+  },
+  "tiz": {
+    "optional_in_this_evaluation_only_mode": true,
+    "canonical_three_book_mode_unchanged": true,
+    "direction_neutral": true
+  },
+  "risk_protocol": {
+    "name": "FROZEN_CANDIDATE_V2_4H",
+    "stop_atr": 0.75,
+    "target_r": 2.0,
+    "source": "existing candidate protocol; not tuned on 2025"
+  },
+  "governance": {
+    "2025_is_oos": true,
+    "no_2025_tuning": true,
+    "not_an_official_baseline": true,
+    "not_a_replacement_for_canonical_three_book_mode": true
+  }
+}
