@@ -121,7 +121,7 @@ jobs:
           name: Aggregate governed Nison evidence
           command: |
             set -eu
-            python - <<'PY'
+            python - \<<'PY'
             from OOS_2025.nison_2025_evidence_aggregate_v1 import write_aggregate
             write_aggregate(
                 'artifacts/nison_2025/NISON_2025_FULL_EVIDENCE.csv',
