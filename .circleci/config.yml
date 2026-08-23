@@ -2,414 +2,119 @@ version: 2.1
 
 jobs:
   nison_runtime_0001_0010:
-    docker:
-      - image: cimg/python:3.12
+    docker: [{image: cimg/python:3.12}]
     steps:
       - checkout
+      - run: python -m pip install --upgrade pip pytest
       - run:
-          name: Install pytest
-          command: |
-            python -m pip install --upgrade pip
-            python -m pip install pytest
-      - run:
-          name: Run Nison unit tests 0001-0010
           working_directory: RUNTIME/NISON_EVALUATORS_V1
-          command: |
-            python -m pytest -q test_nison_0001_0002_engulfing.py test_nison_0003_0010_runtime.py
-      - run:
-          name: Run unified router smoke 0001-0010
-          working_directory: RUNTIME/NISON_EVALUATORS_V1
-          command: python test_nison_router_smoke_0001_0010.py
-
+          command: python -m pytest -q test_nison_0001_0002_engulfing.py test_nison_0003_0010_runtime.py && python test_nison_router_smoke_0001_0010.py
   nison_runtime_0011_0020:
-    docker:
-      - image: cimg/python:3.12
+    docker: [{image: cimg/python:3.12}]
     steps:
       - checkout
+      - run: python -m pip install --upgrade pip pytest
       - run:
-          name: Install pytest
-          command: |
-            python -m pip install --upgrade pip
-            python -m pip install pytest
-      - run:
-          name: Run Nison unit tests 0011-0020
           working_directory: RUNTIME/NISON_EVALUATORS_V1
-          command: python -m pytest -q test_nison_0011_0020_runtime.py
-      - run:
-          name: Run unified router smoke 0011-0020
-          working_directory: RUNTIME/NISON_EVALUATORS_V1
-          command: python test_nison_router_smoke_0011_0020.py
-
+          command: python -m pytest -q test_nison_0011_0020_runtime.py && python test_nison_router_smoke_0011_0020.py
   nison_runtime_0021_0030:
-    docker:
-      - image: cimg/python:3.12
+    docker: [{image: cimg/python:3.12}]
     steps:
       - checkout
+      - run: python -m pip install --upgrade pip pytest
       - run:
-          name: Install pytest
-          command: |
-            python -m pip install --upgrade pip
-            python -m pip install pytest
-      - run:
-          name: Run Nison unit tests 0021-0030
           working_directory: RUNTIME/NISON_EVALUATORS_V1
-          command: python -m pytest -q test_nison_0021_0030_runtime.py
-      - run:
-          name: Run unified router smoke 0021-0030
-          working_directory: RUNTIME/NISON_EVALUATORS_V1
-          command: python test_nison_router_smoke_0021_0030.py
-
+          command: python -m pytest -q test_nison_0021_0030_runtime.py && python test_nison_router_smoke_0021_0030.py
   nison_runtime_0031_0044:
-    docker:
-      - image: cimg/python:3.12
+    docker: [{image: cimg/python:3.12}]
     steps:
       - checkout
+      - run: python -m pip install --upgrade pip pytest
       - run:
-          name: Install pytest
-          command: |
-            python -m pip install --upgrade pip
-            python -m pip install pytest
-      - run:
-          name: Run Nison unit tests 0031-0044
           working_directory: RUNTIME/NISON_EVALUATORS_V1
-          command: python -m pytest -q test_nison_0031_0044_runtime.py
-      - run:
-          name: Run unified router smoke 0031-0044
-          working_directory: RUNTIME/NISON_EVALUATORS_V1
-          command: python test_nison_router_smoke_0031_0044.py
-
+          command: python -m pytest -q test_nison_0031_0044_runtime.py && python test_nison_router_smoke_0031_0044.py
   dynamic_mtf_runtime_v1:
-    docker:
-      - image: cimg/python:3.12
-    steps:
-      - checkout
-      - run:
-          name: Install pytest
-          command: |
-            python -m pip install --upgrade pip
-            python -m pip install pytest
-      - run:
-          name: Run Dynamic MTF binding adapter tests
-          command: python -m pytest -q tests/compatibility/test_dynamic_mtf_binding_adapter_v1.py
-
+    docker: [{image: cimg/python:3.12}]
+    steps: [checkout, {run: python -m pip install pytest && python -m pytest -q tests/compatibility/test_dynamic_mtf_binding_adapter_v1.py}]
   market_state_contract_v1:
-    docker:
-      - image: cimg/python:3.12
-    steps:
-      - checkout
-      - run:
-          name: Install pytest
-          command: |
-            python -m pip install --upgrade pip
-            python -m pip install pytest
-      - run:
-          name: Run Market State contract adapter tests
-          command: python -m pytest -q tests/compatibility/test_market_state_contract_adapter_v1.py
-
+    docker: [{image: cimg/python:3.12}]
+    steps: [checkout, {run: python -m pip install pytest && python -m pytest -q tests/compatibility/test_market_state_contract_adapter_v1.py}]
   market_reader_contract_v1:
-    docker:
-      - image: cimg/python:3.12
-    steps:
-      - checkout
-      - run:
-          name: Install pytest
-          command: python -m pip install pytest
-      - run:
-          name: Run Market Reader contract adapter tests
-          command: python -m pip install pytest && python -m pytest -q tests/compatibility/test_market_reader_contract_adapter_v1.py
-
+    docker: [{image: cimg/python:3.12}]
+    steps: [checkout, {run: python -m pip install pytest && python -m pytest -q tests/compatibility/test_market_reader_contract_adapter_v1.py}]
   market_scenario_contract_v1:
-    docker:
-      - image: cimg/python:3.12
-    steps:
-      - checkout
-      - run:
-          name: Install pytest
-          command: |
-            python -m pip install --upgrade pip
-            python -m pip install pytest
-      - run:
-          name: Run Market Scenario contract adapter tests
-          command: python -m pytest -q tests/compatibility/test_market_scenario_contract_adapter_v1.py
-
+    docker: [{image: cimg/python:3.12}]
+    steps: [checkout, {run: python -m pip install pytest && python -m pytest -q tests/compatibility/test_market_scenario_contract_adapter_v1.py}]
   historical_context_memory_v1:
-    docker:
-      - image: cimg/python:3.12
-    steps:
-      - checkout
-      - run:
-          name: Install pytest
-          command: |
-            python -m pip install --upgrade pip
-            python -m pip install pytest
-      - run:
-          name: Run Historical Context Memory boundary tests
-          command: python -m pytest -q tests/compatibility/test_historical_context_memory_boundary_v1.py
-
+    docker: [{image: cimg/python:3.12}]
+    steps: [checkout, {run: python -m pip install pytest && python -m pytest -q tests/compatibility/test_historical_context_memory_boundary_v1.py}]
   historical_outcome_memory_v1:
-    docker:
-      - image: cimg/python:3.12
-    steps:
-      - checkout
-      - run:
-          name: Install pytest
-          command: |
-            python -m pip install --upgrade pip
-            python -m pip install pytest
-      - run:
-          name: Run Historical Outcome Memory boundary tests
-          command: python -m pytest -q tests/compatibility/test_historical_outcome_memory_boundary_v1.py
-
+    docker: [{image: cimg/python:3.12}]
+    steps: [checkout, {run: python -m pip install pytest && python -m pytest -q tests/compatibility/test_historical_outcome_memory_boundary_v1.py}]
   similarity_memory_v2:
-    docker:
-      - image: cimg/python:3.12
-    steps:
-      - checkout
-      - run:
-          name: Install pytest
-          command: |
-            python -m pip install --upgrade pip
-            python -m pip install pytest
-      - run:
-          name: Run Similarity Memory V2 boundary tests
-          command: python -m pytest -q tests/compatibility/test_similarity_memory_v2_boundary.py
-
+    docker: [{image: cimg/python:3.12}]
+    steps: [checkout, {run: python -m pip install pytest && python -m pytest -q tests/compatibility/test_similarity_memory_v2_boundary.py}]
   memory_integration_v1:
-    docker:
-      - image: cimg/python:3.12
-    steps:
-      - checkout
-      - run:
-          name: Install pytest
-          command: |
-            python -m pip install --upgrade pip
-            python -m pip install pytest
-      - run:
-          name: Run Memory Evidence Package tests
-          command: python -m pytest -q tests/compatibility/test_memory_evidence_package_v1.py
-
+    docker: [{image: cimg/python:3.12}]
+    steps: [checkout, {run: python -m pip install pytest && python -m pytest -q tests/compatibility/test_memory_evidence_package_v1.py}]
   outcome_to_scenario_evidence_policy_v1:
-    docker:
-      - image: cimg/python:3.12
-    steps:
-      - checkout
-      - run:
-          name: Install pytest
-          command: |
-            python -m pip install --upgrade pip
-            python -m pip install pytest
-      - run:
-          name: Run Outcome to Scenario Evidence Policy tests
-          command: python -m pytest -q tests/compatibility/test_outcome_to_scenario_evidence_policy_v1.py
-
+    docker: [{image: cimg/python:3.12}]
+    steps: [checkout, {run: python -m pip install pytest && python -m pytest -q tests/compatibility/test_outcome_to_scenario_evidence_policy_v1.py}]
   decision_brain_v1_integration:
-    docker:
-      - image: cimg/python:3.12
-    steps:
-      - checkout
-      - run:
-          name: Install pytest
-          command: |
-            python -m pip install --upgrade pip
-            python -m pip install pytest
-      - run:
-          name: Run governed Decision Brain V1 integration tests
-          command: python -m pytest -q tests/compatibility/test_decision_brain_v1_handoff_adapter.py
-
+    docker: [{image: cimg/python:3.12}]
+    steps: [checkout, {run: python -m pip install pytest && python -m pytest -q tests/compatibility/test_decision_brain_v1_handoff_adapter.py}]
   decision_brain_final_e2e_readiness_v1:
-    docker:
-      - image: cimg/python:3.12
-    steps:
-      - checkout
-      - run:
-          name: Install pytest
-          command: |
-            python -m pip install --upgrade pip
-            python -m pip install pytest
-      - run:
-          name: Run governed Final E2E readiness tests
-          command: python -m pytest -q tests/compatibility/test_decision_brain_final_e2e_readiness_v1.py
-
+    docker: [{image: cimg/python:3.12}]
+    steps: [checkout, {run: python -m pip install pytest && python -m pytest -q tests/compatibility/test_decision_brain_final_e2e_readiness_v1.py}]
   risk_execution_runtime_v1:
-    docker:
-      - image: cimg/python:3.12
-    steps:
-      - checkout
-      - run:
-          name: Install pytest
-          command: |
-            python -m pip install --upgrade pip
-            python -m pip install pytest
-      - run:
-          name: Run governed Risk Execution Runtime tests
-          command: python -m pytest -q risk_engine/test_risk_execution_runtime_v1.py tests/compatibility/test_decision_brain_final_e2e_readiness_v1.py
-
+    docker: [{image: cimg/python:3.12}]
+    steps: [checkout, {run: python -m pip install pytest && python -m pytest -q risk_engine/test_risk_execution_runtime_v1.py tests/compatibility/test_decision_brain_final_e2e_readiness_v1.py}]
   decision_brain_pre_oos_freeze_guard_v1:
-    docker:
-      - image: cimg/python:3.12
-    steps:
-      - checkout
-      - run:
-          name: Install pytest
-          command: |
-            python -m pip install --upgrade pip
-            python -m pip install pytest
-      - run:
-          name: Run pre-OOS freeze guard tests
-          command: python -m pytest -q tests/compatibility/test_decision_brain_pre_oos_freeze_guard_v1.py
-
+    docker: [{image: cimg/python:3.12}]
+    steps: [checkout, {run: python -m pip install pytest && python -m pytest -q tests/compatibility/test_decision_brain_pre_oos_freeze_guard_v1.py}]
   decision_brain_rule_allowlist_v1:
-    docker:
-      - image: cimg/python:3.12
-    steps:
-      - checkout
-      - run:
-          name: Install pytest
-          command: |
-            python -m pip install --upgrade pip
-            python -m pip install pytest
-      - run:
-          name: Run 78-rule deny-by-default allowlist tests
-          command: python -m pytest -q tests/compatibility/test_decision_brain_rule_allowlist_v1.py
-
+    docker: [{image: cimg/python:3.12}]
+    steps: [checkout, {run: python -m pip install pytest && python -m pytest -q tests/compatibility/test_decision_brain_rule_allowlist_v1.py}]
   rule_adapter_allowlist_runtime_gate_v1:
-    docker:
-      - image: cimg/python:3.12
-    steps:
-      - checkout
-      - run:
-          name: Install pytest
-          command: |
-            python -m pip install --upgrade pip
-            python -m pip install pytest
-      - run:
-          name: Run runtime allowlist gate tests
-          command: python -m pytest -q tests/compatibility/test_rule_adapter_allowlist_runtime_gate_v1.py
-
+    docker: [{image: cimg/python:3.12}]
+    steps: [checkout, {run: python -m pip install pytest && python -m pytest -q tests/compatibility/test_rule_adapter_allowlist_runtime_gate_v1.py}]
   frozen_decision_execution_bridge_v1:
-    docker:
-      - image: cimg/python:3.12
-    steps:
-      - checkout
-      - run:
-          name: Install pytest
-          command: |
-            python -m pip install --upgrade pip
-            python -m pip install pytest
-      - run:
-          name: Run frozen Decision-to-execution bridge tests
-          command: python -m pytest -q tests/evaluation/test_frozen_decision_execution_bridge_v1.py
-
+    docker: [{image: cimg/python:3.12}]
+    steps: [checkout, {run: python -m pip install pytest && python -m pytest -q tests/evaluation/test_frozen_decision_execution_bridge_v1.py}]
   frozen_decision_2025_oos_evaluator_contract_v1:
-    docker:
-      - image: cimg/python:3.12
-    steps:
-      - checkout
-      - run:
-          name: Install pytest
-          command: |
-            python -m pip install --upgrade pip
-            python -m pip install pytest
-      - run:
-          name: Run frozen 2025 OOS evaluator contract tests
-          command: python -m pytest -q tests/compatibility/test_decision_brain_2025_oos_evaluator_contract_v1.py
-
+    docker: [{image: cimg/python:3.12}]
+    steps: [checkout, {run: python -m pip install pytest && python -m pytest -q tests/compatibility/test_decision_brain_2025_oos_evaluator_contract_v1.py}]
   three_book_decision_evaluator_v1:
-    docker:
-      - image: cimg/python:3.12
-    steps:
-      - checkout
-      - run:
-          name: Install pytest
-          command: |
-            python -m pip install --upgrade pip
-            python -m pip install pytest
-      - run:
-          name: Run governed Three-Book Decision evaluator tests
-          command: python -m pytest -q tests/evaluation/test_three_book_decision_evaluator_v1.py
-
+    docker: [{image: cimg/python:3.12}]
+    steps: [checkout, {run: python -m pip install pytest && python -m pytest -q tests/evaluation/test_three_book_decision_evaluator_v1.py}]
   nison_2025_full_production_v1:
-    docker:
-      - image: cimg/python:3.12
+    docker: [{image: cimg/python:3.12}]
     steps:
       - checkout
-      - run:
-          name: Install runtime dependencies
-          command: |
-            python -m pip install --upgrade pip
-            python -m pip install pandas
+      - run: python -m pip install --upgrade pip pandas
       - run:
           name: Acquire authoritative 2025 source
           command: |
             set -eu
             mkdir -p /tmp/nison_2025/unpacked
-            if [ -n "${NISON_2025_SOURCE_URL:-}" ]; then
-              curl -L --fail --silent --show-error "$NISON_2025_SOURCE_URL" -o /tmp/nison_2025/source.zip
-            elif [ -n "${DROPBOX_ACCESS_TOKEN:-}" ]; then
-              curl -L --fail --silent --show-error https://content.dropboxapi.com/2/files/download \
-                -H "Authorization: Bearer ${DROPBOX_ACCESS_TOKEN}" \
-                -H 'Dropbox-API-Arg: {"path":"/GBPUSD_H1_2016_2025_MASTER.zip"}' \
-                -o /tmp/nison_2025/source.zip
-            else
-              echo 'BLOCKED: configure CircleCI project secret NISON_2025_SOURCE_URL or DROPBOX_ACCESS_TOKEN.'
-              exit 2
-            fi
+            if [ -n "${NISON_2025_SOURCE_URL:-}" ]; then curl -L --fail --silent --show-error "$NISON_2025_SOURCE_URL" -o /tmp/nison_2025/source.zip; elif [ -n "${DROPBOX_ACCESS_TOKEN:-}" ]; then curl -L --fail --silent --show-error https://content.dropboxapi.com/2/files/download -H "Authorization: Bearer ${DROPBOX_ACCESS_TOKEN}" -H 'Dropbox-API-Arg: {"path":"/GBPUSD_H1_2016_2025_MASTER.zip"}' -o /tmp/nison_2025/source.zip; else echo 'BLOCKED: configure CircleCI project secret NISON_2025_SOURCE_URL or DROPBOX_ACCESS_TOKEN.'; exit 2; fi
             unzip -q /tmp/nison_2025/source.zip -d /tmp/nison_2025/unpacked
             SOURCE_CSV=$(find /tmp/nison_2025/unpacked -type f -name 'GBPUSD_H1_2016_2025_MASTER.csv' | head -1)
-            if [ -z "$SOURCE_CSV" ]; then
-              echo 'BLOCKED: authoritative GBPUSD_H1_2016_2025_MASTER.csv was not found in source archive.'
-              exit 3
-            fi
+            test -n "$SOURCE_CSV"
             echo "export NISON_SOURCE_CSV=$SOURCE_CSV" >> "$BASH_ENV"
       - run:
           name: Run full governed Nison 2025 production
           command: |
             set -eu
             mkdir -p artifacts/nison_2025
-            python OOS_2025/run_nison_2025_full_production_v1.py \
-              --input "$NISON_SOURCE_CSV" \
-              --output artifacts/nison_2025/NISON_2025_FULL_EVIDENCE.csv \
-              --manifest artifacts/nison_2025/NISON_2025_FULL_EVIDENCE_MANIFEST.json
-            python - <<'PY'
-            import json
-            with open('artifacts/nison_2025/NISON_2025_FULL_EVIDENCE_MANIFEST.json', encoding='utf-8') as f:
-                m=json.load(f)
-            assert m['input_rows_2025'] == 6216
-            assert m['evidence_rows'] == 6216 * 44
-            assert m['nison_rules'] == 44
-            print('FULL_2025_NISON_PRODUCTION=PASS')
-            print(json.dumps(m, indent=2, sort_keys=True))
-            PY
+            python OOS_2025/run_nison_2025_full_production_v1.py --input "$NISON_SOURCE_CSV" --output artifacts/nison_2025/NISON_2025_FULL_EVIDENCE.csv --manifest artifacts/nison_2025/NISON_2025_FULL_EVIDENCE_MANIFEST.json
+            python OOS_2025/verify_nison_2025_full_production_v1.py artifacts/nison_2025/NISON_2025_FULL_EVIDENCE_MANIFEST.json
       - store_artifacts:
           path: artifacts/nison_2025
           destination: nison_2025
 
 workflows:
   build_and_test:
-    jobs:
-      - nison_runtime_0001_0010
-      - nison_runtime_0011_0020
-      - nison_runtime_0021_0030
-      - nison_runtime_0031_0044
-      - dynamic_mtf_runtime_v1
-      - market_state_contract_v1
-      - market_reader_contract_v1
-      - market_scenario_contract_v1
-      - historical_context_memory_v1
-      - historical_outcome_memory_v1
-      - similarity_memory_v2
-      - memory_integration_v1
-      - outcome_to_scenario_evidence_policy_v1
-      - decision_brain_v1_integration
-      - decision_brain_final_e2e_readiness_v1
-      - risk_execution_runtime_v1
-      - decision_brain_pre_oos_freeze_guard_v1
-      - decision_brain_rule_allowlist_v1
-      - rule_adapter_allowlist_runtime_gate_v1
-      - frozen_decision_execution_bridge_v1
-      - frozen_decision_2025_oos_evaluator_contract_v1
-      - three_book_decision_evaluator_v1
-
+    jobs: [nison_runtime_0001_0010, nison_runtime_0011_0020, nison_runtime_0021_0030, nison_runtime_0031_0044, dynamic_mtf_runtime_v1, market_state_contract_v1, market_reader_contract_v1, market_scenario_contract_v1, historical_context_memory_v1, historical_outcome_memory_v1, similarity_memory_v2, memory_integration_v1, outcome_to_scenario_evidence_policy_v1, decision_brain_v1_integration, decision_brain_final_e2e_readiness_v1, risk_execution_runtime_v1, decision_brain_pre_oos_freeze_guard_v1, decision_brain_rule_allowlist_v1, rule_adapter_allowlist_runtime_gate_v1, frozen_decision_execution_bridge_v1, frozen_decision_2025_oos_evaluator_contract_v1, three_book_decision_evaluator_v1]
   nison_2025_full_production:
-    jobs:
-      - nison_2025_full_production_v1
+    jobs: [nison_2025_full_production_v1]
