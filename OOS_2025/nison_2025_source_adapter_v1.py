@@ -54,9 +54,10 @@ def build_payload_rows(
 ) -> list[dict[str, Any]]:
     """Build source-backed Nison payloads for one governed evaluation year.
 
-    Default remains 2025 for compatibility with the existing producer. No
-    pattern, confirmation, threshold, trend, or geometry semantics are changed;
-    only the year partition is parameterized for the historical OOS fold.
+    Historical folds retain prior completed candles needed to construct each
+    OOS row's source-backed candle relationships, while emitting payload rows
+    only for the requested evaluation year. No pattern, confirmation,
+    threshold, trend, or geometry semantics are changed.
     """
     if timestamp_column not in bars.columns:
         raise ValueError(f"missing timestamp column: {timestamp_column}")
@@ -69,7 +70,7 @@ def build_payload_rows(
 
     source = bars.copy()
     source["timestamp"] = pd.to_datetime(source[timestamp_column], utc=True)
-    source = source[source["timestamp"].dt.year.eq(evaluation_year)].sort_values("timestamp")
+    source = source.sort_values("timestamp").drop_duplicates("timestamp", keep="last")
 
     ctx = None
     if context is not None:
@@ -77,15 +78,20 @@ def build_payload_rows(
             raise ValueError("context must contain timestamp")
         ctx = context.copy()
         ctx["timestamp"] = pd.to_datetime(ctx["timestamp"], utc=True)
-        ctx = ctx[ctx["timestamp"].dt.year.eq(evaluation_year)].drop_duplicates("timestamp", keep="last")
+        ctx = ctx.sort_values("timestamp").drop_duplicates("timestamp", keep="last")
 
     rows: list[dict[str, Any]] = []
     history: list[dict[str, float]] = []
     for _, row in source.iterrows():
         candle = {name: float(row[col]) for name, col in cols.items()}
         history.append(candle)
+        year = int(pd.Timestamp(row["timestamp"]).year)
+        if year != evaluation_year:
+            continue
+
         enriched_history: list[dict[str, Any]] = []
-        for idx, base in enumerate(history[-3:], start=max(0, len(history) - 3)):
+        start_idx = max(0, len(history) - 3)
+        for idx, base in enumerate(history[-3:], start=start_idx):
             enriched = dict(base)
             enriched.update(_candle_source_facts(history, idx))
             enriched_history.append(enriched)
