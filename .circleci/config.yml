@@ -124,14 +124,7 @@ jobs:
           name: Aggregate governed Nison evidence
           command: |
             set -eu
-            python - <<'PY'
-            from OOS_2025.nison_2025_evidence_aggregate_v1 import write_aggregate
-            write_aggregate(
-                'artifacts/nison_2025/NISON_2025_FULL_EVIDENCE.csv',
-                'artifacts/nison_2025/NISON_2025_EVIDENCE_BY_TIMESTAMP.csv',
-                'artifacts/nison_2025/NISON_2025_EVIDENCE_BY_TIMESTAMP_MANIFEST.json',
-            )
-            PY
+            python -c "from OOS_2025.nison_2025_evidence_aggregate_v1 import write_aggregate; write_aggregate('artifacts/nison_2025/NISON_2025_FULL_EVIDENCE.csv','artifacts/nison_2025/NISON_2025_EVIDENCE_BY_TIMESTAMP.csv','artifacts/nison_2025/NISON_2025_EVIDENCE_BY_TIMESTAMP_MANIFEST.json')"
       - store_artifacts:
           path: artifacts/nison_2025
           destination: nison_2025
@@ -158,8 +151,7 @@ jobs:
             python OOS_2025/run_nison_2025_full_production_v1.py --input "$NISON_SOURCE_CSV" --output artifacts/oos_78/NISON_2025_FULL_EVIDENCE.csv --manifest artifacts/oos_78/NISON_2025_FULL_EVIDENCE_MANIFEST.json
       - run:
           name: Build explicit 78-rule coverage report
-          command: |
-            python OOS_2025/run_current_78_rule_coverage_v1.py --nison-csv artifacts/oos_78/NISON_2025_FULL_EVIDENCE.csv --murphy-snapshot OOS_2025/MURPHY_2025_COVERAGE_SNAPSHOT_V1.json --output artifacts/oos_78/FULL_78_RULE_2025_COVERAGE_CURRENT.json
+          command: python OOS_2025/run_current_78_rule_coverage_v1.py --nison-csv artifacts/oos_78/NISON_2025_FULL_EVIDENCE.csv --murphy-snapshot OOS_2025/MURPHY_2025_COVERAGE_SNAPSHOT_V1.json --output artifacts/oos_78/FULL_78_RULE_2025_COVERAGE_CURRENT.json
       - store_artifacts:
           path: artifacts/oos_78
           destination: oos_2025_78_coverage
