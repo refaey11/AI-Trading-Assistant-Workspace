@@ -3,8 +3,12 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
+import sys
 
 import pandas as pd
+
+ROOT = Path(__file__).resolve().parents[1]
+sys.path.insert(0, str(ROOT))
 
 from MURPHY_EVALUATORS_V1.murphy_0021_0023_evaluator import evaluate_0021
 
@@ -74,7 +78,7 @@ def run(path: str | Path) -> tuple[pd.DataFrame, dict]:
         "not_evaluable_rows": int(counts.get("NOT_EVALUABLE", 0)),
         "lookahead_policy": "previous completed bar only",
         "volume_semantics": "existing project volume_direction: current volume versus previous completed bar; no new threshold",
-        "tuning": false,
+        "tuning": False,
         "notes": [
             "Fresh 2025 production of MURPHY_0021 only.",
             "MURPHY_0022 and MURPHY_0023 are not produced here because approved futures OI evidence is unavailable on the spot-FX source path.",
