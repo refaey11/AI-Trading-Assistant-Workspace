@@ -4,7 +4,9 @@ import json
 import sys
 from pathlib import Path
 
-EXPECTED_2025_ROWS = 6216
+# Authoritative 2025 production source contains 6,225 H1 rows.
+# This is a data-contract value only; it does not tune or alter any rule.
+EXPECTED_2025_ROWS = 6225
 EXPECTED_RULES = 44
 EXPECTED_EVIDENCE_ROWS = EXPECTED_2025_ROWS * EXPECTED_RULES
 
