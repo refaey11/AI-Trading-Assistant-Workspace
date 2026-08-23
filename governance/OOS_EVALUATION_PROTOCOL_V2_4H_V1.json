@@ -1,0 +1,46 @@
+{
+  "protocol_id": "V2_4H_OOS_EVAL_V1",
+  "status": "FROZEN_FOR_OOS_EVALUATION_ONLY",
+  "not_official_baseline": true,
+  "signal_candidate": "V2 + 4H",
+  "stop_loss": {
+    "mode": "ATR_MULTIPLIER",
+    "atr_timeframe": "H1",
+    "multiplier": 0.75
+  },
+  "take_profit": {
+    "mode": "R_MULTIPLE",
+    "multiple": 2.0,
+    "reference": "stop_distance"
+  },
+  "execution_risk": {
+    "risk_percent": 0.005,
+    "selection_note": "Execution-plumbing default only, matching the existing Risk Runtime deterministic fixture. It is not used to tune or rank the trading strategy because OOS performance is measured in R.",
+    "strategy_parameter": false
+  },
+  "oos_schedule": {
+    "oos_2024": "calibration_2016_2023_then_oos_2024",
+    "oos_2025": "calibration_2016_2024_then_oos_2025"
+  },
+  "governance": {
+    "2025_oos_locked": true,
+    "no_oos_tuning": true,
+    "murphy_primary_technical_context": true,
+    "nison_confirmation_or_contradiction_only": true,
+    "tiz_process_gate_only": true,
+    "similarity_historical_evidence_only": true,
+    "risk_hard_gate": true,
+    "official_baseline_claim": false
+  },
+  "required_before_official_baseline": [
+    "same frozen signal and protocol across all five assets",
+    "fixed ambiguity policy",
+    "fixed transaction-cost policy",
+    "authoritative Nison evidence stream",
+    "authoritative TIZ execution/process evidence",
+    "authoritative Risk execution evidence",
+    "frozen 2025 decision-event stream",
+    "end_to_end OOS evaluation"
+  ],
+  "source_note": "The stored official baseline audit identifies V2 + 4H with 0.75 ATR / 2R as the promising candidate but explicitly states the official baseline is not yet frozen. This file freezes it only as an OOS evaluation protocol and does not promote it to official baseline status."
+}
