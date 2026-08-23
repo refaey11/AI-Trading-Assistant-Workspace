@@ -43,7 +43,7 @@ def build_context(path: Optional[Path]) -> Optional[pd.DataFrame]:
     if "timestamp" not in ctx.columns:
         raise ValueError("Context file must contain timestamp")
     ctx["timestamp"] = pd.to_datetime(ctx["timestamp"], utc=True)
-    return ctx
+    return ctx.sort_values("timestamp").drop_duplicates("timestamp", keep="last")
 
 
 def download_market_state_context(out_path: Path) -> Path:
@@ -83,7 +83,11 @@ def run(*, input_path: Path, context_path: Optional[Path], year: int, output: Pa
         raise ValueError(f"No rows found for evaluation year {year}")
     context_path, context_source = acquire_default_context(context_path)
     context = build_context(context_path)
-    evidence = run_ohlcv_for_year(bars_year, context, evaluation_year=year)
+
+    # Pass the full chronologically sorted source into the governed adapter so
+    # historical fold rows may use only prior completed candles for context.
+    # The adapter emits evidence only for the requested evaluation year.
+    evidence = run_ohlcv_for_year(bars_all, context, evaluation_year=year)
 
     expected_rows = len(bars_year) * EXPECTED_RULES
     if len(evidence) != expected_rows:
@@ -109,7 +113,7 @@ def run(*, input_path: Path, context_path: Optional[Path], year: int, output: Pa
         "per_rule_status_counts": {k: {sk: int(sv) for sk, sv in v.items()} for k, v in per_rule.items()},
         "context_source": context_source,
         "context_path": str(context_path),
-        "lookahead_policy": "none",
+        "lookahead_policy": "prior_completed_source_only",
         "oos_tuning": False,
         "semantic_change": False,
         "reuse_existing_runtime": True,
