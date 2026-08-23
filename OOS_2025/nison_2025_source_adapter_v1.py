@@ -35,8 +35,12 @@ def _normalize_nison_trend(value: Any) -> Any:
     return _TREND_MAP.get(text.upper(), text)
 
 
-def _candle_source_facts(history: list[dict[str, Any]]) -> dict[str, Any]:
-    """Add only exact OHLC-derived categorical facts; no thresholds are used."""
+def _candle_source_facts(history: list[dict[str, float]]) -> dict[str, Any]:
+    """Exact OHLC relationships kept outside Candle objects.
+
+    The existing Nison Candle dataclass accepts only open/high/low/close, so
+    compatibility facts must never be injected into payload['candles'].
+    """
     if not history:
         return {}
     current = history[-1]
@@ -45,14 +49,11 @@ def _candle_source_facts(history: list[dict[str, Any]]) -> dict[str, Any]:
         facts["color"] = "bullish"
     elif current["close"] < current["open"]:
         facts["color"] = "bearish"
-
     if len(history) >= 2:
         previous = history[-2]
         prev_lo = min(previous["open"], previous["close"])
         prev_hi = max(previous["open"], previous["close"])
-        if prev_lo <= current["open"] <= prev_hi:
-            facts["open_inside_previous_body"] = True
-
+        facts["open_inside_previous_body"] = prev_lo <= current["open"] <= prev_hi
         if current["open"] > previous["high"]:
             facts["gap_class"] = "gap_above_first"
         elif current["open"] < previous["low"]:
@@ -61,7 +62,6 @@ def _candle_source_facts(history: list[dict[str, Any]]) -> dict[str, Any]:
             facts["gap_class"] = "gap_above_previous_close"
         elif current["open"] < previous["close"]:
             facts["gap_class"] = "gap_below_previous_close"
-
     return facts
 
 
@@ -74,8 +74,8 @@ def build_payload_rows(
     """Map source-backed 2025 OHLC/context into existing Nison producer inputs.
 
     This adapter does not invent Nison thresholds, formation geometry, or
-    confirmation. It passes through explicit source facts and derives only
-    exact OHLC relationships that require no qualitative tolerance.
+    confirmation. Candles remain strict OHLC dictionaries for the existing
+    runtime dataclass; auxiliary exact relationships are exposed separately.
     """
     if timestamp_column not in bars.columns:
         raise ValueError(f"missing timestamp column: {timestamp_column}")
@@ -97,47 +97,38 @@ def build_payload_rows(
         ctx = ctx[ctx["timestamp"].dt.year.eq(2025)].drop_duplicates("timestamp", keep="last")
 
     rows: list[dict[str, Any]] = []
-    history: list[dict[str, Any]] = []
+    history: list[dict[str, float]] = []
     for _, row in source.iterrows():
         candle = {name: float(row[col]) for name, col in cols.items()}
         history.append(candle)
-        enriched_candle = dict(candle)
-        enriched_candle.update(_candle_source_facts(history))
-        facts: dict[str, Any] = {"candles": history[-3:]}
-        enriched_history = [dict(x) for x in history[-3:]]
-        for index in range(max(0, len(enriched_history) - 1)):
-            enriched_history[index].update(_candle_source_facts(history[: len(history) - len(enriched_history) + index + 1]))
-        enriched_history[-1].update(_candle_source_facts(history))
-        facts["candles"] = enriched_history
+        facts: dict[str, Any] = {
+            "candles": [dict(x) for x in history[-3:]],
+            "source_facts": _candle_source_facts(history),
+        }
 
         if ctx is not None:
             match = ctx.loc[ctx["timestamp"].eq(row["timestamp"])]
             if not match.empty:
                 record = match.iloc[-1].to_dict()
-
                 context_value = record.get("context")
                 context_payload: dict[str, Any] = dict(context_value) if isinstance(context_value, Mapping) else {}
                 for key in _CONTEXT_SCALARS:
                     if key in record and not pd.isna(record[key]):
-                        value = record[key]
-                        if key == "trend":
-                            value = _normalize_nison_trend(value)
+                        value = _normalize_nison_trend(record[key]) if key == "trend" else record[key]
                         context_payload[key] = value
                 if context_payload:
                     facts["context"] = context_payload
 
-                # Preserve explicit source candlestick facts when present.
-                candlestick_value = record.get("candlestick")
-                if isinstance(candlestick_value, Mapping):
-                    facts.setdefault("context", {})["candlestick"] = dict(candlestick_value)
-
-                # Confirmation is a source fact, never derived here.
                 confirmation_value = record.get("confirmation")
                 if isinstance(confirmation_value, Mapping):
                     facts["confirmation"] = dict(confirmation_value)
 
-                # Preserve any explicit upstream formation/session/methodology facts.
-                for key in ("formation_confirmed", "formation_complete", "final_bullish_strong", "final_bearish_strong", "evidence_available", "role", "previous_session", "current_session", "direction"):
+                for key in (
+                    "formation_confirmed", "formation_complete",
+                    "final_bullish_strong", "final_bearish_strong",
+                    "evidence_available", "role", "previous_session",
+                    "current_session", "direction",
+                ):
                     value = record.get(key)
                     if value is not None and not (isinstance(value, float) and pd.isna(value)):
                         facts["context"] = dict(facts.get("context", {}))
