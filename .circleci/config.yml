@@ -93,8 +93,8 @@ jobs:
       - checkout
       - run: python -m pip install --upgrade pip pytest pandas
       - run:
-          name: Test governed Nison evidence aggregate
-          command: python -m pytest -q tests/compatibility/test_nison_2025_evidence_aggregate_v1.py
+          name: Test governed Nison adapters
+          command: python -m pytest -q tests/compatibility/test_nison_2025_evidence_aggregate_v1.py tests/compatibility/test_nison_2025_source_adapter_v1.py
   nison_2025_full_production_v1:
     docker: [{image: cimg/python:3.12}]
     steps:
