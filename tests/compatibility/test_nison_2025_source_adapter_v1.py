@@ -7,7 +7,7 @@ def test_adapter_normalizes_trend_and_preserves_exact_candle_facts():
     bars = pd.DataFrame(
         [
             {"timestamp": "2025-01-01T00:00:00Z", "open": 10.0, "high": 11.0, "low": 9.5, "close": 10.5},
-            {"timestamp": "2025-01-01T01:00:00Z", "open": 10.9, "high": 11.2, "low": 10.4, "close": 11.0},
+            {"timestamp": "2025-01-01T01:00:00Z", "open": 10.4, "high": 11.2, "low": 10.4, "close": 11.0},
         ]
     )
     context = pd.DataFrame(
