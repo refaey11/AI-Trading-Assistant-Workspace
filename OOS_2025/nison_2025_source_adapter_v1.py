@@ -13,6 +13,8 @@ _OHLC_ALIASES = {
     "close": "close",
 }
 
+_CONTEXT_SCALARS = ("trend", "location", "volume_high")
+
 
 def _pick_column(frame: pd.DataFrame, name: str) -> str | None:
     wanted = _OHLC_ALIASES[name]
@@ -26,7 +28,7 @@ def build_payload_rows(
     *,
     timestamp_column: str = "timestamp",
 ) -> list[dict[str, Any]]:
-    """Map source-backed 2025 OHLCV/context into existing Nison producer inputs.
+    """Map source-backed 2025 OHLC/context into existing Nison producer inputs.
 
     This adapter deliberately does not derive Nison semantics. It copies only
     raw OHLC fields and explicit context/confirmation fields already present in
@@ -57,22 +59,33 @@ def build_payload_rows(
     for _, row in source.iterrows():
         candle = {name: float(row[col]) for name, col in cols.items()}
         history.append(candle)
-        candle_window = history[-3:]
-        facts: dict[str, Any] = {"candles": candle_window}
+        facts: dict[str, Any] = {"candles": history[-3:]}
 
         if ctx is not None:
             match = ctx.loc[ctx["timestamp"].eq(row["timestamp"])]
             if not match.empty:
                 record = match.iloc[-1].to_dict()
-                for key in ("trend", "location", "volume_high", "confirmation", "context"):
-                    if key in record and pd.notna(record[key]):
-                        value = record[key]
-                        if key == "context" and not isinstance(value, Mapping):
-                            continue
-                        facts[key] = value
+
+                # Preserve an explicit nested context object when supplied.
+                context_value = record.get("context")
+                context_payload: dict[str, Any] = dict(context_value) if isinstance(context_value, Mapping) else {}
+                for key in _CONTEXT_SCALARS:
+                    if key in record and not pd.isna(record[key]):
+                        context_payload[key] = record[key]
+                if context_payload:
+                    facts["context"] = context_payload
+
+                # Confirmation is a source fact, never derived here.
+                confirmation_value = record.get("confirmation")
+                if isinstance(confirmation_value, Mapping):
+                    facts["confirmation"] = dict(confirmation_value)
 
         for rule_id in NISON_RULE_IDS:
-            rows.append({"timestamp": row["timestamp"].isoformat(), "rule_id": rule_id, "payload": dict(facts)})
+            rows.append({
+                "timestamp": row["timestamp"].isoformat(),
+                "rule_id": rule_id,
+                "payload": dict(facts),
+            })
     return rows
 
 
