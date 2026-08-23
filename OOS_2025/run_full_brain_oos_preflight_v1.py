@@ -80,7 +80,7 @@ def main() -> int:
     out.parent.mkdir(parents=True, exist_ok=True)
     out.write_text(json.dumps(report, indent=2, sort_keys=True), encoding="utf-8")
     print(json.dumps(report, indent=2, sort_keys=True))
-    return 0 if report["profitability_ready"] else 2
+    return 0 if report["profitability_ready"] else 1
 
 
 if __name__ == "__main__":
