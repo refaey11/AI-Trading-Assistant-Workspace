@@ -1,0 +1,15 @@
+{
+  "status": "FROZEN_REPORTING_SNAPSHOT",
+  "source": "PR #37 FULL_78_RULE_2025_COVERAGE_RESULT_2026-08-23",
+  "family": "MURPHY",
+  "rules": [
+    {"rule_id":"MURPHY_0003","rows":6216,"available_rows":0,"available_rate":0.0,"pass_rows":0,"fail_rows":6216,"not_evaluable_rows":0,"coverage_status":"OBSERVED_2025_OUTPUT"},
+    {"rule_id":"MURPHY_0004","rows":6216,"available_rows":0,"available_rate":0.0,"pass_rows":0,"fail_rows":6216,"not_evaluable_rows":0,"coverage_status":"OBSERVED_2025_OUTPUT"},
+    {"rule_id":"MURPHY_0021","rows":6216,"available_rows":6216,"available_rate":1.0,"pass_rows":2772,"fail_rows":3408,"not_evaluable_rows":36,"coverage_status":"OBSERVED_2025_OUTPUT"},
+    {"rule_id":"MURPHY_0022","rows":6216,"available_rows":0,"available_rate":0.0,"pass_rows":0,"fail_rows":0,"not_evaluable_rows":6216,"coverage_status":"OBSERVED_2025_OUTPUT"},
+    {"rule_id":"MURPHY_0023","rows":6216,"available_rows":0,"available_rate":0.0,"pass_rows":0,"fail_rows":0,"not_evaluable_rows":6216,"coverage_status":"OBSERVED_2025_OUTPUT"},
+    {"rule_id":"MURPHY_0028","rows":6216,"available_rows":0,"available_rate":0.0,"pass_rows":0,"fail_rows":0,"not_evaluable_rows":6216,"coverage_status":"OBSERVED_2025_OUTPUT"},
+    {"rule_id":"MURPHY_0029","rows":6216,"available_rows":0,"available_rate":0.0,"pass_rows":0,"fail_rows":0,"not_evaluable_rows":6216,"coverage_status":"OBSERVED_2025_OUTPUT"},
+    {"rule_id":"MURPHY_0050","rows":6216,"available_rows":0,"available_rate":0.0,"pass_rows":0,"fail_rows":0,"not_evaluable_rows":6216,"coverage_status":"OBSERVED_2025_OUTPUT"}
+  ]
+}
