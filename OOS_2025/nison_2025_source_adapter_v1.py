@@ -12,7 +12,6 @@ _OHLC_ALIASES = {
     "low": "low",
     "close": "close",
 }
-
 _CONTEXT_SCALARS = ("trend", "location", "volume_high")
 _TREND_MAP = {
     "BULL_TREND": "Uptrend",
@@ -29,15 +28,41 @@ def _pick_column(frame: pd.DataFrame, name: str) -> str | None:
 
 
 def _normalize_nison_trend(value: Any) -> Any:
-    """Map source Market State trend labels to the existing Nison runtime vocabulary.
-
-    This is a compatibility translation only. No direction is inferred and
-    unknown/transition states remain unchanged so Nison rules can fail closed.
-    """
+    """Map source Market State trend labels to the existing Nison vocabulary."""
     if value is None or pd.isna(value):
         return value
     text = str(value).strip()
     return _TREND_MAP.get(text.upper(), text)
+
+
+def _candle_source_facts(history: list[dict[str, Any]]) -> dict[str, Any]:
+    """Add only exact OHLC-derived categorical facts; no thresholds are used."""
+    if not history:
+        return {}
+    current = history[-1]
+    facts: dict[str, Any] = {}
+    if current["close"] > current["open"]:
+        facts["color"] = "bullish"
+    elif current["close"] < current["open"]:
+        facts["color"] = "bearish"
+
+    if len(history) >= 2:
+        previous = history[-2]
+        prev_lo = min(previous["open"], previous["close"])
+        prev_hi = max(previous["open"], previous["close"])
+        if prev_lo <= current["open"] <= prev_hi:
+            facts["open_inside_previous_body"] = True
+
+        if current["open"] > previous["high"]:
+            facts["gap_class"] = "gap_above_first"
+        elif current["open"] < previous["low"]:
+            facts["gap_class"] = "gap_below_first"
+        elif current["open"] > previous["close"]:
+            facts["gap_class"] = "gap_above_previous_close"
+        elif current["open"] < previous["close"]:
+            facts["gap_class"] = "gap_below_previous_close"
+
+    return facts
 
 
 def build_payload_rows(
@@ -48,10 +73,9 @@ def build_payload_rows(
 ) -> list[dict[str, Any]]:
     """Map source-backed 2025 OHLC/context into existing Nison producer inputs.
 
-    This adapter deliberately does not derive Nison semantics. It copies only
-    raw OHLC fields and explicit context/confirmation fields already present in
-    the supplied source. Missing facts remain absent and therefore fail closed
-    inside the existing Nison runtime as NOT_EVALUABLE where required.
+    This adapter does not invent Nison thresholds, formation geometry, or
+    confirmation. It passes through explicit source facts and derives only
+    exact OHLC relationships that require no qualitative tolerance.
     """
     if timestamp_column not in bars.columns:
         raise ValueError(f"missing timestamp column: {timestamp_column}")
@@ -73,18 +97,24 @@ def build_payload_rows(
         ctx = ctx[ctx["timestamp"].dt.year.eq(2025)].drop_duplicates("timestamp", keep="last")
 
     rows: list[dict[str, Any]] = []
-    history: list[dict[str, float]] = []
+    history: list[dict[str, Any]] = []
     for _, row in source.iterrows():
         candle = {name: float(row[col]) for name, col in cols.items()}
         history.append(candle)
+        enriched_candle = dict(candle)
+        enriched_candle.update(_candle_source_facts(history))
         facts: dict[str, Any] = {"candles": history[-3:]}
+        enriched_history = [dict(x) for x in history[-3:]]
+        for index in range(max(0, len(enriched_history) - 1)):
+            enriched_history[index].update(_candle_source_facts(history[: len(history) - len(enriched_history) + index + 1]))
+        enriched_history[-1].update(_candle_source_facts(history))
+        facts["candles"] = enriched_history
 
         if ctx is not None:
             match = ctx.loc[ctx["timestamp"].eq(row["timestamp"])]
             if not match.empty:
                 record = match.iloc[-1].to_dict()
 
-                # Preserve an explicit nested context object when supplied.
                 context_value = record.get("context")
                 context_payload: dict[str, Any] = dict(context_value) if isinstance(context_value, Mapping) else {}
                 for key in _CONTEXT_SCALARS:
@@ -96,10 +126,22 @@ def build_payload_rows(
                 if context_payload:
                     facts["context"] = context_payload
 
+                # Preserve explicit source candlestick facts when present.
+                candlestick_value = record.get("candlestick")
+                if isinstance(candlestick_value, Mapping):
+                    facts.setdefault("context", {})["candlestick"] = dict(candlestick_value)
+
                 # Confirmation is a source fact, never derived here.
                 confirmation_value = record.get("confirmation")
                 if isinstance(confirmation_value, Mapping):
                     facts["confirmation"] = dict(confirmation_value)
+
+                # Preserve any explicit upstream formation/session/methodology facts.
+                for key in ("formation_confirmed", "formation_complete", "final_bullish_strong", "final_bearish_strong", "evidence_available", "role", "previous_session", "current_session", "direction"):
+                    value = record.get(key)
+                    if value is not None and not (isinstance(value, float) and pd.isna(value)):
+                        facts["context"] = dict(facts.get("context", {}))
+                        facts["context"][key] = value
 
         for rule_id in NISON_RULE_IDS:
             rows.append({
