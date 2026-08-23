@@ -341,8 +341,8 @@ jobs:
       - run:
           name: Acquire authoritative 2025 source
           command: |
-            set -euo pipefail
-            mkdir -p /tmp/nison_2025
+            set -eu
+            mkdir -p /tmp/nison_2025/unpacked
             if [ -n "${NISON_2025_SOURCE_URL:-}" ]; then
               curl -L --fail --silent --show-error "$NISON_2025_SOURCE_URL" -o /tmp/nison_2025/source.zip
             elif [ -n "${DROPBOX_ACCESS_TOKEN:-}" ]; then
@@ -364,7 +364,7 @@ jobs:
       - run:
           name: Run full governed Nison 2025 production
           command: |
-            set -euo pipefail
+            set -eu
             mkdir -p artifacts/nison_2025
             python OOS_2025/run_nison_2025_full_production_v1.py \
               --input "$NISON_SOURCE_CSV" \
@@ -372,11 +372,11 @@ jobs:
               --manifest artifacts/nison_2025/NISON_2025_FULL_EVIDENCE_MANIFEST.json
             python - <<'PY'
             import json
-            p='artifacts/nison_2025/NISON_2025_FULL_EVIDENCE_MANIFEST.json'
-            m=json.load(open(p))
-            assert m['input_rows_2025'] == 6216, m['input_rows_2025']
-            assert m['evidence_rows'] == 6216 * 44, m['evidence_rows']
-            assert m['nison_rules'] == 44, m['nison_rules']
+            with open('artifacts/nison_2025/NISON_2025_FULL_EVIDENCE_MANIFEST.json', encoding='utf-8') as f:
+                m=json.load(f)
+            assert m['input_rows_2025'] == 6216
+            assert m['evidence_rows'] == 6216 * 44
+            assert m['nison_rules'] == 44
             print('FULL_2025_NISON_PRODUCTION=PASS')
             print(json.dumps(m, indent=2, sort_keys=True))
             PY
@@ -409,4 +409,7 @@ workflows:
       - frozen_decision_execution_bridge_v1
       - frozen_decision_2025_oos_evaluator_contract_v1
       - three_book_decision_evaluator_v1
+
+  nison_2025_full_production:
+    jobs:
       - nison_2025_full_production_v1
