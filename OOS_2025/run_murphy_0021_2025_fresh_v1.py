@@ -81,9 +81,7 @@ def run(path: str | Path, m1_path: str | Path) -> tuple[pd.DataFrame, dict]:
         how="left",
         validate="one_to_one",
     )
-    if merged["volume_direction"].isna().any():
-        missing = int(merged["volume_direction"].isna().sum())
-        raise ValueError(f"Missing canonical M1-derived H1 volume context for {missing} 2025 rows")
+    missing_volume_context_rows = int(merged["volume_direction"].isna().sum())
 
     merged["previous_close"] = merged["close"].shift(1)
 
@@ -111,6 +109,7 @@ def run(path: str | Path, m1_path: str | Path) -> tuple[pd.DataFrame, dict]:
         "pass_rows": int(counts.get("PASS", 0)),
         "fail_rows": int(counts.get("FAIL", 0)),
         "not_evaluable_rows": int(counts.get("NOT_EVALUABLE", 0)),
+        "missing_canonical_volume_context_rows": missing_volume_context_rows,
         "lookahead_policy": "previous completed bar only",
         "volume_semantics": "canonical project VOLUME_CONFIRMATION_V2: M1_TitanFX volume aggregated to H1, then current H1 volume versus previous completed H1 volume",
         "volume_source": "GBPUSD M1 master, source-faithful aggregation; no new threshold",
@@ -120,7 +119,8 @@ def run(path: str | Path, m1_path: str | Path) -> tuple[pd.DataFrame, dict]:
             "Fresh 2025 production of MURPHY_0021 only.",
             "MURPHY_0022 and MURPHY_0023 are not produced here because approved futures OI evidence is unavailable on the spot-FX source path.",
             "This run is not a profitability test and does not generate a standalone trade decision.",
-            "Previous fresh run was rejected as a context-wiring mismatch because it used raw H1 volume instead of the existing M1-derived H1 volume_direction contract."
+            "Previous fresh run was rejected as a context-wiring mismatch because it used raw H1 volume instead of the existing M1-derived H1 volume_direction contract.",
+            "Rows without canonical M1-derived H1 volume evidence remain NOT_EVALUABLE; missing context is never substituted with raw H1 volume or a fabricated proxy."
         ],
     }
     return out, manifest
