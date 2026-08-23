@@ -1,0 +1,24 @@
+name: Nison 2025 Producer
+
+on:
+  push:
+    branches:
+      - oos-2025-nison-producer-integration-v1
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  nison-2025-producer:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install test dependencies
+        run: python -m pip install --upgrade pip pytest pandas
+      - name: Run Nison source-adapter contract tests
+        run: python -m pytest -q OOS_2025/test_nison_2025_source_adapter_v1.py OOS_2025/test_nison_2025_source_adapter_context_contract_v1.py
+      - name: Run Nison 2025 producer tests
+        run: python -m pytest -q OOS_2025/test_nison_2025_runtime_producer_v1.py

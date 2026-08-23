@@ -17,10 +17,14 @@ class Candle:
     high: float
     low: float
     close: float
+    # Shared source-mapped categorical facts passed through by the OOS adapter.
+    # These are optional compatibility fields; existing rule semantics below
+    # remain unchanged.
     body_class: str = ""
     color: str = ""
     gap_class: str = ""
     close_relation: str = ""
+    open_inside_previous_body: bool = False
 
 def _result(rule_id: str, status: str, reason: str) -> Dict[str, Any]:
     return {"rule_id": rule_id, "status": status, "reason": reason, "provenance": {"source":"Steve Nison","lookahead":"none","numeric_thresholds_invented":False}}
