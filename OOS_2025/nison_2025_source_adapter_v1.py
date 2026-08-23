@@ -14,12 +14,30 @@ _OHLC_ALIASES = {
 }
 
 _CONTEXT_SCALARS = ("trend", "location", "volume_high")
+_TREND_MAP = {
+    "BULL_TREND": "Uptrend",
+    "BEAR_TREND": "Downtrend",
+    "UPTREND": "Uptrend",
+    "DOWNTREND": "Downtrend",
+}
 
 
 def _pick_column(frame: pd.DataFrame, name: str) -> str | None:
     wanted = _OHLC_ALIASES[name]
     lowered = {str(c).strip().lower(): c for c in frame.columns}
     return lowered.get(wanted)
+
+
+def _normalize_nison_trend(value: Any) -> Any:
+    """Map source Market State trend labels to the existing Nison runtime vocabulary.
+
+    This is a compatibility translation only. No direction is inferred and
+    unknown/transition states remain unchanged so Nison rules can fail closed.
+    """
+    if value is None or pd.isna(value):
+        return value
+    text = str(value).strip()
+    return _TREND_MAP.get(text.upper(), text)
 
 
 def build_payload_rows(
@@ -71,7 +89,10 @@ def build_payload_rows(
                 context_payload: dict[str, Any] = dict(context_value) if isinstance(context_value, Mapping) else {}
                 for key in _CONTEXT_SCALARS:
                     if key in record and not pd.isna(record[key]):
-                        context_payload[key] = record[key]
+                        value = record[key]
+                        if key == "trend":
+                            value = _normalize_nison_trend(value)
+                        context_payload[key] = value
                 if context_payload:
                     facts["context"] = context_payload
 
