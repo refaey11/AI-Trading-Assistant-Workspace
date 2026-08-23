@@ -13,6 +13,7 @@ if str(RUNTIME_DIR) not in sys.path:
 
 from nison_0001_0010_router import evaluate_rule  # type: ignore
 from bridges.nison_evaluator_to_evidence_bridge import adapt_nison_evaluator_result
+from nison_2025_source_adapter_v1 import build_payload_rows
 
 NISON_RULE_IDS = tuple(f"NISON_{i:04d}" for i in range(1, 45))
 ROUTER_IDS = {
@@ -80,6 +81,16 @@ def run_payload_rows(rows: Iterable[Dict[str, Any]]) -> pd.DataFrame:
         "timestamp", "rule_id", "status", "direction", "available", "gate",
         "conflict", "reason", "provenance"
     ])
+
+
+def run_ohlcv_2025(bars: pd.DataFrame, context: pd.DataFrame | None = None) -> pd.DataFrame:
+    """Run the existing Nison runtimes from source-backed 2025 OHLC/context.
+
+    No pattern semantics, confirmation, thresholds, trend, or geometry are
+    invented here. The source adapter passes through only facts explicitly
+    present in the supplied inputs; the existing runtimes remain authoritative.
+    """
+    return run_payload_rows(build_payload_rows(bars, context))
 
 
 def run_jsonl(path: str | Path) -> pd.DataFrame:
