@@ -2,6 +2,7 @@ from datetime import datetime, timezone
 
 import decision_brain
 from compatibility.decision_brain_final_e2e_readiness_v1 import run_final_e2e_readiness
+from risk_engine.risk_execution_runtime_v1 import RiskRequest, evaluate_risk
 
 
 def _row():
@@ -40,6 +41,39 @@ def test_pre_2025_readiness_passes_and_is_not_profitability_claim():
     assert "RISK_NOT_PRODUCTION_AUTHORIZED" in result["execution"]["needs_review"]
     assert result["governance"]["final_e2e_is_profitability_test"] is False
     assert result["governance"]["production_execution_claimed"] is False
+
+
+def test_risk_runtime_validates_and_sizes_execution():
+    request = RiskRequest(
+        equity=10000.0,
+        risk_percent=0.005,
+        entry_price=1.2500,
+        stop_distance=0.0050,
+        take_profit_distance=0.0075,
+        stop_mode="structure",
+        risk_budget_locked=True,
+    )
+    result = evaluate_risk(request, "BUY", 0.005)
+    assert result.risk_pass is True
+    assert result.risk_money == 50.0
+    assert result.position_size == 10000.0
+    assert result.stop_loss == 1.245
+    assert result.take_profit == 1.2575
+
+
+def test_risk_runtime_fails_closed_for_bad_stop_and_profile():
+    request = RiskRequest(
+        equity=10000.0,
+        risk_percent=0.0075,
+        entry_price=1.2500,
+        stop_distance=0.0005,
+        take_profit_distance=0.0075,
+        stop_mode="structure",
+        risk_budget_locked=True,
+    )
+    result = evaluate_risk(request, "BUY", 0.005)
+    assert result.risk_pass is False
+    assert result.reason == "RISK_PROFILE_NOT_FROZEN"
 
 
 def test_2025_development_is_locked():

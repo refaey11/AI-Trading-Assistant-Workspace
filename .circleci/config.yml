@@ -230,6 +230,20 @@ jobs:
           name: Run governed Final E2E readiness tests
           command: python -m pytest -q tests/compatibility/test_decision_brain_final_e2e_readiness_v1.py
 
+  risk_execution_runtime_v1:
+    docker:
+      - image: cimg/python:3.12
+    steps:
+      - checkout
+      - run:
+          name: Install pytest
+          command: |
+            python -m pip install --upgrade pip
+            python -m pip install pytest
+      - run:
+          name: Run governed Risk Execution Runtime tests
+          command: python -m pytest -q risk_engine/test_risk_execution_runtime_v1.py tests/compatibility/test_decision_brain_final_e2e_readiness_v1.py
+
   decision_brain_pre_oos_freeze_guard_v1:
     docker:
       - image: cimg/python:3.12
@@ -332,6 +346,7 @@ workflows:
       - outcome_to_scenario_evidence_policy_v1
       - decision_brain_v1_integration
       - decision_brain_final_e2e_readiness_v1
+      - risk_execution_runtime_v1
       - decision_brain_pre_oos_freeze_guard_v1
       - decision_brain_rule_allowlist_v1
       - rule_adapter_allowlist_runtime_gate_v1
