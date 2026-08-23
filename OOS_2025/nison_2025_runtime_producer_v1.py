@@ -47,12 +47,7 @@ def _evaluate_one(rule_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
 
 
 def run_timestamp(timestamp: Any, payload_by_rule: Dict[str, Dict[str, Any]]) -> list[Dict[str, Any]]:
-    """Run every governed Nison rule for one timestamp.
-
-    Missing source-backed rule inputs are intentionally passed as empty payloads,
-    which lets the existing runtime return NOT_EVALUABLE rather than inventing
-    formation facts, thresholds, or direction.
-    """
+    """Run every governed Nison rule for one timestamp."""
     rows: list[Dict[str, Any]] = []
     for rule_id in NISON_RULE_IDS:
         payload = dict(payload_by_rule.get(rule_id, {}))
@@ -62,11 +57,7 @@ def run_timestamp(timestamp: Any, payload_by_rule: Dict[str, Dict[str, Any]]) ->
 
 
 def run_payload_rows(rows: Iterable[Dict[str, Any]]) -> pd.DataFrame:
-    """Evaluate a stream of 2025 payload rows.
-
-    Each input row must contain timestamp, rule_id and a JSON-like payload in
-    the `payload` field. This adapter only executes existing Nison runtimes.
-    """
+    """Evaluate an existing source-backed Nison payload stream."""
     out: list[Dict[str, Any]] = []
     grouped: dict[pd.Timestamp, dict[str, Dict[str, Any]]] = {}
     for row in rows:
@@ -83,14 +74,18 @@ def run_payload_rows(rows: Iterable[Dict[str, Any]]) -> pd.DataFrame:
     ])
 
 
-def run_ohlcv_2025(bars: pd.DataFrame, context: pd.DataFrame | None = None) -> pd.DataFrame:
-    """Run the existing Nison runtimes from source-backed 2025 OHLC/context.
+def run_ohlcv_for_year(bars: pd.DataFrame, context: pd.DataFrame | None = None, *, evaluation_year: int = 2025) -> pd.DataFrame:
+    """Run the existing Nison runtime over one specified historical year.
 
-    No pattern semantics, confirmation, thresholds, trend, or geometry are
-    invented here. The source adapter passes through only facts explicitly
-    present in the supplied inputs; the existing runtimes remain authoritative.
+    This is a compatibility extension only: it reuses the same 44 rule IDs,
+    router mapping, source facts, evaluator adapters, and fail-closed semantics.
     """
-    return run_payload_rows(build_payload_rows(bars, context))
+    return run_payload_rows(build_payload_rows(bars, context, evaluation_year=evaluation_year))
+
+
+def run_ohlcv_2025(bars: pd.DataFrame, context: pd.DataFrame | None = None) -> pd.DataFrame:
+    """Backward-compatible 2025 wrapper; behavior is unchanged."""
+    return run_ohlcv_for_year(bars, context, evaluation_year=2025)
 
 
 def run_jsonl(path: str | Path) -> pd.DataFrame:
