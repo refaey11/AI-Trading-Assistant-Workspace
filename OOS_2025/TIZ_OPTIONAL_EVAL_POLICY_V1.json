@@ -1,0 +1,32 @@
+{
+  "version": "1.0",
+  "status": "EVALUATION_ONLY",
+  "mode": "TIZ_OPTIONAL_EVAL",
+  "purpose": "Permit a separate profitability evaluation path when authoritative TIZ evidence is unavailable, without changing the canonical three-book Decision Brain mode.",
+  "canonical_mode_unchanged": true,
+  "tiz_role": "process_only",
+  "tiz_direction": "NEUTRAL",
+  "tiz_missing_evidence": "NOT_EVALUABLE",
+  "tiz_may_generate_direction": false,
+  "tiz_may_override_direction": false,
+  "eligibility": {
+    "required": ["nison_evidence_available", "risk_pass"],
+    "optional": ["tiz_evidence"],
+    "tiz_unavailable_action": "ALLOW_WITH_UNVERIFIED_TIZ_FLAG",
+    "tiz_available_action": "EVALUATE_AND_RECORD"
+  },
+  "outputs": {
+    "tiz_status": ["PASS", "READY", "AVAILABLE", "NOT_EVALUABLE"],
+    "execution_eligible": true,
+    "tiz_verified": false,
+    "evaluation_mode": "TIZ_OPTIONAL_EVAL"
+  },
+  "governance": {
+    "2025_is_oos": true,
+    "no_2025_tuning": true,
+    "no_new_psychological_thresholds": true,
+    "no_new_direction_logic": true,
+    "no_sl_tp_changes": true,
+    "canonical_full_three_book_mode_remains_fail_closed": true
+  }
+}
