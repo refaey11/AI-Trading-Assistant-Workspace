@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 import sys
 from typing import Optional
+from urllib.request import Request, urlopen
 
 import pandas as pd
 
@@ -15,6 +16,7 @@ from OOS_2025.nison_2025_runtime_producer_v1 import run_ohlcv_2025
 
 REQUIRED = {"timestamp", "open", "high", "low", "close"}
 EXPECTED_RULES = 44
+DEFAULT_MARKET_STATE_DROPBOX_PATH = "/AI_Trading_Assistant_FULL_PROJECT_V1/AI_Trading_Assistant_MARKET_STATE_READER_V1/GBPUSD_MARKET_STATE.csv"
 
 
 def load_csv(path: Path) -> pd.DataFrame:
@@ -46,6 +48,39 @@ def build_context(path: Optional[Path]) -> Optional[pd.DataFrame]:
     return ctx
 
 
+def download_market_state_context(out_path: Path) -> Path:
+    token = __import__("os").environ.get("DROPBOX_ACCESS_TOKEN")
+    if not token:
+        raise RuntimeError("DROPBOX_ACCESS_TOKEN is required to acquire the existing Market State Reader context")
+    dropbox_path = __import__("os").environ.get("NISON_MARKET_STATE_DROPBOX_PATH", DEFAULT_MARKET_STATE_DROPBOX_PATH)
+    req = Request(
+        "https://content.dropboxapi.com/2/files/download",
+        data=b"",
+        method="POST",
+        headers={
+            "Authorization": f"Bearer {token}",
+            "Dropbox-API-Arg": json.dumps({"path": dropbox_path}),
+        },
+    )
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    with urlopen(req, timeout=120) as response, out_path.open("wb") as handle:
+        handle.write(response.read())
+    return out_path
+
+
+def acquire_default_context(explicit_path: Optional[Path]) -> tuple[Optional[Path], Optional[str]]:
+    if explicit_path is not None:
+        return explicit_path, "explicit_context_argument"
+    local_default = ROOT / "OOS_2025" / "GBPUSD_2025_MARKET_STATE_CONTEXT.csv"
+    if local_default.exists():
+        return local_default, "committed_market_state_context"
+    downloaded = ROOT / "OOS_2025" / ".runtime_cache" / "GBPUSD_MARKET_STATE.csv"
+    try:
+        return download_market_state_context(downloaded), "dropbox_market_state_reader"
+    except Exception as exc:
+        raise RuntimeError(f"Unable to acquire existing Market State Reader context: {exc}") from exc
+
+
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--input", required=True, type=Path)
@@ -59,7 +94,8 @@ def main() -> int:
     if bars_2025.empty:
         raise ValueError("No 2025 rows found in input")
 
-    context = build_context(args.context)
+    context_path, context_source = acquire_default_context(args.context)
+    context = build_context(context_path)
     evidence = run_ohlcv_2025(bars_2025, context)
 
     expected_rows = len(bars_2025) * EXPECTED_RULES
@@ -78,7 +114,9 @@ def main() -> int:
     per_rule = evidence.groupby(["rule_id", "status"]).size().unstack(fill_value=0).to_dict(orient="index")
     manifest = {
         "input": str(args.input),
-        "context": str(args.context) if args.context else None,
+        "context": str(context_path) if context_path else None,
+        "context_source": context_source,
+        "market_state_dropbox_path": DEFAULT_MARKET_STATE_DROPBOX_PATH if context_source == "dropbox_market_state_reader" else None,
         "scope": "2025-01-01T00:00:00Z..2025-12-31T23:59:59Z",
         "input_rows_total": int(len(bars_all)),
         "input_rows_2025": int(len(bars_2025)),
