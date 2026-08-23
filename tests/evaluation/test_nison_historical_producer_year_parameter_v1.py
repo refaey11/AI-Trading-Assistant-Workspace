@@ -26,6 +26,17 @@ def test_year_parameter_filters_only_requested_fold():
     assert {pd.Timestamp(r["timestamp"]).year for r in rows_2025} == {2025}
 
 
+def test_historical_fold_uses_previous_completed_candle_without_emitting_it():
+    rows_2025 = build_payload_rows(_bars(), evaluation_year=2025)
+    first_payload = rows_2025[0]["payload"]
+    candles = first_payload["candles"]
+    assert len(candles) == 3
+    assert candles[-1]["close"] == 1.15
+    assert candles[-2]["close"] == 1.10
+    assert candles[-3]["close"] == 1.05
+    assert {pd.Timestamp(r["timestamp"]).year for r in rows_2025} == {2025}
+
+
 def test_default_behavior_remains_2025_compatible():
     explicit = build_payload_rows(_bars(), evaluation_year=2025)
     default = build_payload_rows(_bars())
