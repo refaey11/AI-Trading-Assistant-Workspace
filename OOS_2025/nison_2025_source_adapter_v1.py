@@ -65,9 +65,23 @@ def _required_candle_count(rule_id: str) -> int:
     return _RULE_CANDLE_COUNTS.get(rule_id, 1)
 
 
-def build_payload_rows(bars: pd.DataFrame, context: pd.DataFrame | None = None, *, timestamp_column: str = "timestamp") -> list[dict[str, Any]]:
+def build_payload_rows(
+    bars: pd.DataFrame,
+    context: pd.DataFrame | None = None,
+    *,
+    timestamp_column: str = "timestamp",
+    evaluation_year: int = 2025,
+) -> list[dict[str, Any]]:
+    """Build source-backed Nison payloads for one governed evaluation year.
+
+    Full chronological history is retained only to derive prior-completed candle
+    relationships; emitted rows are restricted to ``evaluation_year``. Frozen
+    per-rule candle-count contracts remain unchanged.
+    """
     if timestamp_column not in bars.columns:
         raise ValueError(f"missing timestamp column: {timestamp_column}")
+    if not isinstance(evaluation_year, int):
+        raise TypeError("evaluation_year must be int")
     cols = {name: _pick_column(bars, name) for name in _OHLC_ALIASES}
     missing = [name for name, col in cols.items() if col is None]
     if missing:
@@ -75,7 +89,7 @@ def build_payload_rows(bars: pd.DataFrame, context: pd.DataFrame | None = None, 
 
     source = bars.copy()
     source["timestamp"] = pd.to_datetime(source[timestamp_column], utc=True)
-    source = source[source["timestamp"].dt.year.eq(2025)].sort_values("timestamp")
+    source = source.sort_values("timestamp").drop_duplicates("timestamp", keep="last")
 
     ctx = None
     if context is not None:
@@ -83,13 +97,15 @@ def build_payload_rows(bars: pd.DataFrame, context: pd.DataFrame | None = None, 
             raise ValueError("context must contain timestamp")
         ctx = context.copy()
         ctx["timestamp"] = pd.to_datetime(ctx["timestamp"], utc=True)
-        ctx = ctx[ctx["timestamp"].dt.year.eq(2025)].drop_duplicates("timestamp", keep="last")
+        ctx = ctx.sort_values("timestamp").drop_duplicates("timestamp", keep="last")
 
     rows: list[dict[str, Any]] = []
     history: list[dict[str, float]] = []
     for _, row in source.iterrows():
         candle = {name: float(row[col]) for name, col in cols.items()}
         history.append(candle)
+        if int(pd.Timestamp(row["timestamp"]).year) != evaluation_year:
+            continue
 
         # Keep enough internal history for the largest frozen runtime contract,
         # but expose only the exact history required by each rule.
