@@ -1,0 +1,32 @@
+{
+  "version": "EVIDENCE_ADAPTER_REGISTRY_V1",
+  "adapters": [
+    {
+      "adapter_id": "GBPUSD_SPOT_MARKET_STATE_V1",
+      "source": "PROJECT_GBPUSD_MARKET_STATE",
+      "instrument": "GBPUSD",
+      "features": ["open","high","low","close","volume_direction","atr20"],
+      "availability_policy": "POINT_IN_TIME",
+      "quality_policy": "AUTHORITATIVE_ONLY",
+      "notes": "Use only source-backed market state already present in the project."
+    },
+    {
+      "adapter_id": "GBP_FUTURES_OI_CFTC_096742_V1",
+      "source": "CFTC_FUTURES_ONLY",
+      "instrument": "GBP_FUTURES_096742",
+      "features": ["open_interest","oi_change","oi_direction","report_date","safe_availability_timestamp"],
+      "availability_policy": "POINT_IN_TIME_SAFE_AVAILABILITY",
+      "quality_policy": "AUTHORITATIVE_ONLY",
+      "notes": "Canonical historical Murphy 0022/0023 OI source already built in the project for 2020-2024. No spot-FX proxy. CME PG01B is a separate external validation/acquisition source and must not overwrite this lineage."
+    },
+    {
+      "adapter_id": "CME_6B_OPEN_INTEREST_V1",
+      "source": "CME_6B",
+      "instrument": "6B",
+      "features": ["open_interest"],
+      "availability_policy": "SOURCE_RELEASE_TIMESTAMP_REQUIRED",
+      "quality_policy": "AUTHORITATIVE_ONLY",
+      "notes": "External production/historical source candidate for future 2025 coverage. Must include documented release/availability timestamp; do not infer availability from trade date alone."
+    }
+  ]
+}
