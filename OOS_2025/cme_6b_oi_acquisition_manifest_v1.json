@@ -1,0 +1,35 @@
+{
+  "name": "CME 6B OI acquisition manifest V1",
+  "purpose": "Acquire authoritative British Pound futures (6B/BP) open interest for 2024-2025 without lookahead or proxy substitution.",
+  "primary_source": {
+    "provider": "CME Group",
+    "dataset": "Daily Bulletin / Volume and Open Interest",
+    "instrument": "British Pound futures (BP / 6B family as applicable to source contract code)",
+    "authority": "CME official"
+  },
+  "access_paths": [
+    "Historical Daily Bulletin via CME DataMine",
+    "CME Daily Bulletin / Daily VOI files when historical files are supplied or publicly retrievable"
+  ],
+  "required_fields": [
+    "trade_date",
+    "contract",
+    "open_interest",
+    "source",
+    "event_time",
+    "available_time",
+    "revision_status",
+    "raw_file_id"
+  ],
+  "point_in_time_policy": {
+    "selection": "latest evidence with available_time <= decision_time",
+    "future_evidence": "reject",
+    "unverified_release_time": "reject",
+    "proxy_substitution": "reject",
+    "2025_tuning": "forbidden"
+  },
+  "fallback": {
+    "cftc_cot": "validation/positioning context only; never a substitute for CME OI"
+  },
+  "status": "ACQUISITION_READY_SOURCE_DATA_NOT_PRESENT_LOCALLY"
+}
