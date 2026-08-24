@@ -1,0 +1,3 @@
+CircleCI pipeline trigger
+Created to verify the newly connected CircleCI project can detect a commit from the AI-Trading-Assistant-Workspace repository.
+No Decision Brain rules, evaluation logic, or OOS data were modified.
