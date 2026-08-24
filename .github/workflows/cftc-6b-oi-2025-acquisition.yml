@@ -1,0 +1,86 @@
+name: CFTC 6B OI 2025 Acquisition
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/cftc-6b-oi-2025-acquisition.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  acquire:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Fetch CFTC 096742 OI for 2025
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import csv, json, urllib.parse, urllib.request
+          from datetime import date
+
+          base = 'https://publicreportinghub.cftc.gov/resource/gpe5-46if.json'
+          params = {
+              '$limit': '50000',
+              '$select': 'report_date_as_yyyy_mm_dd,cftc_contract_market_code,open_interest_all',
+              '$where': "cftc_contract_market_code='096742' AND report_date_as_yyyy_mm_dd between '2025-01-01T00:00:00' and '2025-12-31T23:59:59'",
+              '$order': 'report_date_as_yyyy_mm_dd ASC',
+          }
+          url = base + '?' + urllib.parse.urlencode(params)
+          with urllib.request.urlopen(url, timeout=60) as r:
+              rows = json.load(r)
+
+          cleaned = []
+          for row in rows:
+              raw_date = row.get('report_date_as_yyyy_mm_dd')
+              oi = row.get('open_interest_all')
+              code = row.get('cftc_contract_market_code')
+              if not raw_date or oi in (None, '') or code != '096742':
+                  continue
+              cleaned.append({
+                  'report_date': raw_date[:10],
+                  'contract_market_code': code,
+                  'open_interest_all': int(float(str(oi).replace(',', ''))),
+                  'source': 'CFTC Public Reporting Hub dataset gpe5-46if',
+              })
+
+          if len(cleaned) < 40:
+              raise SystemExit(f'Expected roughly weekly 2025 observations; received only {len(cleaned)}')
+
+          # Keep the raw report date distinct from availability. Availability is deliberately
+          # NOT invented here; a downstream PIT step must bind it to an authoritative
+          # publication timestamp before the evidence is marked usable.
+          with open('cftc_6b_oi_2025_raw.json', 'w', encoding='utf-8') as f:
+              json.dump(cleaned, f, indent=2, ensure_ascii=False)
+
+          with open('cftc_6b_oi_2025.csv', 'w', newline='', encoding='utf-8') as f:
+              w = csv.DictWriter(f, fieldnames=cleaned[0].keys())
+              w.writeheader()
+              w.writerows(cleaned)
+
+          summary = {
+              'dataset': 'gpe5-46if',
+              'contract_market_code': '096742',
+              'year': 2025,
+              'row_count': len(cleaned),
+              'first_report_date': cleaned[0]['report_date'],
+              'last_report_date': cleaned[-1]['report_date'],
+              'availability_status': 'PENDING_AUTHORITATIVE_PUBLICATION_TIME',
+              'lookahead_policy': 'fail-closed',
+          }
+          with open('cftc_6b_oi_2025_summary.json', 'w', encoding='utf-8') as f:
+              json.dump(summary, f, indent=2)
+          print(json.dumps(summary, indent=2))
+          PY
+
+      - name: Upload acquisition artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: cftc-6b-oi-2025-${{ github.sha }}
+          path: |
+            cftc_6b_oi_2025_raw.json
+            cftc_6b_oi_2025.csv
+            cftc_6b_oi_2025_summary.json
+          if-no-files-found: error
