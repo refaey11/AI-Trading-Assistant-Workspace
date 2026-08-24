@@ -185,6 +185,38 @@ jobs:
       - store_artifacts:
           path: artifacts/murphy_0021_2025
           destination: murphy_0021_2025
+  murphy_0022_0023_2025_pit_v1:
+    docker: [{image: cimg/python:3.12}]
+    steps:
+      - checkout
+      - run: python -m pip install --upgrade pip pandas pytest
+      - run:
+          name: Acquire governed 2025 H1 + M1 sources
+          command: |
+            set -eu
+            mkdir -p /tmp/murphy_0022_0023/h1 /tmp/murphy_0022_0023/m1
+            if [ -n "${NISON_2025_SOURCE_URL:-}" ]; then curl -L --fail --silent --show-error "$NISON_2025_SOURCE_URL" -o /tmp/murphy_0022_0023/h1/source.zip; elif [ -n "${DROPBOX_ACCESS_TOKEN:-}" ]; then curl -L --fail --silent --show-error https://content.dropboxapi.com/2/files/download -H "Authorization: Bearer ${DROPBOX_ACCESS_TOKEN}" -H 'Dropbox-API-Arg: {"path":"/GBPUSD_H1_2016_2025_MASTER.zip"}' -o /tmp/murphy_0022_0023/h1/source.zip; else echo 'BLOCKED: configure CircleCI project secret NISON_2025_SOURCE_URL or DROPBOX_ACCESS_TOKEN.'; exit 2; fi
+            if [ -n "${MURPHY_M1_SOURCE_URL:-}" ]; then curl -L --fail --silent --show-error "$MURPHY_M1_SOURCE_URL" -o /tmp/murphy_0022_0023/m1/source.zip; elif [ -n "${DROPBOX_ACCESS_TOKEN:-}" ]; then curl -L --fail --silent --show-error https://content.dropboxapi.com/2/files/download -H "Authorization: Bearer ${DROPBOX_ACCESS_TOKEN}" -H 'Dropbox-API-Arg: {"path":"/GBPUSD_M1_MASTER_2016_2026_V1.zip"}' -o /tmp/murphy_0022_0023/m1/source.zip; else echo 'BLOCKED: configure CircleCI project secret MURPHY_M1_SOURCE_URL or DROPBOX_ACCESS_TOKEN.'; exit 2; fi
+            unzip -q /tmp/murphy_0022_0023/h1/source.zip -d /tmp/murphy_0022_0023/h1
+            unzip -q /tmp/murphy_0022_0023/m1/source.zip -d /tmp/murphy_0022_0023/m1
+            H1_CSV=$(find /tmp/murphy_0022_0023/h1 -type f -name 'GBPUSD_H1_2016_2025_MASTER.csv' | head -1)
+            M1_CSV=$(find /tmp/murphy_0022_0023/m1 -type f -name '*.csv' | head -1)
+            test -n "$H1_CSV"
+            test -n "$M1_CSV"
+            echo "export MURPHY_OI_H1_CSV=$H1_CSV" >> "$BASH_ENV"
+            echo "export MURPHY_OI_M1_CSV=$M1_CSV" >> "$BASH_ENV"
+      - run:
+          name: Run PIT-safe Murphy 0022/0023 on all 2025 H1 rows
+          command: |
+            set -eu
+            mkdir -p artifacts/murphy_0022_0023_2025
+            python OOS_2025/run_murphy_0022_0023_2025_pit_v1.py --h1 "$MURPHY_OI_H1_CSV" --m1 "$MURPHY_OI_M1_CSV" --oi evidence/cftc/2025/6b_oi_pit_bound_v1.json --output artifacts/murphy_0022_0023_2025/MURPHY_0022_0023_2025.csv --manifest artifacts/murphy_0022_0023_2025/MURPHY_0022_0023_2025_MANIFEST.json
+      - run:
+          name: Verify Murphy 0022/0023 runtime and PIT tests
+          command: python -m pytest -q tests/evaluation/test_murphy_0021_0023_runtime_dispatch_v1.py tests/evaluation/test_cftc_6b_oi_pit_bound_v1.py
+      - store_artifacts:
+          path: artifacts/murphy_0022_0023_2025
+          destination: murphy_0022_0023_2025
 
 workflows:
   build_and_test:
@@ -195,3 +227,5 @@ workflows:
     jobs: [oos_2025_78_rule_coverage_v1]
   murphy_2025_fresh:
     jobs: [murphy_0021_2025_fresh_v1]
+  murphy_0022_0023_2025_pit:
+    jobs: [murphy_0022_0023_2025_pit_v1]
