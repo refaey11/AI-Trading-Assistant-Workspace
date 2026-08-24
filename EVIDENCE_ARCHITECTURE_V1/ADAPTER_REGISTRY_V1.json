@@ -11,13 +11,22 @@
       "notes": "Use only source-backed market state already present in the project."
     },
     {
+      "adapter_id": "GBP_FUTURES_OI_CFTC_096742_V1",
+      "source": "CFTC_FUTURES_ONLY",
+      "instrument": "GBP_FUTURES_096742",
+      "features": ["open_interest","oi_change","oi_direction","report_date","safe_availability_timestamp"],
+      "availability_policy": "POINT_IN_TIME_SAFE_AVAILABILITY",
+      "quality_policy": "AUTHORITATIVE_ONLY",
+      "notes": "Canonical historical Murphy 0022/0023 OI source already built in the project for 2020-2024. No spot-FX proxy. CME PG01B is a separate external validation/acquisition source and must not overwrite this lineage."
+    },
+    {
       "adapter_id": "CME_6B_OPEN_INTEREST_V1",
       "source": "CME_6B",
       "instrument": "6B",
       "features": ["open_interest"],
-      "availability_policy": "END_OF_DAY_AVAILABLE",
+      "availability_policy": "SOURCE_RELEASE_TIMESTAMP_REQUIRED",
       "quality_policy": "AUTHORITATIVE_ONLY",
-      "notes": "Primary adapter for Murphy rules requiring British Pound futures open interest. No spot-volume proxy."
+      "notes": "External production/historical source candidate for future 2025 coverage. Must include documented release/availability timestamp; do not infer availability from trade date alone."
     }
   ]
 }
