@@ -46,3 +46,17 @@ def test_transition_is_not_mapped_to_direction():
     context = pd.DataFrame([{"timestamp": "2025-01-01T00:00:00Z", "trend": "TRANSITION"}])
     row = build_payload_rows(bars, context)[0]
     assert row["payload"]["context"]["trend"] == "TRANSITION"
+
+
+def test_adapter_exposes_five_candles_when_history_is_available():
+    bars = pd.DataFrame(
+        [
+            {"timestamp": f"2025-01-01T0{i}:00:00Z", "open": 10.0 + i, "high": 10.5 + i, "low": 9.5 + i, "close": 10.2 + i}
+            for i in range(6)
+        ]
+    )
+    rows = build_payload_rows(bars)
+    latest = next(r for r in rows if r["timestamp"].startswith("2025-01-01T05:00:00") and r["rule_id"] == "NISON_0031")
+    assert len(latest["payload"]["candles"]) == 5
+    assert latest["payload"]["candles"][0]["open"] == 11.0
+    assert latest["payload"]["candles"][-1]["open"] == 15.0
