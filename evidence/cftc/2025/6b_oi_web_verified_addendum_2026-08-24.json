@@ -1,0 +1,29 @@
+{
+  "dataset": "CFTC Financial Futures Only 2025",
+  "contract_market_code": "096742",
+  "instrument": "British Pound Futures",
+  "observations": [
+    {"report_date":"2025-04-08","open_interest":176910},
+    {"report_date":"2025-04-15","open_interest":177006},
+    {"report_date":"2025-04-22","open_interest":179555},
+    {"report_date":"2025-04-29","open_interest":192312},
+    {"report_date":"2025-05-06","open_interest":200214},
+    {"report_date":"2025-05-20","open_interest":195326},
+    {"report_date":"2025-05-27","open_interest":202990},
+    {"report_date":"2025-06-03","open_interest":233601},
+    {"report_date":"2025-06-17","open_interest":177026},
+    {"report_date":"2025-06-24","open_interest":179898},
+    {"report_date":"2025-07-01","open_interest":188689},
+    {"report_date":"2025-07-08","open_interest":191557},
+    {"report_date":"2025-07-15","open_interest":195467},
+    {"report_date":"2025-07-22","open_interest":195467},
+    {"report_date":"2025-07-29","open_interest":207879},
+    {"report_date":"2025-08-05","open_interest":206254},
+    {"report_date":"2025-08-12","open_interest":214347},
+    {"report_date":"2025-08-19","open_interest":219831},
+    {"report_date":"2025-08-26","open_interest":219906}
+  ],
+  "status":"WEB_VERIFIED_PARTIAL",
+  "availability":"PENDING_AUTHORITATIVE_PUBLICATION_TIME",
+  "policy":"Do not mark 2025 evidence usable until publication timestamp is bound in PIT layer. No interpolation or proxy." 
+}
