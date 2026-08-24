@@ -1,0 +1,35 @@
+{
+  "dataset":"CFTC Financial Futures Only 2025",
+  "contract_market_code":"096742",
+  "instrument":"British Pound Futures",
+  "report_date_count":51,
+  "availability_field":"available_time",
+  "timezone":"America/New_York",
+  "publication_time":"15:30:00",
+  "basis":"CFTC COT release guidance: generally Friday 3:30 p.m. ET for preceding Tuesday; historical exceptions below",
+  "exceptions":{
+    "2025-01-07":"2025-01-13 15:30 ET",
+    "2025-09-30":"2025-11-19 15:30 ET",
+    "2025-10-07":"2025-11-21 15:30 ET",
+    "2025-10-14":"2025-11-25 15:30 ET",
+    "2025-10-21":"2025-12-02 15:30 ET",
+    "2025-10-28":"2025-12-05 15:30 ET",
+    "2025-11-04":"2025-12-09 15:30 ET",
+    "2025-11-10":"2025-12-10 15:30 ET",
+    "2025-11-18":"2025-12-12 15:30 ET",
+    "2025-11-25":"2025-12-15 15:30 ET",
+    "2025-12-02":"2025-12-17 15:30 ET",
+    "2025-12-09":"2025-12-19 15:30 ET",
+    "2025-12-16":"2025-12-23 15:30 ET",
+    "2025-12-23":"2025-12-29 15:30 ET",
+    "2025-12-30":"2026-01-13 15:30 ET"
+  },
+  "report_date_policy":"2025-11-11 is not an independent COT report date; the Veterans Day week is represented by the 2025-11-10 report date in the CFTC catch-up schedule.",
+  "pit_policy":"available_time is bound to publication timestamp. No observation may be used before available_time. No proxy, interpolation, or inferred publication timestamp outside documented normal schedule and explicit CFTC exceptions.",
+  "status":"PIT_BINDING_READY",
+  "source_urls":[
+    "https://www.cftc.gov/MarketReports/CommitmentsofTraders/AbouttheCOTReports/index.htm",
+    "https://www.cftc.gov/MarketReports/CommitmentsofTraders/HistoricalSpecialAnnouncements/index.htm",
+    "https://www.cftc.gov/PressRoom/PressReleases/9147-25"
+  ]
+}
