@@ -71,8 +71,11 @@ def build_payload_rows(bars: pd.DataFrame, context: pd.DataFrame | None = None, 
         candle = {name: float(row[col]) for name, col in cols.items()}
         history.append(candle)
         # Runtime Candle dataclasses accept OHLC + a small shared set of categorical candle facts.
+        # Keep five completed candles because NISON_0031's frozen runtime contract
+        # explicitly requires a five-candle continuation structure. This change
+        # only widens history availability; it does not invent formation semantics.
         enriched_history: list[dict[str, Any]] = []
-        for idx, base in enumerate(history[-3:], start=max(0, len(history) - 3)):
+        for idx, base in enumerate(history[-5:], start=max(0, len(history) - 5)):
             enriched = dict(base)
             enriched.update(_candle_source_facts(history, idx))
             enriched_history.append(enriched)
