@@ -1,0 +1,36 @@
+{
+  "status": "WEB_VERIFIED_PARTIAL",
+  "instrument": "British Pound futures",
+  "cftc_contract_market_code": "096742",
+  "report_type": "Futures Only",
+  "year": 2025,
+  "observations": [
+    {"report_date":"2025-01-07","open_interest":188770,"source":"CFTC financial_lf010725.htm"},
+    {"report_date":"2025-01-14","open_interest":200826,"source":"CFTC financial_lf011425.htm"},
+    {"report_date":"2025-01-21","open_interest":212688,"source":"CFTC financial_lf012125.htm"},
+    {"report_date":"2025-01-28","open_interest":206821,"source":"CFTC financial_lf012825.htm"},
+    {"report_date":"2025-02-04","open_interest":204644,"source":"CFTC financial_lf020425.htm"},
+    {"report_date":"2025-03-04","open_interest":200634,"source":"CFTC financial_lf030425.htm"},
+    {"report_date":"2025-04-01","open_interest":187160,"source":"CFTC financial_lf040125.htm"},
+    {"report_date":"2025-04-08","open_interest":176910,"source":"CFTC financial_lf040825.htm"},
+    {"report_date":"2025-05-20","open_interest":195326,"source":"CFTC financial_lf052025.htm"},
+    {"report_date":"2025-09-02","open_interest":226437,"source":"CFTC financial_lf090225.htm"},
+    {"report_date":"2025-09-09","open_interest":322879,"source":"CFTC financial_lf090925.htm"},
+    {"report_date":"2025-09-30","open_interest":226426,"source":"CFTC financial_lf093025.htm"},
+    {"report_date":"2025-10-14","open_interest":237520,"source":"CFTC financial_lf101425.htm"},
+    {"report_date":"2025-10-21","open_interest":233484,"source":"CFTC financial_lf102125.htm"},
+    {"report_date":"2025-11-04","open_interest":270917,"source":"CFTC financial_lf110425.htm"},
+    {"report_date":"2025-11-10","open_interest":272612,"source":"CFTC financial_lf111025.htm"},
+    {"report_date":"2025-11-25","open_interest":315550,"source":"CFTC financial_lf112525.htm"},
+    {"report_date":"2025-12-02","open_interest":299768,"source":"CFTC financial_lf120225.htm"},
+    {"report_date":"2025-12-30","open_interest":196003,"source":"CFTC financial_lf123025.htm"}
+  ],
+  "governance": {
+    "authoritative_source": "CFTC official historical reports",
+    "proxy": false,
+    "interpolation": false,
+    "available_time_materialized": false,
+    "production_usable": false,
+    "reason_blocked": "This ledger is a web-verified partial evidence set; PIT availability must be bound before 0022/0023 production use."
+  }
+}
