@@ -1,21 +1,9 @@
 name: Decision Brain Progressive Gate 01
 
-# Triggered on 2026-08-24 to run the existing compatibility gate on GitHub Actions.
 on:
   push:
-    paths:
-      - 'decision_brain.py'
-      - 'compatibility/knowledge_decision_handoff.py'
-      - 'compatibility/run_knowledge_decision_brain.py'
-      - 'tests/test_progressive_decision_brain_gate_01_2026-08-22.py'
-      - '.github/workflows/decision-brain-progressive-gate.yml'
   pull_request:
-    paths:
-      - 'decision_brain.py'
-      - 'compatibility/knowledge_decision_handoff.py'
-      - 'compatibility/run_knowledge_decision_brain.py'
-      - 'tests/test_progressive_decision_brain_gate_01_2026-08-22.py'
-      - '.github/workflows/decision-brain-progressive-gate.yml'
+  workflow_dispatch:
 
 jobs:
   gate01:
