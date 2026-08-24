@@ -20,8 +20,10 @@ def test_maps_2025_ohlc_and_preserves_only_explicit_context():
     assert len(rows) == 3 * 44
     last = next(r for r in rows if r["timestamp"].startswith("2025-01-02T02:00:00") and r["rule_id"] == "NISON_0001")
     assert last["payload"]["candles"][-1]["close"] == pytest.approx(1.118)
-    assert last["payload"]["trend"] == "Downtrend"
-    assert last["payload"]["location"] == "NEAR_SUPPORT"
+    assert last["payload"]["context"]["trend"] == "Downtrend"
+    assert last["payload"]["context"]["location"] == "NEAR_SUPPORT"
+    assert "trend" not in last["payload"]
+    assert "location" not in last["payload"]
     assert "confirmation" not in last["payload"]
 
 
