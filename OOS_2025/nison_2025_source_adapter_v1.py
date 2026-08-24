@@ -9,6 +9,21 @@ _OHLC_ALIASES = {"open": "open", "high": "high", "low": "low", "close": "close"}
 _CONTEXT_SCALARS = ("trend", "location", "volume_high")
 _TREND_MAP = {"BULL_TREND": "Uptrend", "BEAR_TREND": "Downtrend", "UPTREND": "Uptrend", "DOWNTREND": "Downtrend"}
 
+# Frozen runtime candle-count contracts. The adapter keeps enough source history
+# internally, then exposes only the exact number required by each rule family.
+_RULE_CANDLE_COUNTS = {
+    **{f"NISON_{i:04d}": 2 for i in (1, 2, 3, 4, 5, 6, 7)},
+    **{f"NISON_{i:04d}": 3 for i in (8, 9, 10, 11, 12)},
+    **{f"NISON_{i:04d}": 2 for i in (13, 14, 15, 16)},
+    **{f"NISON_{i:04d}": 3 for i in (17, 18)},
+    **{f"NISON_{i:04d}": 2 for i in (19, 20)},
+    **{f"NISON_{i:04d}": 5 for i in (31,)},
+    **{f"NISON_{i:04d}": 3 for i in (32, 33)},
+    **{f"NISON_{i:04d}": 2 for i in (34,)},
+    **{f"NISON_{i:04d}": 3 for i in (35,)},
+    **{f"NISON_{i:04d}": 2 for i in (36, 37)},
+}
+
 
 def _pick_column(frame: pd.DataFrame, name: str) -> str | None:
     return {str(c).strip().lower(): c for c in frame.columns}.get(_OHLC_ALIASES[name])
@@ -45,6 +60,11 @@ def _candle_source_facts(history: list[dict[str, Any]], index: int) -> dict[str,
     return facts
 
 
+def _required_candle_count(rule_id: str) -> int:
+    # Context-only rules retain one candle in the payload for compatibility.
+    return _RULE_CANDLE_COUNTS.get(rule_id, 1)
+
+
 def build_payload_rows(bars: pd.DataFrame, context: pd.DataFrame | None = None, *, timestamp_column: str = "timestamp") -> list[dict[str, Any]]:
     if timestamp_column not in bars.columns:
         raise ValueError(f"missing timestamp column: {timestamp_column}")
@@ -70,10 +90,9 @@ def build_payload_rows(bars: pd.DataFrame, context: pd.DataFrame | None = None, 
     for _, row in source.iterrows():
         candle = {name: float(row[col]) for name, col in cols.items()}
         history.append(candle)
-        # Runtime Candle dataclasses accept OHLC + a small shared set of categorical candle facts.
-        # Keep five completed candles because NISON_0031's frozen runtime contract
-        # explicitly requires a five-candle continuation structure. This change
-        # only widens history availability; it does not invent formation semantics.
+
+        # Keep enough internal history for the largest frozen runtime contract,
+        # but expose only the exact history required by each rule.
         enriched_history: list[dict[str, Any]] = []
         for idx, base in enumerate(history[-5:], start=max(0, len(history) - 5)):
             enriched = dict(base)
@@ -107,7 +126,9 @@ def build_payload_rows(bars: pd.DataFrame, context: pd.DataFrame | None = None, 
                         facts.setdefault("context", {})[key] = value
 
         for rule_id in NISON_RULE_IDS:
-            rows.append({"timestamp": row["timestamp"].isoformat(), "rule_id": rule_id, "payload": dict(facts)})
+            rule_facts = dict(facts)
+            rule_facts["candles"] = enriched_history[-_required_candle_count(rule_id):]
+            rows.append({"timestamp": row["timestamp"].isoformat(), "rule_id": rule_id, "payload": rule_facts})
     return rows
 
 
