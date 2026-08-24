@@ -83,14 +83,23 @@ def run_payload_rows(rows: Iterable[Dict[str, Any]]) -> pd.DataFrame:
     ])
 
 
-def run_ohlcv_2025(bars: pd.DataFrame, context: pd.DataFrame | None = None) -> pd.DataFrame:
-    """Run the existing Nison runtimes from source-backed 2025 OHLC/context.
+def run_ohlcv_for_year(
+    bars: pd.DataFrame,
+    context: pd.DataFrame | None = None,
+    *,
+    evaluation_year: int = 2025,
+) -> pd.DataFrame:
+    """Run the existing Nison runtime over one specified historical year.
 
-    No pattern semantics, confirmation, thresholds, trend, or geometry are
-    invented here. The source adapter passes through only facts explicitly
-    present in the supplied inputs; the existing runtimes remain authoritative.
+    This only parameterizes the evaluation fold. It reuses the same 44 rule
+    IDs, routers, source facts, evidence bridge, and fail-closed semantics.
     """
-    return run_payload_rows(build_payload_rows(bars, context))
+    return run_payload_rows(build_payload_rows(bars, context, evaluation_year=evaluation_year))
+
+
+def run_ohlcv_2025(bars: pd.DataFrame, context: pd.DataFrame | None = None) -> pd.DataFrame:
+    """Backward-compatible 2025 wrapper; behavior is unchanged."""
+    return run_ohlcv_for_year(bars, context, evaluation_year=2025)
 
 
 def run_jsonl(path: str | Path) -> pd.DataFrame:
