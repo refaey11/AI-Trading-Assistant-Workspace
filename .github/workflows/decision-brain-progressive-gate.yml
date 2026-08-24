@@ -1,5 +1,6 @@
 name: Decision Brain Progressive Gate 01
 
+# Triggered on 2026-08-24 to run the existing compatibility gate on GitHub Actions.
 on:
   push:
     paths:
