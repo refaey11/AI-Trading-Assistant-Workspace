@@ -1,0 +1,23 @@
+{
+  "version": "EVIDENCE_ADAPTER_REGISTRY_V1",
+  "adapters": [
+    {
+      "adapter_id": "GBPUSD_SPOT_MARKET_STATE_V1",
+      "source": "PROJECT_GBPUSD_MARKET_STATE",
+      "instrument": "GBPUSD",
+      "features": ["open","high","low","close","volume_direction","atr20"],
+      "availability_policy": "POINT_IN_TIME",
+      "quality_policy": "AUTHORITATIVE_ONLY",
+      "notes": "Use only source-backed market state already present in the project."
+    },
+    {
+      "adapter_id": "CME_6B_OPEN_INTEREST_V1",
+      "source": "CME_6B",
+      "instrument": "6B",
+      "features": ["open_interest"],
+      "availability_policy": "END_OF_DAY_AVAILABLE",
+      "quality_policy": "AUTHORITATIVE_ONLY",
+      "notes": "Primary adapter for Murphy rules requiring British Pound futures open interest. No spot-volume proxy."
+    }
+  ]
+}
