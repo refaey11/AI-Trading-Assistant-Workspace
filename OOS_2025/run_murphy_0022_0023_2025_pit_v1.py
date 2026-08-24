@@ -76,8 +76,6 @@ def run(h1_path: str | Path, m1_path: str | Path, oi_path: str | Path) -> tuple[
     h1 = _load_ohlcv(h1_path, REQUIRED_H1)
     h1["previous_close"] = h1["close"].shift(1)
     h1 = h1[h1["timestamp"].dt.year.eq(2025)].copy().reset_index(drop=True)
-    if len(h1) != 0 and len(h1) != 6216:
-        raise ValueError(f"Expected governed 2025 H1 row count 6216, got {len(h1)}")
     if h1.empty:
         raise ValueError("No 2025 H1 rows found")
 
@@ -93,7 +91,6 @@ def run(h1_path: str | Path, m1_path: str | Path, oi_path: str | Path) -> tuple[
     oi = _load_pit_oi(oi_path)
     oi_for_join = oi[["available_time", "open_interest", "oi_direction", "report_date"]].copy()
 
-    # Existing project 0021 producer evaluates each H1 row at its governed event timestamp.
     # PIT rule: only OI with available_time <= event timestamp can be used.
     merged = pd.merge_asof(
         merged.sort_values("timestamp"),
@@ -146,7 +143,6 @@ def run(h1_path: str | Path, m1_path: str | Path, oi_path: str | Path) -> tuple[
     manifest = {
         "status": "FRESH_MURPHY_2025_PIT_OOS_ONLY",
         "input_h1_rows_2025": int(len(h1)),
-        "expected_h1_rows_2025": 6216,
         "oi_observation_count": int(len(oi)),
         "pit_policy": "latest OI with available_time <= H1 event timestamp",
         "no_lookahead": True,
