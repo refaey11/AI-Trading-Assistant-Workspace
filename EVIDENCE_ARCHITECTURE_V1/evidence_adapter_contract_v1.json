@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Decision Brain Evidence Adapter Contract V1",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["adapter_id","source","instrument","features","availability_policy","quality_policy","no_proxy_default"],
+  "properties": {
+    "adapter_id": {"type":"string","minLength":1},
+    "source": {"type":"string","minLength":1},
+    "instrument": {"type":"string","minLength":1},
+    "features": {"type":"array","items":{"type":"string"},"minItems":1},
+    "availability_policy": {"type":"string","enum":["EVENT_TIME","POINT_IN_TIME","LAGGED_AVAILABLE","END_OF_DAY_AVAILABLE"]},
+    "quality_policy": {"type":"string","enum":["AUTHORITATIVE_ONLY","AUTHORITATIVE_OR_VALIDATED_DERIVED"]},
+    "no_proxy_default": {"type":"boolean","const":true},
+    "stale_after_seconds": {"type":["number","null"],"minimum":0},
+    "notes": {"type":"string"}
+  }
+}
