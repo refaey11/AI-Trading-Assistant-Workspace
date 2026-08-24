@@ -37,6 +37,9 @@ def build_handoff(market_row, alignment_output, similarity=None):
         alignment_state in CONTRADICTION_STATES
         or contradiction_gate in {"FAIL", "CONTRADICTION", "NISON_CONTRADICTION"}
     )
+    # Missing alignment is not evidence of agreement. Keep the handoff
+    # fail-closed and route to review until an explicit alignment state exists.
+    missing_alignment = alignment_state == ""
 
     return {
         "decision_brain_row": row,
@@ -54,7 +57,7 @@ def build_handoff(market_row, alignment_output, similarity=None):
         "gates": {
             "hard_block": hard_block,
             "contradiction": contradiction,
-            "abstain": hard_block or contradiction or alignment_state in {"", "ABSTAIN", "INSUFFICIENT", "NEEDS_REVIEW"},
+            "abstain": hard_block or contradiction or missing_alignment or alignment_state in {"ABSTAIN", "INSUFFICIENT", "NEEDS_REVIEW"},
         },
-        "routing": "BLOCK" if hard_block else ("REVIEW" if contradiction else "ASSESS"),
+        "routing": "BLOCK" if hard_block else ("REVIEW" if contradiction or missing_alignment else "ASSESS"),
     }
