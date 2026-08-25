@@ -275,18 +275,18 @@ jobs:
       - store_artifacts:
           path: artifacts/final_78
           destination: final_2025_governed_78_rule
-
 workflows:
   build_and_test:
     jobs: [nison_runtime_0001_0010, nison_runtime_0011_0020, nison_runtime_0021_0030, nison_runtime_0031_0044, dynamic_mtf_runtime_v1, market_state_contract_v1, market_reader_contract_v1, market_scenario_contract_v1, historical_context_memory_v1, historical_outcome_memory_v1, similarity_memory_v2, memory_integration_v1, outcome_to_scenario_evidence_policy_v1, decision_brain_v1_integration, decision_brain_final_e2e_readiness_v1, risk_execution_runtime_v1, tiz_optional_execution_adapter_v2, decision_brain_pre_oos_freeze_guard_v1, decision_brain_rule_allowlist_v1, rule_adapter_allowlist_runtime_gate_v1, frozen_decision_execution_bridge_v1, frozen_decision_2025_oos_evaluator_contract_v1, three_book_decision_evaluator_v1, nison_evidence_aggregate_v1]
   nison_2025_full_production:
-    jobs: [nison_2025_full_production_v1]
+    jobs:
+      - nison_2025_full_production_v1
+      - final_2025_governed_78_rule_v1:
+          requires:
+            - nison_2025_full_production_v1
   oos_2025_78_rule_coverage:
     jobs: [oos_2025_78_rule_coverage_v1]
   murphy_2025_fresh:
     jobs: [murphy_0021_2025_fresh_v1]
   murphy_0022_0023_2025_pit:
     jobs: [murphy_0022_0023_2025_pit_v1]
-  final_2025_governed_78_rule:
-    jobs:
-      - final_2025_governed_78_rule_v1
