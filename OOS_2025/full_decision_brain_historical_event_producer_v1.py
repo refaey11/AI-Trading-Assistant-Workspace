@@ -1,8 +1,14 @@
 from __future__ import annotations
-import argparse,json
+import argparse,json,sys
 from pathlib import Path
 from typing import Any
 import pandas as pd
+
+# Ensure repository root is importable when CircleCI invokes this script from OOS_2025.
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
 from RECOVERED_SOURCES.DECISION_BRAIN_V1 import decision_brain
 from OOS_2025.full_decision_brain_assembler_v1 import assemble_decision_event
 REQUIRED_CONTEXT={"timestamp"}; REQUIRED_MURPHY={"timestamp","status","direction","source_rule_id"}; REQUIRED_NISON={"timestamp","confirmation","contradiction","source_rule_id"}; REQUIRED_RISK={"timestamp","risk_status"}; REQUIRED_EXECUTION={"timestamp","entry_price","atr"}; REQUIRED_TIZ={"timestamp","process_gate"}
