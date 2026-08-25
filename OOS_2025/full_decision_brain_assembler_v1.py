@@ -10,6 +10,7 @@ from importlib import import_module
 from typing import Any, Mapping
 
 from compatibility.decision_brain_v1_handoff_adapter import assess_with_governance
+from compatibility.governed_78_rule_adapter_v1 import assert_governed_78_package, build_governed_78_package
 from evaluation.three_book_decision_evaluator_v1 import evaluate_three_book_decision
 from OOS_2025.execution_oos_adapter_v1 import build_execution_plan
 
@@ -30,6 +31,20 @@ def assemble_decision_event(
     mode: str = "oos_evaluation",
     provenance: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
+    governed_78 = None
+    if str((provenance or {}).get("fan_in_mode", "")) == "LOSSLESS_FULL_EVIDENCE_WITH_LEGACY_DECISION_COMPAT":
+        adapter_result = build_governed_78_package(
+            query_as_of=query_as_of,
+            murphy_rows=murphy_evidence.get("evidence_set", {}),
+            nison_rows=nison_evidence.get("evidence_set", {}),
+            mode=mode,
+            provenance=provenance,
+        )
+        if adapter_result.status != "PASS":
+            return {"status": "NOT_EVALUABLE", "reason": adapter_result.reason or "RULE_ADAPTER_REJECTED"}
+        governed_78 = dict(adapter_result.package)
+        assert_governed_78_package(governed_78)
+
     governance = assess_with_governance(
         decision_brain_module,
         row=row,
@@ -40,7 +55,7 @@ def assemble_decision_event(
         tiz_evidence=tiz_evidence,
         risk_evidence=risk_evidence,
         historical_evidence=historical_evidence,
-        provenance=provenance,
+        provenance={**dict(provenance or {}), "governed_78_adapter": governed_78.get("receipt", {}) if governed_78 else None},
     )
     if governance.get("status") != "PASS":
         return {"status": "NOT_EVALUABLE", "reason": governance.get("reason", "GOVERNANCE_GATE_NOT_PASS"), "governance": governance}
@@ -86,6 +101,7 @@ def assemble_decision_event(
             "tiz_generated_direction": False,
             "risk_overridden": False,
             "oos_tuning": False,
+            "governed_78_adapter_receipt": governed_78.get("receipt", {}) if governed_78 else None,
         },
     }
 
