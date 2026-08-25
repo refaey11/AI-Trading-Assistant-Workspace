@@ -34,13 +34,18 @@ def normalize_full_evidence(source_csv: Path, output_csv: Path, family: str) -> 
 
 def assert_full_manifest(path: Path, events_path: Path | None = None) -> dict:
     manifest = json.loads(path.read_text(encoding="utf-8"))
+
+    # Accept both the current receipt keys and the older per-event receipt keys.
+    # The event stream remains the source of truth when top-level receipt fields
+    # are absent. This is bookkeeping compatibility only; it does not alter any
+    # rule semantics or the Decision Brain decision path.
     murphy_count = manifest.get("murphy_rule_count")
     nison_count = manifest.get("nison_rule_count")
+    if murphy_count is None:
+        murphy_count = manifest.get("murphy_rule_count_in_event")
+    if nison_count is None:
+        nison_count = manifest.get("nison_rule_count_in_event")
 
-    # Contract hardening: older producer manifests may contain the per-event
-    # counts in the event CSV but omit the top-level receipt fields. Derive them
-    # from the actual emitted event stream instead of failing on a bookkeeping
-    # mismatch. The event stream must still prove 34/44 for every row.
     if (murphy_count is None or nison_count is None) and events_path is not None and events_path.exists():
         events = pd.read_csv(events_path)
         required = {"murphy_rule_count", "nison_rule_count"}
@@ -61,6 +66,7 @@ def assert_full_manifest(path: Path, events_path: Path | None = None) -> dict:
         raise AssertionError(f"Final manifest Murphy count != 34: {manifest}")
     if nison_count != 44:
         raise AssertionError(f"Final manifest Nison count != 44: {manifest}")
+
     if manifest.get("fan_in_mode") != "LOSSLESS_FULL_EVIDENCE_WITH_LEGACY_DECISION_COMPAT":
         raise AssertionError(f"Unexpected fan-in mode: {manifest}")
     if manifest.get("oos_tuning") is not False:
