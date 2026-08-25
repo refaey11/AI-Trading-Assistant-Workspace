@@ -4,101 +4,80 @@
 Restore the governed Decision Brain runtime wiring without changing frozen rule semantics, without using 2025 for tuning, and without inventing missing rule outputs.
 
 ## Confirmed root causes
-1. The frozen Decision Brain allowlist is 78 rules: 44 Nison + 34 Murphy. The allowlist is deny-by-default and must not be changed.
-2. The Murphy runtime entry point was narrower than the frozen Murphy allowlist. This caused a governance/runtime mismatch.
-3. The 2025 historical event producer deduplicated Murphy and Nison rows by timestamp, collapsing multiple per-rule records into a single row.
-4. The final 2025 candidate stream consequently represented only MURPHY_0021, MURPHY_0022, and MURPHY_0023, while the Nison stream was collapsed separately and could emit synthetic NISON_NONE.
-5. The official wiring audit therefore correctly blocked the 2025 P&L interpretation. The 0-trade output is a wiring/governance result, not strategy performance.
+1. Frozen Decision Brain allowlist = 78 rules: 44 Nison + 34 Murphy; deny-by-default.
+2. Murphy runtime entrypoint was narrower than the frozen Murphy allowlist.
+3. Historical OOS producer deduplicated Murphy/Nison rows by timestamp, collapsing multiple per-rule records.
+4. The final 2025 candidate stream therefore represented only Murphy 0021/0022/0023; Nison could emit synthetic `NISON_NONE` after collapse.
+5. The official final wiring audit therefore correctly blocked official 2025 P&L. The 0-trade output was a wiring/governance result, not strategy performance.
 
-## Recovery performed
-### Restored / wired from historical Git provenance
-- Murphy 0003/0004 exact evaluator V2 restored from commit `6c85b5687b5ac42c1e0a6cf6fa506b4212760ada`.
-- Preserved 0003/0004 deterministic tests restored from commit `e7f57b801f9f8b986c36fcb74b6772b2bfe7d805`.
-- Murphy 0029 exact runtime adapter was already present on main and has now been wired into the canonical entrypoint. Historical adapter commit: `85b8c6bfad5566288af33e4eff2e0136aeeef4b6`; historical tests: `1508fc6a8999168f50c105ca2fee689d3843cedc`.
+## Phase 2 completed
+- Restored/wired Murphy 0003/0004 from historical Git provenance.
+- Wired existing Murphy 0029 adapter into the canonical runtime entrypoint.
+- Added lossless per-rule fan-in compatibility layer.
+- Updated OOS producer to preserve per-rule counts/IDs/provenance while keeping frozen downstream decision semantics unchanged.
+- Added Murphy runtime routing/availability registry.
+- Hardened final 78-rule audit to distinguish registration from actual ACTIVE_DISPATCHED availability.
 
-### Canonical routing state after this recovery
-There are **20 ACTIVE_DISPATCHED Murphy rules** in the current runtime entrypoint.
-The remaining **14 allowlisted Murphy rules are not mounted**:
-- `MURPHY_0028` — FROZEN_NOT_MOUNTED
-- `MURPHY_0034` through `MURPHY_0045` — RECOVERED_NOT_MOUNTED
-- `MURPHY_0050` — FROZEN_NOT_MOUNTED
+## Phase 3 — Workspace recovery and additional Murphy routing
+### Workspace reconstruction
+The split GBPUSD rule-evaluator workspace was reconstructed locally from uploaded parts:
+- `GBPUSD_RULE_EVALUATOR_V2_WORKSPACE_PART_01_OF_03.zip.part`
+- `GBPUSD_RULE_EVALUATOR_V2_WORKSPACE_PART_02_OF_03.zip.part`
+- `GBPUSD_RULE_EVALUATOR_V2_WORKSPACE_PART_03_OF_03.zip_part1.bcut` through `_part4.bcut`
 
-This corrects the earlier overstatement that there were 15 missing rules after 0003/0004 recovery. The exact remaining gap is 14.
+The reconstructed archive contains **241 files** and was verified with `unzip -t`: `No errors detected in compressed data`.
 
-A dedicated routing registry now separates routing registration from runtime availability:
-`PROJECT_STATE/MURPHY_RUNTIME_ROUTING_REGISTRY_V1.json`.
+### Murphy 0028
+Recovered exact evaluator and contract from the preserved Workspace artifact:
+- `MURPHY_EVALUATORS_V1/murphy_0027_0029_evaluator.py`
+- `MURPHY_EVALUATORS_V1/MURPHY_0027_0029_EVALUATOR_CONTRACT_V1.json`
 
-### 0034–0045 recovery boundary
-Historical Git records show a recovered evaluator package and adapter QA package for rules 0034–0045. The historical checkpoint records 13 evaluator tests PASS and 5 adapter tests PASS, but the package remained `SHARED_EVALUATOR_CANDIDATE` with historical QA not yet run. A fail-closed runtime bridge was also recorded. Therefore this project state does not promote 0034–0045 to active runtime until the actual evaluator package is mounted and reconciled.
+The source contract says 0028 is implemented and passes only on confirmed BEARISH divergence at HIGH pivot; 0029 is implemented on confirmed BULLISH divergence at LOW pivot. 0027 remains blocked until the exact trend-vs-ranging operator is defined. No threshold or timeframe was invented.
 
-### 0028 boundary
-Historical Git records mark 0028 as production frozen and explicitly prohibit semantic changes without compatibility audit/re-freeze. The exact current-main evaluator artifact still requires reconciliation before active routing.
+0028 is now dispatched in the canonical runtime entrypoint and marked `ACTIVE_DISPATCHED` in the routing registry.
 
-### 0050 boundary
-The canonical reconciliation registry records 0050 as frozen with 4/4 deterministic tests PASS, but the current main runtime entrypoint does not dispatch it. It remains a wiring gap until its exact evaluator artifact is reconciled.
+### Murphy 0050
+Recovered exact structural evaluator and contract:
+- `MURPHY_EVALUATORS_V1/murphy_0050_evaluator.py`
+- `MURPHY_EVALUATORS_V1/MURPHY_0050_EVALUATOR_CONTRACT_V1.json`
 
-## Lossless fan-in repair
-A new compatibility-only fan-in layer was added at:
-`OOS_2025/governed_rule_fan_in_v1.py`
+0050 is explicitly a pre-trade multi-factor checklist. It cannot generate BUY/SELL, cannot guess missing evidence, and cannot mark partial evidence as PASS. Its preserved current state is `NOT_EVALUABLE`, with missing sector/breadth, weekly/monthly mapping, combined retracement/gaps, combined pattern evidence, and incomplete MA evidence listed as blockers. `2025_used=false`.
 
-The layer:
-- preserves every real Murphy/Nison rule record at a timestamp;
-- does not deduplicate rule evidence;
-- excludes synthetic rule sentinels such as `NISON_NONE`;
-- exposes explicit evidence counts and rule IDs;
-- retains the old `keep='last'` single-row behavior only as a temporary compatibility selector for the frozen downstream evaluator;
-- performs no directional voting, no confidence invention, and no strategy change.
+0050 is now dispatched in the canonical runtime entrypoint and marked `ACTIVE_DISPATCHED` in the routing registry. This means the evaluator is mounted; it does not mean the checklist is PASS.
 
-The historical OOS producer was updated to use the lossless rule grouping and to emit:
-- `murphy_rule_count`
-- `nison_rule_count`
-- `murphy_rule_ids`
-- `nison_rule_ids`
-- fan-in provenance metadata
+### Validation
+Standalone source-backed validation completed:
+- Murphy 0028: PASS / FAIL / NOT_EVALUABLE behavior verified.
+- Murphy 0050: all-PASS checklist returns PASS; missing evidence returns NOT_EVALUABLE; direction remains NONE.
 
-The output decision semantics remain the existing frozen single-evidence behavior until an approved multi-rule aggregation contract exists.
+## Current canonical Murphy routing state
+- **22 ACTIVE_DISPATCHED**
+- **12 RECOVERED_NOT_MOUNTED**: 0034–0045
+- **34 total allowlisted Murphy rules**
 
-## Validation
-- 0003/0004 restored test module: PASS (1 module; 8 behavioral assertions covered by the preserved test source).
-- Lossless governed fan-in test suite: **5 passed** locally.
-- Murphy 0029 historical test source documents PASS/FAIL/NOT_EVALUABLE behavior and historical population reconciliation: PASS in the preserved Git source.
+Official 2025 P&L remains blocked until 34/34 ACTIVE_DISPATCHED and all governing fan-in/coverage gates pass.
 
-## Governance / audit hardening
-`OOS_2025/audit_final_78_rule_wiring_v1.py` was updated to distinguish:
-- entrypoint registration;
-- routing-registry state;
-- actual ACTIVE_DISPATCHED runtime availability.
-
-The audit remains fail-closed and now requires all 34 allowlisted Murphy rules to be ACTIVE_DISPATCHED before official P&L can run.
+## Important status of 0034–0045
+Historical Git recovery shows a shared evaluator candidate and fail-closed bridge with 13 evaluator tests PASS and 5 adapter QA tests PASS, but the preserved status explicitly says `SHARED_EVALUATOR_CANDIDATE`, `production_frozen=false`, and `historical_qa=NOT_YET_RUN`. The current recovered Workspace archive contains mapping/audit tables for 0034–0045 but does not contain the actual `murphy_batch_evaluators.py` implementation module. Therefore these 12 rules remain NOT MOUNTED and are not invented.
 
 ## Invariants preserved
-- 2025 remains OOS evaluation-only.
-- No 2025 tuning, threshold selection, calibration, or semantic changes.
-- Murphy remains the only directional technical source.
-- Nison remains confirmation/contradiction only.
-- Trading in the Zone remains a process/psychology gate only.
-- Similarity/historical memory remains evidence only and cannot generate direction.
-- Risk remains a hard execution gate.
-- Unknown or unavailable rules remain NOT_EVALUABLE / fail-closed.
-- No synthetic rule IDs are introduced.
+- 2025 = OOS evaluation-only; no tuning/calibration.
+- Murphy remains the only directional book.
+- Nison = confirmation/contradiction only.
+- TIZ = process/psychology gate only.
+- Similarity/historical memory = evidence only.
+- Risk = hard gate.
+- Unknown/missing evidence = NOT_EVALUABLE / fail closed.
+- No synthetic rule IDs.
+- No new indicator thresholds or timeframe assumptions.
 
-## Current blocker
-The project is **still NOT READY for official 2025 P&L** because 14 allowlisted Murphy rules are not yet actively mounted and the final multi-rule fan-in has not yet been promoted to a directional aggregation contract.
+## Latest GitHub commits in this recovery
+- `6e95a7aa89ed54cd3feccbc646330a2d7ad94692` — restore exact 0028 evaluator.
+- `465abaae8149bb245a5190b0e9012a2eeef1693c` — restore exact 0050 evaluator.
+- `d7091c47d1e099b83ff8232fc749fe2d410c661b` — wire 0028/0050 into runtime entrypoint.
+- `d0f8b58ef7eefb469a8b095a2b6812d3cb636fe6` — update routing registry to 22 ACTIVE_DISPATCHED.
+- `4f0e9da37fa51de4c8a1e0bc015f573902c49921` — preserve 0027–0029 evaluator contract.
+- `ed8670ea95754c9822fee4f619785b2380b70609` — preserve 0050 evaluator contract.
 
 ## Next engineering boundary
-1. Recover/reconcile the exact runtime artifacts for 0028, 0034–0045, and 0050 from historical Git/Dropbox without changing semantics.
-2. Mount and test them in the unified runtime entrypoint.
-3. Run the governed per-rule evidence replay over the approved in-sample window only.
-4. Verify the 34-rule fan-in/provenance gate.
-5. Only after all gates pass may the existing 2025 OOS execution path be reconsidered; no tuning is permitted.
-
-## Governing evidence
-- `governance/DECISION_BRAIN_RULE_ALLOWLIST_V1.json`
-- `governance/RULE_ADAPTER_PROVENANCE_MAPPING_V1.json`
-- `PROJECT_STATE/MURPHY_RUNTIME_ROUTING_REGISTRY_V1.json`
-- `PROJECT_STATE/FINAL_78_RULE_WIRING_AUDIT_2026-08-25.md`
-- `PROJECT_STATE/CURRENT_MURPHY_24_RUNTIME_STATUS_2026-08-22.md`
-- `OOS_2025/governed_rule_fan_in_v1.py`
-- `OOS_2025/full_decision_brain_historical_event_producer_v1.py`
-- `OOS_2025/full_decision_brain_assembler_v1.py`
-- `evaluation/three_book_decision_evaluator_v1.py`
+Recover the exact missing 0034–0045 evaluator implementation from the available historical Git/Dropbox/workspace artifacts, mount only the source-backed implementation, run the approved in-sample QA, then move the 12 rules to ACTIVE_DISPATCHED only after their contract and runtime dependencies are present.
