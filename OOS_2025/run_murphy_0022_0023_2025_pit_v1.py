@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from pathlib import Path
 import subprocess
 import sys
@@ -92,6 +93,7 @@ def run(h1_path: str | Path, m1_path: str | Path, oi_path: str | Path) -> tuple[
     oi = _load_pit_oi(oi_path)
     oi_for_join = oi[["available_time", "open_interest", "oi_direction", "report_date"]].copy()
 
+    # PIT rule: only OI with available_time <= event timestamp can be used.
     merged = pd.merge_asof(
         merged.sort_values("timestamp"),
         oi_for_join.sort_values("available_time"),
