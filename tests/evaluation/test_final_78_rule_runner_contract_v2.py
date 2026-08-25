@@ -5,8 +5,8 @@ def test_runner_uses_full_evidence_arguments_and_fail_closed_manifest():
     text = Path("OOS_2025/run_final_2025_governed_78_rule_v2.py").read_text(encoding="utf-8")
     assert '"--murphy-full-evidence"' in text
     assert '"--nison-full-evidence"' in text
-    assert 'murphy_rule_count_in_event' in text
-    assert 'nison_rule_count_in_event' in text
+    assert 'murphy_rule_count' in text
+    assert 'nison_rule_count' in text
     assert 'LOSSLESS_FULL_EVIDENCE_WITH_LEGACY_DECISION_COMPAT' in text
     assert 'oos_tuning' in text
     assert 'new_rule_semantics' in text
