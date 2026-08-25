@@ -40,12 +40,12 @@ def test_nison_contradiction_rejects():
     assert result["decision"]["final"] == "NO_TRADE"
 
 
-def test_tiz_not_ready_rejects():
+def test_tiz_not_ready_is_audit_only_and_does_not_reject():
     args = base_inputs()
     args["tiz_evidence"] = {"process_state": "NOT_READY"}
     result = evaluate_three_book_decision(**args)
-    assert result["decision"]["final"] == "NO_TRADE"
-    assert result["decision"]["reasons_against"] == ["TIZ_PROCESS_GATE_NOT_READY"]
+    assert result["decision"]["final"] == "BUY"
+    assert result["audit"]["tiz_execution_gate"] == "DISABLED"
 
 
 def test_risk_failure_rejects():
