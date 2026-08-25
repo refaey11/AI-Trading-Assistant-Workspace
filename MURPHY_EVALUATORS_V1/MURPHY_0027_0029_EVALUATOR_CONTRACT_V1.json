@@ -1,0 +1,12 @@
+{
+  "module": "MURPHY_0027_0029_EVALUATOR_V1",
+  "status": "0028_0029_IMPLEMENTED; 0027_BLOCKED_PENDING_EXACT_REGIME_OPERATOR",
+  "rules": ["MURPHY_0027", "MURPHY_0028", "MURPHY_0029"],
+  "source_evidence": "Existing Pivot Sequence V2 + existing RSI_14 + existing confirmed divergence artifacts.",
+  "rule_0027": "Not evaluable until exact trend-vs-ranging operator is defined. No invented ADX threshold or fixed timeframe.",
+  "rule_0028": "PASS only on confirmed BEARISH divergence at HIGH pivot.",
+  "rule_0029": "PASS only on confirmed BULLISH divergence at LOW pivot.",
+  "2025_used": false,
+  "lookahead": "Uses divergence artifact availability_timestamp; historical events are evidence records, not future price outcomes.",
+  "next_step": "Review 0028/0029 source wording against the exact Murphy excerpt, then proceed to next rule group. 0027 requires an explicit regime operator before implementation."
+}
