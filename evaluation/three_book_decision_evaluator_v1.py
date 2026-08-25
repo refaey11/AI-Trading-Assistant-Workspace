@@ -28,6 +28,72 @@ def _rule_ids_allowed(rule_ids: Sequence[str]) -> bool:
     return bool(rule_ids) and all(str(rule_id) in allowed for rule_id in rule_ids)
 
 
+def _rule_rows(evidence: Mapping[str, Any]) -> list[dict[str, Any]]:
+    rows = evidence.get("evidence_set") or {}
+    if isinstance(rows, Mapping):
+        return [dict(row) for row in rows.values() if isinstance(row, Mapping)]
+    if isinstance(rows, Sequence) and not isinstance(rows, (str, bytes)):
+        return [dict(row) for row in rows if isinstance(row, Mapping)]
+    return []
+
+
+def _full_rule_audit(
+    murphy_evidence: Mapping[str, Any],
+    nison_evidence: Mapping[str, Any],
+) -> dict[str, Any] | None:
+    """Validate a full rule envelope when the governed path supplies one.
+
+    Missing/unevaluable rule results are preserved and do not become signals.
+    The consumer only uses existing PASS/confirmation/contradiction semantics.
+    """
+    m_rows = _rule_rows(murphy_evidence)
+    n_rows = _rule_rows(nison_evidence)
+    if not m_rows and not n_rows:
+        return None
+
+    m_ids = {str(r.get("source_rule_id") or r.get("rule_id") or "").strip() for r in m_rows}
+    n_ids = {str(r.get("source_rule_id") or r.get("rule_id") or "").strip() for r in n_rows}
+    m_ids.discard("")
+    n_ids.discard("")
+
+    if len(m_ids) != 34 or len(n_ids) != 44:
+        return {
+            "status": "REJECTED",
+            "reason": "FULL_RULE_EVIDENCE_INCOMPLETE",
+            "murphy_rule_count": len(m_ids),
+            "nison_rule_count": len(n_ids),
+        }
+
+    allowed = _allowed_rule_ids()
+    if not m_ids.issubset(allowed) or not n_ids.issubset(allowed):
+        return {"status": "REJECTED", "reason": "FULL_RULE_EVIDENCE_ALLOWLIST_REJECT"}
+
+    m_pass_directions = {
+        _norm(r.get("directional_confirmation") or r.get("direction"))
+        for r in m_rows
+        if _norm(r.get("status")) == "PASS"
+    } & {"BULLISH", "BEARISH", "BUY", "SELL", "BULL", "BEAR"}
+    m_bullish = any(d in {"BULLISH", "BUY", "BULL"} for d in m_pass_directions)
+    m_bearish = any(d in {"BEARISH", "SELL", "BEAR"} for d in m_pass_directions)
+
+    n_contradiction = any(
+        bool(r.get("contradiction", False))
+        or _norm(r.get("confirmation")) in {"CONTRADICTED", "CONTRADICTION"}
+        for r in n_rows
+    )
+    n_confirmed = any(_norm(r.get("confirmation")) == "CONFIRMED" for r in n_rows)
+
+    return {
+        "status": "PASS",
+        "murphy_rule_count": len(m_ids),
+        "nison_rule_count": len(n_ids),
+        "murphy_bullish_pass": m_bullish,
+        "murphy_bearish_pass": m_bearish,
+        "nison_contradiction": n_contradiction,
+        "nison_confirmed": n_confirmed,
+    }
+
+
 def evaluate_three_book_decision(
     *,
     brain_assessment: Mapping[str, Any],
@@ -38,13 +104,26 @@ def evaluate_three_book_decision(
     source_rule_ids: Sequence[str],
     timestamp: str,
 ) -> dict[str, Any]:
-    """Evaluate the existing contract without creating new directional logic."""
+    """Evaluate the existing contract and consume the governed full-rule envelope."""
     if not _rule_ids_allowed(source_rule_ids):
         return _no_trade("RULE_ALLOWLIST_REJECT", timestamp, source_rule_ids)
 
     bias = _norm(brain_assessment.get("directional_bias"))
     murphy_status = _norm(murphy_evidence.get("status"))
     murphy_direction = _norm(murphy_evidence.get("direction") or murphy_evidence.get("candidate_direction"))
+
+    full_audit = _full_rule_audit(murphy_evidence, nison_evidence)
+    if full_audit and full_audit.get("status") != "PASS":
+        return _no_trade(str(full_audit.get("reason", "FULL_RULE_EVIDENCE_REJECTED")), timestamp, source_rule_ids)
+    if full_audit:
+        if full_audit["murphy_bullish_pass"] and full_audit["murphy_bearish_pass"]:
+            return _no_trade("MURPHY_FULL_RULE_CONFLICT", timestamp, source_rule_ids)
+        if full_audit["murphy_bullish_pass"] and bias == "BEARISH":
+            return _no_trade("MURPHY_FULL_RULE_BRAIN_DIRECTION_CONFLICT", timestamp, source_rule_ids)
+        if full_audit["murphy_bearish_pass"] and bias == "BULLISH":
+            return _no_trade("MURPHY_FULL_RULE_BRAIN_DIRECTION_CONFLICT", timestamp, source_rule_ids)
+        if full_audit["nison_contradiction"]:
+            return _no_trade("NISON_FULL_RULE_CONTRADICTION", timestamp, source_rule_ids)
 
     # Murphy is required to supply technical context for direction.
     if murphy_status != "PASS":
@@ -73,6 +152,8 @@ def evaluate_three_book_decision(
         return _no_trade("STOP_LOSS_UNDEFINED", timestamp, source_rule_ids)
 
     nison_confirmation = _norm(nison_evidence.get("confirmation"))
+    if full_audit and full_audit.get("nison_confirmed"):
+        nison_confirmation = "CONFIRMED"
     nison_contradiction = bool(nison_evidence.get("contradiction", False)) or nison_confirmation in {"CONTRADICTED", "CONTRADICTION"}
     if nison_contradiction:
         return _no_trade("NISON_CONTRADICTION", timestamp, source_rule_ids)
@@ -83,6 +164,13 @@ def evaluate_three_book_decision(
     final = "BUY" if bias == "BULLISH" else "SELL"
     strength = "strong" if nison_confirmation == "CONFIRMED" else "medium"
     confidence = float(brain_assessment.get("confidence", 0.0) or 0.0)
+
+    audit = {
+        "source_refs": list(source_rule_ids),
+        "timestamp": timestamp,
+        "backtest_status": "UNTESTED",
+        "full_rule_consumer": full_audit,
+    }
 
     return {
         "signal": {
@@ -96,15 +184,11 @@ def evaluate_three_book_decision(
         "risk_engine": dict(risk_evidence),
         "decision": {
             "logic": strength,
-            "reasons_for": ["Murphy context passed", "TIZ process gate passed", "Risk hard gate passed"],
+            "reasons_for": ["Murphy context passed", "Full Murphy rule envelope consumed", "TIZ process gate passed", "Risk hard gate passed"],
             "reasons_against": [],
             "final": final,
         },
-        "audit": {
-            "source_refs": list(source_rule_ids),
-            "timestamp": timestamp,
-            "backtest_status": "UNTESTED",
-        },
+        "audit": audit,
     }
 
 
