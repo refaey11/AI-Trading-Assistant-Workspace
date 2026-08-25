@@ -38,6 +38,20 @@ def _read(path: Path, required: set[str], *, preserve_rule_rows: bool = False) -
     return df
 
 
+def _read_full_evidence(path: Path | None, family: str) -> pd.DataFrame | None:
+    if path is None:
+        return None
+    df = pd.read_csv(path)
+    required = {"timestamp", "source_rule_id"}
+    missing = required - set(df.columns)
+    if missing:
+        raise ValueError(f"{family} full evidence: missing required columns: {sorted(missing)}")
+    df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True, errors="coerce")
+    if df["timestamp"].isna().any():
+        raise ValueError(f"{family} full evidence: invalid timestamps")
+    return df.sort_values(["timestamp", "source_rule_id"], kind="stable").reset_index(drop=True)
+
+
 def _read_tiz(path: Path | None):
     return None if path is None else _read(path, REQUIRED_TIZ)
 
@@ -70,7 +84,6 @@ def _governed_source_rule_ids(murphy_rows: list[dict[str, Any]], nison_rows: lis
         if not rid or rid == "NISON_NONE":
             continue
         out.append(rid)
-    # stable order with no duplicates
     return list(dict.fromkeys(out))
 
 
@@ -84,7 +97,14 @@ def _build_evidence_set(rows: list[dict[str, Any]]) -> dict[str, dict[str, Any]]
     return evidence
 
 
-def build_events(*, market_context, murphy, nison, risk, execution, tiz, year, optional_tiz):
+def _full_rows_at(df: pd.DataFrame | None, ts) -> list[dict[str, Any]]:
+    if df is None:
+        return []
+    part = df.loc[df["timestamp"] == ts].copy()
+    return part.drop(columns=["timestamp"], errors="ignore").to_dict("records")
+
+
+def build_events(*, market_context, murphy, nison, risk, execution, tiz, year, optional_tiz, murphy_full_evidence=None, nison_full_evidence=None):
     timestamps = sorted(
         set(murphy["timestamp"]) & set(nison["timestamp"]) & set(risk["timestamp"]) & set(execution["timestamp"])
     )
@@ -101,26 +121,28 @@ def build_events(*, market_context, murphy, nison, risk, execution, tiz, year, o
         if not m_rows or not n_rows:
             continue
 
-        # Compatibility layer: the existing Three-Book evaluator still consumes
-        # one legacy Murphy/Nison row for directional gating. The complete rule
-        # evidence set is preserved alongside it and is part of the governed event.
+        m_full = _full_rows_at(murphy_full_evidence, ts) or m_rows
+        n_full = _full_rows_at(nison_full_evidence, ts) or n_rows
+        m_evidence_set = _build_evidence_set(m_full)
+        n_evidence_set = _build_evidence_set(n_full)
+        if len(m_evidence_set) < 34:
+            raise AssertionError(f"{ts}: Murphy full evidence set contains {len(m_evidence_set)} rules, expected 34")
+        if len(n_evidence_set) < 44:
+            raise AssertionError(f"{ts}: Nison full evidence set contains {len(n_evidence_set)} rules, expected 44")
+
+        # Compatibility layer: current Three-Book logic still consumes one
+        # selected row for the existing directional gate. Full rule evidence is
+        # passed in the evidence_set and provenance without changing semantics.
         m = legacy_selected_row(m_rows)
         n = legacy_selected_row(n_rows)
-        murphy_evidence_set = _build_evidence_set(m_rows)
-        nison_evidence_set = _build_evidence_set(n_rows)
-        if len(murphy_evidence_set) != len(m_rows):
-            raise AssertionError("Murphy evidence set lost one or more rule rows")
-        if len(nison_evidence_set) != len(n_rows):
-            raise AssertionError("Nison evidence set lost one or more rule rows")
-
-        murphy_for_decision = {**m, "evidence_set": murphy_evidence_set, "evidence_count": len(murphy_evidence_set)}
-        nison_for_decision = {**n, "evidence_set": nison_evidence_set, "evidence_count": len(nison_evidence_set)}
+        murphy_for_decision = {**m, "evidence_set": m_evidence_set, "evidence_count": len(m_evidence_set)}
+        nison_for_decision = {**n, "evidence_set": n_evidence_set, "evidence_count": len(n_evidence_set)}
 
         r = risk.loc[risk["timestamp"] == ts].iloc[0]
         e = execution.loc[execution["timestamp"] == ts].iloc[0]
         t = _optional_tiz(ts, tiz)
         td = _decision_ready_tiz(t, optional_tiz)
-        source_rule_ids = _governed_source_rule_ids(m_rows, n_rows)
+        source_rule_ids = _governed_source_rule_ids(m_full, n_full)
 
         result = assemble_decision_event(
             decision_brain_module=decision_brain,
@@ -139,12 +161,11 @@ def build_events(*, market_context, murphy, nison, risk, execution, tiz, year, o
                 "producer": "full_decision_brain_historical_event_producer_v1",
                 "evaluation_year": year,
                 "optional_tiz": optional_tiz,
-                "nison_source_rule_sentinel_omitted": not bool(n.get("source_rule_id")),
-                "fan_in_mode": "LOSSLESS_EVIDENCE_SET_WITH_LEGACY_DECISION_COMPAT",
-                "murphy_rule_count": len(murphy_evidence_set),
-                "nison_rule_count": len(nison_evidence_set),
-                "murphy_rule_ids_preserved": sorted(murphy_evidence_set),
-                "nison_rule_ids_preserved": sorted(nison_evidence_set),
+                "fan_in_mode": "LOSSLESS_FULL_EVIDENCE_WITH_LEGACY_DECISION_COMPAT",
+                "murphy_rule_count": len(m_evidence_set),
+                "nison_rule_count": len(n_evidence_set),
+                "murphy_rule_ids_preserved": sorted(m_evidence_set),
+                "nison_rule_ids_preserved": sorted(n_evidence_set),
                 "all_evidence_passed_to_boundary": True,
             },
         )
@@ -167,10 +188,10 @@ def build_events(*, market_context, murphy, nison, risk, execution, tiz, year, o
                 "murphy_direction": m.get("direction"),
                 "murphy_status": m.get("status"),
                 "source_rule_ids": json.dumps(source_rule_ids),
-                "murphy_rule_count": len(murphy_evidence_set),
-                "nison_rule_count": len(nison_evidence_set),
-                "murphy_rule_ids": json.dumps(sorted(murphy_evidence_set)),
-                "nison_rule_ids": json.dumps(sorted(nison_evidence_set)),
+                "murphy_rule_count": len(m_evidence_set),
+                "nison_rule_count": len(n_evidence_set),
+                "murphy_rule_ids": json.dumps(sorted(m_evidence_set)),
+                "nison_rule_ids": json.dumps(sorted(n_evidence_set)),
                 "reason": result.get("reason") or result.get("decision", {}).get("decision", {}).get("reasons_against", []),
             }
         )
@@ -185,6 +206,8 @@ def main() -> int:
     p.add_argument("--nison", required=True, type=Path)
     p.add_argument("--risk", required=True, type=Path)
     p.add_argument("--execution", required=True, type=Path)
+    p.add_argument("--murphy-full-evidence", type=Path)
+    p.add_argument("--nison-full-evidence", type=Path)
     p.add_argument("--tiz", type=Path)
     p.add_argument("--year", required=True, type=int)
     p.add_argument("--output", required=True, type=Path)
@@ -195,6 +218,8 @@ def main() -> int:
     context = _read(a.context, REQUIRED_CONTEXT)
     murphy = _read(a.murphy, REQUIRED_MURPHY, preserve_rule_rows=True)
     nison = _read(a.nison, REQUIRED_NISON, preserve_rule_rows=True)
+    murphy_full = _read_full_evidence(a.murphy_full_evidence, "Murphy")
+    nison_full = _read_full_evidence(a.nison_full_evidence, "Nison")
     risk = _read(a.risk, REQUIRED_RISK)
     execution = _read(a.execution, REQUIRED_EXECUTION)
     tiz = _read_tiz(a.tiz)
@@ -207,6 +232,8 @@ def main() -> int:
         tiz=tiz,
         year=a.year,
         optional_tiz=a.optional_tiz,
+        murphy_full_evidence=murphy_full,
+        nison_full_evidence=nison_full,
     )
     a.output.parent.mkdir(parents=True, exist_ok=True)
     a.manifest.parent.mkdir(parents=True, exist_ok=True)
@@ -223,15 +250,15 @@ def main() -> int:
         "oos_tuning": False,
         "new_rule_semantics": False,
         "source_backed_components_only": True,
-        "fan_in_mode": "LOSSLESS_EVIDENCE_SET_WITH_LEGACY_DECISION_COMPAT",
+        "fan_in_mode": "LOSSLESS_FULL_EVIDENCE_WITH_LEGACY_DECISION_COMPAT",
         "rule_rows_preserved": True,
         "murphy_rule_count_in_event": int(events["murphy_rule_count"].min()) if not events.empty else 0,
         "nison_rule_count_in_event": int(events["nison_rule_count"].min()) if not events.empty else 0,
     }
-    if not events.empty and int(events["murphy_rule_count"].min()) < 34:
-        raise SystemExit("FAIL_CLOSED: Final Brain event stream lost Murphy rule evidence")
-    if not events.empty and int(events["nison_rule_count"].min()) < 44:
-        raise SystemExit("FAIL_CLOSED: Final Brain event stream lost Nison rule evidence")
+    if not events.empty and int(events["murphy_rule_count"].min()) != 34:
+        raise SystemExit("FAIL_CLOSED: Final Brain event stream did not receive exactly 34 Murphy rules")
+    if not events.empty and int(events["nison_rule_count"].min()) != 44:
+        raise SystemExit("FAIL_CLOSED: Final Brain event stream did not receive exactly 44 Nison rules")
     a.manifest.write_text(json.dumps(result, indent=2), encoding="utf-8")
     print(json.dumps(result, indent=2))
     return 0
