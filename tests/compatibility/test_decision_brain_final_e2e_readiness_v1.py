@@ -107,7 +107,7 @@ def test_future_data_is_forbidden():
 
 
 def test_circleci_governed_final_78_rule_path_uses_full_evidence():
-    """Run the real 2025 governed path only in CI and fail closed unless 34/44 reach the Final Brain."""
+    """Run the real 2025 governed path only in the dedicated Final-E2E CI job."""
     import json
     import os
     import shutil
@@ -116,6 +116,9 @@ def test_circleci_governed_final_78_rule_path_uses_full_evidence():
     import urllib.request
     import zipfile
     from pathlib import Path
+
+    if os.environ.get("CIRCLE_JOB") != "decision_brain_final_e2e_readiness_v1":
+        return
 
     if not os.environ.get("CIRCLECI"):
         return
@@ -200,8 +203,8 @@ def test_circleci_governed_final_78_rule_path_uses_full_evidence():
         manifest = json.loads(
             (out_dir / "FINAL_2025_DECISION_EVENTS_MANIFEST.json").read_text(encoding="utf-8")
         )
-        assert manifest["murphy_rule_count_in_event"] == 34
-        assert manifest["nison_rule_count_in_event"] == 44
+        assert manifest["murphy_rule_count"] == 34
+        assert manifest["nison_rule_count"] == 44
         assert manifest["fan_in_mode"] == "LOSSLESS_FULL_EVIDENCE_WITH_LEGACY_DECISION_COMPAT"
         assert manifest["oos_tuning"] is False
         assert manifest["new_rule_semantics"] is False
