@@ -70,6 +70,10 @@ def build_canonical_h1_volume_context(m1_path: str | Path) -> pd.DataFrame:
         .sort_values("h1_timestamp")
         .reset_index(drop=True)
     )
+    # IMPORTANT: derive previous-volume context over the complete available
+    # history before filtering to 2025. Otherwise the first 2025 bar loses its
+    # legitimate preceding completed 2024 H1 volume and becomes false
+    # NOT_EVALUABLE.
     h1["previous_volume"] = h1["volume"].shift(1)
     h1["volume_direction"] = "FLAT"
     h1.loc[h1["previous_volume"].isna(), "volume_direction"] = None
