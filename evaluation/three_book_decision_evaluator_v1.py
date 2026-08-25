@@ -53,9 +53,6 @@ def _full_rule_audit(
     if not m_rows and not n_rows:
         return None
 
-    # Full evidence is now allowed into this boundary only through the
-    # governed 78-rule adapter. This makes the adapter the single ingress for
-    # the full-rule path rather than a parallel verification sidecar.
     governed_package = murphy_evidence.get("governed_78_package")
     nison_package = nison_evidence.get("governed_78_package")
     if not isinstance(governed_package, Mapping) or governed_package != nison_package:
@@ -95,12 +92,28 @@ def _full_rule_audit(
     m_bullish = any(d in {"BULLISH", "BUY", "BULL"} for d in m_pass_directions)
     m_bearish = any(d in {"BEARISH", "SELL", "BEAR"} for d in m_pass_directions)
 
-    n_contradiction = any(
-        bool(r.get("contradiction", False))
-        or _norm(r.get("confirmation")) in {"CONTRADICTED", "CONTRADICTION"}
-        for r in n_rows
-    )
-    n_confirmed = any(_norm(r.get("confirmation")) == "CONFIRMED" for r in n_rows)
+    # For the full-rule path, a Nison FAIL is only a contradiction when its
+    # direction explicitly opposes the Brain/Murphy direction. A same-direction
+    # FAIL means "not confirmed", not "contradicted". The top-level aggregate
+    # contradiction flag is intentionally not authoritative for the governed
+    # full-rule envelope because it may represent the legacy candidate stream.
+    n_opposite_direction_fail = False
+    n_confirmed = False
+    for row in n_rows:
+        status = _norm(row.get("status"))
+        direction = _norm(row.get("direction") or row.get("directional_confirmation"))
+        explicit_contradiction = bool(row.get("contradiction", False)) or _norm(row.get("confirmation")) in {
+            "CONTRADICTED",
+            "CONTRADICTION",
+        }
+        if _norm(row.get("confirmation")) == "CONFIRMED":
+            n_confirmed = True
+        if explicit_contradiction:
+            n_opposite_direction_fail = True
+        elif status == "FAIL" and direction in {"BULLISH", "BUY", "BULL"} and m_bearish:
+            n_opposite_direction_fail = True
+        elif status == "FAIL" and direction in {"BEARISH", "SELL", "BEAR"} and m_bullish:
+            n_opposite_direction_fail = True
 
     return {
         "status": "PASS",
@@ -108,7 +121,7 @@ def _full_rule_audit(
         "nison_rule_count": len(n_ids),
         "murphy_bullish_pass": m_bullish,
         "murphy_bearish_pass": m_bearish,
-        "nison_contradiction": n_contradiction,
+        "nison_contradiction": n_opposite_direction_fail,
         "nison_confirmed": n_confirmed,
         "adapter_receipt": dict(governed_package.get("receipt", {})),
     }
@@ -145,7 +158,6 @@ def evaluate_three_book_decision(
         if full_audit["nison_contradiction"]:
             return _no_trade("NISON_FULL_RULE_CONTRADICTION", timestamp, source_rule_ids)
 
-    # Murphy is required to supply technical context for direction.
     if murphy_status != "PASS":
         return _no_trade("MURPHY_CONTEXT_NOT_PASS", timestamp, source_rule_ids)
     if murphy_direction in {"BULL", "BULLISH", "BUY"} and bias != "BULLISH":
@@ -153,7 +165,6 @@ def evaluate_three_book_decision(
     if murphy_direction in {"BEAR", "BEARISH", "SELL"} and bias != "BEARISH":
         return _no_trade("MURPHY_BRAIN_DIRECTION_CONFLICT", timestamp, source_rule_ids)
 
-    # TIZ is process-only and can only permit/block execution.
     tiz_state = _norm(tiz_evidence.get("process_state") or tiz_evidence.get("process_gate") or tiz_evidence.get("status"))
     blocked_flags = {
         "impulse_override": bool(tiz_evidence.get("impulse_override", False)),
@@ -165,7 +176,6 @@ def evaluate_three_book_decision(
     if any(blocked_flags.values()):
         return _no_trade("TIZ_BEHAVIORAL_BLOCK", timestamp, source_rule_ids)
 
-    # Risk is a hard gate and must be explicitly passed.
     if not bool(risk_evidence.get("risk_pass", False)):
         return _no_trade("RISK_GATE_FAIL_OR_NOT_EVALUABLE", timestamp, source_rule_ids)
     if not str(risk_evidence.get("stop_loss") or "").strip():
@@ -174,7 +184,10 @@ def evaluate_three_book_decision(
     nison_confirmation = _norm(nison_evidence.get("confirmation"))
     if full_audit and full_audit.get("nison_confirmed"):
         nison_confirmation = "CONFIRMED"
-    nison_contradiction = bool(nison_evidence.get("contradiction", False)) or nison_confirmation in {"CONTRADICTED", "CONTRADICTION"}
+    if full_audit:
+        nison_contradiction = bool(full_audit.get("nison_contradiction"))
+    else:
+        nison_contradiction = bool(nison_evidence.get("contradiction", False)) or nison_confirmation in {"CONTRADICTED", "CONTRADICTION"}
     if nison_contradiction:
         return _no_trade("NISON_CONTRADICTION", timestamp, source_rule_ids)
 
