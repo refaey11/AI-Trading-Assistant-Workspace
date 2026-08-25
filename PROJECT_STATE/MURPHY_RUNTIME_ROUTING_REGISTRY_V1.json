@@ -1,0 +1,67 @@
+{
+  "name": "Murphy Runtime Routing Registry V1",
+  "date": "2026-08-25",
+  "purpose": "Separate routing registration from runtime availability so the Decision Brain cannot mistake a fail-closed placeholder for a verified evaluator.",
+  "allowlist_scope": 34,
+  "status_values": [
+    "ACTIVE_DISPATCHED",
+    "FROZEN_NOT_MOUNTED",
+    "RECOVERED_NOT_MOUNTED"
+  ],
+  "rules": {
+    "MURPHY_0003": "ACTIVE_DISPATCHED",
+    "MURPHY_0004": "ACTIVE_DISPATCHED",
+    "MURPHY_0006": "ACTIVE_DISPATCHED",
+    "MURPHY_0007": "ACTIVE_DISPATCHED",
+    "MURPHY_0018": "ACTIVE_DISPATCHED",
+    "MURPHY_0019": "ACTIVE_DISPATCHED",
+    "MURPHY_0021": "ACTIVE_DISPATCHED",
+    "MURPHY_0022": "ACTIVE_DISPATCHED",
+    "MURPHY_0023": "ACTIVE_DISPATCHED",
+    "MURPHY_0025": "ACTIVE_DISPATCHED",
+    "MURPHY_0026": "ACTIVE_DISPATCHED",
+    "MURPHY_0028": "FROZEN_NOT_MOUNTED",
+    "MURPHY_0029": "ACTIVE_DISPATCHED",
+    "MURPHY_0030": "ACTIVE_DISPATCHED",
+    "MURPHY_0031": "ACTIVE_DISPATCHED",
+    "MURPHY_0032": "ACTIVE_DISPATCHED",
+    "MURPHY_0033": "ACTIVE_DISPATCHED",
+    "MURPHY_0034": "RECOVERED_NOT_MOUNTED",
+    "MURPHY_0035": "RECOVERED_NOT_MOUNTED",
+    "MURPHY_0036": "RECOVERED_NOT_MOUNTED",
+    "MURPHY_0037": "RECOVERED_NOT_MOUNTED",
+    "MURPHY_0038": "RECOVERED_NOT_MOUNTED",
+    "MURPHY_0039": "RECOVERED_NOT_MOUNTED",
+    "MURPHY_0040": "RECOVERED_NOT_MOUNTED",
+    "MURPHY_0041": "RECOVERED_NOT_MOUNTED",
+    "MURPHY_0042": "RECOVERED_NOT_MOUNTED",
+    "MURPHY_0043": "RECOVERED_NOT_MOUNTED",
+    "MURPHY_0044": "RECOVERED_NOT_MOUNTED",
+    "MURPHY_0045": "RECOVERED_NOT_MOUNTED",
+    "MURPHY_0047": "ACTIVE_DISPATCHED",
+    "MURPHY_0048": "ACTIVE_DISPATCHED",
+    "MURPHY_0049": "ACTIVE_DISPATCHED",
+    "MURPHY_0050": "FROZEN_NOT_MOUNTED",
+    "MURPHY_0051": "ACTIVE_DISPATCHED"
+  },
+  "counts": {
+    "active_dispatched": 20,
+    "frozen_not_mounted": 2,
+    "recovered_not_mounted": 12,
+    "total": 34
+  },
+  "governance": {
+    "allowlist_unchanged": true,
+    "2025_oos": true,
+    "unknown_rule_reject": true,
+    "missing_evaluator_behavior": "NOT_EVALUABLE",
+    "no_synthetic_rule_ids": true,
+    "official_pnl_blocked_until_active_dispatched_equals_34": true
+  },
+  "evidence": {
+    "MURPHY_0029": "historical Git runtime adapter commit 85b8c6bfad5566288af33e4eff2e0136aeeef4b6",
+    "MURPHY_0034_0045": "historical Git recovery checkpoints 6345871d23da94bd28f84b9028491d54297d8072 and 59acfbf60bea6c6212d10edd7faa0d1b1e80fb38",
+    "MURPHY_0028": "historical production freeze 79ddf163e91101e168825c086deba47beaf556e9",
+    "MURPHY_0050": "canonical reconciliation registry reports deterministic tests 4/4 PASS; current entrypoint remains unmounted"
+  }
+}
