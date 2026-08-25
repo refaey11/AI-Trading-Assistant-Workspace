@@ -44,6 +44,11 @@ def assemble_decision_event(
             return {"status": "NOT_EVALUABLE", "reason": adapter_result.reason or "RULE_ADAPTER_REJECTED"}
         governed_78 = dict(adapter_result.package)
         assert_governed_78_package(governed_78)
+        # The same verified package is now the explicit ingress artifact for the
+        # downstream Decision Boundary; bypassing the adapter is impossible on
+        # the governed full-evidence path.
+        murphy_evidence = {**dict(murphy_evidence), "governed_78_package": governed_78}
+        nison_evidence = {**dict(nison_evidence), "governed_78_package": governed_78}
 
     governance = assess_with_governance(
         decision_brain_module,
