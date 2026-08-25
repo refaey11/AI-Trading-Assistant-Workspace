@@ -107,14 +107,13 @@ def test_future_data_is_forbidden():
 
 
 def test_circleci_governed_final_78_rule_path_uses_full_evidence():
-    """Run governed 2025 validation, then the same frozen path for OOS profitability."""
+    """Run governed 2025 validation and profitability while preserving diagnostics as CI artifacts."""
     import json
     import os
     import shutil
     import subprocess
     import tempfile
     import urllib.request
-    import warnings
     import zipfile
     from pathlib import Path
 
@@ -128,13 +127,16 @@ def test_circleci_governed_final_78_rule_path_uses_full_evidence():
         raise AssertionError("DROPBOX_ACCESS_TOKEN is required for governed Final 78-rule CI execution")
 
     repo_root = Path(__file__).resolve().parents[2]
+    artifact_dir = repo_root / "artifacts" / "final_78_ci"
+    shutil.rmtree(artifact_dir, ignore_errors=True)
+    artifact_dir.mkdir(parents=True, exist_ok=True)
+
     with tempfile.TemporaryDirectory(prefix="final_78_ci_") as td:
         work = Path(td)
         h1_zip = work / "h1.zip"
         m1_zip = work / "m1.zip"
         h1_dir = work / "h1"
         m1_dir = work / "m1"
-        out_dir = work / "final"
         h1_dir.mkdir()
         m1_dir.mkdir()
 
@@ -200,7 +202,7 @@ def test_circleci_governed_final_78_rule_path_uses_full_evidence():
                 "--h1", str(h1_csv),
                 "--m1", str(m1_csv),
                 "--murphy-0022-0023", str(pit_csv),
-                "--output-dir", str(out_dir),
+                "--output-dir", str(artifact_dir),
                 "--validation-only",
             ],
             check=True,
@@ -208,7 +210,7 @@ def test_circleci_governed_final_78_rule_path_uses_full_evidence():
         )
 
         validation_manifest = json.loads(
-            (out_dir / "FINAL_2025_GOVERNED_78_RULE_VALIDATION_MANIFEST.json").read_text(encoding="utf-8")
+            (artifact_dir / "FINAL_2025_GOVERNED_78_RULE_VALIDATION_MANIFEST.json").read_text(encoding="utf-8")
         )
         assert validation_manifest["status"] == "PASS"
         assert validation_manifest["murphy_rule_count"] == 34
@@ -225,14 +227,14 @@ def test_circleci_governed_final_78_rule_path_uses_full_evidence():
                 "--h1", str(h1_csv),
                 "--m1", str(m1_csv),
                 "--murphy-0022-0023", str(pit_csv),
-                "--output-dir", str(out_dir),
+                "--output-dir", str(artifact_dir),
             ],
             check=True,
             cwd=repo_root,
         )
 
         profitability_manifest = json.loads(
-            (out_dir / "FINAL_2025_GOVERNED_78_RULE_MANIFEST.json").read_text(encoding="utf-8")
+            (artifact_dir / "FINAL_2025_GOVERNED_78_RULE_MANIFEST.json").read_text(encoding="utf-8")
         )
         provenance = profitability_manifest["final_brain_provenance"]
         assert provenance["murphy_rule_count"] == 34
@@ -241,25 +243,23 @@ def test_circleci_governed_final_78_rule_path_uses_full_evidence():
         assert provenance["source_manifest"]["oos_tuning"] is False
         assert provenance["source_manifest"]["new_rule_semantics"] is False
 
-        source_manifest = provenance["source_manifest"]
-        diagnostic = {
-            "events": source_manifest.get("events"),
-            "executable": source_manifest.get("executable"),
-            "no_trade": source_manifest.get("no_trade"),
-            "not_evaluable": source_manifest.get("not_evaluable"),
-            "murphy_rule_count_in_event": source_manifest.get("murphy_rule_count_in_event"),
-            "nison_rule_count_in_event": source_manifest.get("nison_rule_count_in_event"),
-            "tiz_verified_events": source_manifest.get("tiz_verified_events"),
-            "primary_reason_counts": source_manifest.get("primary_reason_counts", {}),
-            "event_status_counts": source_manifest.get("event_status_counts", {}),
-            "execution_status_counts": source_manifest.get("execution_status_counts", {}),
-            "risk_pass_counts": source_manifest.get("risk_pass_counts", {}),
-            "tiz_status_counts": source_manifest.get("tiz_status_counts", {}),
-        }
-        warnings.warn(
-            "FINAL_2025_NO_TRADE_DIAGNOSTIC=" + json.dumps(diagnostic, sort_keys=True),
-            RuntimeWarning,
+        diagnostic = json.loads(
+            (artifact_dir / "FINAL_2025_NO_TRADE_DIAGNOSTIC.json").read_text(encoding="utf-8")
         )
+        required_diagnostic_keys = {
+            "events",
+            "executable",
+            "no_trade",
+            "not_evaluable",
+            "primary_reason_counts",
+            "event_status_counts",
+            "execution_status_counts",
+            "risk_pass_counts",
+            "tiz_status_counts",
+        }
+        missing_diagnostic = sorted(required_diagnostic_keys - set(diagnostic))
+        assert not missing_diagnostic, f"Diagnostic keys missing: {missing_diagnostic}"
+        print("FINAL_2025_NO_TRADE_DIAGNOSTIC=" + json.dumps(diagnostic, sort_keys=True))
 
         core = profitability_manifest.get("core")
         assert isinstance(core, dict), "Canonical profitability core metrics are missing"
