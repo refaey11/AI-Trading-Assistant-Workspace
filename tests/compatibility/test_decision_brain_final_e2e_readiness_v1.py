@@ -104,3 +104,104 @@ def test_future_data_is_forbidden():
     )
     assert result["status"] == "NOT_EVALUABLE"
     assert result["reason"] == "2025_OOS_LOCKED"
+
+
+def test_circleci_governed_final_78_rule_path_uses_full_evidence():
+    """Run the real 2025 governed path only in CI and fail closed unless 34/44 reach the Final Brain."""
+    import json
+    import os
+    import shutil
+    import subprocess
+    import tempfile
+    import urllib.request
+    import zipfile
+    from pathlib import Path
+
+    if not os.environ.get("CIRCLECI"):
+        return
+
+    token = os.environ.get("DROPBOX_ACCESS_TOKEN")
+    if not token:
+        raise AssertionError("DROPBOX_ACCESS_TOKEN is required for governed Final 78-rule CI execution")
+
+    repo_root = Path(__file__).resolve().parents[2]
+    with tempfile.TemporaryDirectory(prefix="final_78_ci_") as td:
+        work = Path(td)
+        h1_zip = work / "h1.zip"
+        m1_zip = work / "m1.zip"
+        h1_dir = work / "h1"
+        m1_dir = work / "m1"
+        out_dir = work / "final"
+        h1_dir.mkdir()
+        m1_dir.mkdir()
+
+        def download_dropbox(path: str, dest: Path) -> None:
+            req = urllib.request.Request(
+                "https://content.dropboxapi.com/2/files/download",
+                headers={
+                    "Authorization": f"Bearer {token}",
+                    "Dropbox-API-Arg": json.dumps({"path": path}),
+                },
+            )
+            with urllib.request.urlopen(req, timeout=120) as response, dest.open("wb") as fh:
+                shutil.copyfileobj(response, fh)
+
+        source_url = os.environ.get("NISON_2025_SOURCE_URL")
+        if source_url:
+            urllib.request.urlretrieve(source_url, h1_zip)
+        else:
+            download_dropbox("/GBPUSD_H1_2016_2025_MASTER.zip", h1_zip)
+
+        m1_url = os.environ.get("MURPHY_M1_SOURCE_URL")
+        if m1_url:
+            urllib.request.urlretrieve(m1_url, m1_zip)
+        else:
+            download_dropbox("/GBPUSD_M1_MASTER_2016_2026_V1.zip", m1_zip)
+
+        with zipfile.ZipFile(h1_zip) as zf:
+            zf.extractall(h1_dir)
+        with zipfile.ZipFile(m1_zip) as zf:
+            zf.extractall(m1_dir)
+
+        h1_csv = next(h1_dir.rglob("GBPUSD_H1_2016_2025_MASTER.csv"))
+        m1_csv = next(m1_dir.rglob("*.csv"))
+        pip = ["python", "-m", "pip", "install", "--disable-pip-version-check", "pandas"]
+        subprocess.run(pip, check=True, stdout=subprocess.DEVNULL)
+
+        pit_csv = work / "MURPHY_0022_0023_2025.csv"
+        pit_manifest = work / "MURPHY_0022_0023_2025_MANIFEST.json"
+        subprocess.run(
+            [
+                "python",
+                str(repo_root / "OOS_2025/run_murphy_0022_0023_2025_pit_v1.py"),
+                "--h1", str(h1_csv),
+                "--m1", str(m1_csv),
+                "--oi", str(repo_root / "evidence/cftc/2025/6b_oi_pit_bound_v1.json"),
+                "--output", str(pit_csv),
+                "--manifest", str(pit_manifest),
+            ],
+            check=True,
+            cwd=repo_root,
+        )
+
+        subprocess.run(
+            [
+                "python",
+                str(repo_root / "OOS_2025/run_final_2025_governed_78_rule_v2.py"),
+                "--h1", str(h1_csv),
+                "--m1", str(m1_csv),
+                "--murphy-0022-0023", str(pit_csv),
+                "--output-dir", str(out_dir),
+            ],
+            check=True,
+            cwd=repo_root,
+        )
+
+        manifest = json.loads(
+            (out_dir / "FINAL_2025_DECISION_EVENTS_MANIFEST.json").read_text(encoding="utf-8")
+        )
+        assert manifest["murphy_rule_count_in_event"] == 34
+        assert manifest["nison_rule_count_in_event"] == 44
+        assert manifest["fan_in_mode"] == "LOSSLESS_FULL_EVIDENCE_WITH_LEGACY_DECISION_COMPAT"
+        assert manifest["oos_tuning"] is False
+        assert manifest["new_rule_semantics"] is False
