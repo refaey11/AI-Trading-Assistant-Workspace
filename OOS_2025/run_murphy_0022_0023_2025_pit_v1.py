@@ -2,9 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
-import os
 from pathlib import Path
-import subprocess
 import sys
 
 import pandas as pd
@@ -93,7 +91,6 @@ def run(h1_path: str | Path, m1_path: str | Path, oi_path: str | Path) -> tuple[
     oi = _load_pit_oi(oi_path)
     oi_for_join = oi[["available_time", "open_interest", "oi_direction", "report_date"]].copy()
 
-    # PIT rule: only OI with available_time <= event timestamp can be used.
     merged = pd.merge_asof(
         merged.sort_values("timestamp"),
         oi_for_join.sort_values("available_time"),
@@ -152,8 +149,7 @@ def run(h1_path: str | Path, m1_path: str | Path, oi_path: str | Path) -> tuple[
         "no_interpolation": True,
         "tuning": False,
         "rules": manifests,
-        "final_brain_decoupled": False,
-        "final_runner": "run_final_2025_governed_78_rule_v2.py",
+        "final_brain_decoupled": True,
     }
     return out, manifest
 
@@ -173,25 +169,6 @@ def main() -> int:
     out.to_csv(args.output, index=False)
     Path(args.manifest).write_text(json.dumps(manifest, indent=2, default=str), encoding="utf-8")
     print(json.dumps(manifest, indent=2, default=str))
-
-    # CircleCI uses this PIT job as the execution host for the final governed OOS path.
-    # The PIT evaluator remains unchanged; the downstream final event path now consumes
-    # full 34 Murphy + 44 Nison evidence and fails closed if either envelope is incomplete.
-    if os.environ.get("CIRCLECI", "").lower() == "true":
-        final_dir = Path(args.output).parent / "final_2025_governed_78_rule"
-        final_dir.mkdir(parents=True, exist_ok=True)
-        subprocess.run(
-            [
-                "python",
-                "OOS_2025/run_final_2025_governed_78_rule_v2.py",
-                "--h1", args.h1,
-                "--m1", args.m1,
-                "--murphy-0022-0023", args.output,
-                "--output-dir", str(final_dir),
-            ],
-            check=True,
-        )
-
     return 0
 
 
