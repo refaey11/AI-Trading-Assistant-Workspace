@@ -1,4 +1,5 @@
 from evaluation.three_book_decision_evaluator_v1 import evaluate_three_book_decision
+import evaluation.three_book_decision_evaluator_v1 as evaluator
 
 
 RULES = ["MURPHY_0003", "NISON_0001"]
@@ -83,3 +84,64 @@ def test_brain_neutral_rejects_without_creating_direction():
     args["brain_assessment"] = {"directional_bias": "neutral", "confidence": 0.9}
     result = evaluate_three_book_decision(**args)
     assert result["decision"]["final"] == "NO_TRADE"
+
+
+def _full_package(murphy_rows, nison_rows):
+    return {
+        "murphy": {"rows": murphy_rows},
+        "nison": {"rows": nison_rows},
+        "receipt": {"status": "PASS"},
+    }
+
+
+def _full_rule_inputs(nison_rows):
+    murphy_rows = [
+        {"source_rule_id": f"MURPHY_{i:04d}", "status": "NOT_EVALUABLE", "direction": "NONE"}
+        for i in range(1, 35)
+    ]
+    murphy_rows[2] = {"source_rule_id": "MURPHY_0003", "status": "PASS", "direction": "BULLISH"}
+    package = _full_package(murphy_rows, nison_rows)
+    return {
+        "brain_assessment": {"directional_bias": "bullish", "confidence": 0.8},
+        "murphy_evidence": {
+            "status": "PASS",
+            "direction": "BULLISH",
+            "evidence_set": {row["source_rule_id"]: row for row in murphy_rows},
+            "governed_78_package": package,
+        },
+        "nison_evidence": {
+            "confirmation": "ABSENT",
+            "contradiction": True,  # aggregate flag may be over-broad; full audit must own semantics
+            "evidence_set": {row["source_rule_id"]: row for row in nison_rows},
+            "governed_78_package": package,
+        },
+        "tiz_evidence": {"process_state": "READY"},
+        "risk_evidence": {"risk_pass": True, "stop_loss": "1.2700", "take_profit": "1.2800", "rr": "2.0"},
+        "source_rule_ids": [row["source_rule_id"] for row in murphy_rows + nison_rows],
+        "timestamp": "2024-12-31T23:00:00Z",
+    }
+
+
+def test_full_nison_fail_same_direction_is_not_contradiction(monkeypatch):
+    nison_rows = [
+        {"source_rule_id": f"NISON_{i:04d}", "status": "NOT_EVALUABLE", "confirmation": "", "contradiction": False, "direction": ""}
+        for i in range(1, 45)
+    ]
+    nison_rows[0] = {"source_rule_id": "NISON_0001", "status": "FAIL", "direction": "BULLISH", "confirmation": "", "contradiction": False}
+    args = _full_rule_inputs(nison_rows)
+    monkeypatch.setattr(evaluator, "_allowed_rule_ids", lambda: set(args["source_rule_ids"]))
+    result = evaluate_three_book_decision(**args)
+    assert result["decision"]["final"] == "BUY"
+
+
+def test_full_nison_opposite_direction_fail_is_contradiction(monkeypatch):
+    nison_rows = [
+        {"source_rule_id": f"NISON_{i:04d}", "status": "NOT_EVALUABLE", "confirmation": "", "contradiction": False, "direction": ""}
+        for i in range(1, 45)
+    ]
+    nison_rows[0] = {"source_rule_id": "NISON_0001", "status": "FAIL", "direction": "BEARISH", "confirmation": "", "contradiction": False}
+    args = _full_rule_inputs(nison_rows)
+    monkeypatch.setattr(evaluator, "_allowed_rule_ids", lambda: set(args["source_rule_ids"]))
+    result = evaluate_three_book_decision(**args)
+    assert result["decision"]["final"] == "NO_TRADE"
+    assert result["decision"]["reasons_against"] == ["NISON_FULL_RULE_CONTRADICTION"]
