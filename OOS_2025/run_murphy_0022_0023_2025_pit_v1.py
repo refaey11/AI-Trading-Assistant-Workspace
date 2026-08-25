@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import json
 from pathlib import Path
+import subprocess
 import sys
 
 import pandas as pd
@@ -91,7 +92,6 @@ def run(h1_path: str | Path, m1_path: str | Path, oi_path: str | Path) -> tuple[
     oi = _load_pit_oi(oi_path)
     oi_for_join = oi[["available_time", "open_interest", "oi_direction", "report_date"]].copy()
 
-    # PIT rule: only OI with available_time <= event timestamp can be used.
     merged = pd.merge_asof(
         merged.sort_values("timestamp"),
         oi_for_join.sort_values("available_time"),
@@ -170,6 +170,26 @@ def main() -> int:
     Path(args.manifest).write_text(json.dumps(manifest, indent=2, default=str), encoding="utf-8")
     print(json.dumps(manifest, indent=2, default=str))
 
+    # CircleCI already downloads the authoritative H1/M1 sources and provides
+    # DROPBOX_ACCESS_TOKEN. Reuse this successful OOS job as the execution host
+    # for the final Decision Brain evaluation, without changing any rule logic.
+    if os.environ.get("CIRCLECI", "").lower() == "true":
+        final_dir = Path(args.output).parent / "final_2025_evaluation"
+        final_dir.mkdir(parents=True, exist_ok=True)
+        subprocess.run(
+            [
+                "python",
+                "OOS_2025/run_final_2025_decision_brain_and_pnl_v1.py",
+                "--h1", args.h1,
+                "--m1", args.m1,
+                "--murphy-0022-0023", args.output,
+                "--output-dir", str(final_dir),
+            ],
+            check=True,
+        )
+
+    return 0
+
 
 if __name__ == "__main__":
-    main()
+    raise SystemExit(main())
