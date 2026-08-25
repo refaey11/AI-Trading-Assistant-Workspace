@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+from collections import Counter
 from pathlib import Path
 import sys
 from typing import Any
@@ -105,12 +106,6 @@ def _full_rows_at(df: pd.DataFrame | None, ts) -> list[dict[str, Any]]:
 
 
 def _nison_compat_from_full_rows(rows: list[dict[str, Any]]) -> dict[str, Any]:
-    """Produce only the existing Nison aggregate fields for compatibility.
-
-    This is not a new signal or direction generator: it reproduces the existing
-    evidence aggregate semantics from nison_2025_evidence_aggregate_v1.
-    The complete 44-rule evidence remains in evidence_set.
-    """
     directional = {"BULLISH", "BEARISH"}
     directional_pass = sorted({
         str(r.get("direction", "")).upper()
@@ -133,9 +128,6 @@ def _nison_compat_from_full_rows(rows: list[dict[str, Any]]) -> dict[str, Any]:
 
 
 def build_events(*, market_context, murphy, nison, risk, execution, tiz, year, optional_tiz, murphy_full_evidence=None, nison_full_evidence=None):
-    # The governed event boundary must be driven by the real full evidence,
-    # not by the compatibility NISON_NONE sentinel. Require the market/risk/
-    # execution timestamp and the full 34/44 evidence timestamp to coexist.
     required_timestamps = set(murphy["timestamp"]) & set(risk["timestamp"]) & set(execution["timestamp"])
     if murphy_full_evidence is not None:
         required_timestamps &= set(murphy_full_evidence["timestamp"])
@@ -169,8 +161,6 @@ def build_events(*, market_context, murphy, nison, risk, execution, tiz, year, o
             raise AssertionError(f"{ts}: Nison full evidence set contains {len(n_evidence_set)} rules, expected 44")
 
         m = legacy_selected_row(m_rows)
-        # If legacy Nison has only the NISON_NONE sentinel, keep the full-rule
-        # evidence and use the existing aggregate semantics as compatibility input.
         n = legacy_selected_row(n_rows) if n_rows else _nison_compat_from_full_rows(n_full)
         murphy_for_decision = {**m, "evidence_set": m_evidence_set, "evidence_count": len(m_evidence_set)}
         nison_for_decision = {**n, "evidence_set": n_evidence_set, "evidence_count": len(n_evidence_set)}
@@ -207,16 +197,21 @@ def build_events(*, market_context, murphy, nison, risk, execution, tiz, year, o
             },
         )
 
+        decision = result.get("decision", {}) or {}
+        decision_block = decision.get("decision", {}) if isinstance(decision, dict) else {}
+        reasons_against = decision_block.get("reasons_against", []) if isinstance(decision_block, dict) else []
+        execution_plan = result.get("execution_plan", {}) or {}
+        primary_reason = reasons_against[0] if isinstance(reasons_against, list) and reasons_against else result.get("reason")
         records.append(
             {
                 "timestamp": ts,
                 "evaluation_year": year,
                 "status": result.get("status"),
-                "direction": result.get("decision", {}).get("decision", {}).get("final"),
-                "execution_status": result.get("execution_plan", {}).get("status"),
-                "entry_price": result.get("execution_plan", {}).get("entry_price"),
-                "stop_loss": result.get("execution_plan", {}).get("stop_loss"),
-                "take_profit": result.get("execution_plan", {}).get("take_profit"),
+                "direction": decision_block.get("final"),
+                "execution_status": execution_plan.get("status"),
+                "entry_price": execution_plan.get("entry_price"),
+                "stop_loss": execution_plan.get("stop_loss"),
+                "take_profit": execution_plan.get("take_profit"),
                 "risk_pass": r.get("risk_status"),
                 "tiz_verified": bool(t.get("tiz_verified", False)),
                 "tiz_status": t.get("process_gate", t.get("status", "NOT_EVALUABLE")),
@@ -229,7 +224,9 @@ def build_events(*, market_context, murphy, nison, risk, execution, tiz, year, o
                 "nison_rule_count": len(n_evidence_set),
                 "murphy_rule_ids": json.dumps(sorted(m_evidence_set)),
                 "nison_rule_ids": json.dumps(sorted(n_evidence_set)),
-                "reason": result.get("reason") or result.get("decision", {}).get("decision", {}).get("reasons_against", []),
+                "reason": json.dumps(reasons_against) if isinstance(reasons_against, list) else str(primary_reason or ""),
+                "primary_reason": str(primary_reason or "").strip() or "UNKNOWN",
+                "governed_78_receipt_sha256": str((result.get("audit", {}) or {}).get("governed_78_adapter_receipt", {}).get("package_sha256", "")),
             }
         )
 
@@ -275,6 +272,13 @@ def main() -> int:
     a.output.parent.mkdir(parents=True, exist_ok=True)
     a.manifest.parent.mkdir(parents=True, exist_ok=True)
     events.to_csv(a.output, index=False)
+
+    primary_reason_counts = Counter(events["primary_reason"].astype(str)) if not events.empty else Counter()
+    status_counts = Counter(events["status"].astype(str)) if not events.empty else Counter()
+    execution_status_counts = Counter(events["execution_status"].fillna("UNKNOWN").astype(str)) if not events.empty else Counter()
+    risk_pass_counts = Counter(events["risk_pass"].fillna("UNKNOWN").astype(str)) if not events.empty else Counter()
+    tiz_status_counts = Counter(events["tiz_status"].fillna("UNKNOWN").astype(str)) if not events.empty else Counter()
+
     result = {
         "status": "PASS",
         "evaluation_year": a.year,
@@ -291,6 +295,11 @@ def main() -> int:
         "rule_rows_preserved": True,
         "murphy_rule_count_in_event": int(events["murphy_rule_count"].min()) if not events.empty else 0,
         "nison_rule_count_in_event": int(events["nison_rule_count"].min()) if not events.empty else 0,
+        "primary_reason_counts": dict(primary_reason_counts.most_common()),
+        "event_status_counts": dict(status_counts),
+        "execution_status_counts": dict(execution_status_counts),
+        "risk_status_counts": dict(risk_pass_counts),
+        "tiz_status_counts": dict(tiz_status_counts),
     }
     if not events.empty and int(events["murphy_rule_count"].min()) != 34:
         raise SystemExit("FAIL_CLOSED: Final Brain event stream did not receive exactly 34 Murphy rules")
