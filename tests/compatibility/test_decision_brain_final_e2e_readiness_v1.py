@@ -167,7 +167,9 @@ def test_circleci_governed_final_78_rule_path_uses_full_evidence():
             zf.extractall(m1_dir)
 
         h1_csv = next(h1_dir.rglob("GBPUSD_H1_2016_2025_MASTER.csv"))
-        m1_csv = next(m1_dir.rglob("*.csv"))
+        m1_matches = list(m1_dir.rglob("GBPUSD_M1_MASTER_2016_2026.csv"))
+        assert m1_matches, "Canonical M1 source GBPUSD_M1_MASTER_2016_2026.csv not found"
+        m1_csv = m1_matches[0]
         pip = ["python", "-m", "pip", "install", "--disable-pip-version-check", "pandas"]
         subprocess.run(pip, check=True, stdout=subprocess.DEVNULL)
 
