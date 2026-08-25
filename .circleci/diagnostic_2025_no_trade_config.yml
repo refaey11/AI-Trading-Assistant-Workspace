@@ -1,0 +1,24 @@
+version: 2.1
+
+jobs:
+  final_2025_no_trade_diagnostic_v1:
+    docker:
+      - image: cimg/python:3.12
+    steps:
+      - checkout
+      - run:
+          name: Read-only 2025 no-trade diagnostic
+          command: |
+            set -eu
+            test -f OOS_2025/FINAL_2025_GOVERNED_78_RULE_MANIFEST.json
+            python OOS_2025/run_final_2025_no_trade_diagnostic_v1.py \
+              OOS_2025/FINAL_2025_GOVERNED_78_RULE_MANIFEST.json \
+              --output OOS_2025/FINAL_2025_NO_TRADE_DIAGNOSTIC.json
+      - store_artifacts:
+          path: OOS_2025/FINAL_2025_NO_TRADE_DIAGNOSTIC.json
+          destination: final_2025_no_trade_diagnostic
+
+workflows:
+  diagnostic_2025_no_trade:
+    jobs:
+      - final_2025_no_trade_diagnostic_v1
