@@ -107,7 +107,7 @@ def test_future_data_is_forbidden():
 
 
 def test_circleci_governed_final_78_rule_path_uses_full_evidence():
-    """Run the real 2025 governed path only in the dedicated Final-E2E CI job."""
+    """Run the real 2025 governed validation, then the same frozen path for OOS profitability."""
     import json
     import os
     import shutil
@@ -189,6 +189,7 @@ def test_circleci_governed_final_78_rule_path_uses_full_evidence():
             cwd=repo_root,
         )
 
+        # Phase 1: validation only. This must succeed before any profitability is run.
         subprocess.run(
             [
                 "python",
@@ -213,3 +214,34 @@ def test_circleci_governed_final_78_rule_path_uses_full_evidence():
         assert validation_manifest["oos_tuning"] is False
         assert validation_manifest["new_rule_semantics"] is False
         assert validation_manifest["profitability_executed"] is False
+
+        # Phase 2: same frozen 2025 path, now profitability-enabled.
+        subprocess.run(
+            [
+                "python",
+                str(repo_root / "OOS_2025/run_final_2025_governed_78_rule_v2.py"),
+                "--h1", str(h1_csv),
+                "--m1", str(m1_csv),
+                "--murphy-0022-0023", str(pit_csv),
+                "--output-dir", str(out_dir),
+            ],
+            check=True,
+            cwd=repo_root,
+        )
+
+        profitability_manifest = json.loads(
+            (out_dir / "FINAL_2025_GOVERNED_78_RULE_MANIFEST.json").read_text(encoding="utf-8")
+        )
+        assert profitability_manifest["final_brain_provenance"]["murphy_rule_count"] == 34
+        assert profitability_manifest["final_brain_provenance"]["nison_rule_count"] == 44
+        assert profitability_manifest["final_brain_provenance"]["fan_in_mode"] == "LOSSLESS_FULL_EVIDENCE_WITH_LEGACY_DECISION_COMPAT"
+        assert profitability_manifest["final_brain_provenance"]["source_manifest"]["oos_tuning"] is False
+        assert profitability_manifest["final_brain_provenance"]["source_manifest"]["new_rule_semantics"] is False
+
+        # The profitability phase is accepted only as an OOS evaluation result;
+        # no tuning or rule changes are permitted from this output.
+        required_metric_keys = {"trades", "win_rate", "profit_factor", "expectancy", "total_r", "total_pnl", "max_drawdown"}
+        metric_keys = set(profitability_manifest)
+        missing = sorted(required_metric_keys - metric_keys)
+        if missing:
+            raise AssertionError(f"Profitability manifest missing required metrics: {missing}")
