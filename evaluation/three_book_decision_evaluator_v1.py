@@ -11,6 +11,8 @@ from typing import Any, Mapping, Sequence
 import json
 from pathlib import Path
 
+from compatibility.governed_78_rule_adapter_v1 import assert_governed_78_package
+
 ALLOWLIST_PATH = Path("governance/DECISION_BRAIN_RULE_ALLOWLIST_V1.json")
 
 
@@ -41,7 +43,7 @@ def _full_rule_audit(
     murphy_evidence: Mapping[str, Any],
     nison_evidence: Mapping[str, Any],
 ) -> dict[str, Any] | None:
-    """Validate a full rule envelope when the governed path supplies one.
+    """Validate a full rule envelope and require the governed adapter receipt.
 
     Missing/unevaluable rule results are preserved and do not become signals.
     The consumer only uses existing PASS/confirmation/contradiction semantics.
@@ -51,10 +53,27 @@ def _full_rule_audit(
     if not m_rows and not n_rows:
         return None
 
+    # Full evidence is now allowed into this boundary only through the
+    # governed 78-rule adapter. This makes the adapter the single ingress for
+    # the full-rule path rather than a parallel verification sidecar.
+    governed_package = murphy_evidence.get("governed_78_package")
+    nison_package = nison_evidence.get("governed_78_package")
+    if not isinstance(governed_package, Mapping) or governed_package != nison_package:
+        return {"status": "REJECTED", "reason": "MISSING_OR_MISMATCHED_78_RULE_ADAPTER_PACKAGE"}
+    try:
+        assert_governed_78_package(governed_package)
+    except AssertionError as exc:
+        return {"status": "REJECTED", "reason": str(exc)}
+
     m_ids = {str(r.get("source_rule_id") or r.get("rule_id") or "").strip() for r in m_rows}
     n_ids = {str(r.get("source_rule_id") or r.get("rule_id") or "").strip() for r in n_rows}
     m_ids.discard("")
     n_ids.discard("")
+
+    package_m_ids = {str(r.get("source_rule_id") or r.get("rule_id") or "").strip() for r in governed_package["murphy"]["rows"]}
+    package_n_ids = {str(r.get("source_rule_id") or r.get("rule_id") or "").strip() for r in governed_package["nison"]["rows"]}
+    if m_ids != package_m_ids or n_ids != package_n_ids:
+        return {"status": "REJECTED", "reason": "ADAPTER_PACKAGE_EVIDENCE_SET_MISMATCH"}
 
     if len(m_ids) != 34 or len(n_ids) != 44:
         return {
@@ -91,6 +110,7 @@ def _full_rule_audit(
         "murphy_bearish_pass": m_bearish,
         "nison_contradiction": n_contradiction,
         "nison_confirmed": n_confirmed,
+        "adapter_receipt": dict(governed_package.get("receipt", {})),
     }
 
 
@@ -184,7 +204,7 @@ def evaluate_three_book_decision(
         "risk_engine": dict(risk_evidence),
         "decision": {
             "logic": strength,
-            "reasons_for": ["Murphy context passed", "Full Murphy rule envelope consumed", "TIZ process gate passed", "Risk hard gate passed"],
+            "reasons_for": ["Murphy context passed", "Full Murphy rule envelope consumed", "Governed 78-rule adapter receipt verified", "TIZ process gate passed", "Risk hard gate passed"],
             "reasons_against": [],
             "final": final,
         },
