@@ -8,12 +8,21 @@ from MURPHY_EVALUATORS_V1.murphy_0028_0029_evaluator import evaluate_0028
 from MURPHY_EVALUATORS_V1.murphy_0029_runtime_adapter import evaluate_0029
 from MURPHY_EVALUATORS_V1.murphy_0030_0032_runtime_v1 import evaluate_0030, evaluate_0031, evaluate_0032
 from MURPHY_EVALUATORS_V1.murphy_0033_runtime_v1 import evaluate_0033
+from MURPHY_EVALUATORS_V1.murphy_0034_0045_recovered_v1 import (
+    wave2, wave3, wave4, fib_zone, cycle_period, system_discipline,
+    psar_regime, adx_regime, capital_reserve, single_market_exposure,
+    market_risk, total_margin,
+)
 from MURPHY_EVALUATORS_V1.murphy_0047_runtime_v1 import evaluate_0047
 from MURPHY_EVALUATORS_V1.murphy_0048_0049_runtime_v1 import evaluate_0048, evaluate_0049
 from MURPHY_EVALUATORS_V1.murphy_0050_evaluator import evaluate_0050
 from MURPHY_EVALUATORS_V1.murphy_0051_runtime_v1 import evaluate_0051
 from TRENDLINE_CONVERGENCE_V1.trendline_convergence_adapter import evaluate_convergence
 from MURPHY_EVALUATORS_V1.murphy_0018_0019_evaluator import dispatch
+
+
+def _result(rule_id: str, result: Any) -> Dict[str, Any]:
+    return {"rule_id": rule_id, "status": result.state, "reason": result.reason}
 
 
 def evaluate_rule(rule_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
@@ -47,6 +56,30 @@ def evaluate_rule(rule_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
         return evaluate_0032(payload)
     if rule_id == 'MURPHY_0033':
         return evaluate_0033(payload)
+    if rule_id == 'MURPHY_0034':
+        return _result(rule_id, wave2(payload.get('wave1_high'), payload.get('wave1_low'), payload.get('wave2_extreme')))
+    if rule_id == 'MURPHY_0035':
+        return _result(rule_id, wave3(payload.get('length1'), payload.get('length3'), payload.get('length5')))
+    if rule_id == 'MURPHY_0036':
+        return _result(rule_id, wave4(payload.get('wave1_low'), payload.get('wave1_high'), payload.get('wave4_price')))
+    if rule_id == 'MURPHY_0037':
+        return _result(rule_id, fib_zone(payload.get('retracement_pct')))
+    if rule_id == 'MURPHY_0038':
+        return _result(rule_id, cycle_period(payload.get('previous_trough'), payload.get('current_trough')))
+    if rule_id == 'MURPHY_0039':
+        return _result(rule_id, system_discipline(payload.get('system_defined'), payload.get('regime_checked')))
+    if rule_id == 'MURPHY_0040':
+        return _result(rule_id, psar_regime(payload.get('trending')))
+    if rule_id == 'MURPHY_0041':
+        return _result(rule_id, adx_regime(payload.get('adx'), payload.get('threshold')))
+    if rule_id == 'MURPHY_0042':
+        return _result(rule_id, capital_reserve(payload.get('invested_pct')))
+    if rule_id == 'MURPHY_0043':
+        return _result(rule_id, single_market_exposure(payload.get('exposure_pct')))
+    if rule_id == 'MURPHY_0044':
+        return _result(rule_id, market_risk(payload.get('risk_pct')))
+    if rule_id == 'MURPHY_0045':
+        return _result(rule_id, total_margin(payload.get('margin_pct')))
     if rule_id == 'MURPHY_0047':
         return evaluate_0047(payload)
     if rule_id == 'MURPHY_0048':
