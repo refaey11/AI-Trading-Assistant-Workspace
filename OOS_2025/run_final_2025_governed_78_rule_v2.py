@@ -55,6 +55,11 @@ def main() -> int:
     p.add_argument("--m1", required=True, type=Path)
     p.add_argument("--murphy-0022-0023", required=True, type=Path)
     p.add_argument("--output-dir", required=True, type=Path)
+    p.add_argument(
+        "--validation-only",
+        action="store_true",
+        help="Run the governed 34+44 Final decision path and manifest checks without executing the 2025 profitability backtest.",
+    )
     args = p.parse_args()
 
     out = args.output_dir
@@ -160,6 +165,25 @@ def main() -> int:
     ])
 
     event_manifest = assert_full_manifest(out / "FINAL_2025_DECISION_EVENTS_MANIFEST.json")
+
+    if args.validation_only:
+        validation = {
+            "status": "PASS",
+            "mode": "GOVERNED_78_RULE_VALIDATION_ONLY",
+            "murphy_rule_count": 34,
+            "nison_rule_count": 44,
+            "fan_in_mode": "LOSSLESS_FULL_EVIDENCE_WITH_LEGACY_DECISION_COMPAT",
+            "oos_tuning": False,
+            "new_rule_semantics": False,
+            "profitability_executed": False,
+            "source_manifest": event_manifest,
+        }
+        (out / "FINAL_2025_GOVERNED_78_RULE_VALIDATION_MANIFEST.json").write_text(
+            json.dumps(validation, indent=2, default=str), encoding="utf-8"
+        )
+        print(json.dumps(validation, indent=2, default=str))
+        return 0
+
     profitability = backtest(events, args.h1, out)
     profitability["final_brain_provenance"] = {
         "murphy_rule_count": 34,
