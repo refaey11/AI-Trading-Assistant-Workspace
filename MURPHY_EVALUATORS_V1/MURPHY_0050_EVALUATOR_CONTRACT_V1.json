@@ -1,0 +1,24 @@
+{
+  "module": "MURPHY_0050_EVALUATOR_V1",
+  "status": "STRUCTURAL_EVALUATOR_IMPLEMENTED; CURRENT_STATE_NOT_EVALUABLE",
+  "rule_type": "Pre-trade multi-factor checklist",
+  "source_conditions": [
+    "Determine the general trend",
+    "Check sector direction where relevant",
+    "Review weekly and monthly charts",
+    "Mark support/resistance and trendlines/channels",
+    "Check volume/open interest",
+    "Check retracements and gaps",
+    "Check reversal/continuation patterns",
+    "Check moving averages and oscillators"
+  ],
+  "principles": [
+    "Does not generate BUY/SELL",
+    "Does not invent thresholds",
+    "Does not substitute missing sector/breadth data",
+    "Does not mark partial evidence as PASS"
+  ],
+  "current_result": "NOT_EVALUABLE",
+  "2025_used": false,
+  "next_step": "Implement only the missing upstream evidence contracts required by 0050 or explicitly mark those conditions blocked; then re-evaluate 0050. Do not add indicators merely for this rule."
+}
