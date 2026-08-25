@@ -178,7 +178,7 @@ jobs:
           command: |
             set -eu
             mkdir -p artifacts/murphy_0021_2025
-            python OOS_2025/run_murphy_0021_2025_fresh_v1.py --input "$MURPHY_SOURCE_CSV" --m1-input "$MURPHY_M1_SOURCE_CSV" --output artifacts/murphy_0021_2025/MURPHY_0021_2025.csv --manifest artifacts/murphy_0021_2025/MURPHY_0021_2025_MANIFEST.json
+            python OOS_2025/run_murphy_0021_2025_fresh_v1.py --input "$MURPHY_SOURCE_CSV" --m1-input "$MURPHY_M1_SOURCE_CSV" --output artifacts/murphy_0021_2025/MURPHY_0021_2025.csv --manifest artifacts/murphy_0021_2025/MURPHY_0021_MANIFEST.json
       - run:
           name: Verify Murphy 0021 producer tests
           command: python -m pytest -q tests/evaluation/test_murphy_0021_2025_fresh_v1.py
@@ -217,6 +217,55 @@ jobs:
       - store_artifacts:
           path: artifacts/murphy_0022_0023_2025
           destination: murphy_0022_0023_2025
+  final_2025_governed_78_rule_v1:
+    docker: [{image: cimg/python:3.12}]
+    steps:
+      - checkout
+      - run: python -m pip install --upgrade pip pandas pytest
+      - run:
+          name: Acquire authoritative final OOS H1 + M1 sources
+          command: |
+            set -eu
+            mkdir -p /tmp/final_78/h1 /tmp/final_78/m1
+            if [ -n "${NISON_2025_SOURCE_URL:-}" ]; then curl -L --fail --silent --show-error "$NISON_2025_SOURCE_URL" -o /tmp/final_78/h1/source.zip; elif [ -n "${DROPBOX_ACCESS_TOKEN:-}" ]; then curl -L --fail --silent --show-error https://content.dropboxapi.com/2/files/download -H "Authorization: Bearer ${DROPBOX_ACCESS_TOKEN}" -H 'Dropbox-API-Arg: {"path":"/GBPUSD_H1_2016_2025_MASTER.zip"}' -o /tmp/final_78/h1/source.zip; else echo 'BLOCKED: configure CircleCI project secret NISON_2025_SOURCE_URL or DROPBOX_ACCESS_TOKEN.'; exit 2; fi
+            if [ -n "${MURPHY_M1_SOURCE_URL:-}" ]; then curl -L --fail --silent --show-error "$MURPHY_M1_SOURCE_URL" -o /tmp/final_78/m1/source.zip; elif [ -n "${DROPBOX_ACCESS_TOKEN:-}" ]; then curl -L --fail --silent --show-error https://content.dropboxapi.com/2/files/download -H "Authorization: Bearer ${DROPBOX_ACCESS_TOKEN}" -H 'Dropbox-API-Arg: {"path":"/GBPUSD_M1_MASTER_2016_2026_V1.zip"}' -o /tmp/final_78/m1/source.zip; else echo 'BLOCKED: configure CircleCI project secret MURPHY_M1_SOURCE_URL or DROPBOX_ACCESS_TOKEN.'; exit 2; fi
+            unzip -q /tmp/final_78/h1/source.zip -d /tmp/final_78/h1
+            unzip -q /tmp/final_78/m1/source.zip -d /tmp/final_78/m1
+            H1_CSV=$(find /tmp/final_78/h1 -type f -name 'GBPUSD_H1_2016_2025_MASTER.csv' | head -1)
+            M1_CSV=$(find /tmp/final_78/m1 -type f -name '*.csv' | head -1)
+            test -n "$H1_CSV"
+            test -n "$M1_CSV"
+            echo "export FINAL_H1_CSV=$H1_CSV" >> "$BASH_ENV"
+            echo "export FINAL_M1_CSV=$M1_CSV" >> "$BASH_ENV"
+      - run:
+          name: Rebuild governed PIT 0022/0023 source output
+          command: |
+            set -eu
+            mkdir -p artifacts/final_78/pit
+            python OOS_2025/run_murphy_0022_0023_2025_pit_v1.py --h1 "$FINAL_H1_CSV" --m1 "$FINAL_M1_CSV" --oi evidence/cftc/2025/6b_oi_pit_bound_v1.json --output artifacts/final_78/pit/MURPHY_0022_0023_2025.csv --manifest artifacts/final_78/pit/MURPHY_0022_0023_2025_MANIFEST.json
+      - run:
+          name: Run final governed 78-rule Decision Brain and PnL
+          command: |
+            set -eu
+            mkdir -p artifacts/final_78
+            python OOS_2025/run_final_2025_governed_78_rule_v1.py --h1 "$FINAL_H1_CSV" --m1 "$FINAL_M1_CSV" --murphy-0022-0023 artifacts/final_78/pit/MURPHY_0022_0023_2025.csv --output-dir artifacts/final_78
+      - run:
+          name: Verify final 34/44 rule provenance before accepting PnL
+          command: |
+            set -eu
+            python - <<'PY'
+            import json
+            from pathlib import Path
+            p = Path('artifacts/final_78/FINAL_2025_DECISION_EVENTS_MANIFEST.json')
+            m = json.loads(p.read_text())
+            assert m['murphy_rule_count_in_event'] == 34, m
+            assert m['nison_rule_count_in_event'] == 44, m
+            assert m['fan_in_mode'] == 'LOSSLESS_FULL_EVIDENCE_WITH_LEGACY_DECISION_COMPAT', m
+            print(json.dumps(m, indent=2))
+            PY
+      - store_artifacts:
+          path: artifacts/final_78
+          destination: final_2025_governed_78_rule
 
 workflows:
   build_and_test:
@@ -229,3 +278,15 @@ workflows:
     jobs: [murphy_0021_2025_fresh_v1]
   murphy_0022_0023_2025_pit:
     jobs: [murphy_0022_0023_2025_pit_v1]
+  final_2025_governed_78_rule:
+    jobs:
+      - nison_2025_full_production_v1
+      - murphy_0021_2025_fresh_v1
+      - murphy_0022_0023_2025_pit_v1
+      - oos_2025_78_rule_coverage_v1
+      - final_2025_governed_78_rule_v1:
+          requires:
+            - nison_2025_full_production_v1
+            - murphy_0021_2025_fresh_v1
+            - murphy_0022_0023_2025_pit_v1
+            - oos_2025_78_rule_coverage_v1
