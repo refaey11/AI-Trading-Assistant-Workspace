@@ -1,5 +1,6 @@
 from __future__ import annotations
 from typing import Dict, Any
+from MURPHY_EVALUATORS_V1.murphy_0003_0004_runtime_v2 import evaluate_0003, evaluate_0004
 from MURPHY_EVALUATORS_V1.murphy_0006_0007_runtime_v1 import evaluate_0006, evaluate_0007
 from MURPHY_EVALUATORS_V1.murphy_0021_0023_evaluator import evaluate_0021, evaluate_0022, evaluate_0023
 from MURPHY_EVALUATORS_V1.murphy_0025_0026_runtime_v1 import evaluate_0025, evaluate_0026
@@ -13,6 +14,20 @@ from MURPHY_EVALUATORS_V1.murphy_0018_0019_evaluator import dispatch
 
 
 def evaluate_rule(rule_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
+    if rule_id == 'MURPHY_0003':
+        return evaluate_0003(
+            payload.get('current_reaction_peak'),
+            payload.get('prior_reaction_peak'),
+            payload.get('current_reaction_trough'),
+            payload.get('prior_reaction_trough'),
+        )
+    if rule_id == 'MURPHY_0004':
+        return evaluate_0004(
+            payload.get('current_reaction_peak'),
+            payload.get('prior_reaction_peak'),
+            payload.get('current_reaction_trough'),
+            payload.get('prior_reaction_trough'),
+        )
     if rule_id == 'MURPHY_0006':
         return evaluate_0006(payload.get('events'), payload.get('line_price_at'))
     if rule_id == 'MURPHY_0007':
