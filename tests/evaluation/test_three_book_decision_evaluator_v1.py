@@ -88,9 +88,33 @@ def test_brain_neutral_rejects_without_creating_direction():
 
 def _full_package(murphy_rows, nison_rows):
     return {
-        "murphy": {"rows": murphy_rows},
-        "nison": {"rows": nison_rows},
-        "receipt": {"status": "PASS"},
+        "schema_version": "GOVERNED_78_RULE_ADAPTER_V1",
+        "query_as_of": "2024-12-31T23:00:00Z",
+        "mode": "development",
+        "murphy": {
+            "rule_count": 34,
+            "rows": murphy_rows,
+            "role": "TECHNICAL_CONTEXT",
+        },
+        "nison": {
+            "rule_count": 44,
+            "rows": nison_rows,
+            "role": "CONFIRMATION_OR_CONTRADICTION_ONLY",
+        },
+        "receipt": {
+            "all_78_rules_present": True,
+            "murphy_rule_count": 34,
+            "nison_rule_count": 44,
+            "sha256": "test-fixture-receipt",
+        },
+        "governance": {
+            "2025_oos_unchanged": False,
+            "synthetic_rules_created": False,
+            "not_evaluable_promoted_to_signal": False,
+            "nison_generates_direction": False,
+            "adapter_generates_direction": False,
+        },
+        "provenance": {},
     }
 
 
@@ -111,7 +135,7 @@ def _full_rule_inputs(nison_rows):
         },
         "nison_evidence": {
             "confirmation": "ABSENT",
-            "contradiction": True,  # aggregate flag may be over-broad; full audit must own semantics
+            "contradiction": True,
             "evidence_set": {row["source_rule_id"]: row for row in nison_rows},
             "governed_78_package": package,
         },
