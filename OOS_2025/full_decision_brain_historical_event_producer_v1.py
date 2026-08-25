@@ -69,7 +69,11 @@ def _decision_ready_tiz(t, optional_tiz):
     if state in {"PASS", "READY", "AVAILABLE"}:
         return dict(t)
     if optional_tiz and state == "NOT_EVALUABLE":
-        return {**t, "process_gate": "AVAILABLE", "tiz_verified": False}
+        # Optional TIZ mode is an existing governed execution path: TIZ remains
+        # process-only and does not generate direction, but lack of authoritative
+        # TIZ evidence must not silently become a hard execution block. Mark the
+        # gate READY-for-compatibility while preserving that it was not verified.
+        return {**t, "process_gate": "READY", "tiz_verified": False}
     return dict(t)
 
 
@@ -106,6 +110,12 @@ def _full_rows_at(df: pd.DataFrame | None, ts) -> list[dict[str, Any]]:
 
 
 def _nison_compat_from_full_rows(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    """Produce only the existing Nison aggregate fields for compatibility.
+
+    This is not a new signal or direction generator: it reproduces the existing
+    evidence aggregate semantics from nison_2025_evidence_aggregate_v1.
+    The complete 44-rule evidence remains in evidence_set.
+    """
     directional = {"BULLISH", "BEARISH"}
     directional_pass = sorted({
         str(r.get("direction", "")).upper()
@@ -298,7 +308,7 @@ def main() -> int:
         "primary_reason_counts": dict(primary_reason_counts.most_common()),
         "event_status_counts": dict(status_counts),
         "execution_status_counts": dict(execution_status_counts),
-        "risk_status_counts": dict(risk_pass_counts),
+        "risk_pass_counts": dict(risk_pass_counts),
         "tiz_status_counts": dict(tiz_status_counts),
     }
     if not events.empty and int(events["murphy_rule_count"].min()) != 34:
