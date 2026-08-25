@@ -76,6 +76,40 @@ def assert_full_manifest(path: Path, events_path: Path | None = None) -> dict:
     return manifest
 
 
+def write_no_trade_diagnostic(profitability_manifest: dict, output: Path) -> Path:
+    provenance = profitability_manifest.get("final_brain_provenance", {})
+    source = provenance.get("source_manifest", {})
+    core = profitability_manifest.get("core", {})
+    diagnostic = {
+        "events": source.get("events"),
+        "executable": source.get("executable"),
+        "no_trade": source.get("no_trade"),
+        "not_evaluable": source.get("not_evaluable"),
+        "murphy_rule_count_in_event": source.get("murphy_rule_count_in_event", provenance.get("murphy_rule_count")),
+        "nison_rule_count_in_event": source.get("nison_rule_count_in_event", provenance.get("nison_rule_count")),
+        "tiz_verified_events": source.get("tiz_verified_events"),
+        "primary_reason_counts": source.get("primary_reason_counts", {}),
+        "event_status_counts": source.get("event_status_counts", {}),
+        "execution_status_counts": source.get("execution_status_counts", {}),
+        "risk_pass_counts": source.get("risk_pass_counts", {}),
+        "tiz_status_counts": source.get("tiz_status_counts", {}),
+        "trades": core.get("trades"),
+        "pnl": core.get("pnl"),
+        "total_R": core.get("total_R"),
+        "expectancy_R": core.get("expectancy_R"),
+        "profit_factor": core.get("profit_factor"),
+        "status": profitability_manifest.get("status"),
+        "read_only": True,
+        "oos_tuning": source.get("oos_tuning"),
+        "new_rule_semantics": source.get("new_rule_semantics"),
+    }
+    output.mkdir(parents=True, exist_ok=True)
+    path = output / "FINAL_2025_NO_TRADE_DIAGNOSTIC.json"
+    path.write_text(json.dumps(diagnostic, indent=2, sort_keys=True, default=str), encoding="utf-8")
+    print("FINAL_2025_NO_TRADE_DIAGNOSTIC=" + json.dumps(diagnostic, sort_keys=True, default=str))
+    return path
+
+
 def main() -> int:
     p = argparse.ArgumentParser(description="Run governed 2025 Final Decision Brain with full 34+44 evidence.")
     p.add_argument("--h1", required=True, type=Path)
@@ -219,9 +253,16 @@ def main() -> int:
         "fan_in_mode": "LOSSLESS_FULL_EVIDENCE_WITH_LEGACY_DECISION_COMPAT",
         "source_manifest": event_manifest,
     }
-    (out / "FINAL_2025_GOVERNED_78_RULE_MANIFEST.json").write_text(
+    profitability_manifest_path = out / "FINAL_2025_GOVERNED_78_RULE_MANIFEST.json"
+    profitability_manifest_path.write_text(
         json.dumps(profitability, indent=2, default=str), encoding="utf-8"
     )
+
+    # The existing CircleCI final job already stores /tmp/artifacts. Publish the
+    # canonical diagnostic there so it survives the CI container and is visible
+    # in the job's Artifacts tab without changing the main CI wiring.
+    write_no_trade_diagnostic(profitability, Path("/tmp/artifacts"))
+
     print(json.dumps(profitability, indent=2, default=str))
     return 0
 
