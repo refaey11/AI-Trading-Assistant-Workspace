@@ -197,16 +197,19 @@ def test_circleci_governed_final_78_rule_path_uses_full_evidence():
                 "--m1", str(m1_csv),
                 "--murphy-0022-0023", str(pit_csv),
                 "--output-dir", str(out_dir),
+                "--validation-only",
             ],
             check=True,
             cwd=repo_root,
         )
 
-        manifest = json.loads(
-            (out_dir / "FINAL_2025_DECISION_EVENTS_MANIFEST.json").read_text(encoding="utf-8")
+        validation_manifest = json.loads(
+            (out_dir / "FINAL_2025_GOVERNED_78_RULE_VALIDATION_MANIFEST.json").read_text(encoding="utf-8")
         )
-        assert manifest["murphy_rule_count"] == 34
-        assert manifest["nison_rule_count"] == 44
-        assert manifest["fan_in_mode"] == "LOSSLESS_FULL_EVIDENCE_WITH_LEGACY_DECISION_COMPAT"
-        assert manifest["oos_tuning"] is False
-        assert manifest["new_rule_semantics"] is False
+        assert validation_manifest["status"] == "PASS"
+        assert validation_manifest["murphy_rule_count"] == 34
+        assert validation_manifest["nison_rule_count"] == 44
+        assert validation_manifest["fan_in_mode"] == "LOSSLESS_FULL_EVIDENCE_WITH_LEGACY_DECISION_COMPAT"
+        assert validation_manifest["oos_tuning"] is False
+        assert validation_manifest["new_rule_semantics"] is False
+        assert validation_manifest["profitability_executed"] is False
