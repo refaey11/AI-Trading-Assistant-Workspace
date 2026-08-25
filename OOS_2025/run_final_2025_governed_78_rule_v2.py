@@ -258,10 +258,10 @@ def main() -> int:
         json.dumps(profitability, indent=2, default=str), encoding="utf-8"
     )
 
-    # The existing CircleCI final job already stores /tmp/artifacts. Publish the
-    # canonical diagnostic there so it survives the CI container and is visible
-    # in the job's Artifacts tab without changing the main CI wiring.
-    write_no_trade_diagnostic(profitability, Path("/tmp/artifacts"))
+    # Persist the canonical diagnostic alongside the other final-run artifacts.
+    # The CI test and CircleCI artifact collection both use output_dir; keeping
+    # the diagnostic there avoids a path split without changing trading logic.
+    write_no_trade_diagnostic(profitability, out)
 
     print(json.dumps(profitability, indent=2, default=str))
     return 0
