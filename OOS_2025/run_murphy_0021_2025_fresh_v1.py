@@ -14,6 +14,24 @@ from MURPHY_EVALUATORS_V1.murphy_0021_0023_evaluator import evaluate_0021
 
 REQUIRED_H1 = {"timestamp", "open", "high", "low", "close"}
 REQUIRED_M1 = {"timestamp", "open", "high", "low", "close", "volume"}
+CANONICAL_M1_NAME = "GBPUSD_M1_MASTER_2016_2026.csv"
+
+
+def resolve_canonical_m1(path: str | Path) -> Path:
+    candidate = Path(path)
+    # Explicitly supplied existing files are valid for isolated unit fixtures.
+    # Production CLI separately enforces the canonical filename.
+    if candidate.is_file():
+        return candidate
+    if candidate.name == CANONICAL_M1_NAME:
+        return candidate
+    for root in (candidate.parent, *candidate.parents):
+        matches = list(root.rglob(CANONICAL_M1_NAME))
+        if matches:
+            return matches[0]
+    raise ValueError(
+        f"Canonical M1 source {CANONICAL_M1_NAME!r} was not found near {candidate}; refusing missing source."
+    )
 
 
 def _load_ohlcv(path: str | Path, required: set[str]) -> pd.DataFrame:
@@ -41,12 +59,8 @@ def load_h1(path: str | Path) -> pd.DataFrame:
 
 
 def build_canonical_h1_volume_context(m1_path: str | Path) -> pd.DataFrame:
-    """Recreate the existing project H1 volume_direction contract from M1 data.
-
-    Canonical historical VOLUME_CONFIRMATION_V2 outputs use M1_TitanFX bars
-    aggregated to H1, then compare current aggregated volume with the previous
-    completed H1 volume. No new threshold is introduced.
-    """
+    """Recreate the existing project H1 volume_direction contract from M1 data."""
+    m1_path = resolve_canonical_m1(m1_path)
     m1 = _load_ohlcv(m1_path, REQUIRED_M1)
     m1["h1_timestamp"] = m1["timestamp"].dt.floor("h")
     h1 = (
@@ -55,6 +69,8 @@ def build_canonical_h1_volume_context(m1_path: str | Path) -> pd.DataFrame:
         .sort_values("h1_timestamp")
         .reset_index(drop=True)
     )
+    # Derive previous-volume context over the complete history before any
+    # 2025 filtering, so the first 2025 bar can use the prior completed 2024 H1.
     h1["previous_volume"] = h1["volume"].shift(1)
     h1["volume_direction"] = "FLAT"
     h1.loc[h1["previous_volume"].isna(), "volume_direction"] = None
@@ -65,17 +81,14 @@ def build_canonical_h1_volume_context(m1_path: str | Path) -> pd.DataFrame:
 
 
 def run(path: str | Path, m1_path: str | Path) -> tuple[pd.DataFrame, dict]:
+    m1_path = resolve_canonical_m1(m1_path)
     full_h1 = load_h1(path)
+    if full_h1.empty:
+        raise ValueError("No H1 rows found")
+    full_h1["previous_close"] = full_h1["close"].shift(1)
     df = full_h1[full_h1["timestamp"].dt.year.eq(2025)].copy().reset_index(drop=True)
     if df.empty:
         raise ValueError("No 2025 rows found")
-
-    # Price context is source-faithful: carry the immediately preceding
-    # completed H1 close into the first 2025 row when it exists. This avoids
-    # treating the 2025 boundary itself as missing evidence when the source
-    # contains the prior completed H1 bar.
-    full_h1["previous_close"] = full_h1["close"].shift(1)
-    df = full_h1[full_h1["timestamp"].dt.year.eq(2025)].copy().reset_index(drop=True)
 
     volume_context = build_canonical_h1_volume_context(m1_path)
     volume_2025 = volume_context[volume_context["h1_timestamp"].dt.year.eq(2025)].copy()
@@ -120,14 +133,16 @@ def run(path: str | Path, m1_path: str | Path) -> tuple[pd.DataFrame, dict]:
         "price_context_policy": "carry immediately preceding completed H1 close from the source history into the first 2025 row when available",
         "volume_semantics": "canonical project VOLUME_CONFIRMATION_V2: M1_TitanFX volume aggregated to H1, then current H1 volume versus previous completed H1 volume",
         "volume_source": "GBPUSD M1 master, source-faithful aggregation; no new threshold",
+        "m1_source_file": m1_path.name,
+        "m1_source_is_canonical": m1_path.name == CANONICAL_M1_NAME,
         "m1_rows_total": int(len(pd.read_csv(m1_path))),
         "tuning": False,
         "notes": [
             "Fresh 2025 production of MURPHY_0021 only.",
             "MURPHY_0022 and MURPHY_0023 are not produced here because approved futures OI evidence is unavailable on the spot-FX source path.",
             "This run is not a profitability test and does not generate a standalone trade decision.",
-            "Previous fresh run was rejected as a context-wiring mismatch because it used raw H1 volume instead of the existing M1-derived H1 volume_direction contract.",
-            "Rows without canonical M1-derived H1 volume evidence remain NOT_EVALUABLE; missing context is never substituted with raw H1 volume or a fabricated proxy."
+            "Volume context is computed over the complete available M1 history before filtering to 2025.",
+            "Rows without M1-derived H1 volume evidence remain NOT_EVALUABLE; missing context is never substituted with raw H1 volume or a fabricated proxy."
         ],
     }
     return out, manifest
@@ -141,7 +156,12 @@ def main() -> int:
     parser.add_argument("--manifest", required=True)
     args = parser.parse_args()
 
-    out, manifest = run(args.input, args.m1_input)
+    m1_input = Path(args.m1_input)
+    canonical_m1 = resolve_canonical_m1(m1_input)
+    if canonical_m1.name != CANONICAL_M1_NAME:
+        raise ValueError(f"Production M1 input must resolve to {CANONICAL_M1_NAME!r}, got {canonical_m1.name!r}")
+
+    out, manifest = run(args.input, canonical_m1)
     Path(args.output).parent.mkdir(parents=True, exist_ok=True)
     Path(args.manifest).parent.mkdir(parents=True, exist_ok=True)
     out.to_csv(args.output, index=False)

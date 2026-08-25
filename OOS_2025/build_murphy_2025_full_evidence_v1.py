@@ -24,19 +24,26 @@ MURPHY_RULES = [
 SOURCE_BACKED_RULES = {"MURPHY_0021", "MURPHY_0022", "MURPHY_0023"}
 
 
-def read_csv(path: Path, required: set[str]) -> pd.DataFrame:
+def read_csv(path: Path, required: set[str], *, unique_by: tuple[str, ...] = ("timestamp",)) -> pd.DataFrame:
     df = pd.read_csv(path)
     missing = required - set(df.columns)
     if missing:
         raise ValueError(f"{path}: missing required columns: {sorted(missing)}")
     df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True, errors="coerce")
-    if df["timestamp"].isna().any() or df["timestamp"].duplicated().any():
-        raise ValueError(f"{path}: invalid or duplicated timestamps")
-    return df.sort_values("timestamp").reset_index(drop=True)
+    if df["timestamp"].isna().any():
+        raise ValueError(f"{path}: invalid timestamps")
+    missing_unique_cols = set(unique_by) - set(df.columns)
+    if missing_unique_cols:
+        raise ValueError(f"{path}: missing uniqueness columns: {sorted(missing_unique_cols)}")
+    if df.duplicated(list(unique_by)).any():
+        raise ValueError(f"{path}: duplicated {', '.join(unique_by)} keys")
+    return df.sort_values(list(unique_by)).reset_index(drop=True)
 
 
 def load_source_rule_output(path: Path, rule_ids: set[str]) -> dict[pd.Timestamp, dict[str, dict]]:
-    df = read_csv(path, {"timestamp", "rule_id", "status"})
+    # A source file is allowed to contain one row per rule at the same timestamp.
+    # The canonical key is therefore (timestamp, rule_id), not timestamp alone.
+    df = read_csv(path, {"timestamp", "rule_id", "status"}, unique_by=("timestamp", "rule_id"))
     out: dict[pd.Timestamp, dict[str, dict]] = {}
     for row in df.to_dict("records"):
         rid = str(row["rule_id"])
@@ -48,7 +55,8 @@ def load_source_rule_output(path: Path, rule_ids: set[str]) -> dict[pd.Timestamp
 
 
 def build(h1_path: Path, murphy_0021: Path, murphy_0022_0023: Path, output: Path, manifest_path: Path) -> dict:
-    h1 = read_csv(h1_path, {"timestamp", "open", "high", "low", "close"})
+    # H1 market bars must remain unique by timestamp.
+    h1 = read_csv(h1_path, {"timestamp", "open", "high", "low", "close"}, unique_by=("timestamp",))
     h1 = h1[h1["timestamp"].dt.year.eq(2025)].copy().reset_index(drop=True)
     if h1.empty:
         raise ValueError("No 2025 H1 rows found")

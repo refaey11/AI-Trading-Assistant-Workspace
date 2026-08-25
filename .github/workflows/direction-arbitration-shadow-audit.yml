@@ -1,0 +1,43 @@
+name: Direction Arbitration Shadow Audit
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  shadow-audit-syntax:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install pandas
+        run: python -m pip install --upgrade pip pandas
+      - name: Run deterministic synthetic shadow audit
+        run: |
+          set -eu
+          mkdir -p /tmp/direction_audit
+          python - <<'PY'
+          import pandas as pd
+          from pathlib import Path
+          out = Path('/tmp/direction_audit')
+          context = pd.DataFrame([
+              {'timestamp':'2024-01-01T00:00:00Z','close':1.0,'atr20':0.01,'mtf_trend_score':0.8,'M5_trend_regime':1,'M15_trend_regime':1,'M30_trend_regime':1,'H1_trend_regime':1,'H4_trend_regime':1,'D1_trend_regime':1,'volume_available':True,'M5_volume_regime':1,'M15_volume_regime':1,'M30_volume_regime':1,'H1_volume_regime':1,'H4_volume_regime':1,'D1_volume_regime':1},
+              {'timestamp':'2024-01-01T01:00:00Z','close':1.0,'atr20':0.01,'mtf_trend_score':-0.8,'M5_trend_regime':-1,'M15_trend_regime':-1,'M30_trend_regime':-1,'H1_trend_regime':-1,'H4_trend_regime':-1,'D1_trend_regime':-1,'volume_available':True,'M5_volume_regime':1,'M15_volume_regime':1,'M30_volume_regime':1,'H1_volume_regime':1,'H4_volume_regime':1,'D1_volume_regime':1},
+          ])
+          context.to_csv(out/'context.csv', index=False)
+          murphy = pd.DataFrame([
+              {'timestamp':'2024-01-01T00:00:00Z','source_rule_id':'MURPHY_0021','status':'PASS','directional_confirmation':'BULLISH'},
+              {'timestamp':'2024-01-01T01:00:00Z','source_rule_id':'MURPHY_0021','status':'PASS','directional_confirmation':'BULLISH'},
+          ])
+          murphy.to_csv(out/'murphy.csv', index=False)
+          PY
+          python OOS_2025/direction_arbitration_shadow_audit_v1.py \
+            --context /tmp/direction_audit/context.csv \
+            --murphy-full-evidence /tmp/direction_audit/murphy.csv \
+            --output /tmp/direction_audit/shadow.csv \
+            --year 2024
+          test -f /tmp/direction_audit/shadow.csv
+          test -f /tmp/direction_audit/shadow.json
