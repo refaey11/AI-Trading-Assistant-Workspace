@@ -114,6 +114,7 @@ def test_circleci_governed_final_78_rule_path_uses_full_evidence():
     import subprocess
     import tempfile
     import urllib.request
+    import warnings
     import zipfile
     from pathlib import Path
 
@@ -255,11 +256,11 @@ def test_circleci_governed_final_78_rule_path_uses_full_evidence():
             "risk_pass_counts": source_manifest.get("risk_pass_counts", {}),
             "tiz_status_counts": source_manifest.get("tiz_status_counts", {}),
         }
-        print("FINAL_2025_NO_TRADE_DIAGNOSTIC=" + json.dumps(diagnostic, sort_keys=True))
+        warnings.warn(
+            "FINAL_2025_NO_TRADE_DIAGNOSTIC=" + json.dumps(diagnostic, sort_keys=True),
+            RuntimeWarning,
+        )
 
-        # Canonical profitability contract currently stores performance metrics
-        # under the frozen `core` object. Validate the actual canonical fields
-        # instead of requiring duplicated top-level aliases.
         core = profitability_manifest.get("core")
         assert isinstance(core, dict), "Canonical profitability core metrics are missing"
         required_metric_keys = {
