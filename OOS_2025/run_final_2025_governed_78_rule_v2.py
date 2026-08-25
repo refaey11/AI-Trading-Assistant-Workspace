@@ -34,9 +34,11 @@ def normalize_full_evidence(source_csv: Path, output_csv: Path, family: str) -> 
 
 def assert_full_manifest(path: Path) -> dict:
     manifest = json.loads(path.read_text(encoding="utf-8"))
-    if manifest.get("murphy_rule_count_in_event") != 34:
+    murphy_count = manifest.get("murphy_rule_count")
+    nison_count = manifest.get("nison_rule_count")
+    if murphy_count != 34:
         raise AssertionError(f"Final manifest Murphy count != 34: {manifest}")
-    if manifest.get("nison_rule_count_in_event") != 44:
+    if nison_count != 44:
         raise AssertionError(f"Final manifest Nison count != 44: {manifest}")
     if manifest.get("fan_in_mode") != "LOSSLESS_FULL_EVIDENCE_WITH_LEGACY_DECISION_COMPAT":
         raise AssertionError(f"Unexpected fan-in mode: {manifest}")
