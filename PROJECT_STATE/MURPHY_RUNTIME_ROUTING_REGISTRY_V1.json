@@ -3,30 +3,38 @@
   "date": "2026-08-25",
   "purpose": "Separate routing registration from runtime availability so the Decision Brain cannot mistake a fail-closed placeholder for a verified evaluator.",
   "allowlist_scope": 34,
-  "status_values": ["ACTIVE_DISPATCHED", "FROZEN_NOT_MOUNTED", "RECOVERED_NOT_MOUNTED"],
+  "status_values": ["ACTIVE_DISPATCHED", "RECOVERED_NOT_MOUNTED"],
   "rules": {
     "MURPHY_0003": "ACTIVE_DISPATCHED", "MURPHY_0004": "ACTIVE_DISPATCHED", "MURPHY_0006": "ACTIVE_DISPATCHED", "MURPHY_0007": "ACTIVE_DISPATCHED",
     "MURPHY_0018": "ACTIVE_DISPATCHED", "MURPHY_0019": "ACTIVE_DISPATCHED", "MURPHY_0021": "ACTIVE_DISPATCHED", "MURPHY_0022": "ACTIVE_DISPATCHED", "MURPHY_0023": "ACTIVE_DISPATCHED",
     "MURPHY_0025": "ACTIVE_DISPATCHED", "MURPHY_0026": "ACTIVE_DISPATCHED", "MURPHY_0028": "ACTIVE_DISPATCHED", "MURPHY_0029": "ACTIVE_DISPATCHED",
     "MURPHY_0030": "ACTIVE_DISPATCHED", "MURPHY_0031": "ACTIVE_DISPATCHED", "MURPHY_0032": "ACTIVE_DISPATCHED", "MURPHY_0033": "ACTIVE_DISPATCHED",
-    "MURPHY_0034": "RECOVERED_NOT_MOUNTED", "MURPHY_0035": "RECOVERED_NOT_MOUNTED", "MURPHY_0036": "RECOVERED_NOT_MOUNTED", "MURPHY_0037": "RECOVERED_NOT_MOUNTED",
-    "MURPHY_0038": "RECOVERED_NOT_MOUNTED", "MURPHY_0039": "RECOVERED_NOT_MOUNTED", "MURPHY_0040": "RECOVERED_NOT_MOUNTED", "MURPHY_0041": "RECOVERED_NOT_MOUNTED",
-    "MURPHY_0042": "RECOVERED_NOT_MOUNTED", "MURPHY_0043": "RECOVERED_NOT_MOUNTED", "MURPHY_0044": "RECOVERED_NOT_MOUNTED", "MURPHY_0045": "RECOVERED_NOT_MOUNTED",
+    "MURPHY_0034": "ACTIVE_DISPATCHED", "MURPHY_0035": "ACTIVE_DISPATCHED", "MURPHY_0036": "ACTIVE_DISPATCHED", "MURPHY_0037": "ACTIVE_DISPATCHED",
+    "MURPHY_0038": "ACTIVE_DISPATCHED", "MURPHY_0039": "ACTIVE_DISPATCHED", "MURPHY_0040": "ACTIVE_DISPATCHED", "MURPHY_0041": "ACTIVE_DISPATCHED",
+    "MURPHY_0042": "ACTIVE_DISPATCHED", "MURPHY_0043": "ACTIVE_DISPATCHED", "MURPHY_0044": "ACTIVE_DISPATCHED", "MURPHY_0045": "ACTIVE_DISPATCHED",
     "MURPHY_0047": "ACTIVE_DISPATCHED", "MURPHY_0048": "ACTIVE_DISPATCHED", "MURPHY_0049": "ACTIVE_DISPATCHED", "MURPHY_0050": "ACTIVE_DISPATCHED", "MURPHY_0051": "ACTIVE_DISPATCHED"
   },
-  "counts": {"active_dispatched": 22, "frozen_not_mounted": 0, "recovered_not_mounted": 12, "total": 34},
+  "counts": {"active_dispatched": 34, "recovered_not_mounted": 0, "total": 34},
   "governance": {
     "allowlist_unchanged": true,
     "2025_oos": true,
     "unknown_rule_reject": true,
     "missing_evaluator_behavior": "NOT_EVALUABLE",
     "no_synthetic_rule_ids": true,
-    "official_pnl_blocked_until_active_dispatched_equals_34": true
+    "runtime_coverage_gate": "34/34 evaluator implementations mounted",
+    "official_pnl_requires_additional_oos_evidence_validation": true
   },
-  "evidence": {
-    "MURPHY_0028": "Preserved Workspace MURPHY_EVALUATORS_V1/murphy_0027_0029_evaluator.py; production-freeze provenance commit 79ddf163e91101e168825c086deba47beaf556e9",
-    "MURPHY_0029": "Historical Git runtime adapter commit 85b8c6bfad5566288af33e4eff2e0136aeeef4b6",
-    "MURPHY_0034_0045": "Historical Git recovery checkpoints 6345871d23da94bd28f84b9028491d54297d8072 and 59acfbf60bea6c6212d10edd7faa0d1b1e80fb38",
-    "MURPHY_0050": "Preserved Workspace MURPHY_EVALUATORS_V1/murphy_0050_evaluator.py; current evaluator state NOT_EVALUABLE due missing upstream evidence, 2025_used=false"
+  "recovery_evidence": {
+    "MURPHY_0034_0045": {
+      "source": "MURPHY_BATCH_0034_0045_PRODUCTION_FREEZE_V1(5).zip",
+      "evaluator_tests": "13 passed",
+      "adapter_tests": "5 passed",
+      "outer_freeze": "LOCAL_PRODUCTION_FROZEN",
+      "inner_batch_status": "SHARED_EVALUATOR_CANDIDATE",
+      "historical_qa": "PENDING",
+      "2025_used_for_tuning": false,
+      "sha256_evaluators_zip": "c57429c17f1b457189e51f97a529799247b58d5f5d25940985c31fbeb67a8912",
+      "sha256_adapter_zip": "93923c74825ca9941cfc7fe309b54669fe8d79da00436c30fa42827340401a1c"
+    }
   }
 }
