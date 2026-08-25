@@ -107,7 +107,7 @@ def test_future_data_is_forbidden():
 
 
 def test_circleci_governed_final_78_rule_path_uses_full_evidence():
-    """Run the real 2025 governed validation, then the same frozen path for OOS profitability."""
+    """Run governed 2025 validation, then the same frozen path for OOS profitability."""
     import json
     import os
     import shutil
@@ -119,7 +119,6 @@ def test_circleci_governed_final_78_rule_path_uses_full_evidence():
 
     if os.environ.get("CIRCLE_JOB") != "decision_brain_final_e2e_readiness_v1":
         return
-
     if not os.environ.get("CIRCLECI"):
         return
 
@@ -170,8 +169,12 @@ def test_circleci_governed_final_78_rule_path_uses_full_evidence():
         m1_matches = list(m1_dir.rglob("GBPUSD_M1_MASTER_2016_2026.csv"))
         assert m1_matches, "Canonical M1 source GBPUSD_M1_MASTER_2016_2026.csv not found"
         m1_csv = m1_matches[0]
-        pip = ["python", "-m", "pip", "install", "--disable-pip-version-check", "pandas"]
-        subprocess.run(pip, check=True, stdout=subprocess.DEVNULL)
+
+        subprocess.run(
+            ["python", "-m", "pip", "install", "--disable-pip-version-check", "pandas"],
+            check=True,
+            stdout=subprocess.DEVNULL,
+        )
 
         pit_csv = work / "MURPHY_0022_0023_2025.csv"
         pit_manifest = work / "MURPHY_0022_0023_2025_MANIFEST.json"
@@ -189,7 +192,6 @@ def test_circleci_governed_final_78_rule_path_uses_full_evidence():
             cwd=repo_root,
         )
 
-        # Phase 1: validation only. This must succeed before any profitability is run.
         subprocess.run(
             [
                 "python",
@@ -215,7 +217,6 @@ def test_circleci_governed_final_78_rule_path_uses_full_evidence():
         assert validation_manifest["new_rule_semantics"] is False
         assert validation_manifest["profitability_executed"] is False
 
-        # Phase 2: same frozen 2025 path, now profitability-enabled.
         subprocess.run(
             [
                 "python",
@@ -232,16 +233,27 @@ def test_circleci_governed_final_78_rule_path_uses_full_evidence():
         profitability_manifest = json.loads(
             (out_dir / "FINAL_2025_GOVERNED_78_RULE_MANIFEST.json").read_text(encoding="utf-8")
         )
-        assert profitability_manifest["final_brain_provenance"]["murphy_rule_count"] == 34
-        assert profitability_manifest["final_brain_provenance"]["nison_rule_count"] == 44
-        assert profitability_manifest["final_brain_provenance"]["fan_in_mode"] == "LOSSLESS_FULL_EVIDENCE_WITH_LEGACY_DECISION_COMPAT"
-        assert profitability_manifest["final_brain_provenance"]["source_manifest"]["oos_tuning"] is False
-        assert profitability_manifest["final_brain_provenance"]["source_manifest"]["new_rule_semantics"] is False
+        provenance = profitability_manifest["final_brain_provenance"]
+        assert provenance["murphy_rule_count"] == 34
+        assert provenance["nison_rule_count"] == 44
+        assert provenance["fan_in_mode"] == "LOSSLESS_FULL_EVIDENCE_WITH_LEGACY_DECISION_COMPAT"
+        assert provenance["source_manifest"]["oos_tuning"] is False
+        assert provenance["source_manifest"]["new_rule_semantics"] is False
 
-        # The profitability phase is accepted only as an OOS evaluation result;
-        # no tuning or rule changes are permitted from this output.
-        required_metric_keys = {"trades", "win_rate", "profit_factor", "expectancy", "total_r", "total_pnl", "max_drawdown"}
-        metric_keys = set(profitability_manifest)
-        missing = sorted(required_metric_keys - metric_keys)
+        # Canonical profitability contract currently stores performance metrics
+        # under the frozen `core` object. Validate the actual canonical fields
+        # instead of requiring duplicated top-level aliases.
+        core = profitability_manifest.get("core")
+        assert isinstance(core, dict), "Canonical profitability core metrics are missing"
+        required_metric_keys = {
+            "trades",
+            "win_rate",
+            "profit_factor",
+            "expectancy_R",
+            "total_R",
+            "pnl",
+        }
+        missing = sorted(required_metric_keys - set(core))
         if missing:
-            raise AssertionError(f"Profitability manifest missing required metrics: {missing}")
+            raise AssertionError(f"Profitability core metrics missing: {missing}")
+        assert "max_drawdown_core" in profitability_manifest
