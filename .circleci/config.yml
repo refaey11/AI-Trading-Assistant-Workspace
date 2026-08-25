@@ -29,6 +29,7 @@ jobs:
     docker: [{image: cimg/python:3.12}]
     steps:
       - checkout
+      - run: python -m pip install --upgrade pip pytest
       - run:
           working_directory: RUNTIME/NISON_EVALUATORS_V1
           command: python -m pytest -q test_nison_0031_0044_runtime.py && python test_nison_router_smoke_0031_0044.py
