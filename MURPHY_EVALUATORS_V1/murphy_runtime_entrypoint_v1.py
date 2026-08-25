@@ -4,6 +4,7 @@ from MURPHY_EVALUATORS_V1.murphy_0003_0004_runtime_v2 import evaluate_0003, eval
 from MURPHY_EVALUATORS_V1.murphy_0006_0007_runtime_v1 import evaluate_0006, evaluate_0007
 from MURPHY_EVALUATORS_V1.murphy_0021_0023_evaluator import evaluate_0021, evaluate_0022, evaluate_0023
 from MURPHY_EVALUATORS_V1.murphy_0025_0026_runtime_v1 import evaluate_0025, evaluate_0026
+from MURPHY_EVALUATORS_V1.murphy_0029_runtime_adapter import evaluate_0029
 from MURPHY_EVALUATORS_V1.murphy_0030_0032_runtime_v1 import evaluate_0030, evaluate_0031, evaluate_0032
 from MURPHY_EVALUATORS_V1.murphy_0033_runtime_v1 import evaluate_0033
 from MURPHY_EVALUATORS_V1.murphy_0047_runtime_v1 import evaluate_0047
@@ -42,6 +43,8 @@ def evaluate_rule(rule_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
         return evaluate_0025(payload)
     if rule_id == 'MURPHY_0026':
         return evaluate_0026(payload)
+    if rule_id == 'MURPHY_0029':
+        return evaluate_0029(payload)
     if rule_id == 'MURPHY_0030':
         return evaluate_0030(payload)
     if rule_id == 'MURPHY_0031':
