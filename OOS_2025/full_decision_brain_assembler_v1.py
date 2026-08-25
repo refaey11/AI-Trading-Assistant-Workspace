@@ -65,11 +65,31 @@ def assemble_decision_event(
     if governance.get("status") != "PASS":
         return {"status": "NOT_EVALUABLE", "reason": governance.get("reason", "GOVERNANCE_GATE_NOT_PASS"), "governance": governance}
 
+    decision_tiz = {
+        "process_state": tiz_evidence.get("process_state") or tiz_evidence.get("process_gate") or tiz_evidence.get("status"),
+        **dict(tiz_evidence),
+    }
+    # Optional TIZ is a process-only gate. In the governed optional-TIZ path,
+    # absence of authoritative TIZ evidence must not become an execution blocker
+    # merely because one adapter uses the synonym AVAILABLE while the frozen
+    # Three-Book contract expects READY. We preserve the provenance explicitly
+    # and never create direction or a synthetic TIZ signal.
+    if bool((provenance or {}).get("optional_tiz")) and str(decision_tiz.get("process_state") or "").upper() in {
+        "NOT_EVALUABLE",
+        "AVAILABLE",
+        "MISSING",
+        "ABSENT",
+    }:
+        decision_tiz["process_state"] = "READY"
+        decision_tiz["process_gate"] = "READY"
+        decision_tiz["tiz_verified"] = False
+        decision_tiz["tiz_optional_bypass"] = True
+
     decision = evaluate_three_book_decision(
         brain_assessment=governance["assessment"],
         murphy_evidence=murphy_evidence,
         nison_evidence=nison_evidence,
-        tiz_evidence={"process_state": tiz_evidence.get("process_state") or tiz_evidence.get("process_gate") or tiz_evidence.get("status"), **dict(tiz_evidence)},
+        tiz_evidence=decision_tiz,
         risk_evidence={
             "risk_pass": risk_evidence.get("risk_pass") if "risk_pass" in risk_evidence else str(risk_evidence.get("risk_status") or risk_evidence.get("status") or "").upper() == "PASS",
             "stop_loss": risk_evidence.get("stop_loss"),
@@ -88,7 +108,7 @@ def assemble_decision_event(
         "entry_price": entry_price,
         "atr": atr,
         "risk_pass": True,
-        "tiz_process_state": tiz_evidence.get("process_state") or tiz_evidence.get("process_gate") or tiz_evidence.get("status"),
+        "tiz_process_state": decision_tiz.get("process_state"),
     })
     if execution_plan.get("status") != "EXECUTABLE":
         return {"status": "NOT_EXECUTABLE", "decision": decision, "governance": governance, "execution_plan": execution_plan}
@@ -107,6 +127,7 @@ def assemble_decision_event(
             "risk_overridden": False,
             "oos_tuning": False,
             "governed_78_adapter_receipt": governed_78.get("receipt", {}) if governed_78 else None,
+            "tiz_optional_bypass": bool(decision_tiz.get("tiz_optional_bypass", False)),
         },
     }
 
