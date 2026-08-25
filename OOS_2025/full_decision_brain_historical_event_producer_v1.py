@@ -104,10 +104,47 @@ def _full_rows_at(df: pd.DataFrame | None, ts) -> list[dict[str, Any]]:
     return part.drop(columns=["timestamp"], errors="ignore").to_dict("records")
 
 
+def _nison_compat_from_full_rows(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    """Produce only the existing Nison aggregate fields for compatibility.
+
+    This is not a new signal or direction generator: it reproduces the existing
+    evidence aggregate semantics from nison_2025_evidence_aggregate_v1.
+    The complete 44-rule evidence remains in evidence_set.
+    """
+    directional = {"BULLISH", "BEARISH"}
+    directional_pass = sorted({
+        str(r.get("direction", "")).upper()
+        for r in rows
+        if str(r.get("status", "")).upper() == "PASS" and str(r.get("direction", "")).upper() in directional
+    })
+    directional_fail = sorted({
+        str(r.get("direction", "")).upper()
+        for r in rows
+        if str(r.get("status", "")).upper() == "FAIL" and str(r.get("direction", "")).upper() in directional
+    })
+    confirmation = directional_pass[0] if len(directional_pass) == 1 else "CONFLICTED" if len(directional_pass) > 1 else "ABSENT"
+    return {
+        "confirmation": confirmation,
+        "contradiction": bool(directional_fail),
+        "directional_pass_count": len(directional_pass),
+        "directional_fail_count": len(directional_fail),
+        "source_rule_id": "NISON_AGGREGATE",
+    }
+
+
 def build_events(*, market_context, murphy, nison, risk, execution, tiz, year, optional_tiz, murphy_full_evidence=None, nison_full_evidence=None):
-    timestamps = sorted(
-        set(murphy["timestamp"]) & set(nison["timestamp"]) & set(risk["timestamp"]) & set(execution["timestamp"])
-    )
+    # The governed event boundary must be driven by the real full evidence,
+    # not by the compatibility NISON_NONE sentinel. Require the market/risk/
+    # execution timestamp and the full 34/44 evidence timestamp to coexist.
+    required_timestamps = set(murphy["timestamp"]) & set(risk["timestamp"]) & set(execution["timestamp"])
+    if murphy_full_evidence is not None:
+        required_timestamps &= set(murphy_full_evidence["timestamp"])
+    if nison_full_evidence is not None:
+        required_timestamps &= set(nison_full_evidence["timestamp"])
+    else:
+        required_timestamps &= set(nison["timestamp"])
+    timestamps = sorted(required_timestamps)
+
     murphy_groups = build_lossless_rule_groups(murphy)
     nison_groups = build_lossless_rule_groups(nison)
     records = []
@@ -116,13 +153,14 @@ def build_events(*, market_context, murphy, nison, risk, execution, tiz, year, o
         if ts.year != year:
             continue
 
-        m_rows = murphy_groups.get(ts, [])
-        n_rows = nison_groups.get(ts, [])
-        if not m_rows or not n_rows:
+        m_full = _full_rows_at(murphy_full_evidence, ts)
+        n_full = _full_rows_at(nison_full_evidence, ts)
+        if not m_full or not n_full:
             continue
 
-        m_full = _full_rows_at(murphy_full_evidence, ts) or m_rows
-        n_full = _full_rows_at(nison_full_evidence, ts) or n_rows
+        m_rows = murphy_groups.get(ts, []) or m_full
+        n_rows = nison_groups.get(ts, [])
+
         m_evidence_set = _build_evidence_set(m_full)
         n_evidence_set = _build_evidence_set(n_full)
         if len(m_evidence_set) < 34:
@@ -130,11 +168,10 @@ def build_events(*, market_context, murphy, nison, risk, execution, tiz, year, o
         if len(n_evidence_set) < 44:
             raise AssertionError(f"{ts}: Nison full evidence set contains {len(n_evidence_set)} rules, expected 44")
 
-        # Compatibility layer: current Three-Book logic still consumes one
-        # selected row for the existing directional gate. Full rule evidence is
-        # passed in the evidence_set and provenance without changing semantics.
         m = legacy_selected_row(m_rows)
-        n = legacy_selected_row(n_rows)
+        # If legacy Nison has only the NISON_NONE sentinel, keep the full-rule
+        # evidence and use the existing aggregate semantics as compatibility input.
+        n = legacy_selected_row(n_rows) if n_rows else _nison_compat_from_full_rows(n_full)
         murphy_for_decision = {**m, "evidence_set": m_evidence_set, "evidence_count": len(m_evidence_set)}
         nison_for_decision = {**n, "evidence_set": n_evidence_set, "evidence_count": len(n_evidence_set)}
 
