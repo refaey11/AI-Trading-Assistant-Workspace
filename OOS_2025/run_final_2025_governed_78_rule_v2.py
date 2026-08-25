@@ -32,10 +32,31 @@ def normalize_full_evidence(source_csv: Path, output_csv: Path, family: str) -> 
     df.to_csv(output_csv, index=False)
 
 
-def assert_full_manifest(path: Path) -> dict:
+def assert_full_manifest(path: Path, events_path: Path | None = None) -> dict:
     manifest = json.loads(path.read_text(encoding="utf-8"))
     murphy_count = manifest.get("murphy_rule_count")
     nison_count = manifest.get("nison_rule_count")
+
+    # Contract hardening: older producer manifests may contain the per-event
+    # counts in the event CSV but omit the top-level receipt fields. Derive them
+    # from the actual emitted event stream instead of failing on a bookkeeping
+    # mismatch. The event stream must still prove 34/44 for every row.
+    if (murphy_count is None or nison_count is None) and events_path is not None and events_path.exists():
+        events = pd.read_csv(events_path)
+        required = {"murphy_rule_count", "nison_rule_count"}
+        if not required.issubset(events.columns) or events.empty:
+            raise AssertionError("Final event stream lacks governed 34+44 rule-count columns")
+        if not (events["murphy_rule_count"] == 34).all():
+            raise AssertionError("Final event stream contains a row without exactly 34 Murphy rules")
+        if not (events["nison_rule_count"] == 44).all():
+            raise AssertionError("Final event stream contains a row without exactly 44 Nison rules")
+        murphy_count = int(events["murphy_rule_count"].min())
+        nison_count = int(events["nison_rule_count"].min())
+        manifest["murphy_rule_count"] = murphy_count
+        manifest["nison_rule_count"] = nison_count
+        manifest["event_stream_rule_counts_derived"] = True
+        path.write_text(json.dumps(manifest, indent=2, default=str), encoding="utf-8")
+
     if murphy_count != 34:
         raise AssertionError(f"Final manifest Murphy count != 34: {manifest}")
     if nison_count != 44:
@@ -100,8 +121,6 @@ def main() -> int:
         "--year", "2025",
     ])
 
-    # Legacy selected rows remain the compatibility layer used by the existing
-    # Three-Book/risk path; they are not the full evidence boundary.
     m21d = read_csv(murphy_0021, {"timestamp", "status", "directional_confirmation"})
     m22d = read_csv(args.murphy_0022_0023, {"timestamp", "status", "directional_confirmation", "rule_id"})
     frames = []
@@ -164,7 +183,10 @@ def main() -> int:
         "--optional-tiz",
     ])
 
-    event_manifest = assert_full_manifest(out / "FINAL_2025_DECISION_EVENTS_MANIFEST.json")
+    event_manifest = assert_full_manifest(
+        out / "FINAL_2025_DECISION_EVENTS_MANIFEST.json",
+        events_path=events,
+    )
 
     if args.validation_only:
         validation = {
