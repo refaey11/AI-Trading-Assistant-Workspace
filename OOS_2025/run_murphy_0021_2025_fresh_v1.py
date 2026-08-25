@@ -14,6 +14,20 @@ from MURPHY_EVALUATORS_V1.murphy_0021_0023_evaluator import evaluate_0021
 
 REQUIRED_H1 = {"timestamp", "open", "high", "low", "close"}
 REQUIRED_M1 = {"timestamp", "open", "high", "low", "close", "volume"}
+CANONICAL_M1_NAME = "GBPUSD_M1_MASTER_2016_2026.csv"
+
+
+def resolve_canonical_m1(path: str | Path) -> Path:
+    candidate = Path(path)
+    if candidate.name == CANONICAL_M1_NAME:
+        return candidate
+    for root in (candidate.parent, *candidate.parents):
+        matches = list(root.rglob(CANONICAL_M1_NAME))
+        if matches:
+            return matches[0]
+    raise ValueError(
+        f"Canonical M1 source {CANONICAL_M1_NAME!r} was not found near {candidate}; refusing non-canonical source."
+    )
 
 
 def _load_ohlcv(path: str | Path, required: set[str]) -> pd.DataFrame:
@@ -47,6 +61,7 @@ def build_canonical_h1_volume_context(m1_path: str | Path) -> pd.DataFrame:
     aggregated to H1, then compare current aggregated volume with the previous
     completed H1 volume. No new threshold is introduced.
     """
+    m1_path = resolve_canonical_m1(m1_path)
     m1 = _load_ohlcv(m1_path, REQUIRED_M1)
     m1["h1_timestamp"] = m1["timestamp"].dt.floor("h")
     h1 = (
@@ -65,15 +80,12 @@ def build_canonical_h1_volume_context(m1_path: str | Path) -> pd.DataFrame:
 
 
 def run(path: str | Path, m1_path: str | Path) -> tuple[pd.DataFrame, dict]:
+    m1_path = resolve_canonical_m1(m1_path)
     full_h1 = load_h1(path)
     df = full_h1[full_h1["timestamp"].dt.year.eq(2025)].copy().reset_index(drop=True)
     if df.empty:
         raise ValueError("No 2025 rows found")
 
-    # Price context is source-faithful: carry the immediately preceding
-    # completed H1 close into the first 2025 row when it exists. This avoids
-    # treating the 2025 boundary itself as missing evidence when the source
-    # contains the prior completed H1 bar.
     full_h1["previous_close"] = full_h1["close"].shift(1)
     df = full_h1[full_h1["timestamp"].dt.year.eq(2025)].copy().reset_index(drop=True)
 
@@ -120,6 +132,7 @@ def run(path: str | Path, m1_path: str | Path) -> tuple[pd.DataFrame, dict]:
         "price_context_policy": "carry immediately preceding completed H1 close from the source history into the first 2025 row when available",
         "volume_semantics": "canonical project VOLUME_CONFIRMATION_V2: M1_TitanFX volume aggregated to H1, then current H1 volume versus previous completed H1 volume",
         "volume_source": "GBPUSD M1 master, source-faithful aggregation; no new threshold",
+        "m1_source_file": m1_path.name,
         "m1_rows_total": int(len(pd.read_csv(m1_path))),
         "tuning": False,
         "notes": [
