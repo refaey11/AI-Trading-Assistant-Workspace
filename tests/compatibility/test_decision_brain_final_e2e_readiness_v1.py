@@ -240,6 +240,23 @@ def test_circleci_governed_final_78_rule_path_uses_full_evidence():
         assert provenance["source_manifest"]["oos_tuning"] is False
         assert provenance["source_manifest"]["new_rule_semantics"] is False
 
+        source_manifest = provenance["source_manifest"]
+        diagnostic = {
+            "events": source_manifest.get("events"),
+            "executable": source_manifest.get("executable"),
+            "no_trade": source_manifest.get("no_trade"),
+            "not_evaluable": source_manifest.get("not_evaluable"),
+            "murphy_rule_count_in_event": source_manifest.get("murphy_rule_count_in_event"),
+            "nison_rule_count_in_event": source_manifest.get("nison_rule_count_in_event"),
+            "tiz_verified_events": source_manifest.get("tiz_verified_events"),
+            "primary_reason_counts": source_manifest.get("primary_reason_counts", {}),
+            "event_status_counts": source_manifest.get("event_status_counts", {}),
+            "execution_status_counts": source_manifest.get("execution_status_counts", {}),
+            "risk_pass_counts": source_manifest.get("risk_pass_counts", {}),
+            "tiz_status_counts": source_manifest.get("tiz_status_counts", {}),
+        }
+        print("FINAL_2025_NO_TRADE_DIAGNOSTIC=" + json.dumps(diagnostic, sort_keys=True))
+
         # Canonical profitability contract currently stores performance metrics
         # under the frozen `core` object. Validate the actual canonical fields
         # instead of requiring duplicated top-level aliases.
