@@ -43,19 +43,19 @@ def _full_rule_audit(
     murphy_evidence: Mapping[str, Any],
     nison_evidence: Mapping[str, Any],
 ) -> dict[str, Any] | None:
-    """Validate a full rule envelope and preserve Nison direction semantics.
+    """Validate a full rule envelope and require the governed adapter receipt.
 
-    A Nison rule FAIL is evidence that the specific pattern did not confirm.
-    It is not automatically an opposite-direction contradiction. A hard
-    contradiction exists only when the evidence explicitly declares one, or
-    when a directional Nison FAIL is explicitly on the opposite side of the
-    already-established Murphy/Brain direction.
+    Missing/unevaluable rule results are preserved and do not become signals.
+    The consumer only uses existing PASS/confirmation/contradiction semantics.
     """
     m_rows = _rule_rows(murphy_evidence)
     n_rows = _rule_rows(nison_evidence)
     if not m_rows and not n_rows:
         return None
 
+    # Full evidence is now allowed into this boundary only through the
+    # governed 78-rule adapter. This makes the adapter the single ingress for
+    # the full-rule path rather than a parallel verification sidecar.
     governed_package = murphy_evidence.get("governed_78_package")
     nison_package = nison_evidence.get("governed_78_package")
     if not isinstance(governed_package, Mapping) or governed_package != nison_package:
@@ -95,15 +95,7 @@ def _full_rule_audit(
     m_bullish = any(d in {"BULLISH", "BUY", "BULL"} for d in m_pass_directions)
     m_bearish = any(d in {"BEARISH", "SELL", "BEAR"} for d in m_pass_directions)
 
-    n_fail_directions = {
-        _norm(r.get("directional_confirmation") or r.get("direction"))
-        for r in n_rows
-        if _norm(r.get("status")) == "FAIL"
-    } & {"BULLISH", "BEARISH", "BUY", "SELL", "BULL", "BEAR"}
-    n_bullish_fail = any(d in {"BULLISH", "BUY", "BULL"} for d in n_fail_directions)
-    n_bearish_fail = any(d in {"BEARISH", "SELL", "BEAR"} for d in n_fail_directions)
-
-    n_explicit_contradiction = any(
+    n_contradiction = any(
         bool(r.get("contradiction", False))
         or _norm(r.get("confirmation")) in {"CONTRADICTED", "CONTRADICTION"}
         for r in n_rows
@@ -116,10 +108,7 @@ def _full_rule_audit(
         "nison_rule_count": len(n_ids),
         "murphy_bullish_pass": m_bullish,
         "murphy_bearish_pass": m_bearish,
-        "nison_bullish_fail": n_bullish_fail,
-        "nison_bearish_fail": n_bearish_fail,
-        "nison_explicit_contradiction": n_explicit_contradiction,
-        "nison_contradiction": n_explicit_contradiction,
+        "nison_contradiction": n_contradiction,
         "nison_confirmed": n_confirmed,
         "adapter_receipt": dict(governed_package.get("receipt", {})),
     }
@@ -153,11 +142,7 @@ def evaluate_three_book_decision(
             return _no_trade("MURPHY_FULL_RULE_BRAIN_DIRECTION_CONFLICT", timestamp, source_rule_ids)
         if full_audit["murphy_bearish_pass"] and bias == "BULLISH":
             return _no_trade("MURPHY_FULL_RULE_BRAIN_DIRECTION_CONFLICT", timestamp, source_rule_ids)
-        if full_audit["nison_explicit_contradiction"]:
-            return _no_trade("NISON_FULL_RULE_CONTRADICTION", timestamp, source_rule_ids)
-        if bias == "BULLISH" and full_audit["nison_bearish_fail"]:
-            return _no_trade("NISON_FULL_RULE_CONTRADICTION", timestamp, source_rule_ids)
-        if bias == "BEARISH" and full_audit["nison_bullish_fail"]:
+        if full_audit["nison_contradiction"]:
             return _no_trade("NISON_FULL_RULE_CONTRADICTION", timestamp, source_rule_ids)
 
     # Murphy is required to supply technical context for direction.
@@ -189,14 +174,7 @@ def evaluate_three_book_decision(
     nison_confirmation = _norm(nison_evidence.get("confirmation"))
     if full_audit and full_audit.get("nison_confirmed"):
         nison_confirmation = "CONFIRMED"
-    if full_audit:
-        # The aggregate-level `contradiction` field historically collapsed any
-        # directional FAIL into a global contradiction. On the governed full-rule
-        # path, contradiction is already resolved above using Murphy direction,
-        # so do not re-apply that over-broad aggregate flag here.
-        nison_contradiction = bool(full_audit.get("nison_explicit_contradiction"))
-    else:
-        nison_contradiction = bool(nison_evidence.get("contradiction", False)) or nison_confirmation in {"CONTRADICTED", "CONTRADICTION"}
+    nison_contradiction = bool(nison_evidence.get("contradiction", False)) or nison_confirmation in {"CONTRADICTED", "CONTRADICTION"}
     if nison_contradiction:
         return _no_trade("NISON_CONTRADICTION", timestamp, source_rule_ids)
 
