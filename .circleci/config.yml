@@ -70,15 +70,17 @@ jobs:
               --murphy-0022-0023 artifacts/final_78/MURPHY_0022_0023_2025.csv \
               --output-dir artifacts/final_78
       - run:
-          name: Audit 2025 direction arbitration (diagnostic only)
+          name: Audit 78-rule evidence coverage and direction arbitration
           command: |
             set -eu
-            python OOS_2025/audit_direction_arbitration_2025_v1.py \
-              --context artifacts/final_78/context/context.csv \
-              --murphy artifacts/final_78/MURPHY_2025_CANDIDATE_STREAM.csv \
-              --risk artifacts/final_78/RISK_2025_EVIDENCE.csv \
-              --output-json artifacts/final_78/DIRECTION_ARBITRATION_2025_AUDIT.json \
-              --output-csv artifacts/final_78/DIRECTION_ARBITRATION_2025_CONFUSION.csv
+            python OOS_2025/run_2025_evidence_coverage_direction_audit_v1.py \
+              --market-state artifacts/final_78/GBPUSD_MARKET_STATE.csv \
+              --murphy-full artifacts/final_78/MURPHY_2025_FULL_EVIDENCE.csv \
+              --nison-full artifacts/final_78/NISON_2025_FULL_EVIDENCE_ENVELOPE.csv \
+              --murphy-candidate artifacts/final_78/MURPHY_2025_CANDIDATE_STREAM.csv \
+              --nison-candidate artifacts/final_78/NISON_2025_CANDIDATE_STREAM.csv \
+              --decision-events artifacts/final_78/FINAL_2025_DECISION_EVENTS.csv \
+              --output artifacts/final_78/DIRECTION_ARBITRATION_2025_AUDIT.json
       - run:
           name: Verify governed 34+44 provenance and OOS gates
           command: >-
