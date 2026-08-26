@@ -32,7 +32,7 @@ def build_nison_full_envelope(raw_csv: Path, out_csv: Path) -> None:
     raw = raw.rename(columns={"rule_id": "source_rule_id"})
     raw["evidence_available"] = raw.get("available", raw["status"].isin(["PASS", "FAIL"]))
     raw["evidence_source"] = "nison_2025_full_production"
-    keep = [c for c in raw.columns if c not in {"timestamp"}]
+    keep = [c for c in raw.columns if c != "timestamp"]
     out = raw[["timestamp", *keep]].sort_values(["timestamp", "source_rule_id"], kind="stable")
     out.to_csv(out_csv, index=False)
 
@@ -101,7 +101,6 @@ def main() -> int:
         "--year", "2025",
     ])
 
-    # Use only source-backed PIT outputs for the selected compatibility row.
     m21d = pd.read_csv(m21)
     m22d = pd.read_csv(a.murphy_0022_0023)
     for d in (m21d, m22d):
@@ -131,21 +130,18 @@ def main() -> int:
         "--year", "2025",
     ])
 
-    # Nison selected row remains the existing aggregate contract for decision compatibility.
     nison_candidate = out / "NISON_2025_CANDIDATE_STREAM.csv"
-    run([
-        "python", "-c",
-        (
-            "import pandas as pd; "
-            "from OOS_2025.nison_2025_evidence_aggregate_v1 import aggregate_nison_evidence; "
-            f=\"{nison_raw}\"; o=\"{nison_candidate}\"; "
-            "r=pd.read_csv(f); r['timestamp']=pd.to_datetime(r['timestamp'],utc=True); "
-            "a=aggregate_nison_evidence(r); "
-            "p=r[r['status'].eq('PASS') & r['direction'].astype(str).isin(['BULLISH','BEARISH'])].groupby('timestamp')['rule_id'].first().rename('source_rule_id'); "
-            "a=a.merge(p,on='timestamp',how='left'); a['source_rule_id']=a['source_rule_id'].fillna('NISON_NONE'); "
-            f"a[['timestamp','confirmation','contradiction','source_rule_id']].to_csv(o,index=False)"
-        ),
-    ])
+    nison_code = (
+        "import pandas as pd; "
+        "from OOS_2025.nison_2025_evidence_aggregate_v1 import aggregate_nison_evidence; "
+        f"f={str(nison_raw)!r}; o={str(nison_candidate)!r}; "
+        "r=pd.read_csv(f); r['timestamp']=pd.to_datetime(r['timestamp'],utc=True); "
+        "a=aggregate_nison_evidence(r); "
+        "p=r[r['status'].eq('PASS') & r['direction'].astype(str).isin(['BULLISH','BEARISH'])].groupby('timestamp')['rule_id'].first().rename('source_rule_id'); "
+        "a=a.merge(p,on='timestamp',how='left'); a['source_rule_id']=a['source_rule_id'].fillna('NISON_NONE'); "
+        "a[['timestamp','confirmation','contradiction','source_rule_id']].to_csv(o,index=False)"
+    )
+    run(["python", "-c", nison_code])
 
     events = out / "FINAL_2025_DECISION_EVENTS.csv"
     run([
@@ -163,8 +159,6 @@ def main() -> int:
         "--optional-tiz",
     ])
 
-    # Same frozen profitability implementation; this runner only changes how
-    # evidence is assembled and proven, not how trades are scored.
     manifest = backtest(events, a.h1, out)
     manifest["official_baseline"] = False
     manifest["full_78_rule_provenance"] = True
