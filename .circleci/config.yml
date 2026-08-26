@@ -70,12 +70,22 @@ jobs:
               --murphy-0022-0023 artifacts/final_78/MURPHY_0022_0023_2025.csv \
               --output-dir artifacts/final_78
       - run:
+          name: Audit 2025 direction arbitration (diagnostic only)
+          command: |
+            set -eu
+            python OOS_2025/audit_direction_arbitration_2025_v1.py \
+              --context artifacts/final_78/context/context.csv \
+              --murphy artifacts/final_78/MURPHY_2025_CANDIDATE_STREAM.csv \
+              --risk artifacts/final_78/RISK_2025_EVIDENCE.csv \
+              --output-json artifacts/final_78/DIRECTION_ARBITRATION_2025_AUDIT.json \
+              --output-csv artifacts/final_78/DIRECTION_ARBITRATION_2025_CONFUSION.csv
+      - run:
           name: Verify governed 34+44 provenance and OOS gates
           command: >-
             python -c "import json; m=json.load(open('artifacts/final_78/FINAL_2025_DECISION_EVENTS_MANIFEST.json')); assert m['murphy_rule_count_in_event']==34,m; assert m['nison_rule_count_in_event']==44,m; assert m['fan_in_mode']=='LOSSLESS_FULL_EVIDENCE_WITH_LEGACY_DECISION_COMPAT',m; assert m['oos_tuning'] is False,m; assert m['new_rule_semantics'] is False,m; print(json.dumps(m,indent=2))"
       - run:
           name: Verify fail-closed provenance tests
-          command: python -m pytest -q tests/evaluation/test_final_78_rule_provenance_gate_v1.py
+          command: python -m pytest -q tests/evaluation/test_final_78_rule_provenance_gate_v1.py tests/evaluation/test_direction_arbitration_2025_v1.py
       - store_artifacts:
           path: artifacts/final_78
           destination: final_2025_governed_78_rule
