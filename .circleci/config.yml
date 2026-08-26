@@ -82,6 +82,50 @@ jobs:
             curl -L --fail --silent --show-error "$base" "${auth[@]}" -H 'Dropbox-API-Arg: {"path":"/AI_Trading_Assistant_FULL_PROJECT_V1/AI_Trading_Assistant_CONTEXT_AWARE_RETRIEVAL_V2.zip"}' -o /tmp/mtf_retrieval_shadow/zips/retrieval.zip
             python OOS_2025/run_pre2025_mtf_retrieval_shadow_probe_v2.py --mtf /tmp/mtf_retrieval_shadow/zips/mtf.zip --retrieval /tmp/mtf_retrieval_shadow/zips/retrieval.zip --query-as-of 2024-12-31T12:00:00Z --output artifacts/final_78/memory_shadow/PRE2025_MTF_RETRIEVAL_SHADOW_PROBE_V2.json
       - run:
+          name: Run real-data pre-2025 arbitration shadow
+          command: |
+            set -eu
+            test -n "${DROPBOX_ACCESS_TOKEN:-}" || { echo 'BLOCKED: configure CircleCI project secret DROPBOX_ACCESS_TOKEN.'; exit 2; }
+            rm -rf /tmp/pre2025_arbitration
+            mkdir -p /tmp/pre2025_arbitration/market /tmp/pre2025_arbitration/unpack /tmp/pre2025_arbitration/artifacts
+            base='https://content.dropboxapi.com/2/files/download'
+            auth=(-H "Authorization: Bearer ${DROPBOX_ACCESS_TOKEN}" -H 'Content-Type: application/octet-stream')
+            curl -L --fail --silent --show-error "$base" "${auth[@]}" -H 'Dropbox-API-Arg: {"path":"/AI_Trading_Assistant_FULL_PROJECT_V1/AI_Trading_Assistant_MARKET_STATE_READER_V1.zip"}' -o /tmp/pre2025_arbitration/market/source.zip
+            unzip -q /tmp/pre2025_arbitration/market/source.zip -d /tmp/pre2025_arbitration/unpack
+            MARKET=$(find /tmp/pre2025_arbitration/unpack -type f -name 'GBPUSD_MARKET_STATE.csv' | head -1)
+            test -n "$MARKET"
+            test -n "${H1_CSV:-}"; test -n "${M1_CSV:-}"
+            mkdir -p artifacts/final_78/pre2025_arbitration
+            for year in 2016 2017 2018 2019 2020 2021 2022 2023 2024; do
+              mkdir -p "artifacts/final_78/pre2025_arbitration/$year"
+              python OOS_2025/pre2025_realdata_arbitration_shadow_v1.py \
+                --market-state "$MARKET" \
+                --mtf /tmp/mtf_retrieval_shadow/zips/mtf.zip \
+                --h1 "$H1_CSV" \
+                --m1 "$M1_CSV" \
+                --year "$year" \
+                --output "artifacts/final_78/pre2025_arbitration/$year/ARBITRATION_SHADOW.csv"
+            done
+            python - <<'PY'
+            import json
+            from pathlib import Path
+            root=Path('artifacts/final_78/pre2025_arbitration')
+            rows=[]
+            for p in sorted(root.glob('*/ARBITRATION_SHADOW.json')):
+                rows.append(json.loads(p.read_text(encoding='utf-8')))
+            summary={
+                'status':'PASS_SHADOW_ONLY',
+                'years':rows,
+                'oos_2025_locked':True,
+                'replacement_pnl':False,
+                'policy_changed':False,
+                'new_rule_semantics':False,
+                'purpose':'Measure real-data Brain-vs-Murphy topology before any arbitration policy change.'
+            }
+            (root/'PRE2025_ARBITRATION_SHADOW_SUMMARY.json').write_text(json.dumps(summary,indent=2,sort_keys=True),encoding='utf-8')
+            print(json.dumps(summary,indent=2,sort_keys=True))
+            PY
+      - run:
           name: Verify governed 34+44 provenance and OOS gates
           command: python -c "import json; m=json.load(open('artifacts/final_78/FINAL_2025_DECISION_EVENTS_MANIFEST.json')); assert m['murphy_rule_count_in_event']==34,m; assert m['nison_rule_count_in_event']==44,m; assert m['fan_in_mode']=='LOSSLESS_FULL_EVIDENCE_WITH_LEGACY_DECISION_COMPAT',m; assert m['oos_tuning'] is False,m; assert m['new_rule_semantics'] is False,m; print(json.dumps(m,indent=2))"
       - run:
