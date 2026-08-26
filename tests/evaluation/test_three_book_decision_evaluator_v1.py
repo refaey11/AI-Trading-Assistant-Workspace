@@ -99,7 +99,7 @@ def _full_package(murphy_rows, nison_rows):
     }
 
 
-def _full_rule_inputs(nison_rows, *, legacy_status="PASS", legacy_direction="BULLISH", bullish_pass=True, bearish_pass=False):
+def _full_rule_inputs(nison_rows, *, legacy_status="PASS", legacy_direction="BULLISH", bullish_pass=True, bearish_pass=False, brain_bias="bullish"):
     murphy_rows = [{"source_rule_id": f"MURPHY_{i:04d}", "status": "NOT_EVALUABLE", "direction": "NONE"} for i in range(1, 35)]
     if bullish_pass:
         murphy_rows[2] = {"source_rule_id": "MURPHY_0003", "status": "PASS", "direction": "BULLISH"}
@@ -107,7 +107,7 @@ def _full_rule_inputs(nison_rows, *, legacy_status="PASS", legacy_direction="BUL
         murphy_rows[3] = {"source_rule_id": "MURPHY_0004", "status": "PASS", "direction": "BEARISH"}
     package = _full_package(murphy_rows, nison_rows)
     return {
-        "brain_assessment": {"directional_bias": "bullish", "confidence": 0.8},
+        "brain_assessment": {"directional_bias": brain_bias, "confidence": 0.8},
         "murphy_evidence": {"status": legacy_status, "direction": legacy_direction, "evidence_set": {row["source_rule_id"]: row for row in murphy_rows}, "governed_78_package": package},
         "nison_evidence": {"confirmation": "ABSENT", "contradiction": False, "evidence_set": {row["source_rule_id"]: row for row in nison_rows}, "governed_78_package": package},
         "tiz_evidence": {"process_state": "READY"},
@@ -169,3 +169,22 @@ def test_full_rule_bullish_and_bearish_is_explicit_conflict(monkeypatch):
     result = evaluate_three_book_decision(**args)
     assert result["decision"]["final"] == "NO_TRADE"
     assert result["decision"]["reasons_against"] == ["MURPHY_FULL_RULE_CONFLICT"]
+
+
+def test_full_rule_murphy_direction_is_used_when_brain_is_non_directional(monkeypatch):
+    nison_rows = _nison_rows()
+    args = _full_rule_inputs(nison_rows, brain_bias="neutral")
+    monkeypatch.setattr(evaluator, "_allowed_rule_ids", lambda: set(args["source_rule_ids"]))
+    result = evaluate_three_book_decision(**args)
+    assert result["decision"]["final"] == "BUY"
+    assert result["signal"]["status"] == "EXECUTABLE"
+    assert result["audit"]["direction_source"] == "MURPHY_FULL_RULE_ENVELOPE"
+
+
+def test_full_rule_murphy_direction_still_vetoed_by_explicit_brain_opposition(monkeypatch):
+    nison_rows = _nison_rows()
+    args = _full_rule_inputs(nison_rows, brain_bias="bearish")
+    monkeypatch.setattr(evaluator, "_allowed_rule_ids", lambda: set(args["source_rule_ids"]))
+    result = evaluate_three_book_decision(**args)
+    assert result["decision"]["final"] == "NO_TRADE"
+    assert result["decision"]["reasons_against"] == ["MURPHY_FULL_RULE_BRAIN_DIRECTION_CONFLICT"]
