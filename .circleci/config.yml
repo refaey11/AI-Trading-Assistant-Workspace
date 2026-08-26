@@ -85,13 +85,13 @@ jobs:
           path: artifacts/final_78
           destination: final_2025_governed_78_rule
 
-  pre2025_arbitration_shadow_v1:
+  pre2025_context_gate_shadow_v1:
     docker:
       - image: cimg/python:3.12
     steps:
       - checkout
       - run:
-          name: Install shadow dependencies
+          name: Install context-gate dependencies
           command: python -m pip install --upgrade pip pandas
       - run:
           name: Acquire pre-2025 sources
@@ -109,21 +109,70 @@ jobs:
             unzip -q /tmp/pre2025/h1/source.zip -d /tmp/pre2025/h1/unpack
             unzip -q /tmp/pre2025/m1/source.zip -d /tmp/pre2025/m1/unpack
             MARKET=$(find /tmp/pre2025/market/unpack -type f -name 'GBPUSD_MARKET_STATE.csv' | head -1)
+            MTF=$(find /tmp/pre2025/mtf/unpack -type f -name 'GBPUSD_MTF_H4_H1.csv' | head -1)
             H1=$(find /tmp/pre2025/h1/unpack -type f -name 'GBPUSD_H1_2016_2025_MASTER.csv' | head -1)
             M1=$(find /tmp/pre2025/m1/unpack -type f -name 'GBPUSD_M1_MASTER_2016_2026.csv' | head -1)
-            test -n "$MARKET"; test -n "$H1"; test -n "$M1"
+            test -n "$MARKET"; test -n "$MTF"; test -n "$H1"; test -n "$M1"
             echo "export MARKET=$MARKET" >> "$BASH_ENV"
+            echo "export MTF=$MTF" >> "$BASH_ENV"
             echo "export H1=$H1" >> "$BASH_ENV"
             echo "export M1=$M1" >> "$BASH_ENV"
       - run:
-          name: Run 2016-2024 arbitration shadow
-          command: bash OOS_2025/run_pre2025_arbitration_circleci_v1.sh
+          name: Run 2016-2024 Murphy context-gating shadow
+          command: |
+            set -eu
+            rm -rf artifacts/pre2025_context_gate
+            mkdir -p artifacts/pre2025_context_gate
+            for year in 2016 2017 2018 2019 2020 2021 2022 2023 2024; do
+              mkdir -p "artifacts/pre2025_context_gate/$year"
+              python OOS_2025/pre2025_murphy_context_gate_shadow_v1.py \
+                --market-state "$MARKET" \
+                --mtf "$MTF" \
+                --h1 "$H1" \
+                --m1 "$M1" \
+                --year "$year" \
+                --output "artifacts/pre2025_context_gate/$year/CONTEXT_GATE.csv"
+            done
+            python - <<'PY'
+            import json
+            from pathlib import Path
+            root = Path('artifacts/pre2025_context_gate')
+            rows = [json.loads(p.read_text(encoding='utf-8')) for p in sorted(root.glob('*/CONTEXT_GATE.json'))]
+            summary = {
+                'status': 'PASS_SHADOW_ONLY',
+                'years': rows,
+                'oos_2025_locked': True,
+                'oos_tuning': False,
+                'policy_changed': False,
+                'new_rule_semantics': False,
+                'replacement_pnl': False,
+                'purpose': 'Test whether existing Brain context/regime improves the quality of existing Murphy direction.'
+            }
+            (root / 'PRE2025_MURPHY_CONTEXT_GATE_SUMMARY.json').write_text(json.dumps(summary, indent=2, sort_keys=True), encoding='utf-8')
+            print(json.dumps(summary, indent=2, sort_keys=True))
+            PY
+      - run:
+          name: Verify pre-2025 context-gate invariants
+          command: |
+            python - <<'PY'
+            import json
+            from pathlib import Path
+            for p in Path('artifacts/pre2025_context_gate').glob('*/CONTEXT_GATE.json'):
+                d = json.loads(p.read_text())
+                assert d['oos_2025_locked'] is True
+                assert d['oos_tuning'] is False
+                assert d['policy_changed'] is False
+                assert d['new_rule_semantics'] is False
+                assert d['replacement_pnl'] is False
+                assert d['future_feature_leakage'] is False
+            print('pre-2025 Murphy context-gate invariants: PASS')
+            PY
       - store_artifacts:
-          path: artifacts/pre2025_arbitration
-          destination: pre2025_arbitration_shadow
+          path: artifacts/pre2025_context_gate
+          destination: pre2025_context_gate_shadow
 
 workflows:
   final_2025_governed_78_rule:
     jobs:
       - final_2025_governed_78_rule_v1
-      - pre2025_arbitration_shadow_v1
+      - pre2025_context_gate_shadow_v1
