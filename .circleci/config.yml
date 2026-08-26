@@ -85,13 +85,13 @@ jobs:
           path: artifacts/final_78
           destination: final_2025_governed_78_rule
 
-  pre2025_context_gate_shadow_v1:
+  pre2025_arbitration_shadow_v1:
     docker:
       - image: cimg/python:3.12
     steps:
       - checkout
       - run:
-          name: Install context-gate dependencies
+          name: Install shadow dependencies
           command: python -m pip install --upgrade pip pandas
       - run:
           name: Acquire pre-2025 sources
@@ -118,7 +118,7 @@ jobs:
             echo "export H1=$H1" >> "$BASH_ENV"
             echo "export M1=$M1" >> "$BASH_ENV"
       - run:
-          name: Run 2016-2024 Murphy context-gating shadow
+          name: Run 2016-2024 context-gating shadow
           command: |
             set -eu
             rm -rf artifacts/pre2025_context_gate
@@ -175,4 +175,4 @@ workflows:
   final_2025_governed_78_rule:
     jobs:
       - final_2025_governed_78_rule_v1
-      - pre2025_context_gate_shadow_v1
+      - pre2025_arbitration_shadow_v1
