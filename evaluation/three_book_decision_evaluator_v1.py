@@ -145,19 +145,26 @@ def evaluate_three_book_decision(
     if full_audit and full_audit.get("status") != "PASS":
         return _no_trade(str(full_audit.get("reason", "FULL_RULE_EVIDENCE_REJECTED")), timestamp, source_rule_ids)
 
-    # When the governed 34+44 envelope is present and verified, it is the
-    # authoritative Murphy input. The legacy candidate stream is retained only
-    # for backward compatibility/provenance and must not veto or erase a valid
-    # directional PASS found in the complete evidence set.
+    # In the governed 34+44 path, Murphy is the existing directional source.
+    # The Decision Brain V1 assessment can legitimately be NEUTRAL/CONFLICTED
+    # because its recovered implementation aggregates market-row evidence and
+    # does not consume the Murphy/Nison envelope directly. A non-directional
+    # Brain must therefore not erase a single-direction Murphy PASS. It may still
+    # veto when it explicitly disagrees (BULLISH vs BEARISH or vice versa).
+    effective_bias = bias
+    direction_source = "DECISION_BRAIN"
     if full_audit:
         if full_audit["murphy_bullish_pass"] and full_audit["murphy_bearish_pass"]:
             return _no_trade("MURPHY_FULL_RULE_CONFLICT", timestamp, source_rule_ids)
         if not full_audit["murphy_directional_pass"]:
             return _no_trade("MURPHY_FULL_RULE_NO_DIRECTIONAL_PASS", timestamp, source_rule_ids)
-        if full_audit["murphy_bullish_pass"] and bias == "BEARISH":
-            return _no_trade("MURPHY_FULL_RULE_BRAIN_DIRECTION_CONFLICT", timestamp, source_rule_ids)
-        if full_audit["murphy_bearish_pass"] and bias == "BULLISH":
-            return _no_trade("MURPHY_FULL_RULE_BRAIN_DIRECTION_CONFLICT", timestamp, source_rule_ids)
+        murphy_full_direction = "BULLISH" if full_audit["murphy_bullish_pass"] else "BEARISH"
+        if bias in {"BULLISH", "BEARISH"}:
+            if murphy_full_direction != bias:
+                return _no_trade("MURPHY_FULL_RULE_BRAIN_DIRECTION_CONFLICT", timestamp, source_rule_ids)
+        else:
+            effective_bias = murphy_full_direction
+            direction_source = "MURPHY_FULL_RULE_ENVELOPE"
         if full_audit["nison_contradiction"]:
             return _no_trade("NISON_FULL_RULE_CONTRADICTION", timestamp, source_rule_ids)
     else:
@@ -196,10 +203,10 @@ def evaluate_three_book_decision(
     if nison_contradiction:
         return _no_trade("NISON_CONTRADICTION", timestamp, source_rule_ids)
 
-    if bias not in {"BULLISH", "BEARISH"}:
+    if effective_bias not in {"BULLISH", "BEARISH"}:
         return _no_trade("BRAIN_DIRECTION_NOT_EXECUTABLE", timestamp, source_rule_ids)
 
-    final = "BUY" if bias == "BULLISH" else "SELL"
+    final = "BUY" if effective_bias == "BULLISH" else "SELL"
     strength = "strong" if nison_confirmation == "CONFIRMED" else "medium"
     confidence = float(brain_assessment.get("confidence", 0.0) or 0.0)
 
@@ -209,6 +216,7 @@ def evaluate_three_book_decision(
         "backtest_status": "UNTESTED",
         "full_rule_consumer": full_audit,
         "legacy_murphy_candidate_preserved": bool(full_audit),
+        "direction_source": direction_source,
     }
 
     return {
