@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# CI trigger: run the governed pre-2025 context-gating shadow on 2016-2024 only.
 : "${DROPBOX_ACCESS_TOKEN:?BLOCKED: configure CircleCI project secret DROPBOX_ACCESS_TOKEN.}"
 H1_INPUT="${H1_CSV:-${H1:?H1 source path is required.}}"
 M1_INPUT="${M1_CSV:-${M1:?M1 source path is required.}}"
@@ -32,6 +33,8 @@ echo "Using h1=$H1_INPUT"
 echo "Using m1=$M1_INPUT"
 echo "Using mtf=$MTF_INPUT"
 
+echo "Using schema-mapped Context Gate V4 (trend=H1, h4_trend=H4, mtf_state=combined)"
+
 for year in 2016 2017 2018 2019 2020 2021 2022 2023 2024; do
   YEAR_OUT="$OUT/$year"
   mkdir -p "$YEAR_OUT"
@@ -49,7 +52,7 @@ import json
 from pathlib import Path
 root=Path('artifacts/pre2025_arbitration')
 rows=[json.loads(p.read_text(encoding='utf-8')) for p in sorted(root.glob('*/CONTEXT_GATE.json'))]
-summary={'status':'PASS_SHADOW_ONLY','years':rows,'oos_2025_locked':True,'oos_tuning':False,'policy_changed':False,'new_rule_semantics':False,'replacement_pnl':False,'purpose':'Measure whether existing Brain context/regime improves the quality of existing Murphy direction.'}
+summary={'status':'PASS_SHADOW_ONLY','years':rows,'oos_2025_locked':True,'oos_tuning':False,'policy_changed':False,'new_rule_semantics':False,'replacement_pnl':False,'purpose':'Measure whether existing Brain context/regime improves the quality of existing Murphy direction.','schema_mapping':{'trend':'H1','h4_trend':'H4','mtf_state':'combined'}}
 (root/'PRE2025_MURPHY_CONTEXT_GATE_SUMMARY.json').write_text(json.dumps(summary,indent=2,sort_keys=True),encoding='utf-8')
 print(json.dumps(summary,indent=2,sort_keys=True))
 PY
