@@ -15,6 +15,72 @@ from evaluation.three_book_decision_evaluator_v1 import evaluate_three_book_deci
 from OOS_2025.execution_oos_adapter_v1 import build_execution_plan
 
 
+def _norm(value: Any) -> str:
+    return str(value or "").strip().upper()
+
+
+def _full_murphy_compatibility(murphy_evidence: Mapping[str, Any]) -> dict[str, Any]:
+    """Build a compatibility view from the complete governed Murphy envelope.
+
+    The full 34-rule evidence remains lossless. This view only prevents the
+    legacy downstream contract from selecting one arbitrary candidate row when
+    the complete envelope already contains directional PASS evidence.
+    No new thresholds, rule semantics, or direction-generation logic are added.
+    """
+    rows = murphy_evidence.get("evidence_set") or {}
+    if isinstance(rows, Mapping):
+        rows = list(rows.values())
+    elif not isinstance(rows, list):
+        rows = []
+
+    pass_directions = {
+        _norm(row.get("directional_confirmation") or row.get("direction"))
+        for row in rows
+        if _norm(row.get("status")) == "PASS"
+    } & {"BULLISH", "BEARISH", "BUY", "SELL", "BULL", "BEAR"}
+
+    bullish = any(v in {"BULLISH", "BUY", "BULL"} for v in pass_directions)
+    bearish = any(v in {"BEARISH", "SELL", "BEAR"} for v in pass_directions)
+
+    if bullish and not bearish:
+        return {
+            **dict(murphy_evidence),
+            "status": "PASS",
+            "direction": "BULLISH",
+            "compatibility_source": "FULL_34_RULE_EVIDENCE",
+        }
+    if bearish and not bullish:
+        return {
+            **dict(murphy_evidence),
+            "status": "PASS",
+            "direction": "BEARISH",
+            "compatibility_source": "FULL_34_RULE_EVIDENCE",
+        }
+    if bullish and bearish:
+        return {
+            **dict(murphy_evidence),
+            "status": "CONFLICT",
+            "direction": "NONE",
+            "compatibility_source": "FULL_34_RULE_EVIDENCE",
+        }
+
+    has_fail = any(_norm(row.get("status")) == "FAIL" for row in rows)
+    if has_fail:
+        return {
+            **dict(murphy_evidence),
+            "status": "FAIL",
+            "direction": "NONE",
+            "compatibility_source": "FULL_34_RULE_EVIDENCE",
+        }
+
+    return {
+        **dict(murphy_evidence),
+        "status": "NOT_EVALUABLE",
+        "direction": "NONE",
+        "compatibility_source": "FULL_34_RULE_EVIDENCE",
+    }
+
+
 def assemble_decision_event(
     *,
     decision_brain_module: Any,
@@ -32,7 +98,8 @@ def assemble_decision_event(
     provenance: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     governed_78 = None
-    if str((provenance or {}).get("fan_in_mode", "")) == "LOSSLESS_FULL_EVIDENCE_WITH_LEGACY_DECISION_COMPAT":
+    full_rule_path = str((provenance or {}).get("fan_in_mode", "")) == "LOSSLESS_FULL_EVIDENCE_WITH_LEGACY_DECISION_COMPAT"
+    if full_rule_path:
         adapter_result = build_governed_78_package(
             query_as_of=query_as_of,
             murphy_rows=murphy_evidence.get("evidence_set", {}),
@@ -85,9 +152,11 @@ def assemble_decision_event(
         decision_tiz["tiz_verified"] = False
         decision_tiz["tiz_optional_bypass"] = True
 
+    decision_murphy = _full_murphy_compatibility(murphy_evidence) if full_rule_path else dict(murphy_evidence)
+
     decision = evaluate_three_book_decision(
         brain_assessment=governance["assessment"],
-        murphy_evidence=murphy_evidence,
+        murphy_evidence=decision_murphy,
         nison_evidence=nison_evidence,
         tiz_evidence=decision_tiz,
         risk_evidence={
@@ -128,6 +197,7 @@ def assemble_decision_event(
             "oos_tuning": False,
             "governed_78_adapter_receipt": governed_78.get("receipt", {}) if governed_78 else None,
             "tiz_optional_bypass": bool(decision_tiz.get("tiz_optional_bypass", False)),
+            "murphy_compatibility_source": "FULL_34_RULE_EVIDENCE" if full_rule_path else "LEGACY_INPUT",
         },
     }
 
