@@ -65,10 +65,12 @@ def test_full_evidence_requires_exact_44_nison_rules(monkeypatch: pytest.MonkeyP
         )
 
 
-def test_producer_cli_schema_contains_explicit_full_evidence_inputs() -> None:
+def test_producer_cli_schema_contains_explicit_full_evidence_and_execution_fields() -> None:
     text = TARGET.read_text(encoding="utf-8")
     assert "--murphy-full-evidence" in text
     assert "--nison-full-evidence" in text
+    assert '"entry_price": execution_plan.get("entry_price")' in text
+    assert '"atr": float(e["atr"])' in text
     assert "LOSSLESS_FULL_EVIDENCE_WITH_LEGACY_DECISION_COMPAT" in text
     assert "FAIL_CLOSED: Final Brain event stream did not receive exactly 34 Murphy rules" in text
     assert "FAIL_CLOSED: Final Brain event stream did not receive exactly 44 Nison rules" in text
