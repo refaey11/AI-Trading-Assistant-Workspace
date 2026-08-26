@@ -37,6 +37,22 @@ def build_nison_full_envelope(raw_csv: Path, out_csv: Path) -> None:
     out.to_csv(out_csv, index=False)
 
 
+def normalize_murphy_full_evidence(path: Path) -> None:
+    df = pd.read_csv(path)
+    if "source_rule_id" not in df.columns and "rule_id" in df.columns:
+        df = df.rename(columns={"rule_id": "source_rule_id"})
+    required = {"timestamp", "source_rule_id", "status"}
+    missing = required - set(df.columns)
+    if missing:
+        raise ValueError(f"Murphy full evidence missing required columns: {sorted(missing)}")
+    df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True, errors="coerce")
+    if df["timestamp"].isna().any():
+        raise ValueError("Murphy full evidence contains invalid timestamps")
+    if df.duplicated(["timestamp", "source_rule_id"]).any():
+        raise ValueError("Murphy full evidence contains duplicate (timestamp, source_rule_id) rows")
+    df.to_csv(path, index=False)
+
+
 def main() -> int:
     p = argparse.ArgumentParser()
     p.add_argument("--h1", required=True, type=Path)
@@ -76,6 +92,7 @@ def main() -> int:
         "--output", str(m_full),
         "--manifest", str(out / "MURPHY_2025_FULL_EVIDENCE_MANIFEST.json"),
     ])
+    normalize_murphy_full_evidence(m_full)
 
     token = __import__("os").environ.get("DROPBOX_ACCESS_TOKEN")
     if not token:
@@ -87,7 +104,7 @@ def main() -> int:
         "https://content.dropboxapi.com/2/files/download",
         headers={
             "Authorization": f"Bearer {token}",
-            "Dropbox-API-Arg": json.dumps({"path": "/ai_trading_assistant_full_project_v1/AI_Trading_Assistant_MARKET_STATE_READER_V1/GBPUSD_MARKET_STATE.csv"}),
+            "Dropbox-API-Arg": json.dumps({"path": "/AI_Trading_Assistant_FULL_PROJECT_V1/AI_Trading_Assistant_MARKET_STATE_READER_V1/GBPUSD_MARKET_STATE.csv"}),
         },
     )
     with urllib.request.urlopen(req, timeout=180) as response, market.open("wb") as fh:
@@ -106,7 +123,7 @@ def main() -> int:
     for d in (m21d, m22d):
         d["timestamp"] = pd.to_datetime(d["timestamp"], utc=True)
     m21d["source_rule_id"] = "MURPHY_0021"
-    m22d["source_rule_id"] = m22d["rule_id"]
+    m22d["source_rule_id"] = m22d["rule_id"].astype(str)
     m21d["direction"] = m21d["directional_confirmation"].astype(str)
     m22d["direction"] = m22d["directional_confirmation"].astype(str)
     murphy = pd.concat([
