@@ -92,11 +92,6 @@ def _full_rule_audit(
     m_bullish = any(d in {"BULLISH", "BUY", "BULL"} for d in m_pass_directions)
     m_bearish = any(d in {"BEARISH", "SELL", "BEAR"} for d in m_pass_directions)
 
-    # For the full-rule path, a Nison FAIL is only a contradiction when its
-    # direction explicitly opposes the Brain/Murphy direction. A same-direction
-    # FAIL means "not confirmed", not "contradicted". The top-level aggregate
-    # contradiction flag is intentionally not authoritative for the governed
-    # full-rule envelope because it may represent the legacy candidate stream.
     n_opposite_direction_fail = False
     n_confirmed = False
     for row in n_rows:
@@ -121,6 +116,7 @@ def _full_rule_audit(
         "nison_rule_count": len(n_ids),
         "murphy_bullish_pass": m_bullish,
         "murphy_bearish_pass": m_bearish,
+        "murphy_directional_pass": m_bullish or m_bearish,
         "nison_contradiction": n_opposite_direction_fail,
         "nison_confirmed": n_confirmed,
         "adapter_receipt": dict(governed_package.get("receipt", {})),
@@ -142,28 +138,37 @@ def evaluate_three_book_decision(
         return _no_trade("RULE_ALLOWLIST_REJECT", timestamp, source_rule_ids)
 
     bias = _norm(brain_assessment.get("directional_bias"))
-    murphy_status = _norm(murphy_evidence.get("status"))
-    murphy_direction = _norm(murphy_evidence.get("direction") or murphy_evidence.get("candidate_direction"))
+    legacy_murphy_status = _norm(murphy_evidence.get("status"))
+    legacy_murphy_direction = _norm(murphy_evidence.get("direction") or murphy_evidence.get("candidate_direction"))
 
     full_audit = _full_rule_audit(murphy_evidence, nison_evidence)
     if full_audit and full_audit.get("status") != "PASS":
         return _no_trade(str(full_audit.get("reason", "FULL_RULE_EVIDENCE_REJECTED")), timestamp, source_rule_ids)
+
+    # When the governed 34+44 envelope is present and verified, it is the
+    # authoritative Murphy input. The legacy candidate stream is retained only
+    # for backward compatibility/provenance and must not veto or erase a valid
+    # directional PASS found in the complete evidence set.
     if full_audit:
         if full_audit["murphy_bullish_pass"] and full_audit["murphy_bearish_pass"]:
             return _no_trade("MURPHY_FULL_RULE_CONFLICT", timestamp, source_rule_ids)
+        if not full_audit["murphy_directional_pass"]:
+            return _no_trade("MURPHY_FULL_RULE_NO_DIRECTIONAL_PASS", timestamp, source_rule_ids)
         if full_audit["murphy_bullish_pass"] and bias == "BEARISH":
             return _no_trade("MURPHY_FULL_RULE_BRAIN_DIRECTION_CONFLICT", timestamp, source_rule_ids)
         if full_audit["murphy_bearish_pass"] and bias == "BULLISH":
             return _no_trade("MURPHY_FULL_RULE_BRAIN_DIRECTION_CONFLICT", timestamp, source_rule_ids)
         if full_audit["nison_contradiction"]:
             return _no_trade("NISON_FULL_RULE_CONTRADICTION", timestamp, source_rule_ids)
-
-    if murphy_status != "PASS":
-        return _no_trade("MURPHY_CONTEXT_NOT_PASS", timestamp, source_rule_ids)
-    if murphy_direction in {"BULL", "BULLISH", "BUY"} and bias != "BULLISH":
-        return _no_trade("MURPHY_BRAIN_DIRECTION_CONFLICT", timestamp, source_rule_ids)
-    if murphy_direction in {"BEAR", "BEARISH", "SELL"} and bias != "BEARISH":
-        return _no_trade("MURPHY_BRAIN_DIRECTION_CONFLICT", timestamp, source_rule_ids)
+    else:
+        murphy_status = legacy_murphy_status
+        murphy_direction = legacy_murphy_direction
+        if murphy_status != "PASS":
+            return _no_trade("MURPHY_CONTEXT_NOT_PASS", timestamp, source_rule_ids)
+        if murphy_direction in {"BULL", "BULLISH", "BUY"} and bias != "BULLISH":
+            return _no_trade("MURPHY_BRAIN_DIRECTION_CONFLICT", timestamp, source_rule_ids)
+        if murphy_direction in {"BEAR", "BEARISH", "SELL"} and bias != "BEARISH":
+            return _no_trade("MURPHY_BRAIN_DIRECTION_CONFLICT", timestamp, source_rule_ids)
 
     tiz_state = _norm(tiz_evidence.get("process_state") or tiz_evidence.get("process_gate") or tiz_evidence.get("status"))
     blocked_flags = {
@@ -203,6 +208,7 @@ def evaluate_three_book_decision(
         "timestamp": timestamp,
         "backtest_status": "UNTESTED",
         "full_rule_consumer": full_audit,
+        "legacy_murphy_candidate_preserved": bool(full_audit),
     }
 
     return {
