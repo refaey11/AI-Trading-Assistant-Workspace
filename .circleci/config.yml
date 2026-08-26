@@ -90,35 +90,33 @@ jobs:
               --decision-events artifacts/final_78/FINAL_2025_DECISION_EVENTS.csv \
               --output artifacts/final_78/DIRECTION_ARBITRATION_2025_AUDIT.json
       - run:
-          name: Run pre-2025 memory shadow runtime diagnostic
+          name: Run as-of-safe pre-2025 memory runtime audit
           command: |
             set -eu
             test -n "${DROPBOX_ACCESS_TOKEN:-}" || { echo 'BLOCKED: configure CircleCI project secret DROPBOX_ACCESS_TOKEN.'; exit 2; }
-            rm -rf /tmp/memory_shadow_v1
-            mkdir -p /tmp/memory_shadow_v1/zips /tmp/memory_shadow_v1/unpacked
+            rm -rf /tmp/memory_runtime_v2
+            mkdir -p /tmp/memory_runtime_v2/zips artifacts/final_78/memory_shadow
             base='https://content.dropboxapi.com/2/files/download'
             auth=(-H "Authorization: Bearer ${DROPBOX_ACCESS_TOKEN}" -H 'Content-Type: application/octet-stream')
             curl -L --fail --silent --show-error "$base" "${auth[@]}" \
               -H 'Dropbox-API-Arg: {"path":"/AI_Trading_Assistant_FULL_PROJECT_V1/AI_Trading_Assistant_HISTORICAL_CONTEXT_MEMORY_V1.zip"}' \
-              -o /tmp/memory_shadow_v1/zips/context.zip
+              -o /tmp/memory_runtime_v2/zips/context.zip
             curl -L --fail --silent --show-error "$base" "${auth[@]}" \
               -H 'Dropbox-API-Arg: {"path":"/AI_Trading_Assistant_FULL_PROJECT_V1/AI_Trading_Assistant_HISTORICAL_OUTCOME_MEMORY_V1.zip"}' \
-              -o /tmp/memory_shadow_v1/zips/outcome.zip
+              -o /tmp/memory_runtime_v2/zips/outcome.zip
             curl -L --fail --silent --show-error "$base" "${auth[@]}" \
               -H 'Dropbox-API-Arg: {"path":"/AI_Trading_Assistant_FULL_PROJECT_V1/AI_Trading_Assistant_SIMILARITY_MEMORY_V2.zip"}' \
-              -o /tmp/memory_shadow_v1/zips/similarity.zip
+              -o /tmp/memory_runtime_v2/zips/similarity.zip
             curl -L --fail --silent --show-error "$base" "${auth[@]}" \
               -H 'Dropbox-API-Arg: {"path":"/AI_Trading_Assistant_FULL_PROJECT_V1/AI_Trading_Assistant_CONTEXT_AWARE_RETRIEVAL_V2.zip"}' \
-              -o /tmp/memory_shadow_v1/zips/retrieval.zip
-            mkdir -p /tmp/memory_shadow_v1/unpacked/historical_context /tmp/memory_shadow_v1/unpacked/historical_outcome /tmp/memory_shadow_v1/unpacked/similarity /tmp/memory_shadow_v1/unpacked/context_aware_retrieval
-            unzip -q /tmp/memory_shadow_v1/zips/context.zip -d /tmp/memory_shadow_v1/unpacked/historical_context
-            unzip -q /tmp/memory_shadow_v1/zips/outcome.zip -d /tmp/memory_shadow_v1/unpacked/historical_outcome
-            unzip -q /tmp/memory_shadow_v1/zips/similarity.zip -d /tmp/memory_shadow_v1/unpacked/similarity
-            unzip -q /tmp/memory_shadow_v1/zips/retrieval.zip -d /tmp/memory_shadow_v1/unpacked/context_aware_retrieval
-            mkdir -p artifacts/final_78/memory_shadow
-            python OOS_2025/run_pre2025_memory_shadow_runtime_diagnostic_v1.py \
-              --memory-root /tmp/memory_shadow_v1/unpacked \
-              --output artifacts/final_78/memory_shadow/PRE2025_MEMORY_SHADOW_RUNTIME_AUDIT_V1.json
+              -o /tmp/memory_runtime_v2/zips/retrieval.zip
+            python OOS_2025/run_pre2025_memory_runtime_audit_v2.py \
+              --context /tmp/memory_runtime_v2/zips/context.zip \
+              --outcome /tmp/memory_runtime_v2/zips/outcome.zip \
+              --similarity /tmp/memory_runtime_v2/zips/similarity.zip \
+              --retrieval /tmp/memory_runtime_v2/zips/retrieval.zip \
+              --query-as-of 2024-12-31T12:00:00Z \
+              --output artifacts/final_78/memory_shadow/PRE2025_MEMORY_RUNTIME_AUDIT_V2.json
       - run:
           name: Verify governed 34+44 provenance and OOS gates
           command: >-
