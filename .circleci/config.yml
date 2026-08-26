@@ -70,6 +70,14 @@ jobs:
               --murphy-0022-0023 artifacts/final_78/MURPHY_0022_0023_2025.csv \
               --output-dir artifacts/final_78
       - run:
+          name: Diagnose 2025 executable-to-trade censoring
+          command: |
+            set -eu
+            python OOS_2025/diagnose_2025_execution_censoring_v1.py \
+              --events artifacts/final_78/FINAL_2025_DECISION_EVENTS.csv \
+              --h1 "$H1_CSV" \
+              --output-dir artifacts/final_78/censoring_audit
+      - run:
           name: Audit 78-rule evidence coverage and direction arbitration
           command: |
             set -eu
