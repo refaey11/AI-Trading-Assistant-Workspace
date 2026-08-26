@@ -32,7 +32,6 @@ echo "Using market=$MARKET"
 echo "Using h1=$H1_INPUT"
 echo "Using m1=$M1_INPUT"
 echo "Using mtf=$MTF_INPUT"
-
 echo "Using schema-mapped Context Gate V4 (trend=H1, h4_trend=H4, mtf_state=combined)"
 
 for year in 2016 2017 2018 2019 2020 2021 2022 2023 2024; do
@@ -45,6 +44,11 @@ for year in 2016 2017 2018 2019 2020 2021 2022 2023 2024; do
     --m1 "$M1_INPUT" \
     --year "$year" \
     --output "$YEAR_OUT/CONTEXT_GATE.csv"
+  python OOS_2025/pre2025_context_quality_shadow_v1.py \
+    --input "$YEAR_OUT/CONTEXT_GATE.csv" \
+    --output "$YEAR_OUT/CONTEXT_QUALITY.csv" \
+    --runtime-entrypoint "MURPHY_EVALUATORS_V1/murphy_runtime_entrypoint_v1.py" \
+    --year "$year"
 done
 
 python - <<'PY'
@@ -52,7 +56,8 @@ import json
 from pathlib import Path
 root=Path('artifacts/pre2025_arbitration')
 rows=[json.loads(p.read_text(encoding='utf-8')) for p in sorted(root.glob('*/CONTEXT_GATE.json'))]
-summary={'status':'PASS_SHADOW_ONLY','years':rows,'oos_2025_locked':True,'oos_tuning':False,'policy_changed':False,'new_rule_semantics':False,'replacement_pnl':False,'purpose':'Measure whether existing Brain context/regime improves the quality of existing Murphy direction.','schema_mapping':{'trend':'H1','h4_trend':'H4','mtf_state':'combined'}}
-(root/'PRE2025_MURPHY_CONTEXT_GATE_SUMMARY.json').write_text(json.dumps(summary,indent=2,sort_keys=True),encoding='utf-8')
+quality=[json.loads(p.read_text(encoding='utf-8')) for p in sorted(root.glob('*/CONTEXT_QUALITY.json'))]
+summary={'status':'PASS_SHADOW_ONLY','years':rows,'quality_years':quality,'oos_2025_locked':True,'oos_tuning':False,'policy_changed':False,'new_rule_semantics':False,'replacement_pnl':False,'purpose':'Measure whether existing Brain context/regime can be used as a non-veto quality flag for existing Murphy direction.','schema_mapping':{'trend':'H1','h4_trend':'H4','mtf_state':'combined'},'quality_layer':'categorical_non_parametric_shadow_only','historical_full_rule_stream_used':False}
+(root/'PRE2025_MURPHY_CONTEXT_QUALITY_SUMMARY.json').write_text(json.dumps(summary,indent=2,sort_keys=True),encoding='utf-8')
 print(json.dumps(summary,indent=2,sort_keys=True))
 PY
