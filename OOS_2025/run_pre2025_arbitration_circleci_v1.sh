@@ -35,7 +35,7 @@ echo "Using mtf=$MTF_INPUT"
 for year in 2016 2017 2018 2019 2020 2021 2022 2023 2024; do
   YEAR_OUT="$OUT/$year"
   mkdir -p "$YEAR_OUT"
-  python OOS_2025/pre2025_murphy_context_gate_shadow_v1.py \
+  python OOS_2025/pre2025_murphy_context_gate_shadow_v2.py \
     --market-state "$MARKET" \
     --mtf "$MTF_INPUT" \
     --h1 "$H1_INPUT" \
