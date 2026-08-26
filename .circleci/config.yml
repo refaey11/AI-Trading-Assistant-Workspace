@@ -118,6 +118,26 @@ jobs:
               --query-as-of 2024-12-31T12:00:00Z \
               --output artifacts/final_78/memory_shadow/PRE2025_MEMORY_RUNTIME_AUDIT_V2.json
       - run:
+          name: Run pre-2025 MTF and retrieval shadow probe
+          command: |
+            set -eu
+            test -n "${DROPBOX_ACCESS_TOKEN:-}" || { echo 'BLOCKED: configure CircleCI project secret DROPBOX_ACCESS_TOKEN.'; exit 2; }
+            rm -rf /tmp/mtf_retrieval_shadow
+            mkdir -p /tmp/mtf_retrieval_shadow/zips
+            base='https://content.dropboxapi.com/2/files/download'
+            auth=(-H "Authorization: Bearer ${DROPBOX_ACCESS_TOKEN}" -H 'Content-Type: application/octet-stream')
+            curl -L --fail --silent --show-error "$base" "${auth[@]}" \
+              -H 'Dropbox-API-Arg: {"path":"/AI_Trading_Assistant_FULL_PROJECT_V1/AI_Trading_Assistant_MULTI_TIMEFRAME_READER_V1.zip"}' \
+              -o /tmp/mtf_retrieval_shadow/zips/mtf.zip
+            curl -L --fail --silent --show-error "$base" "${auth[@]}" \
+              -H 'Dropbox-API-Arg: {"path":"/AI_Trading_Assistant_FULL_PROJECT_V1/AI_Trading_Assistant_CONTEXT_AWARE_RETRIEVAL_V2.zip"}' \
+              -o /tmp/mtf_retrieval_shadow/zips/retrieval.zip
+            python OOS_2025/run_pre2025_mtf_retrieval_shadow_probe_v1.py \
+              --mtf /tmp/mtf_retrieval_shadow/zips/mtf.zip \
+              --retrieval /tmp/mtf_retrieval_shadow/zips/retrieval.zip \
+              --query-as-of 2024-12-31T12:00:00Z \
+              --output artifacts/final_78/memory_shadow/PRE2025_MTF_RETRIEVAL_SHADOW_PROBE_V1.json
+      - run:
           name: Verify governed 34+44 provenance and OOS gates
           command: >-
             python -c "import json; m=json.load(open('artifacts/final_78/FINAL_2025_DECISION_EVENTS_MANIFEST.json')); assert m['murphy_rule_count_in_event']==34,m; assert m['nison_rule_count_in_event']==44,m; assert m['fan_in_mode']=='LOSSLESS_FULL_EVIDENCE_WITH_LEGACY_DECISION_COMPAT',m; assert m['oos_tuning'] is False,m; assert m['new_rule_semantics'] is False,m; print(json.dumps(m,indent=2))"
