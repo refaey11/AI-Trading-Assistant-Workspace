@@ -106,6 +106,7 @@ def main() -> int:
     for d in (m21d, m22d):
         d["timestamp"] = pd.to_datetime(d["timestamp"], utc=True)
     m21d["source_rule_id"] = "MURPHY_0021"
+    m22d["source_rule_id"] = m22d["rule_id"]
     m21d["direction"] = m21d["directional_confirmation"].astype(str)
     m22d["direction"] = m22d["directional_confirmation"].astype(str)
     murphy = pd.concat([
