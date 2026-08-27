@@ -61,17 +61,15 @@ def load_source(zip_path: Path, work: Path) -> pd.DataFrame:
 
 def load_market_state(path: Path) -> pd.DataFrame:
     ctx = pd.read_csv(path)
-    required = {"timestamp", "trend", "location", "volume"}
-    missing = sorted(required - set(ctx.columns))
-    if missing:
-        raise ValueError(f"Market State context missing columns: {missing}")
+    if "timestamp" not in ctx.columns:
+        raise ValueError("Market State context missing timestamp")
     ctx["timestamp"] = pd.to_datetime(ctx["timestamp"], utc=True, errors="coerce")
     if ctx["timestamp"].isna().any() or ctx["timestamp"].duplicated().any():
         raise ValueError("Invalid or duplicated timestamps in Market State context")
     return ctx.sort_values("timestamp").reset_index(drop=True)
 
 
-def run_year(df: pd.DataFrame, context: pd.DataFrame, year: int, out_dir: Path) -> dict:
+def run_year(df: pd.DataFrame, context: pd.DataFrame, year: int, out_dir: Path) -> tuple[dict, pd.DataFrame]:
     year_bars = df[df["timestamp"].dt.year.eq(year)].copy()
     if year_bars.empty:
         raise ValueError(f"No bars for development year {year}")
@@ -84,7 +82,7 @@ def run_year(df: pd.DataFrame, context: pd.DataFrame, year: int, out_dir: Path) 
     out = out_dir / f"NISON_{year}_FULL_EVIDENCE.csv"
     evidence.to_csv(out, index=False)
     status_counts = {str(k): int(v) for k, v in evidence["status"].value_counts().to_dict().items()}
-    return {
+    report = {
         "year": year,
         "input_rows": int(len(year_bars)),
         "evidence_rows": int(len(evidence)),
@@ -92,6 +90,7 @@ def run_year(df: pd.DataFrame, context: pd.DataFrame, year: int, out_dir: Path) 
         "status_counts": status_counts,
         "output": str(out),
     }
+    return report, evidence
 
 
 def main() -> int:
@@ -113,7 +112,18 @@ def main() -> int:
     bars = load_source(source_zip, out_dir / "source")
     context = load_market_state(market_state_path)
 
-    reports = [run_year(bars, context, year, out_dir) for year in range(args.start_year, args.end_year + 1)]
+    reports = []
+    evidence_frames = []
+    for year in range(args.start_year, args.end_year + 1):
+        report, evidence = run_year(bars, context, year, out_dir)
+        reports.append(report)
+        evidence_frames.append(evidence)
+
+    combined = pd.concat(evidence_frames, ignore_index=True)
+    combined = combined.sort_values(["timestamp", "rule_id"]).reset_index(drop=True)
+    combined_path = out_dir / "NISON_2016_2024_FULL_EVIDENCE.csv"
+    combined.to_csv(combined_path, index=False)
+
     manifest = {
         "status": "PASS",
         "mode": "DEVELOPMENT_2016_2024_NISON_EVIDENCE_RECOVERY",
@@ -127,6 +137,8 @@ def main() -> int:
         "2025_used": False,
         "lookahead_policy": "prior_completed_source_only",
         "context_wiring": "MARKET_STATE_V1",
+        "combined_output": str(combined_path),
+        "combined_rows": int(len(combined)),
         "reports": reports,
     }
     (out_dir / "NISON_DEVELOPMENT_2016_2024_MANIFEST.json").write_text(
