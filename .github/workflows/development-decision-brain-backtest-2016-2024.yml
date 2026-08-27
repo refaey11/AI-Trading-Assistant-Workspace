@@ -43,10 +43,7 @@ jobs:
               '/MURPHY_HISTORICAL_EVIDENCE_NORMALIZED_2016_2024.csv',
           ]
           for path in candidates:
-              req=urllib.request.Request(
-                  'https://content.dropboxapi.com/2/files/download',
-                  data=b'', method='POST',
-                  headers={'Authorization':f'Bearer {token}','Dropbox-API-Arg':json.dumps({'path':path})})
+              req=urllib.request.Request('https://content.dropboxapi.com/2/files/download', data=b'', method='POST', headers={'Authorization':f'Bearer {token}','Dropbox-API-Arg':json.dumps({'path':path})})
               try:
                   with urllib.request.urlopen(req, timeout=180) as r:
                       data=r.read()
