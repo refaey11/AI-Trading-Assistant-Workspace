@@ -26,18 +26,41 @@ jobs:
           mkdir -p artifacts/nison
           python DEVELOPMENT_2016_2024/run_nison_development_2016_2024_v1.py --output-dir artifacts/nison
           test -s artifacts/nison/NISON_2016_2024_FULL_EVIDENCE.csv
-      - name: Require current Murphy development evidence
+      - name: Recover current Murphy development evidence from Dropbox project workspace
         run: |
           set -eu
-          if [ -n "${MURPHY_DEV_EVIDENCE_PATH:-}" ] && [ -f "$MURPHY_DEV_EVIDENCE_PATH" ]; then
-            cp "$MURPHY_DEV_EVIDENCE_PATH" artifacts/MURPHY_2016_2024_FULL_EVIDENCE.csv
-          elif [ -f "artifacts/MURPHY_2016_2024_FULL_EVIDENCE.csv" ]; then
-            true
-          else
-            echo "BLOCKED: current Murphy 2016-2024 evidence fan-in artifact is not present."
-            echo "Do not substitute 2025 or legacy backtest artifacts."
-            exit 2
-          fi
+          mkdir -p artifacts/murphy
+          python - <<'PY'
+          import json, os, urllib.request
+          from pathlib import Path
+          token=os.environ['DROPBOX_ACCESS_TOKEN']
+          candidates=[
+              '/ai_trading_assistant_full_project_v1/MURPHY_2016_2024_FULL_EVIDENCE.csv',
+              '/ai_trading_assistant_full_project_v1/MURPHY_2016_2024_FULL_34_RULE_FANIN_SOURCE_PRESERVING.csv',
+              '/ai_trading_assistant_full_project_v1/MURPHY_HISTORICAL_EVIDENCE_NORMALIZED_2016_2024.csv',
+              '/MURPHY_2016_2024_FULL_EVIDENCE.csv',
+              '/MURPHY_2016_2024_FULL_34_RULE_FANIN_SOURCE_PRESERVING.csv',
+              '/MURPHY_HISTORICAL_EVIDENCE_NORMALIZED_2016_2024.csv',
+          ]
+          for path in candidates:
+              req=urllib.request.Request(
+                  'https://content.dropboxapi.com/2/files/download',
+                  data=b'', method='POST',
+                  headers={'Authorization':f'Bearer {token}','Dropbox-API-Arg':json.dumps({'path':path})})
+              try:
+                  with urllib.request.urlopen(req, timeout=180) as r:
+                      data=r.read()
+                  if data:
+                      out=Path('artifacts/murphy/MURPHY_2016_2024_FULL_EVIDENCE.csv')
+                      out.write_bytes(data)
+                      print(f'Recovered Murphy evidence from {path} -> {out} ({len(data)} bytes)')
+                      break
+              except Exception as exc:
+                  print(f'Murphy candidate unavailable: {path}: {exc}')
+          else:
+              raise SystemExit('BLOCKED: no source-backed Murphy 2016-2024 evidence file was found at the governed Dropbox candidates.')
+          PY
+          test -s artifacts/murphy/MURPHY_2016_2024_FULL_EVIDENCE.csv
       - name: Acquire Market State context
         run: |
           set -eu
@@ -57,7 +80,7 @@ jobs:
           set -eu
           python BACKTEST/DEV_BACKTEST_RUNNER_V1.py \
             --h1 artifacts/nison/source/GBPUSD_H1_2016_2025_MASTER.csv \
-            --murphy artifacts/MURPHY_2016_2024_FULL_EVIDENCE.csv \
+            --murphy artifacts/murphy/MURPHY_2016_2024_FULL_EVIDENCE.csv \
             --nison artifacts/nison/NISON_2016_2024_FULL_EVIDENCE.csv \
             --context artifacts/GBPUSD_MARKET_STATE.csv \
             --output-dir artifacts/decision_brain_backtest_2016_2024
