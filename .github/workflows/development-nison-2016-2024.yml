@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       DROPBOX_ACCESS_TOKEN: ${{ secrets.DROPBOX_ACCESS_TOKEN }}
-      PYTHONPATH: ${{ github.workspace }}
+      PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/OOS_2025
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -22,7 +22,7 @@ jobs:
       - name: Verify Dropbox secret is configured
         run: test -n "$DROPBOX_ACCESS_TOKEN"
       - name: Verify repository Python imports
-        run: python -c "import OOS_2025; import DEVELOPMENT_2016_2024.run_nison_development_2016_2024_v1"
+        run: python -c "import OOS_2025; import DEVELOPMENT_2016_2024.run_nison_development_2016_2024_v1; from OOS_2025.nison_2025_runtime_producer_v1 import run_ohlcv_for_year"
       - name: Recover and run governed Nison development evidence
         run: |
           set -eu
