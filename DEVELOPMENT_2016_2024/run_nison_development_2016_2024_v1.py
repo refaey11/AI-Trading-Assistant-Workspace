@@ -3,11 +3,16 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import sys
 import urllib.request
 import zipfile
 from pathlib import Path
 
 import pandas as pd
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
 from OOS_2025.nison_2025_runtime_producer_v1 import run_ohlcv_for_year
 
