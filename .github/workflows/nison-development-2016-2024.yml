@@ -1,0 +1,28 @@
+name: Nison Development 2016-2024
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'BACKTEST/run_nison_development_2016_2024_v1.py'
+      - 'OOS_2025/run_nison_historical_production_v1.py'
+      - 'OOS_2025/nison_2025_runtime_producer_v1.py'
+
+jobs:
+  nison-development-2016-2024:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --upgrade pip pandas
+      - name: Run governed Nison development stream
+        env:
+          DROPBOX_ACCESS_TOKEN: ${{ secrets.DROPBOX_ACCESS_TOKEN }}
+        run: python BACKTEST/run_nison_development_2016_2024_v1.py
+      - name: Upload development evidence
+        uses: actions/upload-artifact@v4
+        with:
+          name: nison-development-2016-2024
+          path: artifacts/nison_development_2016_2024/
