@@ -12,11 +12,12 @@ import pandas as pd
 from OOS_2025.nison_2025_runtime_producer_v1 import run_ohlcv_for_year
 
 SOURCE_DROPBOX_PATH = "/GBPUSD_H1_2016_2025_MASTER.zip"
+MARKET_STATE_DROPBOX_PATH = "/ai_trading_assistant_full_project_v1/AI_Trading_Assistant_MARKET_STATE_READER_V1/GBPUSD_MARKET_STATE.csv"
 SOURCE_NAME = "GBPUSD_H1_2016_2025_MASTER.csv"
 YEARS = tuple(range(2016, 2025))
 
 
-def download_dropbox_zip(output: Path) -> Path:
+def _download_dropbox_file(path: str, output: Path) -> Path:
     token = os.environ.get("DROPBOX_ACCESS_TOKEN")
     if not token:
         raise RuntimeError("DROPBOX_ACCESS_TOKEN is required")
@@ -26,13 +27,17 @@ def download_dropbox_zip(output: Path) -> Path:
         method="POST",
         headers={
             "Authorization": f"Bearer {token}",
-            "Dropbox-API-Arg": json.dumps({"path": SOURCE_DROPBOX_PATH}),
+            "Dropbox-API-Arg": json.dumps({"path": path}),
         },
     )
     output.parent.mkdir(parents=True, exist_ok=True)
     with urllib.request.urlopen(req, timeout=180) as response, output.open("wb") as handle:
         handle.write(response.read())
     return output
+
+
+def download_dropbox_zip(output: Path) -> Path:
+    return _download_dropbox_file(SOURCE_DROPBOX_PATH, output)
 
 
 def load_source(zip_path: Path, work: Path) -> pd.DataFrame:
@@ -54,11 +59,23 @@ def load_source(zip_path: Path, work: Path) -> pd.DataFrame:
     return df.sort_values("timestamp").reset_index(drop=True)
 
 
-def run_year(df: pd.DataFrame, year: int, out_dir: Path) -> dict:
+def load_market_state(path: Path) -> pd.DataFrame:
+    ctx = pd.read_csv(path)
+    required = {"timestamp", "trend", "location", "volume"}
+    missing = sorted(required - set(ctx.columns))
+    if missing:
+        raise ValueError(f"Market State context missing columns: {missing}")
+    ctx["timestamp"] = pd.to_datetime(ctx["timestamp"], utc=True, errors="coerce")
+    if ctx["timestamp"].isna().any() or ctx["timestamp"].duplicated().any():
+        raise ValueError("Invalid or duplicated timestamps in Market State context")
+    return ctx.sort_values("timestamp").reset_index(drop=True)
+
+
+def run_year(df: pd.DataFrame, context: pd.DataFrame, year: int, out_dir: Path) -> dict:
     year_bars = df[df["timestamp"].dt.year.eq(year)].copy()
     if year_bars.empty:
         raise ValueError(f"No bars for development year {year}")
-    evidence = run_ohlcv_for_year(df, None, evaluation_year=year)
+    evidence = run_ohlcv_for_year(df, context, evaluation_year=year)
     expected = len(year_bars) * 44
     if len(evidence) != expected:
         raise AssertionError(f"{year}: evidence rows {len(evidence)} != {expected}")
@@ -90,21 +107,26 @@ def main() -> int:
     out_dir = args.output_dir
     out_dir.mkdir(parents=True, exist_ok=True)
     source_zip = out_dir / "source" / "GBPUSD_H1_2016_2025_MASTER.zip"
+    market_state_path = out_dir / "source" / "GBPUSD_MARKET_STATE.csv"
     download_dropbox_zip(source_zip)
+    _download_dropbox_file(MARKET_STATE_DROPBOX_PATH, market_state_path)
     bars = load_source(source_zip, out_dir / "source")
+    context = load_market_state(market_state_path)
 
-    reports = [run_year(bars, year, out_dir) for year in range(args.start_year, args.end_year + 1)]
+    reports = [run_year(bars, context, year, out_dir) for year in range(args.start_year, args.end_year + 1)]
     manifest = {
         "status": "PASS",
         "mode": "DEVELOPMENT_2016_2024_NISON_EVIDENCE_RECOVERY",
         "years": [r["year"] for r in reports],
         "rules": 44,
         "source": SOURCE_DROPBOX_PATH,
+        "context_source": MARKET_STATE_DROPBOX_PATH,
         "reuse_existing_runtime": True,
         "semantic_change": False,
         "oos_tuning": False,
         "2025_used": False,
         "lookahead_policy": "prior_completed_source_only",
+        "context_wiring": "MARKET_STATE_V1",
         "reports": reports,
     }
     (out_dir / "NISON_DEVELOPMENT_2016_2024_MANIFEST.json").write_text(
