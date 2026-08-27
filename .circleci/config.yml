@@ -98,6 +98,28 @@ jobs:
       - run:
           name: Test governed Nison adapters
           command: python -m pytest -q tests/compatibility/test_nison_2025_evidence_aggregate_v1.py tests/compatibility/test_nison_2025_source_adapter_v1.py
+  nison_development_2016_2024_v1:
+    docker: [{image: cimg/python:3.12}]
+    steps:
+      - checkout
+      - run: python -m pip install --upgrade pip pandas pytest
+      - run:
+          name: Run governed Nison development 2016-2024
+          command: |
+            set -eu
+            mkdir -p artifacts/nison_development_2016_2024
+            python DEVELOPMENT_2016_2024/run_nison_development_2016_2024_v1.py --output-dir artifacts/nison_development_2016_2024 --start-year 2016 --end-year 2024
+      - run:
+          name: Verify Nison development artifact shape
+          command: |
+            set -eu
+            test -f artifacts/nison_development_2016_2024/NISON_DEVELOPMENT_2016_2024_MANIFEST.json
+            for year in 2016 2017 2018 2019 2020 2021 2022 2023 2024; do
+              test -f "artifacts/nison_development_2016_2024/NISON_${year}_FULL_EVIDENCE.csv"
+            done
+      - store_artifacts:
+          path: artifacts/nison_development_2016_2024
+          destination: nison_development_2016_2024
   nison_2025_full_production_v1:
     docker: [{image: cimg/python:3.12}]
     steps:
@@ -221,6 +243,8 @@ jobs:
 workflows:
   build_and_test:
     jobs: [nison_runtime_0001_0010, nison_runtime_0011_0020, nison_runtime_0021_0030, nison_runtime_0031_0044, dynamic_mtf_runtime_v1, market_state_contract_v1, market_reader_contract_v1, market_scenario_contract_v1, historical_context_memory_v1, historical_outcome_memory_v1, similarity_memory_v2, memory_integration_v1, outcome_to_scenario_evidence_policy_v1, decision_brain_v1_integration, decision_brain_final_e2e_readiness_v1, risk_execution_runtime_v1, tiz_optional_execution_adapter_v2, decision_brain_pre_oos_freeze_guard_v1, decision_brain_rule_allowlist_v1, rule_adapter_allowlist_runtime_gate_v1, frozen_decision_execution_bridge_v1, frozen_decision_2025_oos_evaluator_contract_v1, three_book_decision_evaluator_v1, nison_evidence_aggregate_v1]
+  development_2016_2024_nison:
+    jobs: [nison_development_2016_2024_v1]
   nison_2025_full_production:
     jobs: [nison_2025_full_production_v1]
   oos_2025_78_rule_coverage:
