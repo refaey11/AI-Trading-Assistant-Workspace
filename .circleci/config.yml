@@ -117,9 +117,55 @@ jobs:
             for year in 2016 2017 2018 2019 2020 2021 2022 2023 2024; do
               test -f "artifacts/nison_development_2016_2024/NISON_${year}_FULL_EVIDENCE.csv"
             done
+      - run:
+          name: Recover Murphy historical artifact from Dropbox project package
+          command: |
+            set -eu
+            test -n "${DROPBOX_ACCESS_TOKEN:-}"
+            mkdir -p /tmp/murphy_recovery /tmp/murphy_project
+            curl -L --fail --silent --show-error https://content.dropboxapi.com/2/files/download \
+              -H "Authorization: Bearer ${DROPBOX_ACCESS_TOKEN}" \
+              -H 'Dropbox-API-Arg: {"path":"/AI_Trading_Assistant_FULL_PROJECT_V1.zip"}' \
+              -o /tmp/murphy_recovery/project.zip
+            unzip -q /tmp/murphy_recovery/project.zip -d /tmp/murphy_project
+            echo '[MURPHY_RECOVERY] candidate files:'
+            find /tmp/murphy_project -type f \( \
+              -iname 'MURPHY_2016_2024_FULL_34_RULE_FANIN_SOURCE_PRESERVING.csv' -o \
+              -iname 'MURPHY_2016_2024_FULL_EVIDENCE.csv' -o \
+              -iname 'MURPHY_HISTORICAL_EVIDENCE_NORMALIZED_2016_2024.csv' -o \
+              -iname 'MURPHY_2016_2024_DIRECTIONAL_EVIDENCE.csv' \
+            \) -print | sort
+            CANDIDATE=$(find /tmp/murphy_project -type f \( \
+              -iname 'MURPHY_2016_2024_FULL_34_RULE_FANIN_SOURCE_PRESERVING.csv' -o \
+              -iname 'MURPHY_2016_2024_FULL_EVIDENCE.csv' -o \
+              -iname 'MURPHY_HISTORICAL_EVIDENCE_NORMALIZED_2016_2024.csv' -o \
+              -iname 'MURPHY_2016_2024_DIRECTIONAL_EVIDENCE.csv' \
+            \) -print | sort | head -1)
+            test -n "$CANDIDATE"
+            mkdir -p artifacts/murphy_historical_2016_2024
+            cp "$CANDIDATE" artifacts/murphy_historical_2016_2024/MURPHY_2016_2024_FULL_EVIDENCE.csv
+            printf '%s\n' "$CANDIDATE" > artifacts/murphy_historical_2016_2024/SOURCE_PATH.txt
+            sha256sum artifacts/murphy_historical_2016_2024/MURPHY_2016_2024_FULL_EVIDENCE.csv > artifacts/murphy_historical_2016_2024/SHA256.txt
+      - run:
+          name: Run governed Decision Brain development backtest 2016-2024
+          command: |
+            set -eu
+            mkdir -p artifacts/decision_brain_backtest_2016_2024
+            python BACKTEST/DEV_BACKTEST_RUNNER_V1.py \
+              --h1 artifacts/nison_development_2016_2024/source/GBPUSD_H1_2016_2025_MASTER.csv \
+              --murphy artifacts/murphy_historical_2016_2024/MURPHY_2016_2024_FULL_EVIDENCE.csv \
+              --nison artifacts/nison_development_2016_2024/NISON_2016_2024_FULL_EVIDENCE.csv \
+              --context artifacts/nison_development_2016_2024/source/GBPUSD_MARKET_STATE.csv \
+              --output-dir artifacts/decision_brain_backtest_2016_2024
       - store_artifacts:
           path: artifacts/nison_development_2016_2024
           destination: nison_development_2016_2024
+      - store_artifacts:
+          path: artifacts/murphy_historical_2016_2024
+          destination: murphy_historical_2016_2024
+      - store_artifacts:
+          path: artifacts/decision_brain_backtest_2016_2024
+          destination: decision_brain_backtest_2016_2024
   nison_2025_full_production_v1:
     docker: [{image: cimg/python:3.12}]
     steps:
@@ -213,7 +259,7 @@ jobs:
       - checkout
       - run: python -m pip install --upgrade pip pandas pytest
       - run:
-          name: Acquire governed 2025 H1 + M1 sources
+          name: Acquire authoritative 2025 H1 + M1 sources
           command: |
             set -eu
             mkdir -p /tmp/murphy_0022_0023/h1 /tmp/murphy_0022_0023/m1
