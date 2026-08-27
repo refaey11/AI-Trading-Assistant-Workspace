@@ -4,6 +4,8 @@ import argparse
 import json
 import os
 import sys
+import threading
+import time
 import urllib.request
 import zipfile
 from pathlib import Path
@@ -74,11 +76,26 @@ def load_market_state(path: Path) -> pd.DataFrame:
     return ctx.sort_values("timestamp").reset_index(drop=True)
 
 
+def _heartbeat(stop: threading.Event, year: int) -> None:
+    started = time.monotonic()
+    while not stop.wait(30):
+        elapsed = int(time.monotonic() - started)
+        print(f"[NISON_DEV] year={year} still running; elapsed={elapsed}s", flush=True)
+
+
 def run_year(df: pd.DataFrame, context: pd.DataFrame, year: int, out_dir: Path) -> tuple[dict, pd.DataFrame]:
     year_bars = df[df["timestamp"].dt.year.eq(year)].copy()
     if year_bars.empty:
         raise ValueError(f"No bars for development year {year}")
-    evidence = run_ohlcv_for_year(df, context, evaluation_year=year)
+    print(f"[NISON_DEV] year={year} start; bars={len(year_bars)}", flush=True)
+    stop = threading.Event()
+    watcher = threading.Thread(target=_heartbeat, args=(stop, year), daemon=True)
+    watcher.start()
+    try:
+        evidence = run_ohlcv_for_year(df, context, evaluation_year=year)
+    finally:
+        stop.set()
+        watcher.join(timeout=2)
     expected = len(year_bars) * 44
     if len(evidence) != expected:
         raise AssertionError(f"{year}: evidence rows {len(evidence)} != {expected}")
@@ -95,6 +112,7 @@ def run_year(df: pd.DataFrame, context: pd.DataFrame, year: int, out_dir: Path) 
         "status_counts": status_counts,
         "output": str(out),
     }
+    print(f"[NISON_DEV] year={year} done; evidence_rows={len(evidence)}", flush=True)
     return report, evidence
 
 
@@ -149,7 +167,7 @@ def main() -> int:
     (out_dir / "NISON_DEVELOPMENT_2016_2024_MANIFEST.json").write_text(
         json.dumps(manifest, indent=2, sort_keys=True), encoding="utf-8"
     )
-    print(json.dumps(manifest, indent=2, sort_keys=True))
+    print(json.dumps(manifest, indent=2, sort_keys=True), flush=True)
     return 0
 
 
