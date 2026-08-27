@@ -11,14 +11,15 @@ REQUIRED_OHLC = {"timestamp", "open", "high", "low", "close"}
 
 
 def _as_candle(row: pd.Series) -> dict[str, Any]:
+    # Evaluator Candle contracts accept OHLC plus their declared optional
+    # categorical compatibility fields; timestamp belongs to the enclosing
+    # evidence row, not inside Candle(**c).
     candle = {
-        "timestamp": row["timestamp"].isoformat() if hasattr(row["timestamp"], "isoformat") else str(row["timestamp"]),
         "open": float(row["open"]),
         "high": float(row["high"]),
         "low": float(row["low"]),
         "close": float(row["close"]),
     }
-    # Preserve source-backed optional fields when they exist.
     for key in ("volume", "tick_volume", "spread"):
         if key in row.index and pd.notna(row[key]):
             candle[key] = float(row[key])
