@@ -1,0 +1,99 @@
+name: Pre2025 Real Data Arbitration Shadow
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  shadow-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: python -m pip install --upgrade pip pandas pytest pyyaml
+      - name: Acquire authoritative market sources
+        env:
+          DROPBOX_ACCESS_TOKEN: ${{ secrets.DROPBOX_ACCESS_TOKEN }}
+        run: |
+          set -eu
+          test -n "$DROPBOX_ACCESS_TOKEN"
+          mkdir -p /tmp/pre2025/{market,mtf,h1,m1,artifacts}
+          base='https://content.dropboxapi.com/2/files/download'
+          auth=(-H "Authorization: Bearer ${DROPBOX_ACCESS_TOKEN}")
+          curl -L --fail --silent --show-error "$base" "${auth[@]}" \
+            -H 'Dropbox-API-Arg: {"path":"/AI_Trading_Assistant_FULL_PROJECT_V1/AI_Trading_Assistant_MARKET_STATE_READER_V1.zip"}' \
+            -o /tmp/pre2025/market/source.zip
+          curl -L --fail --silent --show-error "$base" "${auth[@]}" \
+            -H 'Dropbox-API-Arg: {"path":"/AI_Trading_Assistant_FULL_PROJECT_V1/AI_Trading_Assistant_MULTI_TIMEFRAME_READER_V1.zip"}' \
+            -o /tmp/pre2025/mtf/source.zip
+          curl -L --fail --silent --show-error "$base" "${auth[@]}" \
+            -H 'Dropbox-API-Arg: {"path":"/GBPUSD_H1_2016_2025_MASTER.zip"}' \
+            -o /tmp/pre2025/h1/source.zip
+          curl -L --fail --silent --show-error "$base" "${auth[@]}" \
+            -H 'Dropbox-API-Arg: {"path":"/GBPUSD_M1_MASTER_2016_2026_V1.zip"}' \
+            -o /tmp/pre2025/m1/source.zip
+          unzip -q /tmp/pre2025/market/source.zip -d /tmp/pre2025/market/unpack
+          unzip -q /tmp/pre2025/mtf/source.zip -d /tmp/pre2025/mtf/unpack
+          unzip -q /tmp/pre2025/h1/source.zip -d /tmp/pre2025/h1/unpack
+          unzip -q /tmp/pre2025/m1/source.zip -d /tmp/pre2025/m1/unpack
+          find /tmp/pre2025 -name 'GBPUSD_MARKET_STATE.csv' -print -quit | tee /tmp/pre2025/market_path
+          find /tmp/pre2025 -name 'GBPUSD_H1_2016_2025_MASTER.csv' -print -quit | tee /tmp/pre2025/h1_path
+          find /tmp/pre2025 -name 'GBPUSD_M1_MASTER_2016_2026.csv' -print -quit | tee /tmp/pre2025/m1_path
+          test -s /tmp/pre2025/market_path
+          test -s /tmp/pre2025/h1_path
+          test -s /tmp/pre2025/m1_path
+      - name: Run real-data shadow audits 2016-2024
+        run: |
+          set -eu
+          MARKET=$(cat /tmp/pre2025/market_path)
+          H1=$(cat /tmp/pre2025/h1_path)
+          M1=$(cat /tmp/pre2025/m1_path)
+          for year in 2016 2017 2018 2019 2020 2021 2022 2023 2024; do
+            mkdir -p artifacts/pre2025/$year
+            python OOS_2025/pre2025_realdata_arbitration_shadow_v1.py \
+              --market-state "$MARKET" \
+              --mtf /tmp/pre2025/mtf/source.zip \
+              --h1 "$H1" \
+              --m1 "$M1" \
+              --year "$year" \
+              --output artifacts/pre2025/$year/ARBITRATION_SHADOW.csv
+          done
+      - name: Build combined shadow summary
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          rows=[]
+          for p in sorted(Path('artifacts/pre2025').glob('*/ARBITRATION_SHADOW.json')):
+              d=json.loads(p.read_text())
+              rows.append(d)
+          Path('artifacts/pre2025/PRE2025_ARBITRATION_SHADOW_SUMMARY.json').write_text(json.dumps({
+              'status':'PASS_SHADOW_ONLY',
+              'years':rows,
+              'oos_2025_locked':True,
+              'replacement_pnl':False,
+              'policy_changed':False,
+          },indent=2))
+          print(json.dumps(rows,indent=2))
+          PY
+      - name: Enforce OOS and shadow-only invariants
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          for p in Path('artifacts/pre2025').glob('*/ARBITRATION_SHADOW.json'):
+              d=json.loads(p.read_text())
+              assert d['oos_2025_locked'] is True
+              assert d['oos_tuning'] is False
+              assert d['replacement_pnl'] is False
+              assert d['new_rule_semantics'] is False
+              assert d['memory_consumption']['direction_generated'] is False
+          print('pre-2025 arbitration shadow invariants: PASS')
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pre2025-realdata-arbitration-shadow
+          path: artifacts/pre2025

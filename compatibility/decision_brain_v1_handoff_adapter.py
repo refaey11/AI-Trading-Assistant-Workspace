@@ -37,7 +37,7 @@ def _normalize_gate(value: Any) -> str:
 
 
 def _sanitize_historical(historical: Mapping[str, Any] | None) -> dict[str, Any]:
-    """Keep historical metadata but never pass predicted_return as direction."""
+    """Keep historical metadata/evidence while forbidding direction leakage."""
     payload = dict(historical or {})
     sanitized = {
         "retrieval_status": payload.get("retrieval_status"),
@@ -52,9 +52,50 @@ def _sanitize_historical(historical: Mapping[str, Any] | None) -> dict[str, Any]
         "outcome_evidence": deepcopy(payload.get("outcome_evidence", {})),
         "context_evidence": deepcopy(payload.get("context_evidence", {})),
         "warnings": deepcopy(payload.get("warnings", [])),
+        "sources": deepcopy(payload.get("sources", {})),
+        "summary": deepcopy(payload.get("summary", {})),
+        "governance": deepcopy(payload.get("governance", {})),
+        "provenance": deepcopy(payload.get("provenance", {})),
         "predicted_return_used_as_direction": False,
     }
     return sanitized
+
+
+def _attach_memory_evidence(
+    assessment: dict[str, Any],
+    historical: Mapping[str, Any],
+) -> tuple[dict[str, Any], bool]:
+    """Attach memory as attributed evidence without touching directional state.
+
+    The recovered Decision Brain V1 accepts a ``similarity`` argument that can
+    generate a directional evidence row from ``predicted_return``. That is not
+    permitted for this governed memory integration. Therefore memory is consumed
+    after the unchanged V1 assessment and recorded as non-directional metadata.
+    """
+    sources = historical.get("sources") or {}
+    if not isinstance(sources, Mapping):
+        return assessment, False
+    available = [name for name, payload in sources.items() if isinstance(payload, Mapping) and payload.get("available")]
+    if not available:
+        return assessment, False
+
+    evidence = list(assessment.get("evidence", []))
+    evidence.append(
+        {
+            "module": "HistoricalMemory",
+            "statement": "Governed historical-memory evidence was consumed as evidence-only metadata.",
+            "direction": "neutral",
+            "strength": 0.0,
+            "sources": available,
+            "candidate_count": sum(
+                int((sources[name] or {}).get("candidate_count", 0) or 0)
+                for name in available
+            ),
+            "memory_role": "EVIDENCE_ONLY",
+        }
+    )
+    assessment = {**assessment, "evidence": evidence}
+    return assessment, True
 
 
 def assess_with_governance(
@@ -81,10 +122,16 @@ def assess_with_governance(
     if year > LOCKED_OOS_YEAR:
         return {"status": "NOT_EVALUABLE", "reason": "FUTURE_DATA_FORBIDDEN"}
 
+    sanitized_historical = _sanitize_historical(historical_evidence)
     row_copy = deepcopy(dict(row))
-    # Similarity remains metadata/evidence only. Never pass predicted_return.
+    # Preserve the recovered V1 scoring semantics. Do not pass predicted_return
+    # into V1's similarity parameter because that would create direction.
     assessment = decision_brain_module.assess(row_copy, similarity=None)
     assessment_dict = asdict(assessment)
+
+    assessment_dict, memory_consumed = _attach_memory_evidence(
+        assessment_dict, sanitized_historical
+    )
 
     tiz = dict(tiz_evidence or {})
     risk = dict(risk_evidence or {})
@@ -124,7 +171,7 @@ def assess_with_governance(
         "nison_evidence": nison,
         "tiz_evidence": tiz,
         "risk_evidence": risk,
-        "historical_evidence": _sanitize_historical(historical_evidence),
+        "historical_evidence": sanitized_historical,
         "execution": {
             "eligible": execution_eligible,
             "hard_blocks": hard_blocks,
@@ -134,6 +181,8 @@ def assess_with_governance(
         "governance": {
             "recovered_v1_unchanged": True,
             "similarity_generated_direction": False,
+            "historical_memory_consumed_downstream": memory_consumed,
+            "historical_memory_used_for_direction": False,
             "predicted_return_used_as_direction": False,
             "nison_generated_direction": False,
             "tiz_generated_direction": False,

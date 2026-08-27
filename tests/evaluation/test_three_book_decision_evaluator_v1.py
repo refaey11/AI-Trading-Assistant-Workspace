@@ -91,54 +91,25 @@ def _full_package(murphy_rows, nison_rows):
         "schema_version": "GOVERNED_78_RULE_ADAPTER_V1",
         "query_as_of": "2024-12-31T23:00:00Z",
         "mode": "development",
-        "murphy": {
-            "rule_count": 34,
-            "rows": murphy_rows,
-            "role": "TECHNICAL_CONTEXT",
-        },
-        "nison": {
-            "rule_count": 44,
-            "rows": nison_rows,
-            "role": "CONFIRMATION_OR_CONTRADICTION_ONLY",
-        },
-        "receipt": {
-            "all_78_rules_present": True,
-            "murphy_rule_count": 34,
-            "nison_rule_count": 44,
-            "sha256": "test-fixture-receipt",
-        },
-        "governance": {
-            "2025_oos_unchanged": False,
-            "synthetic_rules_created": False,
-            "not_evaluable_promoted_to_signal": False,
-            "nison_generates_direction": False,
-            "adapter_generates_direction": False,
-        },
+        "murphy": {"rule_count": 34, "rows": murphy_rows, "role": "TECHNICAL_CONTEXT"},
+        "nison": {"rule_count": 44, "rows": nison_rows, "role": "CONFIRMATION_OR_CONTRADICTION_ONLY"},
+        "receipt": {"all_78_rules_present": True, "murphy_rule_count": 34, "nison_rule_count": 44, "sha256": "test-fixture-receipt"},
+        "governance": {"2025_oos_unchanged": False, "synthetic_rules_created": False, "not_evaluable_promoted_to_signal": False, "nison_generates_direction": False, "adapter_generates_direction": False},
         "provenance": {},
     }
 
 
-def _full_rule_inputs(nison_rows):
-    murphy_rows = [
-        {"source_rule_id": f"MURPHY_{i:04d}", "status": "NOT_EVALUABLE", "direction": "NONE"}
-        for i in range(1, 35)
-    ]
-    murphy_rows[2] = {"source_rule_id": "MURPHY_0003", "status": "PASS", "direction": "BULLISH"}
+def _full_rule_inputs(nison_rows, *, legacy_status="PASS", legacy_direction="BULLISH", bullish_pass=True, bearish_pass=False, brain_bias="bullish"):
+    murphy_rows = [{"source_rule_id": f"MURPHY_{i:04d}", "status": "NOT_EVALUABLE", "direction": "NONE"} for i in range(1, 35)]
+    if bullish_pass:
+        murphy_rows[2] = {"source_rule_id": "MURPHY_0003", "status": "PASS", "direction": "BULLISH"}
+    if bearish_pass:
+        murphy_rows[3] = {"source_rule_id": "MURPHY_0004", "status": "PASS", "direction": "BEARISH"}
     package = _full_package(murphy_rows, nison_rows)
     return {
-        "brain_assessment": {"directional_bias": "bullish", "confidence": 0.8},
-        "murphy_evidence": {
-            "status": "PASS",
-            "direction": "BULLISH",
-            "evidence_set": {row["source_rule_id"]: row for row in murphy_rows},
-            "governed_78_package": package,
-        },
-        "nison_evidence": {
-            "confirmation": "ABSENT",
-            "contradiction": True,
-            "evidence_set": {row["source_rule_id"]: row for row in nison_rows},
-            "governed_78_package": package,
-        },
+        "brain_assessment": {"directional_bias": brain_bias, "confidence": 0.8},
+        "murphy_evidence": {"status": legacy_status, "direction": legacy_direction, "evidence_set": {row["source_rule_id"]: row for row in murphy_rows}, "governed_78_package": package},
+        "nison_evidence": {"confirmation": "ABSENT", "contradiction": False, "evidence_set": {row["source_rule_id"]: row for row in nison_rows}, "governed_78_package": package},
         "tiz_evidence": {"process_state": "READY"},
         "risk_evidence": {"risk_pass": True, "stop_loss": "1.2700", "take_profit": "1.2800", "rr": "2.0"},
         "source_rule_ids": [row["source_rule_id"] for row in murphy_rows + nison_rows],
@@ -146,11 +117,12 @@ def _full_rule_inputs(nison_rows):
     }
 
 
+def _nison_rows(default_confirmation=""):
+    return [{"source_rule_id": f"NISON_{i:04d}", "status": "NOT_EVALUABLE", "confirmation": default_confirmation, "contradiction": False, "direction": ""} for i in range(1, 45)]
+
+
 def test_full_nison_fail_same_direction_is_not_contradiction(monkeypatch):
-    nison_rows = [
-        {"source_rule_id": f"NISON_{i:04d}", "status": "NOT_EVALUABLE", "confirmation": "", "contradiction": False, "direction": ""}
-        for i in range(1, 45)
-    ]
+    nison_rows = _nison_rows()
     nison_rows[0] = {"source_rule_id": "NISON_0001", "status": "FAIL", "direction": "BULLISH", "confirmation": "", "contradiction": False}
     args = _full_rule_inputs(nison_rows)
     monkeypatch.setattr(evaluator, "_allowed_rule_ids", lambda: set(args["source_rule_ids"]))
@@ -159,13 +131,60 @@ def test_full_nison_fail_same_direction_is_not_contradiction(monkeypatch):
 
 
 def test_full_nison_opposite_direction_fail_is_contradiction(monkeypatch):
-    nison_rows = [
-        {"source_rule_id": f"NISON_{i:04d}", "status": "NOT_EVALUABLE", "confirmation": "", "contradiction": False, "direction": ""}
-        for i in range(1, 45)
-    ]
+    nison_rows = _nison_rows()
     nison_rows[0] = {"source_rule_id": "NISON_0001", "status": "FAIL", "direction": "BEARISH", "confirmation": "", "contradiction": False}
     args = _full_rule_inputs(nison_rows)
     monkeypatch.setattr(evaluator, "_allowed_rule_ids", lambda: set(args["source_rule_ids"]))
     result = evaluate_three_book_decision(**args)
     assert result["decision"]["final"] == "NO_TRADE"
     assert result["decision"]["reasons_against"] == ["NISON_FULL_RULE_CONTRADICTION"]
+
+
+def test_full_rule_envelope_overrides_legacy_murphy_candidate():
+    nison_rows = _nison_rows()
+    args = _full_rule_inputs(nison_rows, legacy_status="FAIL", legacy_direction="BEARISH", bullish_pass=True)
+    monkeypatch = __import__("pytest").MonkeyPatch()
+    try:
+        monkeypatch.setattr(evaluator, "_allowed_rule_ids", lambda: set(args["source_rule_ids"]))
+        result = evaluate_three_book_decision(**args)
+    finally:
+        monkeypatch.undo()
+    assert result["decision"]["final"] == "BUY"
+    assert result["audit"]["full_rule_consumer"]["murphy_directional_pass"] is True
+
+
+def test_full_rule_envelope_with_no_directional_pass_is_explicitly_blocked(monkeypatch):
+    nison_rows = _nison_rows()
+    args = _full_rule_inputs(nison_rows, bullish_pass=False)
+    monkeypatch.setattr(evaluator, "_allowed_rule_ids", lambda: set(args["source_rule_ids"]))
+    result = evaluate_three_book_decision(**args)
+    assert result["decision"]["final"] == "NO_TRADE"
+    assert result["decision"]["reasons_against"] == ["MURPHY_FULL_RULE_NO_DIRECTIONAL_PASS"]
+
+
+def test_full_rule_bullish_and_bearish_is_explicit_conflict(monkeypatch):
+    nison_rows = _nison_rows()
+    args = _full_rule_inputs(nison_rows, bullish_pass=True, bearish_pass=True)
+    monkeypatch.setattr(evaluator, "_allowed_rule_ids", lambda: set(args["source_rule_ids"]))
+    result = evaluate_three_book_decision(**args)
+    assert result["decision"]["final"] == "NO_TRADE"
+    assert result["decision"]["reasons_against"] == ["MURPHY_FULL_RULE_CONFLICT"]
+
+
+def test_full_rule_murphy_direction_is_used_when_brain_is_non_directional(monkeypatch):
+    nison_rows = _nison_rows()
+    args = _full_rule_inputs(nison_rows, brain_bias="neutral")
+    monkeypatch.setattr(evaluator, "_allowed_rule_ids", lambda: set(args["source_rule_ids"]))
+    result = evaluate_three_book_decision(**args)
+    assert result["decision"]["final"] == "BUY"
+    assert result["signal"]["status"] == "EXECUTABLE"
+    assert result["audit"]["direction_source"] == "MURPHY_FULL_RULE_ENVELOPE"
+
+
+def test_full_rule_murphy_direction_still_vetoed_by_explicit_brain_opposition(monkeypatch):
+    nison_rows = _nison_rows()
+    args = _full_rule_inputs(nison_rows, brain_bias="bearish")
+    monkeypatch.setattr(evaluator, "_allowed_rule_ids", lambda: set(args["source_rule_ids"]))
+    result = evaluate_three_book_decision(**args)
+    assert result["decision"]["final"] == "NO_TRADE"
+    assert result["decision"]["reasons_against"] == ["MURPHY_FULL_RULE_BRAIN_DIRECTION_CONFLICT"]

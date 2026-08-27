@@ -1,239 +1,129 @@
 version: 2.1
 
 jobs:
-  nison_runtime_0001_0010:
-    docker: [{image: cimg/python:3.12}]
+  final_2025_governed_78_rule_v1:
+    docker:
+      - image: cimg/python:3.12
     steps:
       - checkout
-      - run: python -m pip install --upgrade pip pytest
       - run:
-          working_directory: RUNTIME/NISON_EVALUATORS_V1
-          command: python -m pytest -q test_nison_0001_0002_engulfing.py test_nison_0003_0010_runtime.py && python test_nison_router_smoke_0001_0010.py
-  nison_runtime_0011_0020:
-    docker: [{image: cimg/python:3.12}]
-    steps:
-      - checkout
-      - run: python -m pip install --upgrade pip pytest
+          name: Install runtime dependencies
+          command: python -m pip install --upgrade pip pandas pytest pyyaml
       - run:
-          working_directory: RUNTIME/NISON_EVALUATORS_V1
-          command: python -m pytest -q test_nison_0011_0020_runtime.py && python test_nison_router_smoke_0011_0020.py
-  nison_runtime_0021_0030:
-    docker: [{image: cimg/python:3.12}]
-    steps:
-      - checkout
-      - run: python -m pip install --upgrade pip pytest
+          name: Acquire authoritative 2025 H1 source
+          command: |
+            set -eu
+            mkdir -p /tmp/final_78/h1
+            if [ -n "${NISON_2025_SOURCE_URL:-}" ]; then
+              curl -L --fail --silent --show-error "$NISON_2025_SOURCE_URL" -o /tmp/final_78/h1/source.zip
+            elif [ -n "${DROPBOX_ACCESS_TOKEN:-}" ]; then
+              curl -L --fail --silent --show-error https://content.dropboxapi.com/2/files/download -H "Authorization: Bearer ${DROPBOX_ACCESS_TOKEN}" -H 'Dropbox-API-Arg: {"path":"/GBPUSD_H1_2016_2025_MASTER.zip"}' -o /tmp/final_78/h1/source.zip
+            else
+              echo 'BLOCKED: configure CircleCI project secret NISON_2025_SOURCE_URL or DROPBOX_ACCESS_TOKEN.'; exit 2
+            fi
+            unzip -q /tmp/final_78/h1/source.zip -d /tmp/final_78/h1
+            H1_CSV=$(find /tmp/final_78/h1 -type f -name 'GBPUSD_H1_2016_2025_MASTER.csv' | head -1)
+            test -n "$H1_CSV"; echo "export H1_CSV=$H1_CSV" >> "$BASH_ENV"
       - run:
-          working_directory: RUNTIME/NISON_EVALUATORS_V1
-          command: python -m pytest -q test_nison_0021_0030_runtime.py && python test_nison_router_smoke_0021_0030.py
-  nison_runtime_0031_0044:
-    docker: [{image: cimg/python:3.12}]
-    steps:
-      - checkout
-      - run: python -m pip install --upgrade pip pytest
+          name: Acquire authoritative 2026/2025 M1 source
+          command: |
+            set -eu
+            mkdir -p /tmp/final_78/m1
+            if [ -n "${MURPHY_M1_SOURCE_URL:-}" ]; then
+              curl -L --fail --silent --show-error "$MURPHY_M1_SOURCE_URL" -o /tmp/final_78/m1/source.zip
+            elif [ -n "${DROPBOX_ACCESS_TOKEN:-}" ]; then
+              curl -L --fail --silent --show-error https://content.dropboxapi.com/2/files/download -H "Authorization: Bearer ${DROPBOX_ACCESS_TOKEN}" -H 'Dropbox-API-Arg: {"path":"/GBPUSD_M1_MASTER_2016_2026_V1.zip"}' -o /tmp/final_78/m1/source.zip
+            else
+              echo 'BLOCKED: configure CircleCI project secret MURPHY_M1_SOURCE_URL or DROPBOX_ACCESS_TOKEN.'; exit 2
+            fi
+            unzip -q /tmp/final_78/m1/source.zip -d /tmp/final_78/m1
+            M1_CSV=$(find /tmp/final_78/m1 -type f -name '*.csv' | head -1)
+            test -n "$M1_CSV"; echo "export M1_CSV=$M1_CSV" >> "$BASH_ENV"
       - run:
-          working_directory: RUNTIME/NISON_EVALUATORS_V1
-          command: python -m pytest -q test_nison_0031_0044_runtime.py && python test_nison_router_smoke_0031_0044.py
-  dynamic_mtf_runtime_v1:
-    docker: [{image: cimg/python:3.12}]
-    steps: [checkout, {run: python -m pip install pytest && python -m pytest -q tests/compatibility/test_dynamic_mtf_binding_adapter_v1.py}]
-  market_state_contract_v1:
-    docker: [{image: cimg/python:3.12}]
-    steps: [checkout, {run: python -m pip install pytest && python -m pytest -q tests/compatibility/test_market_state_contract_adapter_v1.py}]
-  market_reader_contract_v1:
-    docker: [{image: cimg/python:3.12}]
-    steps: [checkout, {run: python -m pip install pytest && python -m pytest -q tests/compatibility/test_market_reader_contract_adapter_v1.py}]
-  market_scenario_contract_v1:
-    docker: [{image: cimg/python:3.12}]
-    steps: [checkout, {run: python -m pip install pytest && python -m pytest -q tests/compatibility/test_market_scenario_contract_adapter_v1.py}]
-  historical_context_memory_v1:
-    docker: [{image: cimg/python:3.12}]
-    steps: [checkout, {run: python -m pip install pytest && python -m pytest -q tests/compatibility/test_historical_context_memory_boundary_v1.py}]
-  historical_outcome_memory_v1:
-    docker: [{image: cimg/python:3.12}]
-    steps: [checkout, {run: python -m pip install pytest && python -m pytest -q tests/compatibility/test_historical_outcome_memory_boundary_v1.py}]
-  similarity_memory_v2:
-    docker: [{image: cimg/python:3.12}]
-    steps: [checkout, {run: python -m pip install pytest && python -m pytest -q tests/compatibility/test_similarity_memory_v2_boundary.py}]
-  memory_integration_v1:
-    docker: [{image: cimg/python:3.12}]
-    steps: [checkout, {run: python -m pip install pytest && python -m pytest -q tests/compatibility/test_memory_evidence_package_v1.py}]
-  outcome_to_scenario_evidence_policy_v1:
-    docker: [{image: cimg/python:3.12}]
-    steps: [checkout, {run: python -m pip install pytest && python -m pytest -q tests/compatibility/test_outcome_to_scenario_evidence_policy_v1.py}]
-  decision_brain_v1_integration:
-    docker: [{image: cimg/python:3.12}]
-    steps: [checkout, {run: python -m pip install pytest && python -m pytest -q tests/compatibility/test_decision_brain_v1_handoff_adapter.py}]
-  decision_brain_final_e2e_readiness_v1:
-    docker: [{image: cimg/python:3.12}]
-    steps:
-      - checkout
-      - run: python -m pip install pytest pandas
+          name: Build PIT-safe Murphy 0022/0023 evidence
+          command: |
+            set -eu; mkdir -p artifacts/final_78
+            python OOS_2025/run_murphy_0022_0023_2025_pit_v1.py --h1 "$H1_CSV" --m1 "$M1_CSV" --oi evidence/cftc/2025/6b_oi_pit_bound_v1.json --output artifacts/final_78/MURPHY_0022_0023_2025.csv --manifest artifacts/final_78/MURPHY_0022_0023_2025_MANIFEST.json
       - run:
-          name: Run governed final E2E and persist diagnostic
-          command: python -m pytest -q tests/compatibility/test_decision_brain_final_e2e_readiness_v1.py
+          name: Run governed 78-rule Decision Brain and P&L
+          command: python OOS_2025/run_final_2025_governed_78_rule_v1.py --h1 "$H1_CSV" --m1 "$M1_CSV" --murphy-0022-0023 artifacts/final_78/MURPHY_0022_0023_2025.csv --output-dir artifacts/final_78
+      - run:
+          name: Diagnose 2025 executable-to-trade censoring
+          command: python OOS_2025/diagnose_2025_execution_censoring_v1.py --events artifacts/final_78/FINAL_2025_DECISION_EVENTS.csv --h1 "$H1_CSV" --output-dir artifacts/final_78/censoring_audit
+      - run:
+          name: Audit 78-rule evidence coverage and direction arbitration
+          command: python OOS_2025/run_2025_evidence_coverage_direction_audit_v1.py --market-state artifacts/final_78/GBPUSD_MARKET_STATE.csv --murphy-full artifacts/final_78/MURPHY_2025_FULL_EVIDENCE.csv --nison-full artifacts/final_78/NISON_2025_FULL_EVIDENCE_ENVELOPE.csv --murphy-candidate artifacts/final_78/MURPHY_2025_CANDIDATE_STREAM.csv --nison-candidate artifacts/final_78/NISON_2025_CANDIDATE_STREAM.csv --decision-events artifacts/final_78/FINAL_2025_DECISION_EVENTS.csv --output artifacts/final_78/DIRECTION_ARBITRATION_2025_AUDIT.json
+      - run:
+          name: Run as-of-safe pre-2025 memory runtime audit
+          command: |
+            set -eu
+            test -n "${DROPBOX_ACCESS_TOKEN:-}" || { echo 'BLOCKED: configure CircleCI project secret DROPBOX_ACCESS_TOKEN.'; exit 2; }
+            rm -rf /tmp/memory_runtime_v2; mkdir -p /tmp/memory_runtime_v2/zips artifacts/final_78/memory_shadow
+            base='https://content.dropboxapi.com/2/files/download'; auth=(-H "Authorization: Bearer ${DROPBOX_ACCESS_TOKEN}" -H 'Content-Type: application/octet-stream')
+            curl -L --fail --silent --show-error "$base" "${auth[@]}" -H 'Dropbox-API-Arg: {"path":"/AI_Trading_Assistant_FULL_PROJECT_V1/AI_Trading_Assistant_HISTORICAL_CONTEXT_MEMORY_V1.zip"}' -o /tmp/memory_runtime_v2/zips/context.zip
+            curl -L --fail --silent --show-error "$base" "${auth[@]}" -H 'Dropbox-API-Arg: {"path":"/AI_Trading_Assistant_FULL_PROJECT_V1/AI_Trading_Assistant_HISTORICAL_OUTCOME_MEMORY_V1.zip"}' -o /tmp/memory_runtime_v2/zips/outcome.zip
+            curl -L --fail --silent --show-error "$base" "${auth[@]}" -H 'Dropbox-API-Arg: {"path":"/AI_Trading_Assistant_FULL_PROJECT_V1/AI_Trading_Assistant_SIMILARITY_MEMORY_V2.zip"}' -o /tmp/memory_runtime_v2/zips/similarity.zip
+            curl -L --fail --silent --show-error "$base" "${auth[@]}" -H 'Dropbox-API-Arg: {"path":"/AI_Trading_Assistant_FULL_PROJECT_V1/AI_Trading_Assistant_CONTEXT_AWARE_RETRIEVAL_V2.zip"}' -o /tmp/memory_runtime_v2/zips/retrieval.zip
+            python OOS_2025/run_pre2025_memory_runtime_audit_v2.py --context /tmp/memory_runtime_v2/zips/context.zip --outcome /tmp/memory_runtime_v2/zips/outcome.zip --similarity /tmp/memory_runtime_v2/zips/similarity.zip --retrieval /tmp/memory_runtime_v2/zips/retrieval.zip --query-as-of 2024-12-31T12:00:00Z --output artifacts/final_78/memory_shadow/PRE2025_MEMORY_RUNTIME_AUDIT_V2.json
+      - run:
+          name: Run pre-2025 MTF and retrieval shadow probe
+          command: |
+            set -eu
+            test -n "${DROPBOX_ACCESS_TOKEN:-}" || { echo 'BLOCKED: configure CircleCI project secret DROPBOX_ACCESS_TOKEN.'; exit 2; }
+            rm -rf /tmp/mtf_retrieval_shadow; mkdir -p /tmp/mtf_retrieval_shadow/zips
+            base='https://content.dropboxapi.com/2/files/download'; auth=(-H "Authorization: Bearer ${DROPBOX_ACCESS_TOKEN}" -H 'Content-Type: application/octet-stream')
+            curl -L --fail --silent --show-error "$base" "${auth[@]}" -H 'Dropbox-API-Arg: {"path":"/AI_Trading_Assistant_FULL_PROJECT_V1/AI_Trading_Assistant_MULTI_TIMEFRAME_READER_V1.zip"}' -o /tmp/mtf_retrieval_shadow/zips/mtf.zip
+            curl -L --fail --silent --show-error "$base" "${auth[@]}" -H 'Dropbox-API-Arg: {"path":"/AI_Trading_Assistant_FULL_PROJECT_V1/AI_Trading_Assistant_CONTEXT_AWARE_RETRIEVAL_V2.zip"}' -o /tmp/mtf_retrieval_shadow/zips/retrieval.zip
+            python OOS_2025/run_pre2025_mtf_retrieval_shadow_probe_v2.py --mtf /tmp/mtf_retrieval_shadow/zips/mtf.zip --retrieval /tmp/mtf_retrieval_shadow/zips/retrieval.zip --query-as-of 2024-12-31T12:00:00Z --output artifacts/final_78/memory_shadow/PRE2025_MTF_RETRIEVAL_SHADOW_PROBE_V2.json
+      - run:
+          name: Verify governed 34+44 provenance and OOS gates
+          command: python -c "import json; m=json.load(open('artifacts/final_78/FINAL_2025_DECISION_EVENTS_MANIFEST.json')); assert m['murphy_rule_count_in_event']==34,m; assert m['nison_rule_count_in_event']==44,m; assert m['fan_in_mode']=='LOSSLESS_FULL_EVIDENCE_WITH_LEGACY_DECISION_COMPAT',m; assert m['oos_tuning'] is False,m; assert m['new_rule_semantics'] is False,m; print(json.dumps(m,indent=2))"
+      - run:
+          name: Verify fail-closed provenance tests
+          command: python -m pytest -q tests/evaluation/test_final_78_rule_provenance_gate_v1.py tests/evaluation/test_direction_arbitration_2025_v1.py
       - store_artifacts:
-          path: artifacts/final_78_ci
-          destination: final_78_ci
-  risk_execution_runtime_v1:
-    docker: [{image: cimg/python:3.12}]
-    steps: [checkout, {run: python -m pip install pytest && python -m pytest -q risk_engine/test_risk_execution_runtime_v1.py tests/compatibility/test_decision_brain_final_e2e_readiness_v1.py}]
-  tiz_optional_execution_adapter_v2:
-    docker: [{image: cimg/python:3.12}]
-    steps: [checkout, {run: python -m pip install pytest && python -m pytest -q tests/evaluation/test_tiz_optional_execution_adapter_v2.py}]
-  decision_brain_pre_oos_freeze_guard_v1:
-    docker: [{image: cimg/python:3.12}]
-    steps: [checkout, {run: python -m pip install pytest && python -m pytest -q tests/compatibility/test_decision_brain_pre_oos_freeze_guard_v1.py}]
-  decision_brain_rule_allowlist_v1:
-    docker: [{image: cimg/python:3.12}]
-    steps: [checkout, {run: python -m pip install pytest && python -m pytest -q tests/compatibility/test_decision_brain_rule_allowlist_v1.py}]
-  rule_adapter_allowlist_runtime_gate_v1:
-    docker: [{image: cimg/python:3.12}]
-    steps: [checkout, {run: python -m pip install pytest && python -m pytest -q tests/compatibility/test_rule_adapter_allowlist_runtime_gate_v1.py}]
-  frozen_decision_execution_bridge_v1:
-    docker: [{image: cimg/python:3.12}]
-    steps: [checkout, {run: python -m pip install pytest && python -m pytest -q tests/evaluation/test_frozen_decision_execution_bridge_v1.py}]
-  frozen_decision_2025_oos_evaluator_contract_v1:
-    docker: [{image: cimg/python:3.12}]
-    steps: [checkout, {run: python -m pip install pytest && python -m pytest -q tests/compatibility/test_decision_brain_2025_oos_evaluator_contract_v1.py}]
-  three_book_decision_evaluator_v1:
-    docker: [{image: cimg/python:3.12}]
-    steps: [checkout, {run: python -m pip install pytest && python -m pytest -q tests/evaluation/test_three_book_decision_evaluator_v1.py}]
-  nison_evidence_aggregate_v1:
-    docker: [{image: cimg/python:3.12}]
+          path: artifacts/final_78
+          destination: final_2025_governed_78_rule
+
+  pre2025_arbitration_shadow_v1:
+    docker:
+      - image: cimg/python:3.12
     steps:
       - checkout
-      - run: python -m pip install --upgrade pip pytest pandas
       - run:
-          name: Test governed Nison adapters
-          command: python -m pytest -q tests/compatibility/test_nison_2025_evidence_aggregate_v1.py tests/compatibility/test_nison_2025_source_adapter_v1.py
-  nison_2025_full_production_v1:
-    docker: [{image: cimg/python:3.12}]
-    steps:
-      - checkout
-      - run: python -m pip install --upgrade pip pandas
+          name: Install shadow dependencies
+          command: python -m pip install --upgrade pip pandas
       - run:
-          name: Acquire authoritative 2025 source
+          name: Acquire pre-2025 sources
           command: |
             set -eu
-            mkdir -p /tmp/nison_2025/unpacked
-            if [ -n "${NISON_2025_SOURCE_URL:-}" ]; then curl -L --fail --silent --show-error "$NISON_2025_SOURCE_URL" -o /tmp/nison_2025/source.zip; elif [ -n "${DROPBOX_ACCESS_TOKEN:-}" ]; then curl -L --fail --silent --show-error https://content.dropboxapi.com/2/files/download -H "Authorization: Bearer ${DROPBOX_ACCESS_TOKEN}" -H 'Dropbox-API-Arg: {"path":"/GBPUSD_H1_2016_2025_MASTER.zip"}' -o /tmp/nison_2025/source.zip; else echo 'BLOCKED: configure CircleCI project secret NISON_2025_SOURCE_URL or DROPBOX_ACCESS_TOKEN.'; exit 2; fi
-            unzip -q /tmp/nison_2025/source.zip -d /tmp/nison_2025/unpacked
-            SOURCE_CSV=$(find /tmp/nison_2025/unpacked -type f -name 'GBPUSD_H1_2016_2025_MASTER.csv' | head -1)
-            test -n "$SOURCE_CSV"
-            echo "export NISON_SOURCE_CSV=$SOURCE_CSV" >> "$BASH_ENV"
+            test -n "${DROPBOX_ACCESS_TOKEN:-}" || { echo 'BLOCKED: configure CircleCI project secret DROPBOX_ACCESS_TOKEN.'; exit 2; }
+            mkdir -p /tmp/pre2025/{market,mtf,h1,m1,unpack}
+            base='https://content.dropboxapi.com/2/files/download'; auth=(-H "Authorization: Bearer ${DROPBOX_ACCESS_TOKEN}" -H 'Content-Type: application/octet-stream')
+            curl -L --fail --silent --show-error "$base" "${auth[@]}" -H 'Dropbox-API-Arg: {"path":"/AI_Trading_Assistant_FULL_PROJECT_V1/AI_Trading_Assistant_MARKET_STATE_READER_V1.zip"}' -o /tmp/pre2025/market/source.zip
+            curl -L --fail --silent --show-error "$base" "${auth[@]}" -H 'Dropbox-API-Arg: {"path":"/AI_Trading_Assistant_FULL_PROJECT_V1/AI_Trading_Assistant_MULTI_TIMEFRAME_READER_V1.zip"}' -o /tmp/pre2025/mtf/source.zip
+            curl -L --fail --silent --show-error "$base" "${auth[@]}" -H 'Dropbox-API-Arg: {"path":"/GBPUSD_H1_2016_2025_MASTER.zip"}' -o /tmp/pre2025/h1/source.zip
+            curl -L --fail --silent --show-error "$base" "${auth[@]}" -H 'Dropbox-API-Arg: {"path":"/GBPUSD_M1_MASTER_2016_2026_V1.zip"}' -o /tmp/pre2025/m1/source.zip
+            unzip -q /tmp/pre2025/market/source.zip -d /tmp/pre2025/market/unpack
+            unzip -q /tmp/pre2025/mtf/source.zip -d /tmp/pre2025/mtf/unpack
+            unzip -q /tmp/pre2025/h1/source.zip -d /tmp/pre2025/h1/unpack
+            unzip -q /tmp/pre2025/m1/source.zip -d /tmp/pre2025/m1/unpack
+            MARKET=$(find /tmp/pre2025/market/unpack -type f -name 'GBPUSD_MARKET_STATE.csv' | head -1)
+            H1=$(find /tmp/pre2025/h1/unpack -type f -name 'GBPUSD_H1_2016_2025_MASTER.csv' | head -1)
+            M1=$(find /tmp/pre2025/m1/unpack -type f -name 'GBPUSD_M1_MASTER_2016_2026.csv' | head -1)
+            test -n "$MARKET"; test -n "$H1"; test -n "$M1"
+            echo "export MARKET=$MARKET" >> "$BASH_ENV"
+            echo "export H1=$H1" >> "$BASH_ENV"
+            echo "export M1=$M1" >> "$BASH_ENV"
       - run:
-          name: Run full governed Nison 2025 production
-          command: |
-            set -eu
-            mkdir -p artifacts/nison_2025
-            python OOS_2025/run_nison_2025_full_production_v1.py --input "$NISON_SOURCE_CSV" --output artifacts/nison_2025/NISON_2025_FULL_EVIDENCE.csv --manifest artifacts/nison_2025/NISON_2025_FULL_EVIDENCE_MANIFEST.json
-            python OOS_2025/verify_nison_2025_full_production_v1.py artifacts/nison_2025/NISON_2025_FULL_EVIDENCE_MANIFEST.json
-      - run:
-          name: Aggregate governed Nison evidence
-          command: python -c "from OOS_2025.nison_2025_evidence_aggregate_v1 import write_aggregate; write_aggregate('artifacts/nison_2025/NISON_2025_FULL_EVIDENCE.csv','artifacts/nison_2025/NISON_2025_EVIDENCE_BY_TIMESTAMP.csv','artifacts/nison_2025/NISON_2025_EVIDENCE_BY_TIMESTAMP_MANIFEST.json')"
+          name: Run 2016-2024 arbitration shadow
+          command: bash OOS_2025/run_pre2025_arbitration_circleci_v1.sh
       - store_artifacts:
-          path: artifacts/nison_2025
-          destination: nison_2025
-  oos_2025_78_rule_coverage_v1:
-    docker: [{image: cimg/python:3.12}]
-    steps:
-      - checkout
-      - run: python -m pip install --upgrade pip pandas
-      - run:
-          name: Acquire authoritative 2025 source
-          command: |
-            set -eu
-            mkdir -p /tmp/nison_2025/unpacked
-            if [ -n "${NISON_2025_SOURCE_URL:-}" ]; then curl -L --fail --silent --show-error "$NISON_2025_SOURCE_URL" -o /tmp/nison_2025/source.zip; elif [ -n "${DROPBOX_ACCESS_TOKEN:-}" ]; then curl -L --fail --silent --show-error https://content.dropboxapi.com/2/files/download -H "Authorization: Bearer ${DROPBOX_ACCESS_TOKEN}" -H 'Dropbox-API-Arg: {"path":"/GBPUSD_H1_2016_2025_MASTER.zip"}' -o /tmp/nison_2025/source.zip; else echo 'BLOCKED: configure CircleCI project secret NISON_2025_SOURCE_URL or DROPBOX_ACCESS_TOKEN.'; exit 2; fi
-            unzip -q /tmp/nison_2025/source.zip -d /tmp/nison_2025/unpacked
-            SOURCE_CSV=$(find /tmp/nison_2025/unpacked -type f -name 'GBPUSD_H1_2016_2025_MASTER.csv' | head -1)
-            test -n "$SOURCE_CSV"
-            echo "export NISON_SOURCE_CSV=$SOURCE_CSV" >> "$BASH_ENV"
-      - run:
-          name: Generate current governed Nison 2025 output
-          command: |
-            set -eu
-            mkdir -p artifacts/oos_78
-            python OOS_2025/run_nison_2025_full_production_v1.py --input "$NISON_SOURCE_CSV" --output artifacts/oos_78/NISON_2025_FULL_EVIDENCE.csv --manifest artifacts/oos_78/NISON_2025_FULL_EVIDENCE_MANIFEST.json
-      - run:
-          name: Build explicit 78-rule coverage report
-          command: python OOS_2025/run_current_78_rule_coverage_v1.py --nison-csv artifacts/oos_78/NISON_2025_FULL_EVIDENCE.csv --murphy-snapshot OOS_2025/MURPHY_2025_COVERAGE_SNAPSHOT_V1.json --output artifacts/oos_78/FULL_78_RULE_2025_COVERAGE_CURRENT.json
-      - store_artifacts:
-          path: artifacts/oos_78
-          destination: oos_2025_78_coverage
-  murphy_0021_2025_fresh_v1:
-    docker: [{image: cimg/python:3.12}]
-    steps:
-      - checkout
-      - run: python -m pip install --upgrade pip pandas pytest
-      - run:
-          name: Acquire authoritative 2025 H1 + M1 sources
-          command: |
-            set -eu
-            mkdir -p /tmp/murphy_2025_0021/h1 /tmp/murphy_2025_0021/m1
-            if [ -n "${NISON_2025_SOURCE_URL:-}" ]; then curl -L --fail --silent --show-error "$NISON_2025_SOURCE_URL" -o /tmp/murphy_2025_0021/h1/source.zip; elif [ -n "${DROPBOX_ACCESS_TOKEN:-}" ]; then curl -L --fail --silent --show-error https://content.dropboxapi.com/2/files/download -H "Authorization: Bearer ${DROPBOX_ACCESS_TOKEN}" -H 'Dropbox-API-Arg: {"path":"/GBPUSD_H1_2016_2025_MASTER.zip"}' -o /tmp/murphy_2025_0021/h1/source.zip; else echo 'BLOCKED: configure CircleCI project secret NISON_2025_SOURCE_URL or DROPBOX_ACCESS_TOKEN.'; exit 2; fi
-            if [ -n "${MURPHY_M1_SOURCE_URL:-}" ]; then curl -L --fail --silent --show-error "$MURPHY_M1_SOURCE_URL" -o /tmp/murphy_2025_0021/m1/source.zip; elif [ -n "${DROPBOX_ACCESS_TOKEN:-}" ]; then curl -L --fail --silent --show-error https://content.dropboxapi.com/2/files/download -H "Authorization: Bearer ${DROPBOX_ACCESS_TOKEN}" -H 'Dropbox-API-Arg: {"path":"/GBPUSD_M1_MASTER_2016_2026_V1.zip"}' -o /tmp/murphy_2025_0021/m1/source.zip; else echo 'BLOCKED: configure CircleCI project secret MURPHY_M1_SOURCE_URL or DROPBOX_ACCESS_TOKEN.'; exit 2; fi
-            unzip -q /tmp/murphy_2025_0021/h1/source.zip -d /tmp/murphy_2025_0021/h1
-            unzip -q /tmp/murphy_2025_0021/m1/source.zip -d /tmp/murphy_2025_0021/m1
-            H1_CSV=$(find /tmp/murphy_2025_0021/h1 -type f -name 'GBPUSD_H1_2016_2025_MASTER.csv' | head -1)
-            M1_CSV=$(find /tmp/murphy_2025_0021/m1 -type f -name '*.csv' | head -1)
-            test -n "$H1_CSV"
-            test -n "$M1_CSV"
-            echo "export MURPHY_SOURCE_CSV=$H1_CSV" >> "$BASH_ENV"
-            echo "export MURPHY_M1_SOURCE_CSV=$M1_CSV" >> "$BASH_ENV"
-      - run:
-          name: Run fresh Murphy 0021 2025 producer
-          command: |
-            set -eu
-            mkdir -p artifacts/murphy_0021_2025
-            python OOS_2025/run_murphy_0021_2025_fresh_v1.py --input "$MURPHY_SOURCE_CSV" --m1-input "$MURPHY_M1_SOURCE_CSV" --output artifacts/murphy_0021_2025/MURPHY_0021_2025.csv --manifest artifacts/murphy_0021_2025/MURPHY_0021_2025_MANIFEST.json
-      - run:
-          name: Verify Murphy 0021 producer tests
-          command: python -m pytest -q tests/evaluation/test_murphy_0021_2025_fresh_v1.py
-      - store_artifacts:
-          path: artifacts/murphy_0021_2025
-          destination: murphy_0021_2025
-  murphy_0022_0023_2025_pit_v1:
-    docker: [{image: cimg/python:3.12}]
-    steps:
-      - checkout
-      - run: python -m pip install --upgrade pip pandas pytest
-      - run:
-          name: Acquire governed 2025 H1 + M1 sources
-          command: |
-            set -eu
-            mkdir -p /tmp/murphy_0022_0023/h1 /tmp/murphy_0022_0023/m1
-            if [ -n "${NISON_2025_SOURCE_URL:-}" ]; then curl -L --fail --silent --show-error "$NISON_2025_SOURCE_URL" -o /tmp/murphy_0022_0023/h1/source.zip; elif [ -n "${DROPBOX_ACCESS_TOKEN:-}" ]; then curl -L --fail --silent --show-error https://content.dropboxapi.com/2/files/download -H "Authorization: Bearer ${DROPBOX_ACCESS_TOKEN}" -H 'Dropbox-API-Arg: {"path":"/GBPUSD_H1_2016_2025_MASTER.zip"}' -o /tmp/murphy_0022_0023/h1/source.zip; else echo 'BLOCKED: configure CircleCI project secret NISON_2025_SOURCE_URL or DROPBOX_ACCESS_TOKEN.'; exit 2; fi
-            if [ -n "${MURPHY_M1_SOURCE_URL:-}" ]; then curl -L --fail --silent --show-error "$MURPHY_M1_SOURCE_URL" -o /tmp/murphy_0022_0023/m1/source.zip; elif [ -n "${DROPBOX_ACCESS_TOKEN:-}" ]; then curl -L --fail --silent --show-error https://content.dropboxapi.com/2/files/download -H "Authorization: Bearer ${DROPBOX_ACCESS_TOKEN}" -H 'Dropbox-API-Arg: {"path":"/GBPUSD_M1_MASTER_2016_2026_V1.zip"}' -o /tmp/murphy_0022_0023/m1/source.zip; else echo 'BLOCKED: configure CircleCI project secret MURPHY_M1_SOURCE_URL or DROPBOX_ACCESS_TOKEN.'; exit 2; fi
-            unzip -q /tmp/murphy_0022_0023/h1/source.zip -d /tmp/murphy_0022_0023/h1
-            unzip -q /tmp/murphy_0022_0023/m1/source.zip -d /tmp/murphy_0022_0023/m1
-            H1_CSV=$(find /tmp/murphy_0022_0023/h1 -type f -name 'GBPUSD_H1_2016_2025_MASTER.csv' | head -1)
-            M1_CSV=$(find /tmp/murphy_0022_0023/m1 -type f -name '*.csv' | head -1)
-            test -n "$H1_CSV"
-            test -n "$M1_CSV"
-            echo "export MURPHY_OI_H1_CSV=$H1_CSV" >> "$BASH_ENV"
-            echo "export MURPHY_OI_M1_CSV=$M1_CSV" >> "$BASH_ENV"
-      - run:
-          name: Run PIT-safe Murphy 0022/0023 on all 2025 H1 rows
-          command: |
-            set -eu
-            mkdir -p artifacts/murphy_0022_0023_2025
-            python OOS_2025/run_murphy_0022_0023_2025_pit_v1.py --h1 "$MURPHY_OI_H1_CSV" --m1 "$MURPHY_OI_M1_CSV" --oi evidence/cftc/2025/6b_oi_pit_bound_v1.json --output artifacts/murphy_0022_0023_2025/MURPHY_0022_0023_2025.csv --manifest artifacts/murphy_0022_0023_2025/MURPHY_0022_0023_2025_MANIFEST.json
-      - run:
-          name: Verify Murphy 0022/0023 runtime and PIT tests
-          command: python -m pytest -q tests/evaluation/test_murphy_0021_0023_runtime_dispatch_v1.py tests/evaluation/test_cftc_6b_oi_pit_bound_v1.py
-      - store_artifacts:
-          path: artifacts/murphy_0022_0023_2025
-          destination: murphy_0022_0023_2025
+          path: artifacts/pre2025_arbitration
+          destination: pre2025_arbitration_shadow
 
 workflows:
-  build_and_test:
-    jobs: [nison_runtime_0001_0010, nison_runtime_0011_0020, nison_runtime_0021_0030, nison_runtime_0031_0044, dynamic_mtf_runtime_v1, market_state_contract_v1, market_reader_contract_v1, market_scenario_contract_v1, historical_context_memory_v1, historical_outcome_memory_v1, similarity_memory_v2, memory_integration_v1, outcome_to_scenario_evidence_policy_v1, decision_brain_v1_integration, decision_brain_final_e2e_readiness_v1, risk_execution_runtime_v1, tiz_optional_execution_adapter_v2, decision_brain_pre_oos_freeze_guard_v1, decision_brain_rule_allowlist_v1, rule_adapter_allowlist_runtime_gate_v1, frozen_decision_execution_bridge_v1, frozen_decision_2025_oos_evaluator_contract_v1, three_book_decision_evaluator_v1, nison_evidence_aggregate_v1]
-  nison_2025_full_production:
-    jobs: [nison_2025_full_production_v1]
-  oos_2025_78_rule_coverage:
-    jobs: [oos_2025_78_rule_coverage_v1]
-  murphy_2025_fresh:
-    jobs: [murphy_0021_2025_fresh_v1]
-  murphy_0022_0023_2025_pit:
-    jobs: [murphy_0022_0023_2025_pit_v1]
+  final_2025_governed_78_rule:
+    jobs:
+      - final_2025_governed_78_rule_v1
+      - pre2025_arbitration_shadow_v1
