@@ -28,8 +28,36 @@ def _canonical_rule_id(rule_id: str) -> str:
     return ROUTER_IDS[rule_id]
 
 
+def _sanitize_candle_payload(candle: Dict[str, Any]) -> Dict[str, Any]:
+    """Keep only fields admitted by the Nison Candle contracts.
+
+    Market metadata such as timestamp/volume belongs outside the candle object.
+    This boundary guard prevents accidental leakage of source columns into
+    strict dataclass constructors while preserving all source-mapped categorical
+    candle facts already supported by the evaluators.
+    """
+    allowed = {
+        "open", "high", "low", "close",
+        "body_class", "color", "gap_class", "close_relation",
+        "shadow_relation", "doji_isolated", "open_inside_previous_body",
+        "equal_extreme", "close_near_low",
+    }
+    return {key: value for key, value in dict(candle).items() if key in allowed}
+
+
+def _sanitize_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
+    safe = dict(payload)
+    safe["candles"] = [
+        _sanitize_candle_payload(candle)
+        for candle in payload.get("candles", [])
+        if isinstance(candle, dict)
+    ]
+    return safe
+
+
 def _evaluate_one(rule_id: str, payload: Dict[str, Any]) -> Dict[str, Any]:
-    raw = evaluate_rule(_canonical_rule_id(rule_id), payload)
+    safe_payload = _sanitize_payload(payload)
+    raw = evaluate_rule(_canonical_rule_id(rule_id), safe_payload)
     raw = dict(raw)
     raw["rule_id"] = rule_id
     evidence = adapt_nison_evaluator_result(raw)
@@ -62,11 +90,7 @@ def run_timestamp(timestamp: Any, payload_by_rule: Dict[str, Dict[str, Any]]) ->
 
 
 def run_payload_rows(rows: Iterable[Dict[str, Any]]) -> pd.DataFrame:
-    """Evaluate a stream of 2025 payload rows.
-
-    Each input row must contain timestamp, rule_id and a JSON-like payload in
-    the `payload` field. This adapter only executes existing Nison runtimes.
-    """
+    """Evaluate a stream of payload rows."""
     out: list[Dict[str, Any]] = []
     grouped: dict[pd.Timestamp, dict[str, Dict[str, Any]]] = {}
     for row in rows:
@@ -89,11 +113,7 @@ def run_ohlcv_for_year(
     *,
     evaluation_year: int = 2025,
 ) -> pd.DataFrame:
-    """Run the existing Nison runtime over one specified historical year.
-
-    This only parameterizes the evaluation fold. It reuses the same 44 rule
-    IDs, routers, source facts, evidence bridge, and fail-closed semantics.
-    """
+    """Run the existing Nison runtime over one specified historical year."""
     return run_payload_rows(build_payload_rows(bars, context, evaluation_year=evaluation_year))
 
 
