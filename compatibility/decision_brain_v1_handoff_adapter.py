@@ -37,7 +37,7 @@ def _normalize_gate(value: Any) -> str:
 
 
 def _sanitize_historical(historical: Mapping[str, Any] | None) -> dict[str, Any]:
-    """Keep historical metadata but never pass predicted_return as direction."""
+    """Keep historical metadata/evidence while forbidding direction leakage."""
     payload = dict(historical or {})
     sanitized = {
         "retrieval_status": payload.get("retrieval_status"),
@@ -52,6 +52,10 @@ def _sanitize_historical(historical: Mapping[str, Any] | None) -> dict[str, Any]
         "outcome_evidence": deepcopy(payload.get("outcome_evidence", {})),
         "context_evidence": deepcopy(payload.get("context_evidence", {})),
         "warnings": deepcopy(payload.get("warnings", [])),
+        "sources": deepcopy(payload.get("sources", {})),
+        "summary": deepcopy(payload.get("summary", {})),
+        "governance": deepcopy(payload.get("governance", {})),
+        "provenance": deepcopy(payload.get("provenance", {})),
         "predicted_return_used_as_direction": False,
     }
     return sanitized
