@@ -13,10 +13,15 @@ on:
         required: true
         type: boolean
         default: false
+  push:
+    branches:
+      - backtest-only-2026-08-28
+    paths:
+      - '.github/RUN_INTEGRATION_GATE_NOW'
 
 jobs:
   governed:
-    if: ${{ inputs.run_integration_gate }}
+    if: ${{ inputs.run_integration_gate || github.event_name == 'push' }}
     runs-on: ubuntu-latest
     env:
       DROPBOX_ACCESS_TOKEN: ${{ secrets.DROPBOX_ACCESS_TOKEN }}
@@ -79,7 +84,7 @@ jobs:
         run: |
           python BACKTEST/GOVERNED_INTEGRATION_GATE_V4.py --h1 "$H1" --market-state artifacts/raw/market_state.csv --mtf "$MTF" --murphy artifacts/integration_gate/MURPHY_CANONICAL_EVENT_EVIDENCE_2016_2024.csv --nison artifacts/integration_gate/NISON_CANONICAL_EVENT_EVIDENCE_2016_2024.csv --historical-context "$HC" --historical-outcome "$HO" --similarity artifacts/unpacked/similarity --retrieval artifacts/unpacked/retrieval --handoff compatibility/knowledge_decision_handoff.py --decision-brain RECOVERED_SOURCES/DECISION_BRAIN_V1/decision_brain.py --output artifacts/GOVERNED_INTEGRATION_GATE_V4.json
       - name: Full 2016-2024 backtest
-        if: ${{ inputs.run_full_backtest }}
+        if: ${{ inputs.run_full_backtest && inputs.run_integration_gate }}
         run: |
           test -f artifacts/GOVERNED_INTEGRATION_GATE_V4.json
           python - <<'PY'
