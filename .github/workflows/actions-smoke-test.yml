@@ -1,7 +1,6 @@
-name: Actions Smoke Test
+name: Actions Smoke Test (MANUAL)
 
 on:
-  push:
   workflow_dispatch:
 
 jobs:
