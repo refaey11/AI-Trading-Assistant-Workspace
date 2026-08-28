@@ -1,0 +1,1 @@
+Source note: NISON_2016_2024_FULL_EVIDENCE.csv is maintained in Dropbox/New 8 and is source-backed. This file is documentation only; no trading rules or thresholds are changed.
