@@ -59,7 +59,10 @@ jobs:
           path: artifacts/integration_gate
           destination: governed_integration_gate_2026_08_28
       - when:
-          condition: << pipeline.parameters.run_governed_backtest >>
+          condition:
+            or:
+              - << pipeline.parameters.run_governed_backtest >>
+              - equal: [ << pipeline.git.branch >>, "governed-backtest-final-2026-08-29" ]
           steps:
             - run:
                 name: 2016-2024 Decision Brain backtest (only after Gate PASS)
@@ -87,5 +90,6 @@ workflows:
         - << pipeline.parameters.run_integration_gate >>
         - << pipeline.parameters.run_governed_backtest >>
         - pipeline.git.branch == "governed-gate-run-2026-08-29"
+        - pipeline.git.branch == "governed-backtest-final-2026-08-29"
     jobs:
       - governed_backtest_only
