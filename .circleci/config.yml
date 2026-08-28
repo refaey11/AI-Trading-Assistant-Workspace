@@ -12,97 +12,24 @@ jobs:
       - run:
           name: Install runtime dependencies
           command: python -m pip install --upgrade pip pandas pytest
-
       - run:
           name: Acquire governed source stack
-          shell: bash
-          command: |
-            set -euo pipefail
-            python BACKTEST/CIRCLECI_ACQUIRE_GOVERNED_SOURCES.py
-
+          command: python BACKTEST/CIRCLECI_ACQUIRE_GOVERNED_SOURCES.py
       - run:
           name: Frozen scope and 2025 lock check
-          shell: bash
-          command: |
-            set -euo pipefail
-            python - <<'PY'
-            import os
-            import pandas as pd
-
-            h1 = pd.read_csv(os.environ['H1'], usecols=['timestamp'])
-            h1t = pd.to_datetime(h1['timestamp'], utc=True, format='mixed')
-            assert h1t.dt.year.min() <= 2016
-            assert h1t.dt.year.max() >= 2025
-
-            n = pd.read_csv('artifacts/raw/nison.csv', usecols=['timestamp','rule_id'])
-            nt = pd.to_datetime(n['timestamp'], utc=True, format='mixed')
-            assert nt.dt.year.min() == 2016 and nt.dt.year.max() == 2024
-            assert n['rule_id'].nunique() == 44
-            assert len(n) == 2428448
-
-            m = pd.read_csv(os.environ['MURPHY'], usecols=['timestamp','source_rule_id'])
-            mt = pd.to_datetime(m['timestamp'], utc=True, format='mixed')
-            assert mt.dt.year.min() == 2016 and mt.dt.year.max() == 2024
-            assert m['source_rule_id'].nunique() == 34
-
-            print('FROZEN_SCOPE_PASS', 'nison_rows=', len(n), 'nison_rules=', n['rule_id'].nunique(), 'murphy_rules=', m['source_rule_id'].nunique())
-            print('OOS_2025_LOCKED')
-            PY
-
+          command: python BACKTEST/CIRCLECI_FROZEN_SCOPE_CHECK.py
       - run:
           name: GOVERNED INTEGRATION GATE V2
-          shell: bash
-          command: |
-            set -euo pipefail
-            mkdir -p artifacts/integration_gate
-            python BACKTEST/GOVERNED_INTEGRATION_GATE_V2.py \
-              --h1 "$H1" \
-              --market-state artifacts/raw/market_state.csv \
-              --mtf "$MTF" \
-              --murphy "$MURPHY" \
-              --nison artifacts/raw/nison.csv \
-              --historical-context "$HC" \
-              --historical-outcome "$HO" \
-              --similarity "$SIM_DIR" \
-              --retrieval "$RET_DIR" \
-              --handoff compatibility/knowledge_decision_handoff.py \
-              --decision-brain RECOVERED_SOURCES/DECISION_BRAIN_V1/decision_brain.py \
-              --output artifacts/integration_gate/GOVERNED_INTEGRATION_GATE_V2.json
-
+          command: python BACKTEST/CIRCLECI_RUN_GOVERNED_GATE.py
       - store_artifacts:
           path: artifacts/integration_gate
           destination: governed_integration_gate_2026_08_28
-
       - run:
           name: 2016-2024 Decision Brain backtest (only after Gate PASS)
-          shell: bash
-          command: |
-            set -euo pipefail
-            mkdir -p artifacts/decision_brain_backtest_2016_2024
-            python BACKTEST/DEV_BACKTEST_RUNNER_V1.py \
-              --h1 "$H1" \
-              --market artifacts/raw/market_state.csv \
-              --mtf "$MTF" \
-              --murphy "$MURPHY" \
-              --nison artifacts/raw/nison.csv \
-              --historical-context "$HC" \
-              --historical-outcome "$HO" \
-              --similarity "$SIM_DIR" \
-              --retrieval "$RET_DIR" \
-              --output-dir artifacts/decision_brain_backtest_2016_2024
-
+          command: python BACKTEST/CIRCLECI_RUN_GOVERNED_BACKTEST.py
       - run:
           name: Assert 2025 absent from development output
-          shell: bash
-          command: |
-            set -euo pipefail
-            test -f artifacts/decision_brain_backtest_2016_2024/unified_78_events_2016_2024.csv
-            if grep -q '2025-' artifacts/decision_brain_backtest_2016_2024/unified_78_events_2016_2024.csv; then
-              echo '2025 LOCK VIOLATION'
-              exit 1
-            fi
-            echo 'OOS_2025_LOCK_CONFIRMED'
-
+          command: python BACKTEST/CIRCLECI_ASSERT_2025_LOCK.py
       - store_artifacts:
           path: artifacts/decision_brain_backtest_2016_2024
           destination: decision_brain_backtest_2016_2024_governed
