@@ -164,10 +164,10 @@ def main() -> int:
 
     try:
         from RUNTIME.RISK_ENGINE_INTEGRATION_V1.risk_engine_integration_v1 import evaluate_risk
-        bad = evaluate_risk(equity=None, entry=100.0, stop_loss=None, take_profit=None, atr=None, prior_loss_streak=None, peak_equity=None)
-        checks["risk_missing_inputs_reject"] = not bad.risk_pass
-        if bad.risk_pass:
-            failures.append("Risk accepted missing execution inputs")
+        bad = evaluate_risk(equity=10000.0, entry=100.0, stop_loss=None, take_profit=None, atr=None, prior_loss_streak=0, peak_equity=10000.0)
+        checks["risk_missing_inputs_reject"] = (not bad.risk_pass) and bad.reason == "MISSING_EXECUTION_INPUT"
+        if bad.risk_pass or bad.reason != "MISSING_EXECUTION_INPUT":
+            failures.append("Risk did not cleanly reject missing execution inputs")
     except Exception as exc:
         failures.append(f"Risk runtime failed: {exc}")
 
