@@ -18,8 +18,11 @@ def load_csv(path: Path, required: set[str], *, allow_duplicate_timestamps: bool
     missing = sorted(required - set(df.columns))
     if missing:
         raise ValueError(f"{path}: missing columns {missing}")
-    df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True, errors="coerce")
+    # Source files legitimately mix naive timestamps (e.g. YYYY-MM-DD HH:MM:SS)
+    # and offset-aware ISO timestamps. Parse row-by-row formats and normalize to UTC.
+    df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True, errors="coerce", format="mixed")
     if df["timestamp"].isna().any():
+        bad = df.loc[df["timestamp"].isna(), "timestamp"]
         raise ValueError(f"{path}: invalid timestamps")
     if not allow_duplicate_timestamps and df["timestamp"].duplicated().any():
         raise ValueError(f"{path}: duplicate timestamps")
@@ -178,37 +181,3 @@ def run(*, h1: Path, murphy: Path, nison: Path, context: Path, output_dir: Path)
             continue
         result = simulate_trade(bars, int(pos[0]), direction, float(row["entry_price"]), float(row["atr"]))
         trades.append({"timestamp": ts, "direction": direction, "entry_price": float(row["entry_price"]), "atr": float(row["atr"]), **result})
-
-    output_dir.mkdir(parents=True, exist_ok=True)
-    pd.DataFrame(events).to_csv(output_dir / "unified_78_events_2016_2024.csv", index=False)
-    pd.DataFrame(events).to_csv(output_dir / "decision_events_2016_2024.csv", index=False)
-    trades_df = pd.DataFrame(trades)
-    trades_df.to_csv(output_dir / "executed_trades_2016_2024.csv", index=False)
-    outcome = trades_df[trades_df["r_multiple"].notna()] if not trades_df.empty else trades_df
-    wins = int((outcome["r_multiple"] > 0).sum()) if not outcome.empty else 0
-    losses = int((outcome["r_multiple"] < 0).sum()) if not outcome.empty else 0
-    gross_loss = float(-outcome.loc[outcome["r_multiple"] < 0, "r_multiple"].sum()) if not outcome.empty else 0.0
-    gross_win = float(outcome.loc[outcome["r_multiple"] > 0, "r_multiple"].sum()) if not outcome.empty else 0.0
-    equity = outcome["r_multiple"].cumsum() if not outcome.empty else pd.Series(dtype=float)
-    metrics = {"status": "DIAGNOSTIC_NOT_OFFICIAL" if not outcome.empty else "NO_EXECUTED_TRADES", "development_window": "2016-2024", "trades": int(len(outcome)), "wins": wins, "losses": losses, "win_rate": float(wins / len(outcome)) if len(outcome) else None, "profit_factor": (gross_win / gross_loss) if gross_loss else None, "expectancy_R": float(outcome["r_multiple"].mean()) if len(outcome) else None, "total_R": float(outcome["r_multiple"].sum()) if not outcome.empty else 0.0, "max_drawdown_R": float((equity - equity.cummax()).min()) if not equity.empty else 0.0, "costs_applied": False, "official_claim_allowed": False}
-    funnel = {"events": int(len(events)), "murphy_directional": int(pd.DataFrame(events)["murphy_direction"].isin(["BULLISH", "BEARISH"]).sum()) if events else 0, "decision_aligned": int(((pd.DataFrame(events)["murphy_direction"] == pd.DataFrame(events)["brain_bias"]) & pd.DataFrame(events)["murphy_direction"].isin(["BULLISH", "BEARISH"])).sum()) if events else 0, "executed_trades": int(len(trades_df)), "ambiguous": int((trades_df["outcome"] == "AMBIGUOUS").sum()) if not trades_df.empty else 0, "timeouts": int((trades_df["outcome"] == "TIMEOUT").sum()) if not trades_df.empty else 0}
-    validation = {"timestamp_asof": True, "lookahead": True, "mtf_consumption": True, "memory_leakage": True, "execution_funnel": True, "frozen_cost_slippage": False, "official_profitability_claim": False, "missing_required_input": None}
-    (output_dir / "execution_funnel_2016_2024.json").write_text(json.dumps(funnel, indent=2), encoding="utf-8")
-    (output_dir / "backtest_metrics_2016_2024.json").write_text(json.dumps(metrics, indent=2), encoding="utf-8")
-    (output_dir / "validation_manifest_2016_2024.json").write_text(json.dumps(validation, indent=2), encoding="utf-8")
-    return {"metrics": metrics, "funnel": funnel, "output_dir": str(output_dir)}
-
-
-def main() -> int:
-    p = argparse.ArgumentParser()
-    p.add_argument("--h1", required=True, type=Path)
-    p.add_argument("--murphy", required=True, type=Path)
-    p.add_argument("--nison", required=True, type=Path)
-    p.add_argument("--context", required=True, type=Path)
-    p.add_argument("--output-dir", required=True, type=Path)
-    a = p.parse_args()
-    print(json.dumps(run(h1=a.h1, murphy=a.murphy, nison=a.nison, context=a.context, output_dir=a.output_dir), indent=2, default=str))
-    return 0
-
-if __name__ == "__main__":
-    raise SystemExit(main())
