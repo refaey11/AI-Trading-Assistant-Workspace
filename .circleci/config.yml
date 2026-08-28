@@ -1,7 +1,13 @@
 # BACKTEST-ONLY / GOVERNED
 # Branch: backtest-only-2026-08-28
-# Canonical integration contract must pass before expensive acquisition/gate/backtest. 2025 is locked/OOS.
+# IMPORTANT: governed backtest is MANUAL/PARAMETER-GATED to prevent accidental credit burn.
+# 2025 remains locked/OOS.
 version: 2.1
+
+parameters:
+  run_governed_backtest:
+    type: boolean
+    default: false
 
 jobs:
   governed_backtest_only:
@@ -43,5 +49,6 @@ jobs:
 
 workflows:
   governed_backtest_only:
+    when: << pipeline.parameters.run_governed_backtest >>
     jobs:
       - governed_backtest_only
