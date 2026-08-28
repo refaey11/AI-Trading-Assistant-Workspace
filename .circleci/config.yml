@@ -1,13 +1,13 @@
 # BACKTEST-ONLY / GOVERNED
 # Branch: backtest-only-2026-08-28
-# IMPORTANT: all execution is MANUAL/PARAMETER-GATED to prevent accidental credit burn.
+# IMPORTANT: one-shot gate trigger; backtest remains manual and locked behind Gate PASS.
 # 2025 remains locked/OOS.
 version: 2.1
 
 parameters:
   run_integration_gate:
     type: boolean
-    default: false
+    default: true
   run_governed_backtest:
     type: boolean
     default: false
