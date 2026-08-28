@@ -31,10 +31,10 @@ jobs:
             echo "SOURCE_CSV=$SOURCE_CSV" >> "$BASH_ENV"
       - run:
           name: Validate existing Nison scope
-          command: python -c "import pandas as pd; p='artifacts/nison/NISON_2016_2024_FULL_EVIDENCE.csv'; df=pd.read_csv(p,usecols=['timestamp','rule_id']); ts=pd.to_datetime(df['timestamp'],utc=True); assert ts.dt.year.min()==2016 and ts.dt.year.max()==2024; assert df['rule_id'].nunique()==44; assert len(df)==2428448; print('NISON_EXISTING_PASS',len(df),df['rule_id'].nunique())"
+          command: python -c "import pandas as pd; p='artifacts/nison/NISON_2016_2024_FULL_EVIDENCE.csv'; df=pd.read_csv(p,usecols=['timestamp','rule_id']); ts=pd.to_datetime(df['timestamp'],utc=True,format='mixed'); assert ts.dt.year.min()==2016 and ts.dt.year.max()==2024; assert df['rule_id'].nunique()==44; assert len(df)==2428448; print('NISON_EXISTING_PASS',len(df),df['rule_id'].nunique())"
       - run:
           name: Validate Murphy historical scope
-          command: python -c "import pandas as pd; p='artifacts/murphy/MURPHY_2016_2024_FULL_EVIDENCE.csv'; df=pd.read_csv(p,usecols=['timestamp']); ts=pd.to_datetime(df['timestamp'],utc=True); assert ts.dt.year.min()==2016 and ts.dt.year.max()==2024; assert len(df)>0; print('MURPHY_EXISTING_PASS',len(df))"
+          command: python -c "import pandas as pd; p='artifacts/murphy/MURPHY_2016_2024_FULL_EVIDENCE.csv'; df=pd.read_csv(p,usecols=['timestamp']); ts=pd.to_datetime(df['timestamp'],utc=True,format='mixed'); assert ts.dt.year.min()==2016 and ts.dt.year.max()==2024; assert len(df)>0; print('MURPHY_EXISTING_PASS',len(df))"
       - run:
           name: Run frozen Decision Brain backtest 2016-2024
           command: |
