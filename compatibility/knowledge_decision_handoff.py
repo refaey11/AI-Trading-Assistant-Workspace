@@ -1,10 +1,10 @@
 """Narrow compatibility handoff between Knowledge Alignment and Decision Brain V1.
 
 This module does not create BUY/SELL decisions. It preserves hard blocks and
-contradictions while packaging book evidence for the existing Decision Brain
-assessment boundary.
+contradictions while packaging all upstream evidence for the existing
+Decision Brain assessment boundary. Evidence remains attributed and cannot
+become an automatic trading command here.
 """
-
 from copy import deepcopy
 
 HARD_BLOCK_STATES = {"PROCESS_BLOCKED"}
@@ -16,15 +16,8 @@ def _status(x):
 
 
 def build_handoff(market_row, alignment_output, similarity=None):
-    """Return a governed payload for the existing Decision Brain assessment.
-
-    `market_row` is passed through unchanged for Decision Brain V1. The book
-    alignment is preserved as attributed evidence/gates and is intentionally
-    not converted into an automatic trading command.
-    """
     row = deepcopy(market_row or {})
     a = deepcopy(alignment_output or {})
-
     alignment_state = _status(a.get("alignment_state"))
     contradiction_gate = _status(a.get("contradiction_gate"))
     process_gate = _status(a.get("process_gate"))
@@ -37,9 +30,14 @@ def build_handoff(market_row, alignment_output, similarity=None):
         alignment_state in CONTRADICTION_STATES
         or contradiction_gate in {"FAIL", "CONTRADICTION", "NISON_CONTRADICTION"}
     )
-    # Missing alignment is not evidence of agreement. Keep the handoff
-    # fail-closed and route to review until an explicit alignment state exists.
     missing_alignment = alignment_state == ""
+
+    evidence_bundle = deepcopy(a.get("evidence_bundle", {}))
+    evidence_bundle.setdefault("similarity", deepcopy(similarity))
+    evidence_bundle["final_trade_decision"] = None
+    evidence_bundle["direction_generated_by_memory"] = False
+    evidence_bundle["direction_generated_by_retrieval"] = False
+    evidence_bundle["2025_used_for_tuning"] = False
 
     return {
         "decision_brain_row": row,
@@ -52,6 +50,7 @@ def build_handoff(market_row, alignment_output, similarity=None):
             "book_evidence_status": a.get("book_evidence_status"),
             "market_evidence_status": a.get("market_evidence_status"),
             "similarity_record_count": a.get("similarity_record_count"),
+            "evidence_bundle": evidence_bundle,
             "final_trade_decision": None,
         },
         "gates": {
