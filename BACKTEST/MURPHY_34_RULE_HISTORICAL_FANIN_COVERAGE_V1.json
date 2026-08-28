@@ -6,7 +6,7 @@
   "oos_2025": "LOCKED",
   "purpose": "Governed coverage registry for the current 34-rule Murphy runtime scope. Evidence is included only when source-backed; uncovered rules remain NOT_EVALUABLE rather than being fabricated.",
   "runtime_rule_count": 34,
-  "decision_eligible_rule_count": 9,
+  "decision_eligible_rule_count": 7,
   "source_backed_historical_evaluation_rule_count": 5,
   "source_backed_feature_replay_rule_count": 2,
   "observed_but_not_decision_eligible_rule_count": 2,
