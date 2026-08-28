@@ -5,7 +5,7 @@ from __future__ import annotations
 This layer integrates existing artifacts without rebuilding book knowledge or
 Decision Brain V1. It compiles one point-in-time evidence envelope per H1 bar,
 then crosses the existing Knowledge/Decision Handoff boundary. Memory and
-retrieval remain evidence-only. No synthetic SL/TP is created here.
+retrieval remain evidence-only. Execution levels are never fabricated here.
 """
 
 import argparse
