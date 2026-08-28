@@ -15,7 +15,7 @@ on:
     branches:
       - backtest-only-2026-08-28
     paths:
-      - '.github/START_INTEGRATION_GATE_NOW'
+      - '.github/CIRCLECI_TRIGGER_NOW'
 
 permissions:
   contents: read
@@ -28,7 +28,7 @@ jobs:
         id: resolve
         env:
           CIRCLECI_API_TOKEN: ${{ secrets.CIRCLECI_API_TOKEN }}
-          CIRCLECI_PROJECT: gh/refaey11/AI-Trading-Assistant-Workspace
+          CIRCLECI_LOOKUP_SLUG: gh/refaey11/AI-Trading-Assistant-Workspace
           MODE: ${{ inputs.mode || 'integration_gate' }}
         run: |
           set -euo pipefail
@@ -43,7 +43,7 @@ jobs:
 
           curl --fail-with-body --silent --show-error \
             --request GET \
-            --url "https://circleci.com/api/v2/project/${CIRCLECI_PROJECT}" \
+            --url "https://circleci.com/api/v2/project/${CIRCLECI_LOOKUP_SLUG}" \
             "${AUTH_HEADER[@]}" \
             --header 'Accept: application/json' >/tmp/circle_project.json
 
@@ -52,7 +52,17 @@ jobs:
           print(json.load(open('/tmp/circle_project.json'))['id'])
           PY
           )
+          ORG_ID=$(python - <<'PY'
+          import json
+          print(json.load(open('/tmp/circle_project.json'))['organization_id'])
+          PY
+          )
           test -n "$PROJECT_ID"
+          test -n "$ORG_ID"
+
+          # Current CircleCI API v2 requires the circleci/<org-id>/<project-id>
+          # slug form for GitHub App projects.
+          CIRCLECI_PROJECT_SLUG="circleci/${ORG_ID}/${PROJECT_ID}"
 
           curl --fail-with-body --silent --show-error \
             --request GET \
@@ -75,14 +85,19 @@ jobs:
           PY
           )
           test -n "$DEFINITION_ID"
-          echo "PROJECT_ID=$PROJECT_ID" >> "$GITHUB_ENV"
-          echo "DEFINITION_ID=$DEFINITION_ID" >> "$GITHUB_ENV"
-          echo "Resolved CircleCI pipeline definition."
+          {
+            echo "PROJECT_ID=$PROJECT_ID"
+            echo "ORG_ID=$ORG_ID"
+            echo "CIRCLECI_PROJECT_SLUG=$CIRCLECI_PROJECT_SLUG"
+            echo "DEFINITION_ID=$DEFINITION_ID"
+          } >> "$GITHUB_ENV"
+          echo 'Resolved CircleCI GitHub App project slug and pipeline definition.'
 
       - name: Trigger selected governed CircleCI pipeline
         env:
           CIRCLECI_API_TOKEN: ${{ secrets.CIRCLECI_API_TOKEN }}
-          CIRCLECI_PROJECT: gh/refaey11/AI-Trading-Assistant-Workspace
+          CIRCLECI_PROJECT_SLUG: ${{ env.CIRCLECI_PROJECT_SLUG }}
+          DEFINITION_ID: ${{ env.DEFINITION_ID }}
           MODE: ${{ inputs.mode || 'integration_gate' }}
         run: |
           set -euo pipefail
@@ -96,7 +111,7 @@ jobs:
           BODY=$(printf '{"definition_id":"%s","config":{"branch":"backtest-only-2026-08-28"},"checkout":{"branch":"backtest-only-2026-08-28"},"parameters":%s}' "$DEFINITION_ID" "$PARAMETERS")
           RESPONSE=$(curl --fail-with-body --silent --show-error \
             --request POST \
-            --url "https://circleci.com/api/v2/project/${CIRCLECI_PROJECT}/pipeline/run" \
+            --url "https://circleci.com/api/v2/project/${CIRCLECI_PROJECT_SLUG}/pipeline/run" \
             --header "Circle-Token: ${CIRCLECI_API_TOKEN}" \
             --header 'Content-Type: application/json' \
             --header 'Accept: application/json' \
