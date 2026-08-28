@@ -9,15 +9,20 @@ jobs:
       - checkout
       - run: python -m pip install --upgrade pip pandas pytest
       - run:
-          name: Download governed 2016-2024 inputs
+          name: Download governed 2016-2024 inputs and evidence layers
           command: |
             set -eu
             test -n "${DROPBOX_ACCESS_TOKEN:-}"
-            mkdir -p artifacts/nison artifacts/murphy artifacts/source/unpacked
+            mkdir -p artifacts/nison artifacts/murphy artifacts/source/unpacked artifacts/evidence
             curl -L --fail --silent --show-error -X POST https://content.dropboxapi.com/2/files/download -H "Authorization: Bearer ${DROPBOX_ACCESS_TOKEN}" -H 'Dropbox-API-Arg: {"path":"/New 8/NISON_2016_2024_FULL_EVIDENCE.csv"}' -o artifacts/nison/NISON_2016_2024_FULL_EVIDENCE.csv
             curl -L --fail --silent --show-error -X POST https://content.dropboxapi.com/2/files/download -H "Authorization: Bearer ${DROPBOX_ACCESS_TOKEN}" -H 'Dropbox-API-Arg: {"path":"/New 8/MURPHY_HISTORICAL_34_RULE_FANIN_2016_2024.zip"}' -o artifacts/murphy/MURPHY_HISTORICAL_34_RULE_FANIN_2016_2024.zip
             curl -L --fail --silent --show-error -X POST https://content.dropboxapi.com/2/files/download -H "Authorization: Bearer ${DROPBOX_ACCESS_TOKEN}" -H 'Dropbox-API-Arg: {"path":"/New 8/GBPUSD_H1_2016_2025_MASTER.zip"}' -o artifacts/source/GBPUSD_H1_2016_2025_MASTER.zip
             curl -L --fail --silent --show-error -X POST https://content.dropboxapi.com/2/files/download -H "Authorization: Bearer ${DROPBOX_ACCESS_TOKEN}" -H 'Dropbox-API-Arg: {"path":"/New 8/GBPUSD_MARKET_STATE 6.csv"}' -o artifacts/GBPUSD_MARKET_STATE.csv
+            curl -L --fail --silent --show-error -X POST https://content.dropboxapi.com/2/files/download -H "Authorization: Bearer ${DROPBOX_ACCESS_TOKEN}" -H 'Dropbox-API-Arg: {"path":"/AI_Trading_Assistant_FULL_PROJECT_V1/AI_Trading_Assistant_MULTI_TIMEFRAME_READER_V1.zip"}' -o artifacts/evidence/mtf.zip
+            curl -L --fail --silent --show-error -X POST https://content.dropboxapi.com/2/files/download -H "Authorization: Bearer ${DROPBOX_ACCESS_TOKEN}" -H 'Dropbox-API-Arg: {"path":"/AI_Trading_Assistant_FULL_PROJECT_V1/AI_Trading_Assistant_HISTORICAL_CONTEXT_MEMORY_V1.zip"}' -o artifacts/evidence/historical_context.zip
+            curl -L --fail --silent --show-error -X POST https://content.dropboxapi.com/2/files/download -H "Authorization: Bearer ${DROPBOX_ACCESS_TOKEN}" -H 'Dropbox-API-Arg: {"path":"/AI_Trading_Assistant_FULL_PROJECT_V1/AI_Trading_Assistant_HISTORICAL_OUTCOME_MEMORY_V1.zip"}' -o artifacts/evidence/historical_outcome.zip
+            curl -L --fail --silent --show-error -X POST https://content.dropboxapi.com/2/files/download -H "Authorization: Bearer ${DROPBOX_ACCESS_TOKEN}" -H 'Dropbox-API-Arg: {"path":"/AI_Trading_Assistant_FULL_PROJECT_V1/AI_Trading_Assistant_SIMILARITY_MEMORY_V2.zip"}' -o artifacts/evidence/similarity.zip
+            curl -L --fail --silent --show-error -X POST https://content.dropboxapi.com/2/files/download -H "Authorization: Bearer ${DROPBOX_ACCESS_TOKEN}" -H 'Dropbox-API-Arg: {"path":"/AI_Trading_Assistant_FULL_PROJECT_V1/AI_Trading_Assistant_CONTEXT_AWARE_RETRIEVAL_V2.zip"}' -o artifacts/evidence/retrieval.zip
             unzip -q artifacts/murphy/MURPHY_HISTORICAL_34_RULE_FANIN_2016_2024.zip -d artifacts/murphy/unpacked
             MURPHY_CSV=$(find artifacts/murphy/unpacked -type f -name 'MURPHY_2016_2024_FULL_EVIDENCE.csv' | head -1)
             test -n "$MURPHY_CSV"
@@ -25,10 +30,27 @@ jobs:
             unzip -q artifacts/source/GBPUSD_H1_2016_2025_MASTER.zip -d artifacts/source/unpacked
             SOURCE_CSV=$(find artifacts/source/unpacked -type f -name 'GBPUSD_H1_2016_2025_MASTER.csv' | head -1)
             test -n "$SOURCE_CSV"
+            mkdir -p artifacts/evidence/mtf artifacts/evidence/historical_context artifacts/evidence/historical_outcome artifacts/evidence/similarity artifacts/evidence/retrieval
+            unzip -q artifacts/evidence/mtf.zip -d artifacts/evidence/mtf
+            unzip -q artifacts/evidence/historical_context.zip -d artifacts/evidence/historical_context
+            unzip -q artifacts/evidence/historical_outcome.zip -d artifacts/evidence/historical_outcome
+            unzip -q artifacts/evidence/similarity.zip -d artifacts/evidence/similarity
+            unzip -q artifacts/evidence/retrieval.zip -d artifacts/evidence/retrieval
+            MTF_CSV=$(find artifacts/evidence/mtf -type f -name 'GBPUSD_MTF_H4_H1.csv' | head -1)
+            HC_CSV=$(find artifacts/evidence/historical_context -type f -name 'HISTORICAL_CONTEXT_MEMORY.csv' | head -1)
+            HO_CSV=$(find artifacts/evidence/historical_outcome -type f -name 'HISTORICAL_OUTCOMES.csv' | head -1)
+            SIM_JSON=$(find artifacts/evidence/similarity -type f -name 'SIMILAR_CONTEXT_READS.json' | head -1)
+            RET_JSON=$(find artifacts/evidence/retrieval -type f -name 'CONTEXT_AWARE_READINGS.json' | head -1)
+            test -n "$MTF_CSV"; test -n "$HC_CSV"; test -n "$HO_CSV"; test -n "$SIM_JSON"; test -n "$RET_JSON"
             test -s artifacts/nison/NISON_2016_2024_FULL_EVIDENCE.csv
             test -s artifacts/murphy/MURPHY_2016_2024_FULL_EVIDENCE.csv
             test -s artifacts/GBPUSD_MARKET_STATE.csv
             echo "SOURCE_CSV=$SOURCE_CSV" >> "$BASH_ENV"
+            echo "MTF_CSV=$MTF_CSV" >> "$BASH_ENV"
+            echo "HC_CSV=$HC_CSV" >> "$BASH_ENV"
+            echo "HO_CSV=$HO_CSV" >> "$BASH_ENV"
+            echo "SIM_JSON=$SIM_JSON" >> "$BASH_ENV"
+            echo "RET_JSON=$RET_JSON" >> "$BASH_ENV"
       - run:
           name: Validate existing Nison scope
           command: python -c "import pandas as pd; p='artifacts/nison/NISON_2016_2024_FULL_EVIDENCE.csv'; df=pd.read_csv(p,usecols=['timestamp','rule_id']); ts=pd.to_datetime(df['timestamp'],utc=True,format='mixed'); assert ts.dt.year.min()==2016 and ts.dt.year.max()==2024; assert df['rule_id'].nunique()==44; assert len(df)==2428448; print('NISON_EXISTING_PASS',len(df),df['rule_id'].nunique())"
@@ -36,11 +58,11 @@ jobs:
           name: Validate Murphy historical scope
           command: python -c "import pandas as pd; p='artifacts/murphy/MURPHY_2016_2024_FULL_EVIDENCE.csv'; df=pd.read_csv(p,usecols=['timestamp']); ts=pd.to_datetime(df['timestamp'],utc=True,format='mixed'); assert ts.dt.year.min()==2016 and ts.dt.year.max()==2024; assert len(df)>0; print('MURPHY_EXISTING_PASS',len(df))"
       - run:
-          name: Run governed Decision Brain integration gate
+          name: Run governed full integration gate
           command: |
             set -eu
             mkdir -p artifacts/integration_gate
-            python BACKTEST/decision_brain_integration_gate_v1.py --h1 "$SOURCE_CSV" --murphy artifacts/murphy/MURPHY_2016_2024_FULL_EVIDENCE.csv --nison artifacts/nison/NISON_2016_2024_FULL_EVIDENCE.csv --market-state artifacts/GBPUSD_MARKET_STATE.csv --output artifacts/integration_gate/DECISION_BRAIN_INTEGRATION_GATE_2016_2024.json
+            python BACKTEST/decision_brain_integration_gate_v1.py --h1 "$SOURCE_CSV" --murphy artifacts/murphy/MURPHY_2016_2024_FULL_EVIDENCE.csv --nison artifacts/nison/NISON_2016_2024_FULL_EVIDENCE.csv --market-state artifacts/GBPUSD_MARKET_STATE.csv --mtf "$MTF_CSV" --historical-context "$HC_CSV" --historical-outcome "$HO_CSV" --similarity "$SIM_JSON" --retrieval "$RET_JSON" --output artifacts/integration_gate/DECISION_BRAIN_INTEGRATION_GATE_2016_2024.json
       - store_artifacts:
           path: artifacts/integration_gate
           destination: decision_brain_integration_gate_2016_2024
