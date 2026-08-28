@@ -63,6 +63,7 @@ def main() -> int:
                 "timestamp": row["timestamp"],
                 "availability_timestamp": row["availability_timestamp"],
                 "rule_id": rid,
+                "source_rule_id": rid,
                 "status": str(row["status"]),
                 "direction": row["direction"],
                 "source_timeframe": row.get("source_timeframe", None),
