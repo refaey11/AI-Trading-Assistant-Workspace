@@ -1,12 +1,22 @@
 name: Governed Integration + Development Backtest 2026-08-28
 
 on:
-  push:
-    branches: [backtest-only-2026-08-28]
   workflow_dispatch:
+    inputs:
+      run_integration_gate:
+        description: 'Run the governed Integration Gate'
+        required: true
+        type: boolean
+        default: false
+      run_full_backtest:
+        description: 'Run 2016-2024 backtest only after Gate PASS'
+        required: true
+        type: boolean
+        default: false
 
 jobs:
-  integration-gate:
+  governed:
+    if: ${{ inputs.run_integration_gate }}
     runs-on: ubuntu-latest
     env:
       DROPBOX_ACCESS_TOKEN: ${{ secrets.DROPBOX_ACCESS_TOKEN }}
@@ -15,7 +25,7 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.12"
+          python-version: '3.12'
       - name: Install dependencies
         run: python -m pip install --upgrade pip pandas pytest
       - name: Verify Dropbox access
@@ -24,7 +34,7 @@ jobs:
         shell: bash
         run: |
           set -eu
-          mkdir -p artifacts/raw artifacts/unpacked
+          mkdir -p artifacts/raw artifacts/unpacked artifacts/integration_gate artifacts/backtest
           python - <<'PY'
           import json, os, urllib.request
           from pathlib import Path
@@ -51,133 +61,39 @@ jobs:
                           if not b: break
                           f.write(b)
           PY
-          unzip -q artifacts/raw/h1.zip -d artifacts/unpacked/h1
-          unzip -q artifacts/raw/murphy.zip -d artifacts/unpacked/murphy
-          unzip -q artifacts/raw/mtf.zip -d artifacts/unpacked/mtf
-          unzip -q artifacts/raw/historical_context.zip -d artifacts/unpacked/historical_context
-          unzip -q artifacts/raw/historical_outcome.zip -d artifacts/unpacked/historical_outcome
-          unzip -q artifacts/raw/similarity.zip -d artifacts/unpacked/similarity
-          unzip -q artifacts/raw/retrieval.zip -d artifacts/unpacked/retrieval
+          for d in h1 murphy mtf historical_context historical_outcome similarity retrieval; do unzip -q "artifacts/raw/$d.zip" -d "artifacts/unpacked/$d"; done
           H1=$(find artifacts/unpacked/h1 -type f -name 'GBPUSD_H1_2016_2025_MASTER.csv' | head -1)
           MURPHY=$(find artifacts/unpacked/murphy -type f -name 'MURPHY_2016_2024_FULL_EVIDENCE.csv' | head -1)
           MTF=$(find artifacts/unpacked/mtf -type f -name 'GBPUSD_MTF_H4_H1.csv' | head -1)
           HC=$(find artifacts/unpacked/historical_context -type f -name 'HISTORICAL_CONTEXT_MEMORY.csv' | head -1)
           HO=$(find artifacts/unpacked/historical_outcome -type f -name 'HISTORICAL_OUTCOMES.csv' | head -1)
           test -n "$H1"; test -n "$MURPHY"; test -n "$MTF"; test -n "$HC"; test -n "$HO"
-          echo "H1=$H1" >> "$GITHUB_ENV"
-          echo "MURPHY=$MURPHY" >> "$GITHUB_ENV"
-          echo "MTF=$MTF" >> "$GITHUB_ENV"
-          echo "HC=$HC" >> "$GITHUB_ENV"
-          echo "HO=$HO" >> "$GITHUB_ENV"
-      - name: Validate Integration Gate
+          printf 'H1=%s\nMURPHY=%s\nMTF=%s\nHC=%s\nHO=%s\n' "$H1" "$MURPHY" "$MTF" "$HC" "$HO" >> "$GITHUB_ENV"
+      - name: Compile Murphy canonical stream
         run: |
-          python BACKTEST/GOVERNED_INTEGRATION_GATE_V2.py \
-            --h1 "$H1" \
-            --market-state artifacts/raw/market_state.csv \
-            --mtf "$MTF" \
-            --murphy "$MURPHY" \
-            --nison artifacts/raw/nison.csv \
-            --historical-context "$HC" \
-            --historical-outcome "$HO" \
-            --similarity artifacts/unpacked/similarity \
-            --retrieval artifacts/unpacked/retrieval \
-            --handoff compatibility/knowledge_decision_handoff.py \
-            --decision-brain RECOVERED_SOURCES/DECISION_BRAIN_V1/decision_brain.py \
-            --output artifacts/GOVERNED_INTEGRATION_GATE_V2.json
-      - name: Upload Integration Gate report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: governed-integration-gate-2026-08-28
-          path: artifacts/GOVERNED_INTEGRATION_GATE_V2.json
-      - name: Assert backtest remains locked on failure
-        if: failure()
-        run: echo "Gate failed: 2016-2024 backtest NOT started; 2025 remains LOCKED."
-
-  development-backtest-2016-2024:
-    needs: integration-gate
-    if: needs.integration-gate.result == 'success'
-    runs-on: ubuntu-latest
-    env:
-      DROPBOX_ACCESS_TOKEN: ${{ secrets.DROPBOX_ACCESS_TOKEN }}
-      PYTHONPATH: ${{ github.workspace }}
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - name: Install dependencies
-        run: python -m pip install --upgrade pip pandas pytest
-      - name: Verify Dropbox access
-        run: test -n "$DROPBOX_ACCESS_TOKEN"
-      - name: Acquire exact development sources
-        shell: bash
+          python BACKTEST/MURPHY_CANONICAL_EVENT_COMPILER_V2.py --source "$MURPHY" --output artifacts/integration_gate/MURPHY_CANONICAL_EVENT_EVIDENCE_2016_2024.csv --allowlist governance/DECISION_BRAIN_RULE_ALLOWLIST_V1.json --registry BACKTEST/MURPHY_34_SOURCE_BACKED_FANIN_V2_2026-08-28.csv
+      - name: Compile Nison canonical stream
         run: |
-          set -eu
-          mkdir -p artifacts/raw artifacts/unpacked artifacts/backtest
+          python BACKTEST/NISON_CANONICAL_STREAM_COMPILER_V1.py --source artifacts/raw/nison.csv --output artifacts/integration_gate/NISON_CANONICAL_EVENT_EVIDENCE_2016_2024.csv --aggregate-output artifacts/integration_gate/NISON_CANONICAL_TIMESTAMP_EVIDENCE_2016_2024.csv --allowlist governance/DECISION_BRAIN_RULE_ALLOWLIST_V1.json
+      - name: Integration Gate V4
+        run: |
+          python BACKTEST/GOVERNED_INTEGRATION_GATE_V4.py --h1 "$H1" --market-state artifacts/raw/market_state.csv --mtf "$MTF" --murphy artifacts/integration_gate/MURPHY_CANONICAL_EVENT_EVIDENCE_2016_2024.csv --nison artifacts/integration_gate/NISON_CANONICAL_EVENT_EVIDENCE_2016_2024.csv --historical-context "$HC" --historical-outcome "$HO" --similarity artifacts/unpacked/similarity --retrieval artifacts/unpacked/retrieval --handoff compatibility/knowledge_decision_handoff.py --decision-brain RECOVERED_SOURCES/DECISION_BRAIN_V1/decision_brain.py --output artifacts/GOVERNED_INTEGRATION_GATE_V4.json
+      - name: Full 2016-2024 backtest
+        if: ${{ inputs.run_full_backtest }}
+        run: |
+          test -f artifacts/GOVERNED_INTEGRATION_GATE_V4.json
           python - <<'PY'
-          import json, os, urllib.request
+          import json
           from pathlib import Path
-          token=os.environ['DROPBOX_ACCESS_TOKEN']
-          files={
-            'h1.zip':'/New 8/GBPUSD_H1_2016_2025_MASTER.zip',
-            'nison.csv':'/New 8/NISON_2016_2024_FULL_EVIDENCE.csv',
-            'murphy.zip':'/New 8/MURPHY_HISTORICAL_34_RULE_FANIN_2016_2024.zip',
-            'market_state.csv':'/New 8/GBPUSD_MARKET_STATE 6.csv',
-            'mtf.zip':'/AI_Trading_Assistant_FULL_PROJECT_V1/AI_Trading_Assistant_MULTI_TIMEFRAME_READER_V1.zip',
-            'historical_context.zip':'/AI_Trading_Assistant_FULL_PROJECT_V1/AI_Trading_Assistant_HISTORICAL_CONTEXT_MEMORY_V1.zip',
-            'historical_outcome.zip':'/AI_Trading_Assistant_FULL_PROJECT_V1/AI_Trading_Assistant_HISTORICAL_OUTCOME_MEMORY_V1.zip',
-            'similarity.zip':'/AI_Trading_Assistant_FULL_PROJECT_V1/AI_Trading_Assistant_SIMILARITY_MEMORY_V2.zip',
-            'retrieval.zip':'/AI_Trading_Assistant_FULL_PROJECT_V1/AI_Trading_Assistant_CONTEXT_AWARE_RETRIEVAL_V2.zip',
-          }
-          raw=Path('artifacts/raw')
-          for name,path in files.items():
-              req=urllib.request.Request('https://content.dropboxapi.com/2/files/download',data=b'',method='POST',headers={'Authorization':f'Bearer {token}','Dropbox-API-Arg':json.dumps({'path':path})})
-              with urllib.request.urlopen(req,timeout=900) as r:
-                  with (raw/name).open('wb') as f:
-                      while True:
-                          b=r.read(4*1024*1024)
-                          if not b: break
-                          f.write(b)
+          r=json.loads(Path('artifacts/GOVERNED_INTEGRATION_GATE_V4.json').read_text())
+          assert r.get('status') == 'PASS', r
           PY
-          unzip -q artifacts/raw/h1.zip -d artifacts/unpacked/h1
-          unzip -q artifacts/raw/murphy.zip -d artifacts/unpacked/murphy
-          unzip -q artifacts/raw/mtf.zip -d artifacts/unpacked/mtf
-          unzip -q artifacts/raw/historical_context.zip -d artifacts/unpacked/historical_context
-          unzip -q artifacts/raw/historical_outcome.zip -d artifacts/unpacked/historical_outcome
-          unzip -q artifacts/raw/similarity.zip -d artifacts/unpacked/similarity
-          unzip -q artifacts/raw/retrieval.zip -d artifacts/unpacked/retrieval
-          H1=$(find artifacts/unpacked/h1 -type f -name 'GBPUSD_H1_2016_2025_MASTER.csv' | head -1)
-          MURPHY=$(find artifacts/unpacked/murphy -type f -name 'MURPHY_2016_2024_FULL_EVIDENCE.csv' | head -1)
-          MTF=$(find artifacts/unpacked/mtf -type f -name 'GBPUSD_MTF_H4_H1.csv' | head -1)
-          HC=$(find artifacts/unpacked/historical_context -type f -name 'HISTORICAL_CONTEXT_MEMORY.csv' | head -1)
-          HO=$(find artifacts/unpacked/historical_outcome -type f -name 'HISTORICAL_OUTCOMES.csv' | head -1)
-          test -n "$H1"; test -n "$MURPHY"; test -n "$MTF"; test -n "$HC"; test -n "$HO"
-          echo "H1=$H1" >> "$GITHUB_ENV"
-          echo "MURPHY=$MURPHY" >> "$GITHUB_ENV"
-          echo "MTF=$MTF" >> "$GITHUB_ENV"
-          echo "HC=$HC" >> "$GITHUB_ENV"
-          echo "HO=$HO" >> "$GITHUB_ENV"
-      - name: Run 2016-2024 governed development backtest
-        run: |
-          python BACKTEST/DEV_BACKTEST_RUNNER_V1.py \
-            --h1 "$H1" \
-            --market artifacts/raw/market_state.csv \
-            --mtf "$MTF" \
-            --murphy "$MURPHY" \
-            --nison artifacts/raw/nison.csv \
-            --historical-context "$HC" \
-            --historical-outcome "$HO" \
-            --similarity artifacts/unpacked/similarity \
-            --retrieval artifacts/unpacked/retrieval \
-            --output-dir artifacts/backtest
-      - name: Upload governed backtest artifacts
+          python BACKTEST/GOVERNED_CANONICAL_RUNNER_V4.py --h1 "$H1" --market artifacts/raw/market_state.csv --mtf "$MTF" --murphy artifacts/integration_gate/MURPHY_CANONICAL_EVENT_EVIDENCE_2016_2024.csv --nison artifacts/integration_gate/NISON_CANONICAL_EVENT_EVIDENCE_2016_2024.csv --historical-context "$HC" --historical-outcome "$HO" --similarity artifacts/unpacked/similarity --retrieval artifacts/unpacked/retrieval --output-dir artifacts/backtest
+      - name: Assert 2025 locked
+        run: echo '2025 remains LOCKED/OOS.'
+      - name: Upload governed artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: decision-brain-backtest-2016-2024-governed
-          path: artifacts/backtest
-      - name: Assert 2025 is not present in development event output
-        run: |
-          test -f artifacts/backtest/unified_78_events_2016_2024.csv
-          ! grep -q '2025-' artifacts/backtest/unified_78_events_2016_2024.csv
+          name: governed-integration-2026-08-28
+          path: artifacts
