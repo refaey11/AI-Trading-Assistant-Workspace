@@ -1,0 +1,27 @@
+{
+  "status": "PASS_WITH_NISON_BYTE_LEVEL_LIMITATION",
+  "window": "2016-2024",
+  "sample_rows": 25,
+  "sample_start": "2016-01-03T17:00:00+00:00",
+  "sample_end": "2016-01-04T17:00:00+00:00",
+  "checks": {
+    "sample_rows": true,
+    "window_2016_2024": true,
+    "2025_absent": true,
+    "market_state_asof": true,
+    "mtf_asof": true,
+    "historical_context_asof": true,
+    "historical_outcome_asof": true,
+    "murphy_asof_safe": true,
+    "similarity_artifact": true,
+    "retrieval_artifact": true
+  },
+  "nison": {
+    "source_present_in_dropbox": true,
+    "size_bytes": 525483005,
+    "byte_level_join_executed": false,
+    "reason": "The execution runtime has no outbound DNS/network path to download the 501.14 MB Dropbox source. No PASS is claimed for the missing byte-level Nison join."
+  },
+  "decision": "Do not promote to Integration Gate PASS yet; complete Nison real-source join and real TIZ boundary execution first.",
+  "2025_locked": true
+}
