@@ -1,116 +1,173 @@
-# BACKTEST-ONLY: governed integration first, then 2016-2024 development backtest.
-# No Nison/Murphy regeneration. 2025 remains OOS-locked.
+# BACKTEST-ONLY / GOVERNED
+# Branch: backtest-only-2026-08-28
+# Gate must pass before 2016-2024 backtest. 2025 is locked/OOS.
 version: 2.1
 
 jobs:
-  backtest_only:
+  governed_backtest_only:
     docker:
       - image: cimg/python:3.12
     steps:
       - checkout
-      - run: python -m pip install --upgrade pip pandas pytest
       - run:
-          name: Download governed 2016-2024 inputs and evidence layers
-          command: |
-            set -eu
-            test -n "${DROPBOX_ACCESS_TOKEN:-}"
-            mkdir -p artifacts/nison artifacts/murphy artifacts/source/unpacked artifacts/evidence
-            curl -L --fail --silent --show-error -X POST https://content.dropboxapi.com/2/files/download -H "Authorization: Bearer ${DROPBOX_ACCESS_TOKEN}" -H 'Dropbox-API-Arg: {"path":"/New 8/NISON_2016_2024_FULL_EVIDENCE.csv"}' -o artifacts/nison/NISON_2016_2024_FULL_EVIDENCE.csv
-            curl -L --fail --silent --show-error -X POST https://content.dropboxapi.com/2/files/download -H "Authorization: Bearer ${DROPBOX_ACCESS_TOKEN}" -H 'Dropbox-API-Arg: {"path":"/New 8/MURPHY_HISTORICAL_34_RULE_FANIN_2016_2024.zip"}' -o artifacts/murphy/MURPHY_HISTORICAL_34_RULE_FANIN_2016_2024.zip
-            curl -L --fail --silent --show-error -X POST https://content.dropboxapi.com/2/files/download -H "Authorization: Bearer ${DROPBOX_ACCESS_TOKEN}" -H 'Dropbox-API-Arg: {"path":"/New 8/GBPUSD_H1_2016_2025_MASTER.zip"}' -o artifacts/source/GBPUSD_H1_2016_2025_MASTER.zip
-            curl -L --fail --silent --show-error -X POST https://content.dropboxapi.com/2/files/download -H "Authorization: Bearer ${DROPBOX_ACCESS_TOKEN}" -H 'Dropbox-API-Arg: {"path":"/New 8/GBPUSD_MARKET_STATE 6.csv"}' -o artifacts/GBPUSD_MARKET_STATE.csv
-            curl -L --fail --silent --show-error -X POST https://content.dropboxapi.com/2/files/download -H "Authorization: Bearer ${DROPBOX_ACCESS_TOKEN}" -H 'Dropbox-API-Arg: {"path":"/AI_Trading_Assistant_FULL_PROJECT_V1/AI_Trading_Assistant_MULTI_TIMEFRAME_READER_V1.zip"}' -o artifacts/evidence/mtf.zip
-            curl -L --fail --silent --show-error -X POST https://content.dropboxapi.com/2/files/download -H "Authorization: Bearer ${DROPBOX_ACCESS_TOKEN}" -H 'Dropbox-API-Arg: {"path":"/AI_Trading_Assistant_FULL_PROJECT_V1/AI_Trading_Assistant_HISTORICAL_CONTEXT_MEMORY_V1.zip"}' -o artifacts/evidence/historical_context.zip
-            curl -L --fail --silent --show-error -X POST https://content.dropboxapi.com/2/files/download -H "Authorization: Bearer ${DROPBOX_ACCESS_TOKEN}" -H 'Dropbox-API-Arg: {"path":"/AI_Trading_Assistant_FULL_PROJECT_V1/AI_Trading_Assistant_HISTORICAL_OUTCOME_MEMORY_V1.zip"}' -o artifacts/evidence/historical_outcome.zip
-            curl -L --fail --silent --show-error -X POST https://content.dropboxapi.com/2/files/download -H "Authorization: Bearer ${DROPBOX_ACCESS_TOKEN}" -H 'Dropbox-API-Arg: {"path":"/AI_Trading_Assistant_FULL_PROJECT_V1/AI_Trading_Assistant_SIMILARITY_MEMORY_V2.zip"}' -o artifacts/evidence/similarity.zip
-            curl -L --fail --silent --show-error -X POST https://content.dropboxapi.com/2/files/download -H "Authorization: Bearer ${DROPBOX_ACCESS_TOKEN}" -H 'Dropbox-API-Arg: {"path":"/AI_Trading_Assistant_FULL_PROJECT_V1/AI_Trading_Assistant_CONTEXT_AWARE_RETRIEVAL_V2.zip"}' -o artifacts/evidence/retrieval.zip
-            unzip -q artifacts/murphy/MURPHY_HISTORICAL_34_RULE_FANIN_2016_2024.zip -d artifacts/murphy/unpacked
-            MURPHY_CSV=$(find artifacts/murphy/unpacked -type f -name 'MURPHY_2016_2024_FULL_EVIDENCE.csv' | head -1)
-            unzip -q artifacts/source/GBPUSD_H1_2016_2025_MASTER.zip -d artifacts/source/unpacked
-            SOURCE_CSV=$(find artifacts/source/unpacked -type f -name 'GBPUSD_H1_2016_2025_MASTER.csv' | head -1)
-            mkdir -p artifacts/evidence/mtf artifacts/evidence/historical_context artifacts/evidence/historical_outcome artifacts/evidence/similarity artifacts/evidence/retrieval
-            unzip -q artifacts/evidence/mtf.zip -d artifacts/evidence/mtf
-            unzip -q artifacts/evidence/historical_context.zip -d artifacts/evidence/historical_context
-            unzip -q artifacts/evidence/historical_outcome.zip -d artifacts/evidence/historical_outcome
-            unzip -q artifacts/evidence/similarity.zip -d artifacts/evidence/similarity
-            unzip -q artifacts/evidence/retrieval.zip -d artifacts/evidence/retrieval
-            MTF_CSV=$(find artifacts/evidence/mtf -type f -name 'GBPUSD_MTF_H4_H1.csv' | head -1)
-            HC_CSV=$(find artifacts/evidence/historical_context -type f -name 'HISTORICAL_CONTEXT_MEMORY.csv' | head -1)
-            HO_CSV=$(find artifacts/evidence/historical_outcome -type f -name 'HISTORICAL_OUTCOMES.csv' | head -1)
-            SIM_DIR=artifacts/evidence/similarity
-            RET_DIR=artifacts/evidence/retrieval
-            test -n "$SOURCE_CSV"; test -n "$MURPHY_CSV"; test -n "$MTF_CSV"; test -n "$HC_CSV"; test -n "$HO_CSV"
-            cp "$MURPHY_CSV" artifacts/murphy/MURPHY_2016_2024_FULL_EVIDENCE.csv
-            echo "export SOURCE_CSV='$SOURCE_CSV'" >> "$BASH_ENV"
-            echo "export MURPHY_CSV='artifacts/murphy/MURPHY_2016_2024_FULL_EVIDENCE.csv'" >> "$BASH_ENV"
-            echo "export MTF_CSV='$MTF_CSV'" >> "$BASH_ENV"
-            echo "export HC_CSV='$HC_CSV'" >> "$BASH_ENV"
-            echo "export HO_CSV='$HO_CSV'" >> "$BASH_ENV"
-            echo "export SIM_DIR='$SIM_DIR'" >> "$BASH_ENV"
-            echo "export RET_DIR='$RET_DIR'" >> "$BASH_ENV"
+          name: Install runtime dependencies
+          command: python -m pip install --upgrade pip pandas pytest
+
       - run:
-          name: Validate frozen Nison and Murphy scopes
+          name: Acquire governed source stack
+          shell: bash
           command: |
-            set -eu
+            set -euo pipefail
+            : "${DROPBOX_ACCESS_TOKEN:?DROPBOX_ACCESS_TOKEN is not configured in CircleCI project/context}"
+            mkdir -p artifacts/raw artifacts/unpacked
             python - <<'PY'
-            import os,pandas as pd
-            n=pd.read_csv('artifacts/nison/NISON_2016_2024_FULL_EVIDENCE.csv',usecols=['timestamp','rule_id'])
-            nt=pd.to_datetime(n.timestamp,utc=True,format='mixed')
-            assert nt.dt.year.min()==2016 and nt.dt.year.max()==2024
-            assert n.rule_id.nunique()==44 and len(n)==2428448
-            m=pd.read_csv(os.environ['MURPHY_CSV'],usecols=['timestamp','source_rule_id'])
-            mt=pd.to_datetime(m.timestamp,utc=True,format='mixed')
-            assert mt.dt.year.min()==2016 and mt.dt.year.max()==2024
-            print('FROZEN_SCOPE_PASS',len(n),n.rule_id.nunique(),len(m))
+            import json, os, urllib.request
+            from pathlib import Path
+
+            token = os.environ['DROPBOX_ACCESS_TOKEN']
+            files = {
+                'h1.zip': '/New 8/GBPUSD_H1_2016_2025_MASTER.zip',
+                'nison.csv': '/New 8/NISON_2016_2024_FULL_EVIDENCE.csv',
+                'murphy.zip': '/New 8/MURPHY_HISTORICAL_34_RULE_FANIN_2016_2024.zip',
+                'market_state.csv': '/New 8/GBPUSD_MARKET_STATE 6.csv',
+                'mtf.zip': '/AI_Trading_Assistant_FULL_PROJECT_V1/AI_Trading_Assistant_MULTI_TIMEFRAME_READER_V1.zip',
+                'historical_context.zip': '/AI_Trading_Assistant_FULL_PROJECT_V1/AI_Trading_Assistant_HISTORICAL_CONTEXT_MEMORY_V1.zip',
+                'historical_outcome.zip': '/AI_Trading_Assistant_FULL_PROJECT_V1/AI_Trading_Assistant_HISTORICAL_OUTCOME_MEMORY_V1.zip',
+                'similarity.zip': '/AI_Trading_Assistant_FULL_PROJECT_V1/AI_Trading_Assistant_SIMILARITY_MEMORY_V2.zip',
+                'retrieval.zip': '/AI_Trading_Assistant_FULL_PROJECT_V1/AI_Trading_Assistant_CONTEXT_AWARE_RETRIEVAL_V2.zip',
+            }
+            raw = Path('artifacts/raw')
+            for name, path in files.items():
+                print(f'DOWNLOAD {path}')
+                req = urllib.request.Request(
+                    'https://content.dropboxapi.com/2/files/download',
+                    data=b'', method='POST',
+                    headers={
+                        'Authorization': f'Bearer {token}',
+                        'Dropbox-API-Arg': json.dumps({'path': path}),
+                    },
+                )
+                try:
+                    with urllib.request.urlopen(req, timeout=900) as r:
+                        with (raw / name).open('wb') as out:
+                            while True:
+                                chunk = r.read(4 * 1024 * 1024)
+                                if not chunk:
+                                    break
+                                out.write(chunk)
+                except Exception as exc:
+                    raise SystemExit(f'DROPBOX_DOWNLOAD_FAILED path={path} error={exc}')
             PY
+
+            for bundle in h1 murphy mtf historical_context historical_outcome similarity retrieval; do
+              unzip -q "artifacts/raw/${bundle}.zip" -d "artifacts/unpacked/${bundle}"
+            done
+
+            H1=$(find artifacts/unpacked/h1 -type f -name 'GBPUSD_H1_2016_2025_MASTER.csv' | head -1)
+            MURPHY=$(find artifacts/unpacked/murphy -type f -name 'MURPHY_2016_2024_FULL_EVIDENCE.csv' | head -1)
+            MTF=$(find artifacts/unpacked/mtf -type f -name 'GBPUSD_MTF_H4_H1.csv' | head -1)
+            HC=$(find artifacts/unpacked/historical_context -type f -name 'HISTORICAL_CONTEXT_MEMORY.csv' | head -1)
+            HO=$(find artifacts/unpacked/historical_outcome -type f -name 'HISTORICAL_OUTCOMES.csv' | head -1)
+            test -n "$H1" || { echo 'MISSING H1 CSV'; exit 1; }
+            test -n "$MURPHY" || { echo 'MISSING MURPHY CSV'; exit 1; }
+            test -n "$MTF" || { echo 'MISSING MTF CSV'; exit 1; }
+            test -n "$HC" || { echo 'MISSING HISTORICAL CONTEXT CSV'; exit 1; }
+            test -n "$HO" || { echo 'MISSING HISTORICAL OUTCOME CSV'; exit 1; }
+
+            echo "export H1='$H1'" >> "$BASH_ENV"
+            echo "export MURPHY='$MURPHY'" >> "$BASH_ENV"
+            echo "export MTF='$MTF'" >> "$BASH_ENV"
+            echo "export HC='$HC'" >> "$BASH_ENV"
+            echo "export HO='$HO'" >> "$BASH_ENV"
+
+      - run:
+          name: Frozen scope and 2025 lock check
+          shell: bash
+          command: |
+            set -euo pipefail
+            python - <<'PY'
+            import os
+            import pandas as pd
+
+            h1 = pd.read_csv(os.environ['H1'], usecols=['timestamp'])
+            h1t = pd.to_datetime(h1['timestamp'], utc=True, format='mixed')
+            assert h1t.dt.year.min() <= 2016
+            assert h1t.dt.year.max() >= 2025
+
+            n = pd.read_csv('artifacts/raw/nison.csv', usecols=['timestamp','rule_id'])
+            nt = pd.to_datetime(n['timestamp'], utc=True, format='mixed')
+            assert nt.dt.year.min() == 2016 and nt.dt.year.max() == 2024
+            assert n['rule_id'].nunique() == 44
+            assert len(n) == 2428448
+
+            m = pd.read_csv(os.environ['MURPHY'], usecols=['timestamp','source_rule_id'])
+            mt = pd.to_datetime(m['timestamp'], utc=True, format='mixed')
+            assert mt.dt.year.min() == 2016 and mt.dt.year.max() == 2024
+            assert m['source_rule_id'].nunique() == 34
+
+            print('FROZEN_SCOPE_PASS', 'nison_rows=', len(n), 'nison_rules=', n['rule_id'].nunique(), 'murphy_rules=', m['source_rule_id'].nunique())
+            print('OOS_2025_LOCKED')
+            PY
+
       - run:
           name: GOVERNED INTEGRATION GATE V2
+          shell: bash
           command: |
-            set -eu
+            set -euo pipefail
             mkdir -p artifacts/integration_gate
             python BACKTEST/GOVERNED_INTEGRATION_GATE_V2.py \
-              --h1 "$SOURCE_CSV" \
-              --market-state artifacts/GBPUSD_MARKET_STATE.csv \
-              --mtf "$MTF_CSV" \
-              --murphy "$MURPHY_CSV" \
-              --nison artifacts/nison/NISON_2016_2024_FULL_EVIDENCE.csv \
-              --historical-context "$HC_CSV" \
-              --historical-outcome "$HO_CSV" \
-              --similarity "$SIM_DIR" \
-              --retrieval "$RET_DIR" \
+              --h1 "$H1" \
+              --market-state artifacts/raw/market_state.csv \
+              --mtf "$MTF" \
+              --murphy "$MURPHY" \
+              --nison artifacts/raw/nison.csv \
+              --historical-context "$HC" \
+              --historical-outcome "$HO" \
+              --similarity artifacts/unpacked/similarity \
+              --retrieval artifacts/unpacked/retrieval \
               --handoff compatibility/knowledge_decision_handoff.py \
               --decision-brain RECOVERED_SOURCES/DECISION_BRAIN_V1/decision_brain.py \
               --output artifacts/integration_gate/GOVERNED_INTEGRATION_GATE_V2.json
+
       - store_artifacts:
           path: artifacts/integration_gate
           destination: governed_integration_gate_2026_08_28
+
       - run:
-          name: 2016-2024 governed Decision Brain backtest
+          name: 2016-2024 Decision Brain backtest (only after Gate PASS)
+          shell: bash
           command: |
-            set -eu
+            set -euo pipefail
             mkdir -p artifacts/decision_brain_backtest_2016_2024
             python BACKTEST/DEV_BACKTEST_RUNNER_V1.py \
-              --h1 "$SOURCE_CSV" \
-              --market artifacts/GBPUSD_MARKET_STATE.csv \
-              --mtf "$MTF_CSV" \
-              --murphy "$MURPHY_CSV" \
-              --nison artifacts/nison/NISON_2016_2024_FULL_EVIDENCE.csv \
-              --historical-context "$HC_CSV" \
-              --historical-outcome "$HO_CSV" \
-              --similarity "$SIM_DIR" \
-              --retrieval "$RET_DIR" \
+              --h1 "$H1" \
+              --market artifacts/raw/market_state.csv \
+              --mtf "$MTF" \
+              --murphy "$MURPHY" \
+              --nison artifacts/raw/nison.csv \
+              --historical-context "$HC" \
+              --historical-outcome "$HO" \
+              --similarity artifacts/unpacked/similarity \
+              --retrieval artifacts/unpacked/retrieval \
               --output-dir artifacts/decision_brain_backtest_2016_2024
+
       - run:
-          name: Assert 2025 stays locked in output
+          name: Assert 2025 absent from development output
+          shell: bash
           command: |
-            set -eu
+            set -euo pipefail
             test -f artifacts/decision_brain_backtest_2016_2024/unified_78_events_2016_2024.csv
-            ! grep -q '2025-' artifacts/decision_brain_backtest_2016_2024/unified_78_events_2016_2024.csv
+            if grep -q '2025-' artifacts/decision_brain_backtest_2016_2024/unified_78_events_2016_2024.csv; then
+              echo '2025 LOCK VIOLATION'
+              exit 1
+            fi
+            echo 'OOS_2025_LOCK_CONFIRMED'
+
       - store_artifacts:
           path: artifacts/decision_brain_backtest_2016_2024
           destination: decision_brain_backtest_2016_2024_governed
 
 workflows:
-  backtest_only:
+  governed_backtest_only:
     jobs:
-      - backtest_only
+      - governed_backtest_only
