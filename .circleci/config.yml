@@ -48,12 +48,12 @@ jobs:
           command: |
             set -eu
             python - <<'PY'
-            import pandas as pd
+            import os, pandas as pd
             n=pd.read_csv('artifacts/raw/nison.csv',usecols=['timestamp','rule_id'])
             t=pd.to_datetime(n.timestamp,utc=True,format='mixed')
             assert t.dt.year.min()==2016 and t.dt.year.max()==2024
             assert n.rule_id.nunique()==44 and len(n)==2428448
-            m=pd.read_csv("$MURPHY",usecols=['timestamp','source_rule_id'])
+            m=pd.read_csv(os.environ['MURPHY'],usecols=['timestamp','source_rule_id'])
             t=pd.to_datetime(m.timestamp,utc=True,format='mixed')
             assert t.dt.year.min()==2016 and t.dt.year.max()==2024
             print('FROZEN_SCOPE_PASS',len(n),n.rule_id.nunique(),len(m))
