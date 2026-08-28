@@ -43,9 +43,6 @@ def main() -> int:
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.aggregate_output.parent.mkdir(parents=True, exist_ok=True)
 
-    # Fail closed if the source is not timestamp-ordered. That ordering is
-    # required for bounded-memory timestamp aggregation without changing
-    # semantics or silently re-sorting a huge source.
     observed = set()
     source_rows = 0
     canonical_event_rows = 0
@@ -78,6 +75,10 @@ def main() -> int:
         first_agg_write = False
         canonical_timestamp_rows += 1
 
+    with args.source.open("rb") as raw_file:
+        for raw_chunk in iter(lambda: raw_file.read(4 * 1024 * 1024), b""):
+            sha.update(raw_chunk)
+
     for chunk in pd.read_csv(args.source, usecols=cols, chunksize=200_000, low_memory=False):
         chunk["timestamp"] = pd.to_datetime(chunk["timestamp"], utc=True, errors="coerce", format="mixed")
         if chunk["timestamp"].isna().any():
@@ -93,8 +94,7 @@ def main() -> int:
         observed.update(chunk["rule_id"].dropna().tolist())
         bad = sorted(observed - allowed)
         if bad:
-            raise SystemExit(f"UNKNOWN_NISON_RULE_IDS={bad}
-")
+            raise SystemExit(f"UNKNOWN_NISON_RULE_IDS={bad}")
 
         chunk_min = chunk.timestamp.min()
         chunk_max = chunk.timestamp.max()
@@ -122,7 +122,6 @@ def main() -> int:
         min_ts = cmin if min_ts is None or cmin < min_ts else min_ts
         max_ts = cmax if max_ts is None or cmax > max_ts else max_ts
 
-        # Write raw canonical event rows without retaining prior chunks.
         event_write = chunk[["timestamp", "status", "direction", "rule_id", "canonical_direction"]]
         event_write.to_csv(args.output, mode="a", index=False, header=first_event_write)
         first_event_write = False
@@ -136,7 +135,7 @@ def main() -> int:
         "status": "PASS",
         "window": "2016-2024",
         "2025_locked": True,
-        "source_sha256": sha.hexdigest() if False else None,
+        "source_sha256": sha.hexdigest(),
         "source_rows_in_window": int(source_rows),
         "canonical_event_rows": int(canonical_event_rows),
         "canonical_timestamp_rows": int(canonical_timestamp_rows),
