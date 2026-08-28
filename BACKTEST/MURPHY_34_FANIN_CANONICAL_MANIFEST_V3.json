@@ -1,0 +1,56 @@
+{
+  "artifact": "MURPHY_34_FANIN_CANONICAL_MANIFEST_V3",
+  "date": "2026-08-28",
+  "branch": "backtest-only-2026-08-28",
+  "window": "2016-2024",
+  "oos_2025": "LOCKED",
+  "purpose": "Canonical governance manifest for the current 34-rule Murphy runtime scope. It records source-backed eligibility and prevents non-production/candidate/process artifacts from silently becoming directional decision evidence.",
+  "runtime_rule_count": 34,
+  "decision_eligible_rule_count": 7,
+  "decision_eligible_rules": [
+    "MURPHY_0021",
+    "MURPHY_0022",
+    "MURPHY_0023",
+    "MURPHY_0025",
+    "MURPHY_0026",
+    "MURPHY_0028",
+    "MURPHY_0029"
+  ],
+  "status_counts": {
+    "SOURCE_BACKED_HISTORICAL_EVALUATION": 5,
+    "SOURCE_BACKED_FEATURE_REPLAY": 2,
+    "OBSERVED_BUT_NOT_DECISION_ELIGIBLE": 2,
+    "PROVISIONAL_QA_ONLY": 2,
+    "SOURCE_BACKED_BREADTH_REPLAY": 3,
+    "CANDIDATE_EVIDENCE_ONLY": 3,
+    "EVIDENCE_REPLAY_READY": 2,
+    "SOURCE_BACKED_DYNAMIC_REPLAY": 2,
+    "CONTEXT_REPLAY_CANDIDATE": 1,
+    "PROCESS_GATE": 1,
+    "PROCESS_GATE_CLOSED": 2,
+    "NOT_EVALUABLE": 9
+  },
+  "governance": {
+    "no_synthetic_rule_ids": true,
+    "no_synthetic_market_data": true,
+    "no_2025_tuning": true,
+    "candidate_evidence_cannot_drive_direction": true,
+    "provisional_evidence_cannot_drive_direction": true,
+    "context_only_evidence_cannot_drive_direction": true,
+    "process_gates_do_not_generate_direction": true,
+    "missing_evidence_fails_closed": true,
+    "murphy_remains_primary_directional_context": true
+  },
+  "critical_source_observations": {
+    "0025_0026": "Existing historical event artifact contains PASS/FAIL states and BEARISH directional outcomes for the paired source lineage; preserve provenance and do not treat the pair identifier as two independent new streams.",
+    "0028": "2016-2024 RSI divergence recovery has source-backed historical QA and zero availability/duplicate violations in the reviewed artifact.",
+    "0029": "2016-2024 evaluation artifact has explicit rule_0029 status/directional-confirmation fields.",
+    "0034_0036": "Frozen Elliott candidate-validation artifacts are structural validation evidence, not ground-truth standalone directional streams.",
+    "0037_0038": "Frozen retracement/cycle artifacts are context evidence and explicitly not standalone direction.",
+    "0040_0041": "Frozen dynamic replay artifacts are context evidence; reference zones are not to be treated as newly tuned decision thresholds.",
+    "0047_0049": "Closed NYSE breadth/TRIN replays are historical context and cannot autonomously define GBPUSD direction.",
+    "0050_0051": "Process/execution completeness gates; they do not produce market direction."
+  },
+  "integration_rule": "Only decision-eligible, source-backed directional evidence may contribute Murphy directional evidence to the Decision Brain. All other statuses remain provenance/context/gate evidence and cannot be promoted by the orchestrator.",
+  "next_step": "Compile a real point-in-time Murphy evidence envelope from the source-backed streams, then attach Rule Adapter/Knowledge Alignment/Agreement-Gate provenance before Decision Brain V1. Do not run the 2016-2024 full backtest until the real-source E2E sample passes."
+}
