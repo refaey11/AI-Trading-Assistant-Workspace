@@ -13,15 +13,10 @@ on:
         required: true
         type: boolean
         default: false
-  push:
-    branches:
-      - backtest-only-2026-08-28
-    paths:
-      - '.github/RUN_INTEGRATION_GATE_NOW'
 
 jobs:
   governed:
-    if: ${{ inputs.run_integration_gate || github.event_name == 'push' }}
+    if: ${{ inputs.run_integration_gate }}
     runs-on: ubuntu-latest
     env:
       DROPBOX_ACCESS_TOKEN: ${{ secrets.DROPBOX_ACCESS_TOKEN }}
