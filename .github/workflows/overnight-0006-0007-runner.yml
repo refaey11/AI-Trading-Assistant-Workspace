@@ -1,100 +1,16 @@
-name: Overnight 0006-0007 Runner
+name: Overnight 0006-0007 Runner (DISABLED)
+
+# Archived diagnostic workflow. Manual-only to prevent accidental runs.
+# Use governed-integration-gate-2026-08-28.yml for the official project path.
 
 on:
-  push:
   workflow_dispatch:
-  schedule:
-    - cron: '0 * * * *'
 
 permissions:
   contents: read
 
 jobs:
-  audit:
+  archived:
     runs-on: ubuntu-latest
-    env:
-      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
     steps:
-      - name: Check requested time window
-        shell: bash
-        run: |
-          set -euo pipefail
-          NOW_UTC=$(date -u +%s)
-          START=$(date -u -d '2026-08-14T03:00:00Z' +%s)
-          CUTOFF=$(date -u -d '2026-08-14T11:05:00Z' +%s)
-          if [ "$NOW_UTC" -lt "$START" ] || [ "$NOW_UTC" -ge "$CUTOFF" ]; then
-            echo 'Outside the requested 06:00–14:00 Cairo window; clean exit.'
-            exit 0
-          fi
-
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Collect deterministic evidence
-        shell: bash
-        run: |
-          set -euo pipefail
-          mkdir -p overnight_audit
-          date -u '+%Y-%m-%dT%H:%M:%SZ' > overnight_audit/run_utc.txt
-          TZ=Africa/Cairo date '+%Y-%m-%dT%H:%M:%S%z' > overnight_audit/run_cairo.txt
-          git rev-parse HEAD > overnight_audit/commit.txt
-          {
-            echo '=== FILES ==='
-            find . -type f -not -path './.git/*' | sort | grep -Ei '0006|0007|pivot|geometry|trendline|evaluator|confirmation|adapter|contract' | head -n 500 || true
-            echo '=== KEYWORDS ==='
-            git grep -n -I -E 'third_touch|reaction_bounce|no_break|confirmation_available_at|reaction_available_at|TRENDLINE_GEOMETRY_V1|PIVOT_SEQUENCE_V2|NOT_EVALUABLE' -- . ':!overnight_audit' | head -n 1600 || true
-          } > overnight_audit/evidence.txt
-          if [ -f pyproject.toml ] || [ -f requirements.txt ] || [ -d tests ]; then
-            python -m pytest -q > overnight_audit/pytest.txt 2>&1 || true
-          else
-            echo 'No pytest project detected.' > overnight_audit/pytest.txt
-          fi
-
-      - name: OpenAI forensic analysis
-        shell: bash
-        run: |
-          set -euo pipefail
-          if [ -z "${OPENAI_API_KEY:-}" ]; then
-            echo 'OPENAI_API_KEY GitHub Secret is not configured. Deterministic audit ran without OpenAI.' > overnight_audit/openai_report.md
-            exit 0
-          fi
-          python - <<'PY'
-          import json, os, time, urllib.request, urllib.error
-          from pathlib import Path
-          evidence = Path('overnight_audit/evidence.txt').read_text(errors='ignore')[:120000]
-          tests = Path('overnight_audit/pytest.txt').read_text(errors='ignore')[:40000]
-          prompt = ("You are the forensic integration auditor for the AI Trading Assistant project.\n\n"
-                    "Target: Murphy 0006/0007 only.\n"
-                    "Use ONLY repository evidence below. Do not invent fields, thresholds, tolerances, lookbacks, or evidence. Do not use 2025 for tuning or selection. Do not declare Production Frozen. Do not rebuild Pivot or Geometry unless evidence proves the canonical component is missing.\n\n"
-                    "Check this lineage: PIVOT_SEQUENCE_V2 -> TRENDLINE_GEOMETRY_V1 -> third_touch -> reaction -> no_break -> availability -> 0006/0007 evaluator.\n\n"
-                    "Classify every link: PROVEN / DOWNSTREAM_ONLY / MISSING / CONTRADICTORY.\n\n"
-                    "Return: VERDICT: PROVEN / NOT_PROVEN / BLOCKED; LINKAGE TABLE; EXACT BLOCKER(S); SMALLEST SAFE NEXT ACTION; FREEZE REVIEW: READY / NOT_READY.\n\n"
-                    "Repository evidence:\n" + evidence + "\n\nTest output:\n" + tests)
-          body = {'model': 'gpt-5', 'input': prompt, 'store': False}
-          req = urllib.request.Request('https://api.openai.com/v1/responses', data=json.dumps(body).encode(), headers={'Authorization': 'Bearer '+os.environ['OPENAI_API_KEY'], 'Content-Type':'application/json'}, method='POST')
-          last_error = None
-          for attempt in range(3):
-              try:
-                  with urllib.request.urlopen(req, timeout=120) as r:
-                      data = json.load(r)
-                  Path('overnight_audit/openai_report.md').write_text(data.get('output_text',''), encoding='utf-8')
-                  break
-              except urllib.error.HTTPError as e:
-                  last_error = e
-                  detail = e.read().decode('utf-8', errors='ignore')
-                  Path('overnight_audit/openai_error.txt').write_text(f'HTTP {e.code}\n{detail}', encoding='utf-8')
-                  if e.code == 429 and attempt < 2:
-                      time.sleep(30 * (attempt + 1))
-                      continue
-                  Path('overnight_audit/openai_report.md').write_text('OPENAI_ANALYSIS_UNAVAILABLE\n' + f'HTTP {e.code}\n' + detail[:4000], encoding='utf-8')
-                  break
-              except Exception as e:
-                  Path('overnight_audit/openai_report.md').write_text('OPENAI_ANALYSIS_UNAVAILABLE\n' + repr(e), encoding='utf-8')
-                  break
-          PY
-
-      - name: Upload audit artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: overnight-0006-0007-openai-audit-${{ github.run_number }}
-          path: overnight_audit/
+      - run: echo 'Archived diagnostic workflow; no automatic execution.'
