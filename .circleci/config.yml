@@ -1,3 +1,4 @@
+# BACKTEST-ONLY TRIGGER: use existing governed 2016-2024 inputs; no regeneration of Nison or 2025 OOS jobs.
 version: 2.1
 
 jobs:
