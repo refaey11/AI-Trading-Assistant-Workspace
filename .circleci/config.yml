@@ -1,6 +1,7 @@
 # BACKTEST-ONLY / GOVERNED
 # Branch: backtest-only-2026-08-28
-# IMPORTANT: all execution is MANUAL/PARAMETER-GATED to prevent accidental credit burn.
+# IMPORTANT: automatic VCS pushes run only the cheap build-and-test workflow.
+# Governed integration/backtest execution remains manual/parameter-gated to prevent accidental credit burn.
 # 2025 remains locked/OOS.
 version: 2.1
 
@@ -13,6 +14,21 @@ parameters:
     default: false
 
 jobs:
+  build_and_test:
+    docker:
+      - image: cimg/python:3.12
+    steps:
+      - checkout
+      - run:
+          name: Install lightweight CI dependencies
+          command: python -m pip install --upgrade pip pandas pytest
+      - run:
+          name: Canonical E2E integration contract test
+          command: python BACKTEST/INTEGRATION_CONTRACT_TEST_V1.py
+      - run:
+          name: Compile Python sources
+          command: python -m compileall -q BACKTEST compatibility RUNTIME RECOVERED_SOURCES
+
   governed_backtest_only:
     docker:
       - image: cimg/python:3.12
@@ -60,6 +76,10 @@ jobs:
                 destination: decision_brain_backtest_2016_2024_governed
 
 workflows:
+  build_and_test:
+    jobs:
+      - build_and_test
+
   governed_execution:
     when:
       or:
