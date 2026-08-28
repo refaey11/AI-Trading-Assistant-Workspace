@@ -20,12 +20,45 @@ jobs:
         run: python -m pip install --upgrade pip pandas pytest
       - name: Verify Dropbox access
         run: test -n "$DROPBOX_ACCESS_TOKEN"
-      - name: Recover governed Nison development evidence
+      - name: Download existing governed Nison development evidence
         run: |
           set -eu
           mkdir -p artifacts/nison
-          python DEVELOPMENT_2016_2024/run_nison_development_2016_2024_v1.py --output-dir artifacts/nison
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          from urllib.request import Request, urlopen
+          token=os.environ['DROPBOX_ACCESS_TOKEN']
+          path='/New 8/NISON_2016_2024_FULL_EVIDENCE.csv'
+          req=Request('https://content.dropboxapi.com/2/files/download', data=b'', method='POST', headers={'Authorization':f'Bearer {token}','Dropbox-API-Arg':json.dumps({'path':path})})
+          out=Path('artifacts/nison/NISON_2016_2024_FULL_EVIDENCE.csv')
+          with urlopen(req, timeout=900) as r:
+              with out.open('wb') as f:
+                  while True:
+                      chunk=r.read(1024*1024)
+                      if not chunk: break
+                      f.write(chunk)
+          print(out, out.stat().st_size)
+          PY
           test -s artifacts/nison/NISON_2016_2024_FULL_EVIDENCE.csv
+      - name: Acquire H1 source
+        run: |
+          set -eu
+          mkdir -p artifacts/source/unpacked
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          from urllib.request import Request, urlopen
+          token=os.environ['DROPBOX_ACCESS_TOKEN']
+          path='/New 8/GBPUSD_H1_2016_2025_MASTER.zip'
+          req=Request('https://content.dropboxapi.com/2/files/download', data=b'', method='POST', headers={'Authorization':f'Bearer {token}','Dropbox-API-Arg':json.dumps({'path':path})})
+          out=Path('artifacts/source/GBPUSD_H1_2016_2025_MASTER.zip')
+          with urlopen(req, timeout=300) as r: out.write_bytes(r.read())
+          PY
+          unzip -q artifacts/source/GBPUSD_H1_2016_2025_MASTER.zip -d artifacts/source/unpacked
+          SOURCE_CSV=$(find artifacts/source/unpacked -type f -name 'GBPUSD_H1_2016_2025_MASTER.csv' | head -1)
+          test -n "$SOURCE_CSV"
+          echo "SOURCE_CSV=$SOURCE_CSV" >> "$GITHUB_ENV"
       - name: Recover current Murphy development evidence from Dropbox project workspace
         run: |
           set -eu
@@ -35,27 +68,27 @@ jobs:
           from pathlib import Path
           token=os.environ['DROPBOX_ACCESS_TOKEN']
           candidates=[
-              '/ai_trading_assistant_full_project_v1/MURPHY_2016_2024_FULL_EVIDENCE.csv',
-              '/ai_trading_assistant_full_project_v1/MURPHY_2016_2024_FULL_34_RULE_FANIN_SOURCE_PRESERVING.csv',
-              '/ai_trading_assistant_full_project_v1/MURPHY_HISTORICAL_EVIDENCE_NORMALIZED_2016_2024.csv',
+              '/AI_Trading_Assistant_FULL_PROJECT_V1/MURPHY_2016_2024_FULL_EVIDENCE.csv',
+              '/AI_Trading_Assistant_FULL_PROJECT_V1/MURPHY_2016_2024_FULL_34_RULE_FANIN_SOURCE_PRESERVING.csv',
+              '/AI_Trading_Assistant_FULL_PROJECT_V1/MURPHY_HISTORICAL_EVIDENCE_NORMALIZED_2016_2024.csv',
               '/MURPHY_2016_2024_FULL_EVIDENCE.csv',
               '/MURPHY_2016_2024_FULL_34_RULE_FANIN_SOURCE_PRESERVING.csv',
               '/MURPHY_HISTORICAL_EVIDENCE_NORMALIZED_2016_2024.csv',
           ]
+          out=Path('artifacts/murphy/MURPHY_2016_2024_FULL_EVIDENCE.csv')
           for path in candidates:
               req=urllib.request.Request('https://content.dropboxapi.com/2/files/download', data=b'', method='POST', headers={'Authorization':f'Bearer {token}','Dropbox-API-Arg':json.dumps({'path':path})})
               try:
-                  with urllib.request.urlopen(req, timeout=180) as r:
+                  with urllib.request.urlopen(req, timeout=300) as r:
                       data=r.read()
                   if data:
-                      out=Path('artifacts/murphy/MURPHY_2016_2024_FULL_EVIDENCE.csv')
                       out.write_bytes(data)
-                      print(f'Recovered Murphy evidence from {path} -> {out} ({len(data)} bytes)')
+                      print(f'Recovered Murphy from {path}: {len(data)} bytes')
                       break
               except Exception as exc:
-                  print(f'Murphy candidate unavailable: {path}: {exc}')
+                  print(f'Unavailable {path}: {exc}')
           else:
-              raise SystemExit('BLOCKED: no source-backed Murphy 2016-2024 evidence file was found at the governed Dropbox candidates.')
+              raise SystemExit('No source-backed Murphy 2016-2024 evidence found.')
           PY
           test -s artifacts/murphy/MURPHY_2016_2024_FULL_EVIDENCE.csv
       - name: Acquire Market State context
@@ -66,17 +99,38 @@ jobs:
           from pathlib import Path
           from urllib.request import Request, urlopen
           token=os.environ['DROPBOX_ACCESS_TOKEN']
-          path='/ai_trading_assistant_full_project_v1/AI_Trading_Assistant_MARKET_STATE_READER_V1/GBPUSD_MARKET_STATE.csv'
-          req=Request('https://content.dropboxapi.com/2/files/download', data=b'', method='POST', headers={'Authorization':f'Bearer {token}','Dropbox-API-Arg':json.dumps({'path':path})})
-          out=Path('artifacts/GBPUSD_MARKET_STATE.csv'); out.parent.mkdir(exist_ok=True)
-          with urlopen(req, timeout=180) as r: out.write_bytes(r.read())
-          print(out)
+          candidates=[
+              '/New 8/GBPUSD_MARKET_STATE 6.csv',
+              '/AI_Trading_Assistant_FULL_PROJECT_V1/AI_Trading_Assistant_MARKET_STATE_READER_V1/GBPUSD_MARKET_STATE.csv',
+          ]
+          out=Path('artifacts/GBPUSD_MARKET_STATE.csv')
+          for path in candidates:
+              req=Request('https://content.dropboxapi.com/2/files/download', data=b'', method='POST', headers={'Authorization':f'Bearer {token}','Dropbox-API-Arg':json.dumps({'path':path})})
+              try:
+                  with urlopen(req, timeout=300) as r: out.write_bytes(r.read())
+                  if out.stat().st_size: print(path); break
+              except Exception as exc: print(f'Unavailable {path}: {exc}')
+          else: raise SystemExit('No governed Market State source found.')
+          PY
+          test -s artifacts/GBPUSD_MARKET_STATE.csv
+      - name: Verify governed Nison artifact scope
+        run: |
+          python - <<'PY'
+          import pandas as pd
+          p='artifacts/nison/NISON_2016_2024_FULL_EVIDENCE.csv'
+          df=pd.read_csv(p, usecols=['timestamp','rule_id'])
+          ts=pd.to_datetime(df['timestamp'], utc=True)
+          assert ts.dt.year.min() == 2016 and ts.dt.year.max() == 2024
+          assert df['rule_id'].nunique() == 44
+          assert len(df) == 2428448
+          print('Nison scope PASS:', len(df), 'rows,', df['rule_id'].nunique(), 'rules')
           PY
       - name: Run governed 78-rule development backtest
         run: |
           set -eu
+          mkdir -p artifacts/decision_brain_backtest_2016_2024
           python BACKTEST/DEV_BACKTEST_RUNNER_V1.py \
-            --h1 artifacts/nison/source/GBPUSD_H1_2016_2025_MASTER.csv \
+            --h1 "$SOURCE_CSV" \
             --murphy artifacts/murphy/MURPHY_2016_2024_FULL_EVIDENCE.csv \
             --nison artifacts/nison/NISON_2016_2024_FULL_EVIDENCE.csv \
             --context artifacts/GBPUSD_MARKET_STATE.csv \
