@@ -1,0 +1,32 @@
+{
+  "version": "3.0",
+  "window": "2016-2024",
+  "sample_scope": 25,
+  "purpose": "Cheap deterministic source-backed smoke before full Integration Gate",
+  "required_layers": [
+    "H1",
+    "Market State",
+    "MTF",
+    "Murphy 34",
+    "Nison 44",
+    "Historical Context Memory",
+    "Historical Outcome Memory",
+    "Similarity V2",
+    "Context-Aware Retrieval V2",
+    "TIZ",
+    "Risk/Execution",
+    "Knowledge/Decision Handoff",
+    "Decision Brain V1"
+  ],
+  "invariants": {
+    "2025_locked": true,
+    "memory_generates_direction": false,
+    "retrieval_generates_direction": false,
+    "nison_generates_direction": false,
+    "tiz_generates_direction": false,
+    "risk_generates_direction": false,
+    "synthetic_sl_tp": false,
+    "decision_brain_v1_modified": false
+  },
+  "promotion_rule": "Smoke PASS -> Integration Gate eligible; Smoke FAIL -> no full backtest"
+}
