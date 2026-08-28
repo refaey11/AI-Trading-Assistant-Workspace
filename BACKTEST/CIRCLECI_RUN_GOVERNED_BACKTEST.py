@@ -4,46 +4,25 @@ import os
 import subprocess
 from pathlib import Path
 
-import pandas as pd
-
 ROOT = Path.cwd()
-out = Path("artifacts/decision_brain_backtest_2016_2024")
-out.mkdir(parents=True, exist_ok=True)
+if not (ROOT / "BACKTEST" / "GOVERNED_E2E_RUNNER_V1.py").exists():
+    ROOT = Path(__file__).resolve().parents[1]
 
-# The recovered Murphy evidence may encode fan-in as composite IDs such as
-# MURPHY_0025|MURPHY_0026. Normalize those rows without changing evidence
-# semantics before invoking the governed runner.
-murphy_src = Path(os.environ["MURPHY"])
-murphy_norm = Path("artifacts/raw/MURPHY_2016_2024_FULL_EVIDENCE_NORMALIZED.csv")
-m = pd.read_csv(murphy_src, low_memory=False)
-if "source_rule_id" not in m.columns:
-    raise SystemExit("MURPHY source_rule_id column missing")
-m["source_rule_id"] = m["source_rule_id"].fillna("").astype(str)
-m["_rule_id"] = m["source_rule_id"].str.split("|")
-m = m.explode("_rule_id", ignore_index=True)
-m["source_rule_id"] = m["_rule_id"].astype(str).str.strip()
-m = m[m["source_rule_id"].ne("")].drop(columns=["_rule_id"])
-murphy_norm.parent.mkdir(parents=True, exist_ok=True)
-m.to_csv(murphy_norm, index=False)
-
-# CircleCI may execute the script from BACKTEST/ rather than repository root.
-# Explicitly expose the repository root so the existing compatibility package
-# and recovered Decision Brain modules resolve deterministically.
 env = os.environ.copy()
 env["PYTHONPATH"] = os.pathsep.join(filter(None, [str(ROOT), env.get("PYTHONPATH", "")]))
 
 cmd = [
     "python",
-    "BACKTEST/DEV_BACKTEST_RUNNER_V1.py",
+    str(ROOT / "BACKTEST" / "GOVERNED_E2E_RUNNER_V1.py"),
     "--h1", os.environ["H1"],
-    "--market", "artifacts/raw/market_state.csv",
+    "--market", str(ROOT / "artifacts/raw/market_state.csv"),
     "--mtf", os.environ["MTF"],
-    "--murphy", str(murphy_norm),
-    "--nison", "artifacts/raw/nison.csv",
+    "--murphy", os.environ["MURPHY"],
+    "--nison", str(ROOT / "artifacts/raw/nison.csv"),
     "--historical-context", os.environ["HC"],
     "--historical-outcome", os.environ["HO"],
     "--similarity", os.environ["SIM_DIR"],
     "--retrieval", os.environ["RET_DIR"],
-    "--output-dir", str(out),
+    "--output-dir", str(ROOT / "artifacts/decision_brain_backtest_2016_2024"),
 ]
 subprocess.run(cmd, check=True, env=env)
