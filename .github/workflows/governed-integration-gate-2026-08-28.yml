@@ -1,6 +1,9 @@
 name: Governed Integration + Development Backtest 2026-08-28
 
 on:
+  push:
+    paths:
+      - '.github/RUN_INTEGRATION_GATE_NOW'
   workflow_dispatch:
     inputs:
       run_integration_gate:
@@ -16,7 +19,7 @@ on:
 
 jobs:
   governed:
-    if: ${{ inputs.run_integration_gate }}
+    if: ${{ inputs.run_integration_gate || github.event_name == 'push' }}
     runs-on: ubuntu-latest
     env:
       DROPBOX_ACCESS_TOKEN: ${{ secrets.DROPBOX_ACCESS_TOKEN }}
