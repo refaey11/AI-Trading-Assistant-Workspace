@@ -11,6 +11,11 @@ on:
         options:
           - integration_gate
           - backtest_2016_2024
+  push:
+    branches:
+      - backtest-only-2026-08-28
+    paths:
+      - '.github/START_INTEGRATION_GATE_NOW'
 
 permissions:
   contents: read
@@ -22,7 +27,7 @@ jobs:
       - name: Trigger selected CircleCI stage
         env:
           CIRCLECI_API_TOKEN: ${{ secrets.CIRCLECI_API_TOKEN }}
-          MODE: ${{ inputs.mode }}
+          MODE: ${{ inputs.mode || 'integration_gate' }}
           CIRCLECI_PROJECT: gh/refaey11/AI-Trading-Assistant-Workspace
           CIRCLECI_BRANCH: backtest-only-2026-08-28
         run: |
