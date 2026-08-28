@@ -97,7 +97,7 @@ jobs:
           RESPONSE=$(curl --fail-with-body --silent --show-error \
             --request POST \
             --url "https://circleci.com/api/v2/project/${CIRCLECI_PROJECT}/pipeline/run" \
-            --header "Authorization: Bearer ${CIRCLECI_API_TOKEN}" \
+            --header "Circle-Token: ${CIRCLECI_API_TOKEN}" \
             --header 'Content-Type: application/json' \
             --header 'Accept: application/json' \
             --data "$BODY")
