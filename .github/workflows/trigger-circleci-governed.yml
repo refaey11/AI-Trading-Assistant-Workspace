@@ -41,6 +41,17 @@ jobs:
           print(json.load(open('/tmp/circle_project.json'))['id'])
           PY
           )
+          ORG_ID=$(python - <<'PY'
+          import json
+          print(json.load(open('/tmp/circle_project.json'))['organization_id'])
+          PY
+          )
+          test -n "$PROJECT_ID"; test -n "$ORG_ID"
+          # CircleCI GitHub App trigger endpoint requires the canonical
+          # circleci/<org-id>/<project-id> project slug, regardless of the
+          # human-readable slug returned by the legacy project lookup.
+          PROJECT_SLUG="circleci/${ORG_ID}/${PROJECT_ID}"
+
           curl --fail-with-body --silent --show-error --request GET --url "https://circleci.com/api/v2/projects/${PROJECT_ID}/pipeline-definitions" "${AUTH_HEADER[@]}" --header 'Accept: application/json' >/tmp/circle_defs.json
           DEFINITION_ID=$(python - <<'PY'
           import json, sys
@@ -52,22 +63,13 @@ jobs:
           raise SystemExit('No suitable CircleCI pipeline definition found')
           PY
           )
-          PROJECT_SLUG=$(python - <<'PY'
-          import json
-          p=json.load(open('/tmp/circle_project.json'))
-          print(p.get('slug') or p.get('project_slug') or '')
-          PY
-          )
-          if [ -z "$PROJECT_SLUG" ]; then
-            PROJECT_SLUG="circleci/$(python - <<'PY'
-          import json
-          print(json.load(open('/tmp/circle_project.json'))['organization_id'])
-          PY
-          )/$PROJECT_ID"
-          fi
-          echo "PROJECT_ID=$PROJECT_ID" >> "$GITHUB_ENV"
-          echo "DEFINITION_ID=$DEFINITION_ID" >> "$GITHUB_ENV"
-          echo "CIRCLECI_PROJECT_SLUG=$PROJECT_SLUG" >> "$GITHUB_ENV"
+          test -n "$DEFINITION_ID"
+          {
+            echo "PROJECT_ID=$PROJECT_ID"
+            echo "ORG_ID=$ORG_ID"
+            echo "CIRCLECI_PROJECT_SLUG=$PROJECT_SLUG"
+            echo "DEFINITION_ID=$DEFINITION_ID"
+          } >> "$GITHUB_ENV"
           echo 'CircleCI project and pipeline definition resolved.'
 
       - name: Trigger selected governed CircleCI pipeline
