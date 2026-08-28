@@ -1,6 +1,6 @@
 # BACKTEST-ONLY / GOVERNED
 # Branch: backtest-only-2026-08-28
-# Gate must pass before 2016-2024 backtest. 2025 is locked/OOS.
+# Integration gate must pass before 2016-2024 backtest. 2025 is locked/OOS.
 version: 2.1
 
 jobs:
@@ -19,11 +19,17 @@ jobs:
           name: Frozen scope and 2025 lock check
           command: python BACKTEST/CIRCLECI_FROZEN_SCOPE_CHECK.py
       - run:
-          name: GOVERNED INTEGRATION GATE V2
+          name: GOVERNED INTEGRATION GATE V3
           command: python BACKTEST/CIRCLECI_RUN_GOVERNED_GATE.py
       - store_artifacts:
           path: artifacts/integration_gate
           destination: governed_integration_gate_2026_08_28
+      - run:
+          name: Canonical E2E integration contract test
+          command: python BACKTEST/INTEGRATION_CONTRACT_TEST_V1.py
+      - store_artifacts:
+          path: artifacts/integration_contract_test
+          destination: canonical_e2e_contract_2026_08_28
       - run:
           name: 2016-2024 Decision Brain backtest (only after Gate PASS)
           command: python BACKTEST/CIRCLECI_RUN_GOVERNED_BACKTEST.py
