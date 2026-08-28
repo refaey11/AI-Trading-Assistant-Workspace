@@ -79,9 +79,9 @@ jobs:
         run: |
           set -euo pipefail
           if [ "$MODE" = 'integration_gate' ]; then
-            PARAMETERS='{"run_integration_gate":true,"run_governed_backtest":false}'
+            export PARAMETERS='{"run_integration_gate":true,"run_governed_backtest":false}'
           elif [ "$MODE" = 'backtest_2016_2024' ]; then
-            PARAMETERS='{"run_integration_gate":true,"run_governed_backtest":true}'
+            export PARAMETERS='{"run_integration_gate":true,"run_governed_backtest":true}'
           else
             echo 'Unsupported mode'; exit 1
           fi
