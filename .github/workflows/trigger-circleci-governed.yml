@@ -24,15 +24,25 @@ jobs:
   trigger-circleci:
     runs-on: ubuntu-latest
     steps:
+      - name: Validate CircleCI token
+        env:
+          CIRCLECI_API_TOKEN: ${{ secrets.CIRCLECI_API_TOKEN }}
+        run: |
+          set -euo pipefail
+          test -n "${CIRCLECI_API_TOKEN:-}" || { echo 'CIRCLECI_API_TOKEN secret is missing'; exit 1; }
+          curl --fail-with-body --silent --show-error \
+            --request GET \
+            --url 'https://circleci.com/api/v2/me' \
+            --header "Authorization: Bearer ${CIRCLECI_API_TOKEN}" \
+            --header 'Accept: application/json'
+
       - name: Trigger selected CircleCI stage
         env:
           CIRCLECI_API_TOKEN: ${{ secrets.CIRCLECI_API_TOKEN }}
           MODE: ${{ inputs.mode || 'integration_gate' }}
           CIRCLECI_PROJECT: gh/refaey11/AI-Trading-Assistant-Workspace
-          CIRCLECI_BRANCH: backtest-only-2026-08-28
         run: |
           set -euo pipefail
-          test -n "${CIRCLECI_API_TOKEN:-}" || { echo 'CIRCLECI_API_TOKEN secret is missing'; exit 1; }
           if [ "$MODE" = "integration_gate" ]; then
             BODY='{"branch":"backtest-only-2026-08-28","parameters":{"run_integration_gate":true,"run_governed_backtest":false}}'
           elif [ "$MODE" = "backtest_2016_2024" ]; then
@@ -43,8 +53,9 @@ jobs:
           RESPONSE=$(curl --fail-with-body --silent --show-error \
             --request POST \
             --url "https://circleci.com/api/v2/project/${CIRCLECI_PROJECT}/pipeline" \
-            --header "Circle-Token: ${CIRCLECI_API_TOKEN}" \
+            --header "Authorization: Bearer ${CIRCLECI_API_TOKEN}" \
             --header 'Content-Type: application/json' \
+            --header 'Accept: application/json' \
             --data "$BODY")
           echo 'CircleCI pipeline triggered successfully.'
           echo "$RESPONSE"
