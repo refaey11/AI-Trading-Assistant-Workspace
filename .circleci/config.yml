@@ -30,7 +30,7 @@ jobs:
           command: |
             set -eu
             mkdir -p /tmp/murphy_recovery artifacts/murphy
-            base64 -d BACKTEST/DEV_BACKTEST_R1_MURPHY_SOURCE.zip.b64.txt > /tmp/murphy_recovery/murphy.zip
+            python -c "import base64,re; s=open('BACKTEST/DEV_BACKTEST_R1_MURPHY_SOURCE.zip.b64.txt','rb').read().decode('ascii','ignore'); s=re.sub(r'[^A-Za-z0-9+/=]','',s); s += '='*((4-len(s)%4)%4); open('/tmp/murphy_recovery/murphy.zip','wb').write(base64.b64decode(s))"
             unzip -q /tmp/murphy_recovery/murphy.zip -d /tmp/murphy_recovery/unpacked
             MURPHY_CSV=$(find /tmp/murphy_recovery/unpacked -type f -iname '*.csv' | head -1)
             test -n "$MURPHY_CSV"
