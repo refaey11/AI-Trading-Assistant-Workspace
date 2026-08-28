@@ -24,36 +24,55 @@ jobs:
   trigger-circleci:
     runs-on: ubuntu-latest
     steps:
-      - name: Validate CircleCI token
-        env:
-          CIRCLECI_API_TOKEN: ${{ secrets.CIRCLECI_API_TOKEN }}
-        run: |
-          set -euo pipefail
-          test -n "${CIRCLECI_API_TOKEN:-}" || { echo 'CIRCLECI_API_TOKEN secret is missing'; exit 1; }
-          curl --fail-with-body --silent --show-error \
-            --request GET \
-            --url 'https://circleci.com/api/v2/me' \
-            --header "Authorization: Bearer ${CIRCLECI_API_TOKEN}" \
-            --header 'Accept: application/json'
-
-      - name: Trigger selected CircleCI stage
+      - name: Validate and trigger CircleCI
         env:
           CIRCLECI_API_TOKEN: ${{ secrets.CIRCLECI_API_TOKEN }}
           MODE: ${{ inputs.mode || 'integration_gate' }}
           CIRCLECI_PROJECT: gh/refaey11/AI-Trading-Assistant-Workspace
         run: |
           set -euo pipefail
-          if [ "$MODE" = "integration_gate" ]; then
+          test -n "${CIRCLECI_API_TOKEN:-}" || { echo 'CIRCLECI_API_TOKEN secret is missing'; exit 1; }
+
+          AUTH_MODE='bearer'
+          if ! curl --fail-with-body --silent --show-error \
+            --request GET \
+            --url 'https://circleci.com/api/v2/me' \
+            --header "Authorization: Bearer ${CIRCLECI_API_TOKEN}" \
+            --header 'Accept: application/json' >/tmp/circle_me.json; then
+            AUTH_MODE='circle-token'
+            curl --fail-with-body --silent --show-error \
+              --request GET \
+              --url 'https://circleci.com/api/v2/me' \
+              --header "Circle-Token: ${CIRCLECI_API_TOKEN}" \
+              --header 'Accept: application/json' >/tmp/circle_me.json
+          fi
+          echo "CircleCI authentication OK (${AUTH_MODE})."
+
+          if [ "$AUTH_MODE" = 'bearer' ]; then
+            AUTH_HEADER=(--header "Authorization: Bearer ${CIRCLECI_API_TOKEN}")
+          else
+            AUTH_HEADER=(--header "Circle-Token: ${CIRCLECI_API_TOKEN}")
+          fi
+
+          curl --fail-with-body --silent --show-error \
+            --request GET \
+            --url "https://circleci.com/api/v2/project/${CIRCLECI_PROJECT}" \
+            "${AUTH_HEADER[@]}" \
+            --header 'Accept: application/json' >/tmp/circle_project.json
+          echo 'CircleCI project access OK.'
+
+          if [ "$MODE" = 'integration_gate' ]; then
             BODY='{"branch":"backtest-only-2026-08-28","parameters":{"run_integration_gate":true,"run_governed_backtest":false}}'
-          elif [ "$MODE" = "backtest_2016_2024" ]; then
+          elif [ "$MODE" = 'backtest_2016_2024' ]; then
             BODY='{"branch":"backtest-only-2026-08-28","parameters":{"run_integration_gate":true,"run_governed_backtest":true}}'
           else
             echo 'Unsupported mode'; exit 1
           fi
+
           RESPONSE=$(curl --fail-with-body --silent --show-error \
             --request POST \
             --url "https://circleci.com/api/v2/project/${CIRCLECI_PROJECT}/pipeline" \
-            --header "Authorization: Bearer ${CIRCLECI_API_TOKEN}" \
+            "${AUTH_HEADER[@]}" \
             --header 'Content-Type: application/json' \
             --header 'Accept: application/json' \
             --data "$BODY")
