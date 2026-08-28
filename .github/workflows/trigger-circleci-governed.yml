@@ -33,43 +33,15 @@ jobs:
         run: |
           set -euo pipefail
           test -n "${CIRCLECI_API_TOKEN:-}" || { echo 'CIRCLECI_API_TOKEN secret is missing'; exit 1; }
-
           AUTH_HEADER=(--header "Authorization: Bearer ${CIRCLECI_API_TOKEN}")
-          curl --fail-with-body --silent --show-error \
-            --request GET \
-            --url 'https://circleci.com/api/v2/me' \
-            "${AUTH_HEADER[@]}" \
-            --header 'Accept: application/json' >/tmp/circle_me.json
-
-          curl --fail-with-body --silent --show-error \
-            --request GET \
-            --url "https://circleci.com/api/v2/project/${CIRCLECI_LOOKUP_SLUG}" \
-            "${AUTH_HEADER[@]}" \
-            --header 'Accept: application/json' >/tmp/circle_project.json
-
+          curl --fail-with-body --silent --show-error --request GET --url 'https://circleci.com/api/v2/me' "${AUTH_HEADER[@]}" --header 'Accept: application/json' >/tmp/circle_me.json
+          curl --fail-with-body --silent --show-error --request GET --url "https://circleci.com/api/v2/project/${CIRCLECI_LOOKUP_SLUG}" "${AUTH_HEADER[@]}" --header 'Accept: application/json' >/tmp/circle_project.json
           PROJECT_ID=$(python - <<'PY'
           import json
           print(json.load(open('/tmp/circle_project.json'))['id'])
           PY
           )
-          ORG_ID=$(python - <<'PY'
-          import json
-          print(json.load(open('/tmp/circle_project.json'))['organization_id'])
-          PY
-          )
-          test -n "$PROJECT_ID"
-          test -n "$ORG_ID"
-
-          # Current CircleCI API v2 requires the circleci/<org-id>/<project-id>
-          # slug form for GitHub App projects.
-          CIRCLECI_PROJECT_SLUG="circleci/${ORG_ID}/${PROJECT_ID}"
-
-          curl --fail-with-body --silent --show-error \
-            --request GET \
-            --url "https://circleci.com/api/v2/projects/${PROJECT_ID}/pipeline-definitions" \
-            "${AUTH_HEADER[@]}" \
-            --header 'Accept: application/json' >/tmp/circle_defs.json
-
+          curl --fail-with-body --silent --show-error --request GET --url "https://api.circleci.com/api/v2/projects/${PROJECT_ID}/pipeline-definitions" "${AUTH_HEADER[@]}" --header 'Accept: application/json' >/tmp/circle_defs.json
           DEFINITION_ID=$(python - <<'PY'
           import json, sys
           data=json.load(open('/tmp/circle_defs.json'))
@@ -77,21 +49,26 @@ jobs:
               cs=item.get('config_source') or {}
               if cs.get('file_path') == '.circleci/config.yml':
                   print(item['id']); sys.exit(0)
-          for item in data.get('items', []):
-              name=(item.get('name') or '').lower()
-              if 'backtest' in name or 'governed' in name:
-                  print(item['id']); sys.exit(0)
           raise SystemExit('No suitable CircleCI pipeline definition found')
           PY
           )
-          test -n "$DEFINITION_ID"
-          {
-            echo "PROJECT_ID=$PROJECT_ID"
-            echo "ORG_ID=$ORG_ID"
-            echo "CIRCLECI_PROJECT_SLUG=$CIRCLECI_PROJECT_SLUG"
-            echo "DEFINITION_ID=$DEFINITION_ID"
-          } >> "$GITHUB_ENV"
-          echo 'Resolved CircleCI GitHub App project slug and pipeline definition.'
+          PROJECT_SLUG=$(python - <<'PY'
+          import json
+          p=json.load(open('/tmp/circle_project.json'))
+          print(p.get('slug') or p.get('project_slug') or '')
+          PY
+          )
+          if [ -z "$PROJECT_SLUG" ]; then
+            PROJECT_SLUG="circleci/$(python - <<'PY'
+          import json
+          print(json.load(open('/tmp/circle_project.json'))['organization_id'])
+          PY
+          )/$PROJECT_ID"
+          fi
+          echo "PROJECT_ID=$PROJECT_ID" >> "$GITHUB_ENV"
+          echo "DEFINITION_ID=$DEFINITION_ID" >> "$GITHUB_ENV"
+          echo "CIRCLECI_PROJECT_SLUG=$PROJECT_SLUG" >> "$GITHUB_ENV"
+          echo 'CircleCI project and pipeline definition resolved.'
 
       - name: Trigger selected governed CircleCI pipeline
         env:
@@ -109,12 +86,6 @@ jobs:
             echo 'Unsupported mode'; exit 1
           fi
           BODY=$(printf '{"definition_id":"%s","config":{"branch":"backtest-only-2026-08-28"},"checkout":{"branch":"backtest-only-2026-08-28"},"parameters":%s}' "$DEFINITION_ID" "$PARAMETERS")
-          RESPONSE=$(curl --fail-with-body --silent --show-error \
-            --request POST \
-            --url "https://circleci.com/api/v2/project/${CIRCLECI_PROJECT_SLUG}/pipeline/run" \
-            --header "Circle-Token: ${CIRCLECI_API_TOKEN}" \
-            --header 'Content-Type: application/json' \
-            --header 'Accept: application/json' \
-            --data "$BODY")
-          echo 'CircleCI governed pipeline triggered successfully.'
+          RESPONSE=$(curl --fail-with-body --silent --show-error --request POST --url "https://circleci.com/api/v2/project/${CIRCLECI_PROJECT_SLUG}/pipeline/run" --header "Circle-Token: ${CIRCLECI_API_TOKEN}" --header 'Content-Type: application/json' --header 'Accept: application/json' --data "$BODY")
+          echo 'CircleCI governed pipeline triggered.'
           echo "$RESPONSE"
