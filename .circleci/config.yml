@@ -41,6 +41,9 @@ jobs:
           command: python BACKTEST/CIRCLECI_RUN_GOVERNED_BACKTEST.py
           no_output_timeout: 20m
       - run:
+          name: Decision-to-execution funnel contract
+          command: python BACKTEST/EXECUTION_FUNNEL_CONTRACT_V1.py --events artifacts/decision_brain_backtest_2016_2024/decision_events_2016_2024.csv --output artifacts/decision_brain_backtest_2016_2024/execution_funnel_contract_v1.json
+      - run:
           name: Assert 2025 absent from development output
           command: python BACKTEST/CIRCLECI_ASSERT_2025_LOCK.py
       - store_artifacts:
