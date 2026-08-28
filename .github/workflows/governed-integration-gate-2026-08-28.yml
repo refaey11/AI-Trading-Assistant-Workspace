@@ -1,0 +1,112 @@
+name: Governed Integration Gate 2026-08-28
+
+on:
+  push:
+    branches: [backtest-only-2026-08-28]
+  workflow_dispatch:
+
+jobs:
+  integration-gate:
+    runs-on: ubuntu-latest
+    env:
+      DROPBOX_ACCESS_TOKEN: ${{ secrets.DROPBOX_ACCESS_TOKEN }}
+      PYTHONPATH: ${{ github.workspace }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: python -m pip install --upgrade pip pandas pytest
+      - name: Verify Dropbox access
+        run: test -n "$DROPBOX_ACCESS_TOKEN"
+      - name: Acquire authoritative development inputs
+        shell: bash
+        run: |
+          set -eu
+          mkdir -p artifacts/raw artifacts/unpacked
+          export PYTHONUNBUFFERED=1
+          python - <<'PY'
+          import json, os, urllib.request
+          from pathlib import Path
+
+          token=os.environ['DROPBOX_ACCESS_TOKEN']
+          files={
+            'h1.csv': '/New 8/GBPUSD_H1_2016_2025_MASTER.zip',
+            'nison.csv': '/New 8/NISON_2016_2024_FULL_EVIDENCE.csv',
+            'murphy.zip': '/New 8/MURPHY_HISTORICAL_34_RULE_FANIN_2016_2024.zip',
+            'market_state.csv': '/New 8/GBPUSD_MARKET_STATE 6.csv',
+            'mtf.zip': '/AI_Trading_Assistant_FULL_PROJECT_V1/AI_Trading_Assistant_MULTI_TIMEFRAME_READER_V1.zip',
+            'historical_context.zip': '/AI_Trading_Assistant_FULL_PROJECT_V1/AI_Trading_Assistant_HISTORICAL_CONTEXT_MEMORY_V1.zip',
+            'historical_outcome.zip': '/AI_Trading_Assistant_FULL_PROJECT_V1/AI_Trading_Assistant_HISTORICAL_OUTCOME_MEMORY_V1.zip',
+            'similarity.zip': '/AI_Trading_Assistant_FULL_PROJECT_V1/AI_Trading_Assistant_SIMILARITY_MEMORY_V2.zip',
+            'retrieval.zip': '/AI_Trading_Assistant_FULL_PROJECT_V1/AI_Trading_Assistant_CONTEXT_AWARE_RETRIEVAL_V2.zip',
+            'tiz.zip': '/AI_Trading_Assistant_TIZ_PROCESS_SCORE_V1.zip',
+          }
+          raw=Path('artifacts/raw'); raw.mkdir(parents=True, exist_ok=True)
+          for name, path in files.items():
+              req=urllib.request.Request(
+                  'https://content.dropboxapi.com/2/files/download', data=b'', method='POST',
+                  headers={'Authorization':f'Bearer {token}', 'Dropbox-API-Arg':json.dumps({'path':path})}
+              )
+              out=raw/name
+              print(f'Downloading {path}')
+              with urllib.request.urlopen(req, timeout=900) as r:
+                  with out.open('wb') as f:
+                      while True:
+                          b=r.read(4*1024*1024)
+                          if not b: break
+                          f.write(b)
+              print(name, out.stat().st_size)
+          PY
+          unzip -q artifacts/raw/h1.csv -d artifacts/unpacked/h1
+          unzip -q artifacts/raw/murphy.zip -d artifacts/unpacked/murphy
+          unzip -q artifacts/raw/mtf.zip -d artifacts/unpacked/mtf
+          unzip -q artifacts/raw/historical_context.zip -d artifacts/unpacked/historical_context
+          unzip -q artifacts/raw/historical_outcome.zip -d artifacts/unpacked/historical_outcome
+          unzip -q artifacts/raw/similarity.zip -d artifacts/unpacked/similarity
+          unzip -q artifacts/raw/retrieval.zip -d artifacts/unpacked/retrieval
+          unzip -q artifacts/raw/tiz.zip -d artifacts/unpacked/tiz
+          H1=$(find artifacts/unpacked/h1 -type f -name 'GBPUSD_H1_2016_2025_MASTER.csv' | head -1)
+          MURPHY=$(find artifacts/unpacked/murphy -type f -name 'MURPHY_2016_2024_FULL_EVIDENCE.csv' | head -1)
+          MTF=$(find artifacts/unpacked/mtf -type f -name '*.csv' | head -1)
+          HC=$(find artifacts/unpacked/historical_context -type f -name 'HISTORICAL_CONTEXT_MEMORY.csv' | head -1)
+          HO=$(find artifacts/unpacked/historical_outcome -type f -name 'HISTORICAL_OUTCOMES.csv' | head -1)
+          test -n "$H1"; test -n "$MURPHY"; test -n "$MTF"; test -n "$HC"; test -n "$HO"
+          echo "H1=$H1" >> "$GITHUB_ENV"
+          echo "MURPHY=$MURPHY" >> "$GITHUB_ENV"
+          echo "MTF=$MTF" >> "$GITHUB_ENV"
+          echo "HC=$HC" >> "$GITHUB_ENV"
+          echo "HO=$HO" >> "$GITHUB_ENV"
+      - name: Run strict Integration Gate V2
+        run: |
+          set +e
+          python BACKTEST/GOVERNED_INTEGRATION_GATE_V2.py \
+            --h1 "$H1" \
+            --market-state artifacts/raw/market_state.csv \
+            --mtf "$MTF" \
+            --murphy "$MURPHY" \
+            --nison artifacts/raw/nison.csv \
+            --historical-context "$HC" \
+            --historical-outcome "$HO" \
+            --similarity artifacts/unpacked/similarity \
+            --retrieval artifacts/unpacked/retrieval \
+            --tiz artifacts/unpacked/tiz \
+            --risk "$MURPHY" \
+            --handoff compatibility/knowledge_decision_handoff.py \
+            --decision-brain RECOVERED_SOURCES/DECISION_BRAIN_V1/decision_brain.py \
+            --output artifacts/GOVERNED_INTEGRATION_GATE_V2.json
+          rc=$?
+          echo "gate_rc=$rc" >> "$GITHUB_OUTPUT"
+          exit $rc
+      - name: Upload Integration Gate report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: governed-integration-gate-2026-08-28
+          path: artifacts/GOVERNED_INTEGRATION_GATE_V2.json
+      - name: Explicit backtest lock until gate PASS
+        if: failure()
+        run: |
+          echo "Integration Gate did not PASS. 2016-2024 backtest is intentionally NOT started."
+          echo "2025 remains LOCKED_OOS."
