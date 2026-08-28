@@ -15,7 +15,6 @@ jobs:
             mkdir -p artifacts/nison artifacts/source/unpacked
             python - <<'PY'
             import json, os
-            from pathlib import Path
             from urllib.request import Request, urlopen
             token=os.environ['DROPBOX_ACCESS_TOKEN']
             def download(path, out, timeout=900):
@@ -53,15 +52,8 @@ jobs:
           name: Unpack Murphy source bundle
           command: |
             set -eu
-            python - <<'PY'
-            import base64
-            from pathlib import Path
-            src=Path('BACKTEST/MURPHY_2016_2024_FULL_34_RULE_COVERAGE.zip.b64.txt')
-            data=base64.b64decode(src.read_text())
-            out=Path('/tmp/murphy_recovery.zip'); out.write_bytes(data)
-            PY
             mkdir -p /tmp/murphy_recovery
-            unzip -q /tmp/murphy_recovery.zip -d /tmp/murphy_recovery
+            unzip -q BACKTEST/MURPHY_2016_2024_FULL_34_RULE_COVERAGE.zip -d /tmp/murphy_recovery
             MURPHY_CSV=$(find /tmp/murphy_recovery -type f -iname '*.csv' | head -1)
             test -n "$MURPHY_CSV"
             mkdir -p artifacts/murphy
