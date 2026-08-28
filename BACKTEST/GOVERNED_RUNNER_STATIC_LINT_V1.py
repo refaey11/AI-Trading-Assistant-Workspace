@@ -9,7 +9,7 @@ tiz = (ROOT / "03_TIZ/TIZ_RUNTIME_BOUNDARY_RESOLUTION_V2.json").read_text(encodi
 errors = []
 checks = {
     "runner_has_no_synthetic_sl_tp_literals": all(x not in runner for x in ["0.75", "3R"]),
-    "runner_does_not_hardcode_tiz_pass": "tiz_status\": \"PASS\"" not in runner and "tiz": {"status": "PASS"} not in runner,
+    "runner_does_not_hardcode_tiz_pass": '"tiz_status": "PASS"' not in runner and '"tiz": {"status": "PASS"}' not in runner,
     "runner_has_fail_closed_risk": "MISSING_UPSTREAM_SL_TP_ATR" in runner,
     "handoff_blocks_memory_direction": "direction_generated_by_memory" in handoff,
     "handoff_blocks_retrieval_direction": "direction_generated_by_retrieval" in handoff,
