@@ -36,6 +36,15 @@ jobs:
           name: Validate Murphy historical scope
           command: python -c "import pandas as pd; p='artifacts/murphy/MURPHY_2016_2024_FULL_EVIDENCE.csv'; df=pd.read_csv(p,usecols=['timestamp']); ts=pd.to_datetime(df['timestamp'],utc=True,format='mixed'); assert ts.dt.year.min()==2016 and ts.dt.year.max()==2024; assert len(df)>0; print('MURPHY_EXISTING_PASS',len(df))"
       - run:
+          name: Run governed Decision Brain integration gate
+          command: |
+            set -eu
+            mkdir -p artifacts/integration_gate
+            python BACKTEST/decision_brain_integration_gate_v1.py --h1 "$SOURCE_CSV" --murphy artifacts/murphy/MURPHY_2016_2024_FULL_EVIDENCE.csv --nison artifacts/nison/NISON_2016_2024_FULL_EVIDENCE.csv --market-state artifacts/GBPUSD_MARKET_STATE.csv --output artifacts/integration_gate/DECISION_BRAIN_INTEGRATION_GATE_2016_2024.json
+      - store_artifacts:
+          path: artifacts/integration_gate
+          destination: decision_brain_integration_gate_2016_2024
+      - run:
           name: Run frozen Decision Brain backtest 2016-2024
           command: |
             set -eu
