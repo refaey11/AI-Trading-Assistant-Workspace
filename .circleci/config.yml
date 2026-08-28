@@ -1,10 +1,13 @@
 # BACKTEST-ONLY / GOVERNED
 # Branch: backtest-only-2026-08-28
-# IMPORTANT: governed backtest is MANUAL/PARAMETER-GATED to prevent accidental credit burn.
+# IMPORTANT: all execution is MANUAL/PARAMETER-GATED to prevent accidental credit burn.
 # 2025 remains locked/OOS.
 version: 2.1
 
 parameters:
+  run_integration_gate:
+    type: boolean
+    default: false
   run_governed_backtest:
     type: boolean
     default: false
@@ -39,22 +42,28 @@ jobs:
       - store_artifacts:
           path: artifacts/integration_gate
           destination: governed_integration_gate_2026_08_28
-      - run:
-          name: 2016-2024 Decision Brain backtest (only after Gate PASS)
-          command: python BACKTEST/CIRCLECI_RUN_GOVERNED_BACKTEST.py
-          no_output_timeout: 20m
-      - run:
-          name: Decision-to-execution funnel contract
-          command: python BACKTEST/EXECUTION_FUNNEL_CONTRACT_V1.py --events artifacts/decision_brain_backtest_2016_2024/decision_events_2016_2024.csv --output artifacts/decision_brain_backtest_2016_2024/execution_funnel_contract_v1.json
-      - run:
-          name: Assert 2025 absent from development output
-          command: python BACKTEST/CIRCLECI_ASSERT_2025_LOCK.py
-      - store_artifacts:
-          path: artifacts/decision_brain_backtest_2016_2024
-          destination: decision_brain_backtest_2016_2024_governed
+      - when:
+          condition: << pipeline.parameters.run_governed_backtest >>
+          steps:
+            - run:
+                name: 2016-2024 Decision Brain backtest (only after Gate PASS)
+                command: python BACKTEST/CIRCLECI_RUN_GOVERNED_BACKTEST.py
+                no_output_timeout: 20m
+            - run:
+                name: Decision-to-execution funnel contract
+                command: python BACKTEST/EXECUTION_FUNNEL_CONTRACT_V1.py --events artifacts/decision_brain_backtest_2016_2024/decision_events_2016_2024.csv --output artifacts/decision_brain_backtest_2016_2024/execution_funnel_contract_v1.json
+            - run:
+                name: Assert 2025 absent from development output
+                command: python BACKTEST/CIRCLECI_ASSERT_2025_LOCK.py
+            - store_artifacts:
+                path: artifacts/decision_brain_backtest_2016_2024
+                destination: decision_brain_backtest_2016_2024_governed
 
 workflows:
-  governed_backtest_only:
-    when: << pipeline.parameters.run_governed_backtest >>
+  governed_execution:
+    when:
+      or:
+        - << pipeline.parameters.run_integration_gate >>
+        - << pipeline.parameters.run_governed_backtest >>
     jobs:
       - governed_backtest_only
