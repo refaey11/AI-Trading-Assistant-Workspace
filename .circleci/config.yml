@@ -8,34 +8,32 @@ jobs:
       - checkout
       - run: python -m pip install --upgrade pip pandas pytest
       - run:
-          name: Download existing Nison 2016-2024 evidence
+          name: Download governed 2016-2024 inputs
           command: |
             set -eu
             test -n "${DROPBOX_ACCESS_TOKEN:-}"
-            mkdir -p artifacts/nison artifacts/source/unpacked
+            mkdir -p artifacts/nison artifacts/murphy artifacts/source/unpacked
             curl -L --fail --silent --show-error -X POST https://content.dropboxapi.com/2/files/download -H "Authorization: Bearer ${DROPBOX_ACCESS_TOKEN}" -H 'Dropbox-API-Arg: {"path":"/New 8/NISON_2016_2024_FULL_EVIDENCE.csv"}' -o artifacts/nison/NISON_2016_2024_FULL_EVIDENCE.csv
+            curl -L --fail --silent --show-error -X POST https://content.dropboxapi.com/2/files/download -H "Authorization: Bearer ${DROPBOX_ACCESS_TOKEN}" -H 'Dropbox-API-Arg: {"path":"/New 8/MURPHY_HISTORICAL_34_RULE_FANIN_2016_2024.zip"}' -o artifacts/murphy/MURPHY_HISTORICAL_34_RULE_FANIN_2016_2024.zip
             curl -L --fail --silent --show-error -X POST https://content.dropboxapi.com/2/files/download -H "Authorization: Bearer ${DROPBOX_ACCESS_TOKEN}" -H 'Dropbox-API-Arg: {"path":"/New 8/GBPUSD_H1_2016_2025_MASTER.zip"}' -o artifacts/source/GBPUSD_H1_2016_2025_MASTER.zip
             curl -L --fail --silent --show-error -X POST https://content.dropboxapi.com/2/files/download -H "Authorization: Bearer ${DROPBOX_ACCESS_TOKEN}" -H 'Dropbox-API-Arg: {"path":"/New 8/GBPUSD_MARKET_STATE 6.csv"}' -o artifacts/GBPUSD_MARKET_STATE.csv
+            unzip -q artifacts/murphy/MURPHY_HISTORICAL_34_RULE_FANIN_2016_2024.zip -d artifacts/murphy/unpacked
+            MURPHY_CSV=$(find artifacts/murphy/unpacked -type f -name 'MURPHY_2016_2024_FULL_EVIDENCE.csv' | head -1)
+            test -n "$MURPHY_CSV"
+            cp "$MURPHY_CSV" artifacts/murphy/MURPHY_2016_2024_FULL_EVIDENCE.csv
             unzip -q artifacts/source/GBPUSD_H1_2016_2025_MASTER.zip -d artifacts/source/unpacked
             SOURCE_CSV=$(find artifacts/source/unpacked -type f -name 'GBPUSD_H1_2016_2025_MASTER.csv' | head -1)
             test -n "$SOURCE_CSV"
             test -s artifacts/nison/NISON_2016_2024_FULL_EVIDENCE.csv
+            test -s artifacts/murphy/MURPHY_2016_2024_FULL_EVIDENCE.csv
             test -s artifacts/GBPUSD_MARKET_STATE.csv
             echo "SOURCE_CSV=$SOURCE_CSV" >> "$BASH_ENV"
       - run:
           name: Validate existing Nison scope
           command: python -c "import pandas as pd; p='artifacts/nison/NISON_2016_2024_FULL_EVIDENCE.csv'; df=pd.read_csv(p,usecols=['timestamp','rule_id']); ts=pd.to_datetime(df['timestamp'],utc=True); assert ts.dt.year.min()==2016 and ts.dt.year.max()==2024; assert df['rule_id'].nunique()==44; assert len(df)==2428448; print('NISON_EXISTING_PASS',len(df),df['rule_id'].nunique())"
       - run:
-          name: Recover Murphy 34 source bundle from repository
-          command: |
-            set -eu
-            mkdir -p /tmp/murphy_recovery artifacts/murphy
-            python -c "import base64,re; s=open('BACKTEST/DEV_BACKTEST_R1_MURPHY_SOURCE.zip.b64.txt','rb').read(); s=b''.join(s.split()); s=re.sub(rb'[^A-Za-z0-9+/=]',b'',s); s += b'='*((4-len(s)%4)%4); open('/tmp/murphy_recovery/murphy.zip','wb').write(base64.b64decode(s,validate=True))"
-            unzip -q /tmp/murphy_recovery/murphy.zip -d /tmp/murphy_recovery/unpacked
-            MURPHY_CSV=$(find /tmp/murphy_recovery/unpacked -type f -iname '*.csv' | head -1)
-            test -n "$MURPHY_CSV"
-            cp "$MURPHY_CSV" artifacts/murphy/MURPHY_2016_2024_FULL_EVIDENCE.csv
-            test -s artifacts/murphy/MURPHY_2016_2024_FULL_EVIDENCE.csv
+          name: Validate Murphy historical scope
+          command: python -c "import pandas as pd; p='artifacts/murphy/MURPHY_2016_2024_FULL_EVIDENCE.csv'; df=pd.read_csv(p,usecols=['timestamp']); ts=pd.to_datetime(df['timestamp'],utc=True); assert ts.dt.year.min()==2016 and ts.dt.year.max()==2024; assert len(df)>0; print('MURPHY_EXISTING_PASS',len(df))"
       - run:
           name: Run frozen Decision Brain backtest 2016-2024
           command: |
