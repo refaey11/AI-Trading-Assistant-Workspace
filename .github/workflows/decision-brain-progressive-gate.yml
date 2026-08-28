@@ -1,8 +1,6 @@
-name: Decision Brain Progressive Gate 01
+name: Decision Brain Progressive Gate 01 (MANUAL)
 
 on:
-  push:
-  pull_request:
   workflow_dispatch:
 
 jobs:
