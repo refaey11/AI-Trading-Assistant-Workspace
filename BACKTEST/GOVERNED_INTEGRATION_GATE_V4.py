@@ -36,7 +36,7 @@ def find_csv(root: Path, name: str) -> Path:
 def murphy_rule_values(df: pd.DataFrame) -> set[str]:
     column = "source_rule_id" if "source_rule_id" in df.columns else "rule_id"
     if column not in df.columns:
-        raise ValueError(f"Murphy artifact missing rule id column; expected source_rule_id or rule_id")
+        raise ValueError("Murphy artifact missing rule id column; expected source_rule_id or rule_id")
     return rule_ids(df[column])
 
 
