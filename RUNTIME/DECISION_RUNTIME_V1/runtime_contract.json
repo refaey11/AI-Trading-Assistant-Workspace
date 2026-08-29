@@ -1,0 +1,33 @@
+{
+  "version": "1.0",
+  "symbol_scope": ["GBPUSD"],
+  "modes": ["BACKTEST", "PAPER", "DEMO", "LIVE"],
+  "direction_values": ["BUY", "SELL", "NO_TRADE"],
+  "hard_gate_precedence": [
+    "process",
+    "risk",
+    "murphy",
+    "nison_contradiction",
+    "brain_direction",
+    "execution_plan"
+  ],
+  "source_semantics": {
+    "murphy": "direction_context",
+    "nison": "confirmation_only",
+    "trading_in_the_zone": "process_gate_only",
+    "similarity": "historical_evidence_only",
+    "historical_outcome": "historical_evidence_only",
+    "risk": "hard_gate"
+  },
+  "governance": {
+    "oos_2025_tuning": false,
+    "new_rule_semantics": false,
+    "reuse_existing_components": true
+  },
+  "execution_policy": {
+    "backtest": "no_broker_order",
+    "paper": "no_broker_order",
+    "demo": "broker_order_allowed_only_after_paper_gate",
+    "live": "broker_order_allowed_only_after_demo_gate"
+  }
+}
