@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import subprocess
 import urllib.request
 from pathlib import Path
 
@@ -11,9 +12,9 @@ FILES = {
     "nison.csv": "/New 8/NISON_2016_2024_FULL_EVIDENCE.csv",
     "murphy.zip": "/New 8/MURPHY_HISTORICAL_34_RULE_FANIN_2016_2024.zip",
     "market_state.csv": "/New 8/GBPUSD_MARKET_STATE 6.csv",
-    # Legacy H4/H1 reader retained for compatibility/reference.
+    # Legacy H4/H1 reader retained for compatibility/reference only.
     "mtf.zip": "/AI_Trading_Assistant_FULL_PROJECT_V1/AI_Trading_Assistant_MULTI_TIMEFRAME_READER_V1.zip",
-    # Canonical six-timeframe source package already present in Dropbox.
+    # Canonical native six-timeframe source package.
     "mtf_full.zip": "/MULTI_TF_MARKET_DATA_V1.zip",
     "historical_context.zip": "/AI_Trading_Assistant_FULL_PROJECT_V1/AI_Trading_Assistant_HISTORICAL_CONTEXT_MEMORY_V1.zip",
     "historical_outcome.zip": "/AI_Trading_Assistant_FULL_PROJECT_V1/AI_Trading_Assistant_HISTORICAL_OUTCOME_MEMORY_V1.zip",
@@ -51,8 +52,10 @@ def main() -> int:
 
     raw = Path("artifacts/raw")
     unpacked = Path("artifacts/unpacked")
+    reports = Path("artifacts/source_validation")
     raw.mkdir(parents=True, exist_ok=True)
     unpacked.mkdir(parents=True, exist_ok=True)
+    reports.mkdir(parents=True, exist_ok=True)
 
     for name, remote_path in FILES.items():
         print(f"DOWNLOAD {remote_path}")
@@ -80,10 +83,23 @@ def main() -> int:
             raise SystemExit(f"MISSING {key} CSV")
         print(f"FOUND {key}={value}")
 
+    # Prove the native six-timeframe source from actual CSV contents before any
+    # downstream Decision Brain execution. No direction/indicator generation.
+    subprocess.run(
+        [
+            "python", "BACKTEST/MTF_SIX_TF_SOURCE_ADAPTER_V1.py",
+            "--root", str(unpacked / "mtf_full"),
+            "--report", str(reports / "MTF_SIX_TF_SOURCE_ADAPTER_V1.json"),
+            "--max-rows", "200",
+        ],
+        check=True,
+    )
+
     with Path(os.environ.get("BASH_ENV", "/tmp/bash_env")).open("a", encoding="utf-8") as env:
         for key, value in paths.items():
             env.write(f"export {key}='{value}'\n")
         env.write("export MTF_FULL_DIR='artifacts/unpacked/mtf_full'\n")
+        env.write("export MTF_SOURCE_REPORT='artifacts/source_validation/MTF_SIX_TF_SOURCE_ADAPTER_V1.json'\n")
         env.write("export SIM_DIR='artifacts/unpacked/similarity'\n")
         env.write("export RET_DIR='artifacts/unpacked/retrieval'\n")
 
