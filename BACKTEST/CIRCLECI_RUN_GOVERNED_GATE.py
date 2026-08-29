@@ -35,7 +35,6 @@ def slice_to_development_window(source: str, output: str) -> str:
         raise ValueError(f"{src}: no 2016-2024 development rows")
     return str(dst)
 
-
 compile_cmd = [
     "python", "BACKTEST/MURPHY_CANONICAL_EVENT_COMPILER_V2.py",
     "--source", os.environ["MURPHY"],
@@ -46,27 +45,11 @@ compile_cmd = [
 subprocess.run(compile_cmd, check=True)
 
 canonical_murphy = str(ROOT / "artifacts/integration_gate/MURPHY_CANONICAL_EVENT_EVIDENCE_2016_2024.csv")
-
-market_state_dev = slice_to_development_window(
-    os.environ["MARKET_STATE"],
-    "artifacts/integration_gate/market_state_2016_2024.csv",
-)
-mtf_dev = slice_to_development_window(
-    os.environ["MTF"],
-    "artifacts/integration_gate/mtf_2016_2024.csv",
-)
-nison_dev = slice_to_development_window(
-    "artifacts/raw/nison.csv",
-    "artifacts/integration_gate/nison_2016_2024.csv",
-)
-hc_dev = slice_to_development_window(
-    os.environ["HC"],
-    "artifacts/integration_gate/historical_context_2016_2024.csv",
-)
-ho_dev = slice_to_development_window(
-    os.environ["HO"],
-    "artifacts/integration_gate/historical_outcome_2016_2024.csv",
-)
+market_state_dev = slice_to_development_window(os.environ["MARKET_STATE"], "artifacts/integration_gate/market_state_2016_2024.csv")
+mtf_dev = slice_to_development_window(os.environ["MTF"], "artifacts/integration_gate/mtf_2016_2024.csv")
+nison_dev = slice_to_development_window("artifacts/raw/nison.csv", "artifacts/integration_gate/nison_2016_2024.csv")
+hc_dev = slice_to_development_window(os.environ["HC"], "artifacts/integration_gate/historical_context_2016_2024.csv")
+ho_dev = slice_to_development_window(os.environ["HO"], "artifacts/integration_gate/historical_outcome_2016_2024.csv")
 
 cmd = [
     "python", "BACKTEST/GOVERNED_INTEGRATION_GATE_V3.py",
