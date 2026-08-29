@@ -15,6 +15,8 @@ def slice_to_development_window(source: str, output: str) -> str:
     src = Path(source)
     dst = Path(output)
     dst.parent.mkdir(parents=True, exist_ok=True)
+    if dst.exists():
+        dst.unlink()
     wrote = False
     for chunk in pd.read_csv(src, chunksize=250_000, low_memory=False):
         if "timestamp" not in chunk.columns:
@@ -34,9 +36,6 @@ def slice_to_development_window(source: str, output: str) -> str:
     return str(dst)
 
 
-# First normalize the governed Murphy source into the canonical event boundary.
-# Missing/non-evaluable rules are preserved as governance states; no synthetic
-# market evidence is generated.
 compile_cmd = [
     "python", "BACKTEST/MURPHY_CANONICAL_EVENT_COMPILER_V2.py",
     "--source", os.environ["MURPHY"],
@@ -48,8 +47,6 @@ subprocess.run(compile_cmd, check=True)
 
 canonical_murphy = str(ROOT / "artifacts/integration_gate/MURPHY_CANONICAL_EVENT_EVIDENCE_2016_2024.csv")
 
-# Raw governed sources may contain OOS rows (notably 2025). Preserve the raw
-# artifacts, but enforce the 2016-2024 consumption boundary before V3 validation.
 market_state_dev = slice_to_development_window(
     os.environ["MARKET_STATE"],
     "artifacts/integration_gate/market_state_2016_2024.csv",
