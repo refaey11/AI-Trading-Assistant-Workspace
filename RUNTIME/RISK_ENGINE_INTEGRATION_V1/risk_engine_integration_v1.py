@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from math import isclose
 from typing import Optional
 
 # Preserved from the existing Risk Engine V1 research policy where compatible.
@@ -12,6 +13,7 @@ DRAWDOWN_BREAKER_PCT = 0.05
 # Current project knowledge / Decision Contract requires at least 3:1 reward:risk.
 # The legacy Risk Engine V1 research prototype used 1.5R; that target is NOT reused.
 CURRENT_CANONICAL_MIN_RR = 3.0
+RR_BOUNDARY_TOLERANCE = 1e-12
 
 
 @dataclass(frozen=True)
@@ -22,6 +24,9 @@ class RiskResult:
     rr: Optional[float]
     position_size: Optional[float]
     reason: str
+    # Preserve the execution prices expected by the canonical integration boundary.
+    stop_loss: Optional[float] = None
+    take_profit: Optional[float] = None
 
 
 def evaluate_risk(
@@ -42,7 +47,7 @@ def evaluate_risk(
     hard-gate contract and computes position size as risk_money / stop_distance.
     """
     if equity <= 0 or peak_equity <= 0 or entry <= 0:
-        return RiskResult(False, 0.0, None, None, None, "INVALID_EQUITY_OR_ENTRY")
+        return RiskResult(False, 0.0, None, None, None, "INVALID_EQUITY_OR_ENTRY", stop_loss, take_profit)
 
     risk_pct = (
         risk_budget_pct
@@ -50,26 +55,30 @@ def evaluate_risk(
         else (AFTER_TWO_LOSSES_RISK_PCT if prior_loss_streak >= 2 else BASE_RISK_PCT)
     )
     if risk_pct <= 0 or risk_pct > MAX_RISK_PCT:
-        return RiskResult(False, 0.0, None, None, None, "RISK_BUDGET_INVALID")
+        return RiskResult(False, 0.0, None, None, None, "RISK_BUDGET_INVALID", stop_loss, take_profit)
 
     drawdown = max(0.0, (peak_equity - equity) / peak_equity)
     if drawdown >= DRAWDOWN_BREAKER_PCT:
-        return RiskResult(False, risk_pct, None, None, None, "DRAWDOWN_CIRCUIT_BREAKER")
+        return RiskResult(False, risk_pct, None, None, None, "DRAWDOWN_CIRCUIT_BREAKER", stop_loss, take_profit)
 
     if stop_loss is None or take_profit is None or atr is None or atr <= 0:
-        return RiskResult(False, risk_pct, None, None, None, "MISSING_EXECUTION_INPUT")
+        return RiskResult(False, risk_pct, None, None, None, "MISSING_EXECUTION_INPUT", stop_loss, take_profit)
 
     stop_distance = abs(entry - stop_loss)
     if stop_distance <= 0:
-        return RiskResult(False, risk_pct, stop_distance, None, None, "NON_POSITIVE_STOP_DISTANCE")
+        return RiskResult(False, risk_pct, stop_distance, None, None, "NON_POSITIVE_STOP_DISTANCE", stop_loss, take_profit)
 
     stop_atr = stop_distance / atr
     if stop_atr < MIN_STOP_ATR or stop_atr > MAX_STOP_ATR:
-        return RiskResult(False, risk_pct, stop_distance, None, None, "STOP_DISTANCE_OUT_OF_RANGE")
+        return RiskResult(False, risk_pct, stop_distance, None, None, "STOP_DISTANCE_OUT_OF_RANGE", stop_loss, take_profit)
 
     target_distance = abs(take_profit - entry)
     rr = target_distance / stop_distance
-    if rr < CURRENT_CANONICAL_MIN_RR:
+    # Do not weaken the 3R rule. Accept only floating-point representations that
+    # are within a negligible numerical tolerance of the exact canonical boundary.
+    if rr < CURRENT_CANONICAL_MIN_RR and not isclose(
+        rr, CURRENT_CANONICAL_MIN_RR, rel_tol=0.0, abs_tol=RR_BOUNDARY_TOLERANCE
+    ):
         return RiskResult(
             False,
             risk_pct,
@@ -77,6 +86,8 @@ def evaluate_risk(
             rr,
             None,
             "RR_BELOW_CURRENT_CANONICAL_MINIMUM",
+            stop_loss,
+            take_profit,
         )
 
     risk_money = equity * risk_pct
@@ -88,4 +99,6 @@ def evaluate_risk(
         rr,
         position_size,
         "RISK_GATE_PASS",
+        stop_loss,
+        take_profit,
     )
