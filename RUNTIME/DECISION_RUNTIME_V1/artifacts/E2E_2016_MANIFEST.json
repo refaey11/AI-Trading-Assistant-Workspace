@@ -1,0 +1,19 @@
+{
+  "year": 2016,
+  "symbol": "GBPUSD",
+  "events": 401,
+  "executable": 120,
+  "candidate": 56,
+  "no_trade": 225,
+  "buy": 70,
+  "sell": 106,
+  "same_timestamp_evidence": true,
+  "nison_direction_authority": false,
+  "tiz_direction_authority": false,
+  "historical_direction_authority": false,
+  "new_strategy_semantics": false,
+  "oos_tuning": false,
+  "source_scope": "supplied precomputed project artifacts",
+  "profitability_proven": false,
+  "live_mt5_proven": false
+}
