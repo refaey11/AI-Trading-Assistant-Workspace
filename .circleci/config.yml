@@ -50,6 +50,12 @@ jobs:
           name: Acquire governed source stack
           command: python BACKTEST/CIRCLECI_ACQUIRE_GOVERNED_SOURCES.py
       - run:
+          name: Real-source six-timeframe E2E sample
+          command: python BACKTEST/REAL_SOURCE_E2E_SAMPLE_V1.py --h1 "$H1" --mtf-full-dir "$MTF_FULL_DIR" --report artifacts/source_validation/REAL_SOURCE_E2E_SAMPLE_V1.json --max-rows 200
+      - store_artifacts:
+          path: artifacts/source_validation
+          destination: real_source_validation_2026_08_29
+      - run:
           name: Frozen scope and 2025 lock check
           command: python BACKTEST/CIRCLECI_FROZEN_SCOPE_CHECK.py
       - run:
