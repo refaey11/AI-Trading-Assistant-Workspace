@@ -33,8 +33,15 @@ class DecisionEvent:
     trade_plan: dict[str, Any]
 
 
-def _stable_id(symbol: str, timestamp: pd.Timestamp) -> str:
-    return hashlib.sha256(f"{symbol}|{timestamp.isoformat()}".encode()).hexdigest()[:20]
+def _stable_id(symbol: str, timestamp: pd.Timestamp, setup_id: str) -> str:
+    """Build a deterministic identity for a symbol/timestamp/setup tuple.
+
+    A timestamp alone is not unique because multiple valid setups may occur on
+    the same bar; setup_id is therefore part of the identity.
+    """
+    return hashlib.sha256(
+        f"{symbol}|{timestamp.isoformat()}|{setup_id}".encode()
+    ).hexdigest()[:20]
 
 
 def _load(path: Path) -> pd.DataFrame:
@@ -87,7 +94,11 @@ def build_e2e(root: Path, year: int = 2016) -> pd.DataFrame:
         tf = mtf.loc[ts]
         direction = _murphy_direction(ms.trend)
         nison_direction = str(row.direction).upper()
-        contradiction = direction in {"BUY", "SELL"} and nison_direction in {"BUY", "SELL"} and direction != nison_direction
+        contradiction = (
+            direction in {"BUY", "SELL"}
+            and nison_direction in {"BUY", "SELL"}
+            and direction != nison_direction
+        )
         mtf_state = str(tf.mtf_state).upper()
         if direction == "NO_TRADE":
             status, final_direction, reason = "NO_TRADE", "NO_TRADE", "MURPHY_NO_DIRECTION"
@@ -119,7 +130,7 @@ def build_e2e(root: Path, year: int = 2016) -> pd.DataFrame:
 
         events.append(
             DecisionEvent(
-                decision_id=f"GBPUSD-{ts.isoformat()}-{_stable_id('GBPUSD', ts)}",
+                decision_id=f"GBPUSD-{ts.isoformat()}-{_stable_id('GBPUSD', ts, row.setup_id)}",
                 timestamp=ts.isoformat(),
                 symbol="GBPUSD",
                 direction=final_direction,
@@ -150,37 +161,3 @@ def build_e2e(root: Path, year: int = 2016) -> pd.DataFrame:
         )
 
     return pd.DataFrame([asdict(x) for x in events])
-
-
-def main() -> int:
-    root = Path(__file__).resolve().parents[2]
-    out = Path(__file__).resolve().parent / "artifacts"
-    out.mkdir(parents=True, exist_ok=True)
-    df = build_e2e(root)
-    flat = df.copy()
-    for column in ("market_state", "mtf", "nison", "tiz", "historical", "risk", "trade_plan"):
-        flat[column] = flat[column].apply(json.dumps, sort_keys=True)
-    flat.to_csv(out / "GBPUSD_2016_E2E_DECISION_EVENTS.csv", index=False)
-    manifest = {
-        "year": 2016,
-        "symbol": "GBPUSD",
-        "events": int(len(df)),
-        "executable": int((df.status == "EXECUTABLE").sum()),
-        "candidate": int((df.status == "CANDIDATE").sum()),
-        "no_trade": int((df.status == "NO_TRADE").sum()),
-        "buy": int((df.direction == "BUY").sum()),
-        "sell": int((df.direction == "SELL").sum()),
-        "same_timestamp_evidence": True,
-        "nison_direction_authority": False,
-        "tiz_direction_authority": False,
-        "historical_direction_authority": False,
-        "new_strategy_semantics": False,
-        "oos_tuning": False,
-    }
-    (out / "E2E_2016_MANIFEST.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
-    print(json.dumps(manifest, indent=2))
-    return 0
-
-
-if __name__ == "__main__":
-    raise SystemExit(main())
