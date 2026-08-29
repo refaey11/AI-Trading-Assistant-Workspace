@@ -11,7 +11,6 @@ Path("artifacts/integration_gate").mkdir(parents=True, exist_ok=True)
 
 
 def slice_to_development_window(source: str, output: str) -> str:
-    """Create a 2016-2024 consumption slice without modifying the raw source."""
     src = Path(source)
     dst = Path(output)
     dst.parent.mkdir(parents=True, exist_ok=True)
