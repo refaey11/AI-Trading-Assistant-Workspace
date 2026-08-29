@@ -1,8 +1,8 @@
 """Governed orchestration boundary for the existing full Decision Brain.
 
 This module creates no new trading logic. It composes the recovered Decision
-Brain assessment, governance handoff, Three-Book decision boundary, and frozen
-execution adapter. Missing evidence fails closed.
+Brain assessment, governance handoff, Three-Book decision boundary, and the
+runtime execution adapter. Missing evidence fails closed.
 """
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ from typing import Any, Mapping
 
 from compatibility.decision_brain_v1_handoff_adapter import assess_with_governance
 from evaluation.three_book_decision_evaluator_v1 import evaluate_three_book_decision
-from OOS_2025.execution_oos_adapter_v1 import build_execution_plan
+from RUNTIME.DECISION_RUNTIME_V1.execution_runtime_adapter_v2 import build_execution_plan
 
 
 def assemble_decision_event(
@@ -85,6 +85,8 @@ def assemble_decision_event(
             "nison_generated_direction": False,
             "tiz_generated_direction": False,
             "risk_overridden": False,
+            "tiz_verified": bool(tiz_evidence.get("authoritative", False)),
+            "tiz_unverified": not bool(tiz_evidence.get("authoritative", False)),
             "oos_tuning": False,
         },
     }
