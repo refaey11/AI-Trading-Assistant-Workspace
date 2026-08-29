@@ -11,7 +11,10 @@ FILES = {
     "nison.csv": "/New 8/NISON_2016_2024_FULL_EVIDENCE.csv",
     "murphy.zip": "/New 8/MURPHY_HISTORICAL_34_RULE_FANIN_2016_2024.zip",
     "market_state.csv": "/New 8/GBPUSD_MARKET_STATE 6.csv",
+    # Legacy H4/H1 reader retained for compatibility/reference.
     "mtf.zip": "/AI_Trading_Assistant_FULL_PROJECT_V1/AI_Trading_Assistant_MULTI_TIMEFRAME_READER_V1.zip",
+    # Canonical six-timeframe source package already present in Dropbox.
+    "mtf_full.zip": "/MULTI_TF_MARKET_DATA_V1.zip",
     "historical_context.zip": "/AI_Trading_Assistant_FULL_PROJECT_V1/AI_Trading_Assistant_HISTORICAL_CONTEXT_MEMORY_V1.zip",
     "historical_outcome.zip": "/AI_Trading_Assistant_FULL_PROJECT_V1/AI_Trading_Assistant_HISTORICAL_OUTCOME_MEMORY_V1.zip",
     "similarity.zip": "/AI_Trading_Assistant_FULL_PROJECT_V1/AI_Trading_Assistant_SIMILARITY_MEMORY_V2.zip",
@@ -55,7 +58,7 @@ def main() -> int:
         print(f"DOWNLOAD {remote_path}")
         download(token, remote_path, raw / name)
 
-    for bundle in ("h1", "murphy", "mtf", "historical_context", "historical_outcome", "similarity", "retrieval"):
+    for bundle in ("h1", "murphy", "mtf", "mtf_full", "historical_context", "historical_outcome", "similarity", "retrieval"):
         target = unpacked / bundle
         target.mkdir(parents=True, exist_ok=True)
         import zipfile
@@ -80,6 +83,7 @@ def main() -> int:
     with Path(os.environ.get("BASH_ENV", "/tmp/bash_env")).open("a", encoding="utf-8") as env:
         for key, value in paths.items():
             env.write(f"export {key}='{value}'\n")
+        env.write("export MTF_FULL_DIR='artifacts/unpacked/mtf_full'\n")
         env.write("export SIM_DIR='artifacts/unpacked/similarity'\n")
         env.write("export RET_DIR='artifacts/unpacked/retrieval'\n")
 
