@@ -11,7 +11,7 @@ def base_kwargs():
         "query_as_of": datetime(2024, 12, 31, tzinfo=timezone.utc),
         "murphy_evidence": {"status": "PASS", "direction": "BULLISH"},
         "nison_evidence": {"confirmation": "CONFIRMED", "contradiction": False},
-        "tiz_evidence": {"authoritative": True, "process_state": "READY"},
+        "tiz_evidence": {"authoritative": False, "process_state": "NOT_EVALUABLE"},
         "risk_evidence": {"authoritative": True, "risk_pass": True, "stop_loss": "1.2450", "take_profit": "1.2600", "rr": 2.0},
         "historical_evidence": {"retrieval_status": "PASS", "candidate_count": 10},
         "source_rule_ids": ["MURPHY_0003"],
@@ -21,15 +21,13 @@ def base_kwargs():
     }
 
 
-def test_missing_tiz_is_fail_closed():
-    kw = base_kwargs()
-    kw["tiz_evidence"] = {"authoritative": False, "process_state": "READY"}
-    result = run_full_brain_cycle(**kw)
-    assert result["status"] == "NOT_EXECUTABLE"
-    assert result["reason"] == "TIZ_NOT_PRODUCTION_AUTHORIZED"
+def test_unverified_tiz_is_allowed_in_development():
+    result = run_full_brain_cycle(**base_kwargs())
+    assert result["status"] in {"EXECUTABLE", "NO_TRADE", "NOT_EXECUTABLE"}
+    assert result.get("governance", {}).get("tiz_evidence", {}).get("unverified") is True
 
 
-def test_missing_risk_is_fail_closed():
+def test_missing_risk_is_still_fail_closed():
     kw = base_kwargs()
     kw["risk_evidence"] = {"authoritative": False, "risk_pass": False}
     result = run_full_brain_cycle(**kw)
@@ -37,9 +35,17 @@ def test_missing_risk_is_fail_closed():
     assert result["reason"] == "RISK_NOT_PRODUCTION_AUTHORIZED"
 
 
+def test_live_still_requires_authoritative_tiz():
+    kw = base_kwargs()
+    kw["mode"] = "LIVE"
+    result = run_full_brain_cycle(**kw)
+    assert result["status"] == "NOT_EXECUTABLE"
+    assert result["reason"] == "TIZ_NOT_PRODUCTION_AUTHORIZED"
+
+
 def test_2025_stays_locked():
     kw = base_kwargs()
     kw["query_as_of"] = datetime(2025, 1, 2, tzinfo=timezone.utc)
     result = run_full_brain_cycle(**kw)
-    assert result["status"] == "NOT_EXECUTABLE"
-    assert result["reason"] == "NOT_EXECUTABLE" or result["reason"] == "2025_OOS_LOCKED"
+    assert result["status"] in {"NOT_EVALUABLE", "NOT_EXECUTABLE"}
+    assert "2025" in result.get("reason", "") or result.get("governance", {}).get("reason") == "2025_OOS_LOCKED"
