@@ -1,11 +1,10 @@
 from __future__ import annotations
 
-import json
 from pathlib import Path
 
 import pandas as pd
 
-from MTF_SIX_TF_SOURCE_ADAPTER_V1 import SIX_TF, discover, infer_tf_from_text
+from MTF_SIX_TF_SOURCE_ADAPTER_V1 import SIX_TF, discover, infer_tf_from_text, timestamp_series
 
 
 def _write_ohlc(path: Path, timestamps: list[str], tf: str) -> None:
@@ -50,3 +49,19 @@ def test_2025_is_detected_not_relabelled(tmp_path: Path) -> None:
     _write_ohlc(tmp_path / "GBPUSD_M5_DATA.csv", ["2025-01-02T00:00:00Z", "2025-01-02T00:05:00Z"], "M5")
     by_tf, _ = discover(tmp_path, max_rows=10)
     assert by_tf["M5"][0]["has_2025_sample"] is True
+
+
+def test_date_and_time_are_combined_without_using_bare_time(tmp_path: Path) -> None:
+    frame = pd.DataFrame({"Date": ["2016-01-04", "2016-01-04"], "Time": ["00:00:00", "00:05:00"]})
+    ts, label = timestamp_series(frame)
+    assert label == "Date+Time"
+    assert ts.dt.year.tolist() == [2016, 2016]
+    assert ts.dt.minute.tolist() == [0, 5]
+
+    bare = pd.DataFrame({"Time": ["00:00:00", "00:05:00"]})
+    try:
+        timestamp_series(bare)
+    except ValueError as exc:
+        assert "timestamp" in str(exc).lower() or "date+time" in str(exc).lower()
+    else:
+        raise AssertionError("bare time must not be accepted as a full timestamp")
