@@ -34,18 +34,21 @@ Status: DONE/BASELINE PROTECTED.
 Goal: connect existing modules through one orchestration boundary.
 Deliverables: canonical MarketSnapshot; canonical Evidence objects; one Decision Runtime entry point; compatibility tests for every boundary; no hidden module-to-module dependencies.
 Exit gate: one real snapshot can travel through the full evidence path.
-Status: IN PROGRESS.
+Status: **PASS — FIRST REAL E2E REPLAY VERIFIED (2026-08-29)**
+Evidence: `RUNTIME/DECISION_RUNTIME_V1/CHECKPOINT_2026-08-29_GATE1.md`, `RUNTIME/DECISION_RUNTIME_V1/artifacts/E2E_2016_MANIFEST.json`.
 
 ## Phase 2 — REAL DECISION REPLAY
 Goal: run the integrated chain on real historical GBPUSD data.
 Deliverables: chronological replay; one DecisionEvent per evaluated timestamp; BUY/SELL/NO_TRADE; reason, evidence, gates, provenance; deterministic replay.
 Exit gate: real data produces a coherent integrated event stream.
-Status: NEXT.
+Status: **IN PROGRESS / INITIAL STREAM PRODUCED**
+Observed first run: 401 events; 120 EXECUTABLE; 56 CANDIDATE; 225 NO_TRADE; BUY 70; SELL 106.
 
 ## Phase 3 — TRADE PLAN + RISK
 Goal: convert approved decisions into mechanical trade plans.
 Deliverables: entry, stop loss, take profit, R:R, position size, risk gate, execution eligibility.
 Exit gate: every executable decision has a complete risk-approved plan.
+Status: NEXT.
 
 ## Phase 4 — UNIFIED BACKTEST
 Goal: evaluate the actual integrated Decision Runtime, not isolated modules.
@@ -92,8 +95,10 @@ The project is operational only when:
 - Confirmed project is not to be rebuilt.
 - Created isolated branch: build/decision-runtime-v1.
 - Created initial orchestration-only Decision Runtime boundary and contract tests.
-- Created this Master Execution Roadmap on the isolated branch.
-- Next execution gate: connect the runtime to the existing real assembler/evidence/risk/execution path and run the first real GBPUSD replay.
+- Created Master Execution Roadmap.
+- Built and ran the first real GBPUSD E2E historical event assembly from supplied project artifacts.
+- Recorded Gate 1 checkpoint and E2E manifest.
+- Next execution gate: run the integrated stream through the existing frozen risk/trade-plan semantics and build the deterministic replay/backtest harness on the same path.
 
 ## Anti-loop rule
 No new evaluator, audit, freeze, adapter, or strategy layer may be added unless it directly closes a named gap in this roadmap. After every completed task, record: DONE; VERIFIED BY; ARTIFACT; REMAINING; NEXT SINGLE ACTION.
