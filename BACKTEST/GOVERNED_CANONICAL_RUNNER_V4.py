@@ -47,16 +47,12 @@ _ALLOWED_NATIVE_FIELDS = (
 
 def read_csv(path: Path, required: set[str], chunksize: int | None = None):
     if NATIVE_MTF_FRAME is not None and path.name == "GBPUSD_MTF_H4_H1.csv":
-        # The V3 core asks only for {timestamp}; the wrapper injects the
-        # source-backed six-TF fields at the same H1 event timestamps.
         frame = NATIVE_MTF_FRAME.copy()
         missing = sorted(required - set(frame.columns))
         if missing:
             raise ValueError(f"native six-TF frame missing required columns: {missing}")
         return frame.sort_values("timestamp").reset_index(drop=True)
 
-    # Rule-level evidence is many-to-one at a timestamp. Preserve every rule
-    # row so the existing aggregate_rule_frame() can perform the fan-in.
     is_rule_evidence = bool({"rule_id", "source_rule_id"} & set(required))
     if not is_rule_evidence:
         return _original_read_csv(path, required, chunksize)
@@ -119,8 +115,9 @@ def _explicit_bool(value: Any) -> bool | None:
     return None
 
 
-def _load_native_six_tf_frame(root: Path, max_rows: int = 200_000) -> pd.DataFrame:
-    by_tf, _ = discover(root, max_rows=max_rows)
+def _load_native_six_tf_frame(root: Path, h1_path: Path) -> pd.DataFrame:
+    # The adapter first proves exactly one native source file for each TF.
+    by_tf, _ = discover(root, max_rows=200)
     missing = [tf for tf in SIX_TF if not by_tf[tf]]
     ambiguous = {tf: len(by_tf[tf]) for tf in SIX_TF if len(by_tf[tf]) != 1}
     if missing:
@@ -128,7 +125,15 @@ def _load_native_six_tf_frame(root: Path, max_rows: int = 200_000) -> pd.DataFra
     if ambiguous:
         raise ValueError(f"native six-TF sources are not uniquely resolved: {ambiguous}")
 
-    joined: pd.DataFrame | None = None
+    h1 = pd.read_csv(h1_path, usecols=["timestamp"], low_memory=False)
+    h1["timestamp"] = pd.to_datetime(h1["timestamp"], utc=True, errors="coerce", format="mixed")
+    if h1["timestamp"].isna().any():
+        raise ValueError("H1 source contains invalid timestamps")
+    h1 = h1[(h1["timestamp"].dt.year >= 2016) & (h1["timestamp"].dt.year <= 2024)].sort_values("timestamp").drop_duplicates("timestamp")
+    if h1.empty:
+        raise ValueError("No 2016-2024 H1 timestamps available for native MTF join")
+    joined = h1.reset_index(drop=True)
+
     for tf in SIX_TF:
         path = Path(by_tf[tf][0]["path"])
         source = pd.read_csv(path, low_memory=False)
@@ -142,18 +147,11 @@ def _load_native_six_tf_frame(root: Path, max_rows: int = 200_000) -> pd.DataFra
             raise ValueError(f"{path}: duplicate timestamps in native {tf} source")
 
         lower = {str(c).strip().lower(): c for c in source.columns}
-        selected: dict[str, str] = {}
-        for field in _ALLOWED_NATIVE_FIELDS:
-            if field in lower:
-                selected[field] = lower[field]
-
-        if joined is None:
-            joined = pd.DataFrame({"timestamp": source["timestamp"]})
-        # Point-in-time join: only source rows at or before the H1 event can be
-        # consumed. Native source rows are never forward-filled from the future.
         payload = pd.DataFrame({"timestamp": source["timestamp"]})
-        for field, col in selected.items():
-            values = source[col]
+        for field in _ALLOWED_NATIVE_FIELDS:
+            if field not in lower:
+                continue
+            values = source[lower[field]]
             if field.endswith("_complete") or field in {"contradicted", "risk_feasible"}:
                 values = values.map(_explicit_bool)
             payload[f"{tf}_{field}"] = values
@@ -166,8 +164,6 @@ def _load_native_six_tf_frame(root: Path, max_rows: int = 200_000) -> pd.DataFra
             allow_exact_matches=True,
         )
 
-    if joined is None:
-        raise ValueError("no native six-TF source data loaded")
     return joined.sort_values("timestamp").reset_index(drop=True)
 
 
@@ -206,7 +202,6 @@ def _dynamic_mtf_for_row(row: pd.Series) -> tuple[dict[str, Any], dict[str, Any]
         role_assignments=role_assignments,
         evidence_trace=resolver.evidence_trace,
     )
-
     return (
         {
             "status": resolver.status,
@@ -315,7 +310,7 @@ def main():
 
     MTF_SOURCE_REPORT = args.mtf_source_report
     _load_source_report(MTF_SOURCE_REPORT)
-    NATIVE_MTF_FRAME = _load_native_six_tf_frame(args.mtf_full_dir)
+    NATIVE_MTF_FRAME = _load_native_six_tf_frame(args.mtf_full_dir, args.h1)
     result = base.run(args)
     gate_report = _apply_dynamic_gate(args.output_dir)
     if gate_report["status"] != "PASS":
