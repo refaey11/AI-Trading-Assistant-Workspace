@@ -1,94 +1,301 @@
-# BACKTEST-ONLY / GOVERNED
-# Branch: governed-backtest-run-2026-08-29
-# This dedicated branch executes the governed 2016-2024 backtest after the gate.
-# 2025 remains locked/OOS.
 version: 2.1
 
-parameters:
-  run_integration_gate:
-    type: boolean
-    default: false
-  run_governed_backtest:
-    type: boolean
-    default: false
-
 jobs:
-  build_and_test:
-    docker:
-      - image: cimg/python:3.12
+  nison_runtime_0001_0010:
+    docker: [{image: cimg/python:3.12}]
     steps:
       - checkout
+      - run: python -m pip install --upgrade pip pytest
       - run:
-          name: Install lightweight CI dependencies
-          command: python -m pip install --upgrade pip pandas pytest
-      - run:
-          name: Canonical E2E integration contract test
-          command: python BACKTEST/INTEGRATION_CONTRACT_TEST_V1.py
-      - run:
-          name: Compile Python sources
-          command: python -m compileall -q BACKTEST compatibility RUNTIME RECOVERED_SOURCES
-
-  governed_backtest_only:
-    docker:
-      - image: cimg/python:3.12
+          working_directory: RUNTIME/NISON_EVALUATORS_V1
+          command: python -m pytest -q test_nison_0001_0002_engulfing.py test_nison_0003_0010_runtime.py && python test_nison_router_smoke_0001_0010.py
+  nison_runtime_0011_0020:
+    docker: [{image: cimg/python:3.12}]
     steps:
       - checkout
+      - run: python -m pip install --upgrade pip pytest
       - run:
-          name: Install runtime dependencies
-          command: python -m pip install --upgrade pip pandas pytest
+          working_directory: RUNTIME/NISON_EVALUATORS_V1
+          command: python -m pytest -q test_nison_0011_0020_runtime.py && python test_nison_router_smoke_0011_0020.py
+  nison_runtime_0021_0030:
+    docker: [{image: cimg/python:3.12}]
+    steps:
+      - checkout
+      - run: python -m pip install --upgrade pip pytest
       - run:
-          name: Canonical E2E integration contract test
-          command: python BACKTEST/INTEGRATION_CONTRACT_TEST_V1.py
+          working_directory: RUNTIME/NISON_EVALUATORS_V1
+          command: python -m pytest -q test_nison_0021_0030_runtime.py && python test_nison_router_smoke_0021_0030.py
+  nison_runtime_0031_0044:
+    docker: [{image: cimg/python:3.12}]
+    steps:
+      - checkout
+      - run: python -m pip install --upgrade pip pytest
       - run:
-          name: Governed E2E smoke preflight V3
-          command: python BACKTEST/GOVERNED_E2E_SMOKE_V3.py --root .
+          working_directory: RUNTIME/NISON_EVALUATORS_V1
+          command: python -m pytest -q test_nison_0031_0044_runtime.py && python test_nison_router_smoke_0031_0044.py
+  dynamic_mtf_runtime_v1:
+    docker: [{image: cimg/python:3.12}]
+    steps: [checkout, {run: python -m pip install pytest && python -m pytest -q tests/compatibility/test_dynamic_mtf_binding_adapter_v1.py}]
+  market_state_contract_v1:
+    docker: [{image: cimg/python:3.12}]
+    steps: [checkout, {run: python -m pip install pytest && python -m pytest -q tests/compatibility/test_market_state_contract_adapter_v1.py}]
+  market_reader_contract_v1:
+    docker: [{image: cimg/python:3.12}]
+    steps: [checkout, {run: python -m pip install pytest && python -m pytest -q tests/compatibility/test_market_reader_contract_adapter_v1.py}]
+  market_scenario_contract_v1:
+    docker: [{image: cimg/python:3.12}]
+    steps: [checkout, {run: python -m pip install pytest && python -m pytest -q tests/compatibility/test_market_scenario_contract_adapter_v1.py}]
+  historical_context_memory_v1:
+    docker: [{image: cimg/python:3.12}]
+    steps: [checkout, {run: python -m pip install pytest && python -m pytest -q tests/compatibility/test_historical_context_memory_boundary_v1.py}]
+  historical_outcome_memory_v1:
+    docker: [{image: cimg/python:3.12}]
+    steps: [checkout, {run: python -m pip install pytest && python -m pytest -q tests/compatibility/test_historical_outcome_memory_boundary_v1.py}]
+  similarity_memory_v2:
+    docker: [{image: cimg/python:3.12}]
+    steps: [checkout, {run: python -m pip install pytest && python -m pytest -q tests/compatibility/test_similarity_memory_v2_boundary.py}]
+  memory_integration_v1:
+    docker: [{image: cimg/python:3.12}]
+    steps: [checkout, {run: python -m pip install pytest && python -m pytest -q tests/compatibility/test_memory_evidence_package_v1.py}]
+  outcome_to_scenario_evidence_policy_v1:
+    docker: [{image: cimg/python:3.12}]
+    steps: [checkout, {run: python -m pip install pytest && python -m pytest -q tests/compatibility/test_outcome_to_scenario_evidence_policy_v1.py}]
+  decision_brain_v1_integration:
+    docker: [{image: cimg/python:3.12}]
+    steps: [checkout, {run: python -m pip install pytest && python -m pytest -q tests/compatibility/test_decision_brain_v1_handoff_adapter.py}]
+  decision_brain_final_e2e_readiness_v1:
+    docker: [{image: cimg/python:3.12}]
+    steps: [checkout, {run: python -m pip install pytest && python -m pytest -q tests/compatibility/test_decision_brain_final_e2e_readiness_v1.py}]
+  risk_execution_runtime_v1:
+    docker: [{image: cimg/python:3.12}]
+    steps: [checkout, {run: python -m pip install pytest && python -m pytest -q risk_engine/test_risk_execution_runtime_v1.py tests/compatibility/test_decision_brain_final_e2e_readiness_v1.py}]
+  tiz_optional_execution_adapter_v2:
+    docker: [{image: cimg/python:3.12}]
+    steps: [checkout, {run: python -m pip install pytest && python -m pytest -q tests/evaluation/test_tiz_optional_execution_adapter_v2.py}]
+  decision_brain_pre_oos_freeze_guard_v1:
+    docker: [{image: cimg/python:3.12}]
+    steps: [checkout, {run: python -m pip install pytest && python -m pytest -q tests/compatibility/test_decision_brain_pre_oos_freeze_guard_v1.py}]
+  decision_brain_rule_allowlist_v1:
+    docker: [{image: cimg/python:3.12}]
+    steps: [checkout, {run: python -m pip install pytest && python -m pytest -q tests/compatibility/test_decision_brain_rule_allowlist_v1.py}]
+  rule_adapter_allowlist_runtime_gate_v1:
+    docker: [{image: cimg/python:3.12}]
+    steps: [checkout, {run: python -m pip install pytest && python -m pytest -q tests/compatibility/test_rule_adapter_allowlist_runtime_gate_v1.py}]
+  frozen_decision_execution_bridge_v1:
+    docker: [{image: cimg/python:3.12}]
+    steps: [checkout, {run: python -m pip install pytest && python -m pytest -q tests/evaluation/test_frozen_decision_execution_bridge_v1.py}]
+  frozen_decision_2025_oos_evaluator_contract_v1:
+    docker: [{image: cimg/python:3.12}]
+    steps: [checkout, {run: python -m pip install pytest && python -m pytest -q tests/compatibility/test_decision_brain_2025_oos_evaluator_contract_v1.py}]
+  three_book_decision_evaluator_v1:
+    docker: [{image: cimg/python:3.12}]
+    steps: [checkout, {run: python -m pip install pytest && python -m pytest -q tests/evaluation/test_three_book_decision_evaluator_v1.py}]
+  nison_evidence_aggregate_v1:
+    docker: [{image: cimg/python:3.12}]
+    steps:
+      - checkout
+      - run: python -m pip install --upgrade pip pytest pandas
+      - run:
+          name: Test governed Nison adapters
+          command: python -m pytest -q tests/compatibility/test_nison_2025_evidence_aggregate_v1.py tests/compatibility/test_nison_2025_source_adapter_v1.py
+  nison_development_2016_2024_v1:
+    docker: [{image: cimg/python:3.12}]
+    steps:
+      - checkout
+      - run: python -m pip install --upgrade pip pandas pytest
+      - run:
+          name: Run governed Nison development 2016-2024
+          command: |
+            set -eu
+            mkdir -p artifacts/nison_development_2016_2024
+            python DEVELOPMENT_2016_2024/run_nison_development_2016_2024_v1.py --output-dir artifacts/nison_development_2016_2024 --start-year 2016 --end-year 2024
+      - run:
+          name: Verify Nison development artifact shape
+          command: |
+            set -eu
+            test -f artifacts/nison_development_2016_2024/NISON_DEVELOPMENT_2016_2024_MANIFEST.json
+            for year in 2016 2017 2018 2019 2020 2021 2022 2023 2024; do
+              test -f "artifacts/nison_development_2016_2024/NISON_${year}_FULL_EVIDENCE.csv"
+            done
+      - run:
+          name: Recover Murphy historical artifact from Dropbox project package
+          command: |
+            set -eu
+            test -n "${DROPBOX_ACCESS_TOKEN:-}"
+            mkdir -p /tmp/murphy_recovery /tmp/murphy_project
+            curl -L --fail --silent --show-error https://content.dropboxapi.com/2/files/download \
+              -H "Authorization: Bearer ${DROPBOX_ACCESS_TOKEN}" \
+              -H 'Dropbox-API-Arg: {"path":"/AI_Trading_Assistant_FULL_PROJECT_V1.zip"}' \
+              -o /tmp/murphy_recovery/project.zip
+            unzip -q /tmp/murphy_recovery/project.zip -d /tmp/murphy_project
+            echo '[MURPHY_RECOVERY] candidate files:'
+            find /tmp/murphy_project -type f \( \
+              -iname 'MURPHY_2016_2024_FULL_34_RULE_FANIN_SOURCE_PRESERVING.csv' -o \
+              -iname 'MURPHY_2016_2024_FULL_EVIDENCE.csv' -o \
+              -iname 'MURPHY_HISTORICAL_EVIDENCE_NORMALIZED_2016_2024.csv' -o \
+              -iname 'MURPHY_2016_2024_DIRECTIONAL_EVIDENCE.csv' \
+            \) -print | sort
+            CANDIDATE=$(find /tmp/murphy_project -type f \( \
+              -iname 'MURPHY_2016_2024_FULL_34_RULE_FANIN_SOURCE_PRESERVING.csv' -o \
+              -iname 'MURPHY_2016_2024_FULL_EVIDENCE.csv' -o \
+              -iname 'MURPHY_HISTORICAL_EVIDENCE_NORMALIZED_2016_2024.csv' -o \
+              -iname 'MURPHY_2016_2024_DIRECTIONAL_EVIDENCE.csv' \
+            \) -print | sort | head -1)
+            test -n "$CANDIDATE"
+            mkdir -p artifacts/murphy_historical_2016_2024
+            cp "$CANDIDATE" artifacts/murphy_historical_2016_2024/MURPHY_2016_2024_FULL_EVIDENCE.csv
+            printf '%s\n' "$CANDIDATE" > artifacts/murphy_historical_2016_2024/SOURCE_PATH.txt
+            sha256sum artifacts/murphy_historical_2016_2024/MURPHY_2016_2024_FULL_EVIDENCE.csv > artifacts/murphy_historical_2016_2024/SHA256.txt
+      - run:
+          name: Run governed Decision Brain development backtest 2016-2024
+          command: |
+            set -eu
+            mkdir -p artifacts/decision_brain_backtest_2016_2024
+            python BACKTEST/DEV_BACKTEST_RUNNER_V1.py \
+              --h1 artifacts/nison_development_2016_2024/source/GBPUSD_H1_2016_2025_MASTER.csv \
+              --murphy artifacts/murphy_historical_2016_2024/MURPHY_2016_2024_FULL_EVIDENCE.csv \
+              --nison artifacts/nison_development_2016_2024/NISON_2016_2024_FULL_EVIDENCE.csv \
+              --context artifacts/nison_development_2016_2024/source/GBPUSD_MARKET_STATE.csv \
+              --output-dir artifacts/decision_brain_backtest_2016_2024
       - store_artifacts:
-          path: artifacts/integration_contract_test
-          destination: canonical_e2e_contract_2026_08_28
-      - run:
-          name: Acquire governed source stack
-          command: python BACKTEST/CIRCLECI_ACQUIRE_GOVERNED_SOURCES.py
-      - run:
-          name: Frozen scope and 2025 lock check
-          command: python BACKTEST/CIRCLECI_FROZEN_SCOPE_CHECK.py
-      - run:
-          name: GOVERNED INTEGRATION GATE V3
-          command: python BACKTEST/CIRCLECI_RUN_GOVERNED_GATE.py
+          path: artifacts/nison_development_2016_2024
+          destination: nison_development_2016_2024
       - store_artifacts:
-          path: artifacts/integration_gate
-          destination: governed_integration_gate_2026_08_28
-      - when:
-          condition:
-            or:
-              - << pipeline.parameters.run_governed_backtest >>
-              - pipeline.git.branch == "governed-backtest-run-2026-08-29"
-          steps:
-            - run:
-                name: 2016-2024 Decision Brain backtest v8
-                command: python BACKTEST/CIRCLECI_RUN_GOVERNED_BACKTEST.py
-                no_output_timeout: 20m
-            - run:
-                name: Decision-to-execution funnel contract
-                command: python BACKTEST/EXECUTION_FUNNEL_CONTRACT_V1.py --events artifacts/decision_brain_backtest_2016_2024/decision_events_2016_2024.csv --output artifacts/decision_brain_backtest_2016_2024/execution_funnel_contract_v1.json
-            - run:
-                name: Assert 2025 absent from development output
-                command: python BACKTEST/CIRCLECI_ASSERT_2025_LOCK.py
-            - store_artifacts:
-                path: artifacts/decision_brain_backtest_2016_2024
-                destination: decision_brain_backtest_2016_2024_governed
+          path: artifacts/murphy_historical_2016_2024
+          destination: murphy_historical_2016_2024
+      - store_artifacts:
+          path: artifacts/decision_brain_backtest_2016_2024
+          destination: decision_brain_backtest_2016_2024
+  nison_2025_full_production_v1:
+    docker: [{image: cimg/python:3.12}]
+    steps:
+      - checkout
+      - run: python -m pip install --upgrade pip pandas
+      - run:
+          name: Acquire authoritative 2025 source
+          command: |
+            set -eu
+            mkdir -p /tmp/nison_2025/unpacked
+            if [ -n "${NISON_2025_SOURCE_URL:-}" ]; then curl -L --fail --silent --show-error "$NISON_2025_SOURCE_URL" -o /tmp/nison_2025/source.zip; elif [ -n "${DROPBOX_ACCESS_TOKEN:-}" ]; then curl -L --fail --silent --show-error https://content.dropboxapi.com/2/files/download -H "Authorization: Bearer ${DROPBOX_ACCESS_TOKEN}" -H 'Dropbox-API-Arg: {"path":"/GBPUSD_H1_2016_2025_MASTER.zip"}' -o /tmp/nison_2025/source.zip; else echo 'BLOCKED: configure CircleCI project secret NISON_2025_SOURCE_URL or DROPBOX_ACCESS_TOKEN.'; exit 2; fi
+            unzip -q /tmp/nison_2025/source.zip -d /tmp/nison_2025/unpacked
+            SOURCE_CSV=$(find /tmp/nison_2025/unpacked -type f -name 'GBPUSD_H1_2016_2025_MASTER.csv' | head -1)
+            test -n "$SOURCE_CSV"
+            echo "export NISON_SOURCE_CSV=$SOURCE_CSV" >> "$BASH_ENV"
+      - run:
+          name: Run full governed Nison 2025 production
+          command: |
+            set -eu
+            mkdir -p artifacts/nison_2025
+            python OOS_2025/run_nison_2025_full_production_v1.py --input "$NISON_SOURCE_CSV" --output artifacts/nison_2025/NISON_2025_FULL_EVIDENCE.csv --manifest artifacts/nison_2025/NISON_2025_FULL_EVIDENCE_MANIFEST.json
+            python OOS_2025/verify_nison_2025_full_production_v1.py artifacts/nison_2025/NISON_2025_FULL_EVIDENCE_MANIFEST.json
+      - run:
+          name: Aggregate governed Nison evidence
+          command: python -c "from OOS_2025.nison_2025_evidence_aggregate_v1 import write_aggregate; write_aggregate('artifacts/nison_2025/NISON_2025_FULL_EVIDENCE.csv','artifacts/nison_2025/NISON_2025_EVIDENCE_BY_TIMESTAMP.csv','artifacts/nison_2025/NISON_2025_EVIDENCE_BY_TIMESTAMP_MANIFEST.json')"
+      - store_artifacts:
+          path: artifacts/nison_2025
+          destination: nison_2025
+  oos_2025_78_rule_coverage_v1:
+    docker: [{image: cimg/python:3.12}]
+    steps:
+      - checkout
+      - run: python -m pip install --upgrade pip pandas
+      - run:
+          name: Acquire authoritative 2025 source
+          command: |
+            set -eu
+            mkdir -p /tmp/nison_2025/unpacked
+            if [ -n "${NISON_2025_SOURCE_URL:-}" ]; then curl -L --fail --silent --show-error "$NISON_2025_SOURCE_URL" -o /tmp/nison_2025/source.zip; elif [ -n "${DROPBOX_ACCESS_TOKEN:-}" ]; then curl -L --fail --silent --show-error https://content.dropboxapi.com/2/files/download -H "Authorization: Bearer ${DROPBOX_ACCESS_TOKEN}" -H 'Dropbox-API-Arg: {"path":"/GBPUSD_H1_2016_2025_MASTER.zip"}' -o /tmp/nison_2025/source.zip; else echo 'BLOCKED: configure CircleCI project secret NISON_2025_SOURCE_URL or DROPBOX_ACCESS_TOKEN.'; exit 2; fi
+            unzip -q /tmp/nison_2025/source.zip -d /tmp/nison_2025/unpacked
+            SOURCE_CSV=$(find /tmp/nison_2025/unpacked -type f -name 'GBPUSD_H1_2016_2025_MASTER.csv' | head -1)
+            test -n "$SOURCE_CSV"
+            echo "export NISON_SOURCE_CSV=$SOURCE_CSV" >> "$BASH_ENV"
+      - run:
+          name: Generate current governed Nison 2025 output
+          command: |
+            set -eu
+            mkdir -p artifacts/oos_78
+            python OOS_2025/run_nison_2025_full_production_v1.py --input "$NISON_SOURCE_CSV" --output artifacts/oos_78/NISON_2025_FULL_EVIDENCE.csv --manifest artifacts/oos_78/NISON_2025_FULL_EVIDENCE_MANIFEST.json
+      - run:
+          name: Build explicit 78-rule coverage report
+          command: python OOS_2025/run_current_78_rule_coverage_v1.py --nison-csv artifacts/oos_78/NISON_2025_FULL_EVIDENCE.csv --murphy-snapshot OOS_2025/MURPHY_2025_COVERAGE_SNAPSHOT_V1.json --output artifacts/oos_78/FULL_78_RULE_2025_COVERAGE_CURRENT.json
+      - store_artifacts:
+          path: artifacts/oos_78
+          destination: oos_2025_78_coverage
+  murphy_0021_2025_fresh_v1:
+    docker: [{image: cimg/python:3.12}]
+    steps:
+      - checkout
+      - run: python -m pip install --upgrade pip pandas pytest
+      - run:
+          name: Acquire authoritative 2025 H1 + M1 sources
+          command: |
+            set -eu
+            mkdir -p /tmp/murphy_2025_0021/h1 /tmp/murphy_2025_0021/m1
+            if [ -n "${NISON_2025_SOURCE_URL:-}" ]; then curl -L --fail --silent --show-error "$NISON_2025_SOURCE_URL" -o /tmp/murphy_2025_0021/h1/source.zip; elif [ -n "${DROPBOX_ACCESS_TOKEN:-}" ]; then curl -L --fail --silent --show-error https://content.dropboxapi.com/2/files/download -H "Authorization: Bearer ${DROPBOX_ACCESS_TOKEN}" -H 'Dropbox-API-Arg: {"path":"/GBPUSD_H1_2016_2025_MASTER.zip"}' -o /tmp/murphy_2025_0021/h1/source.zip; else echo 'BLOCKED: configure CircleCI project secret NISON_2025_SOURCE_URL or DROPBOX_ACCESS_TOKEN.'; exit 2; fi
+            if [ -n "${MURPHY_M1_SOURCE_URL:-}" ]; then curl -L --fail --silent --show-error "$MURPHY_M1_SOURCE_URL" -o /tmp/murphy_2025_0021/m1/source.zip; elif [ -n "${DROPBOX_ACCESS_TOKEN:-}" ]; then curl -L --fail --silent --show-error https://content.dropboxapi.com/2/files/download -H "Authorization: Bearer ${DROPBOX_ACCESS_TOKEN}" -H 'Dropbox-API-Arg: {"path":"/GBPUSD_M1_MASTER_2016_2026_V1.zip"}' -o /tmp/murphy_2025_0021/m1/source.zip; else echo 'BLOCKED: configure CircleCI project secret MURPHY_M1_SOURCE_URL or DROPBOX_ACCESS_TOKEN.'; exit 2; fi
+            unzip -q /tmp/murphy_2025_0021/h1/source.zip -d /tmp/murphy_2025_0021/h1
+            unzip -q /tmp/murphy_2025_0021/m1/source.zip -d /tmp/murphy_2025_0021/m1
+            H1_CSV=$(find /tmp/murphy_2025_0021/h1 -type f -name 'GBPUSD_H1_2016_2025_MASTER.csv' | head -1)
+            M1_CSV=$(find /tmp/murphy_2025_0021/m1 -type f -name '*.csv' | head -1)
+            test -n "$H1_CSV"
+            test -n "$M1_CSV"
+            echo "export MURPHY_SOURCE_CSV=$H1_CSV" >> "$BASH_ENV"
+            echo "export MURPHY_M1_SOURCE_CSV=$M1_CSV" >> "$BASH_ENV"
+      - run:
+          name: Run fresh Murphy 0021 2025 producer
+          command: |
+            set -eu
+            mkdir -p artifacts/murphy_0021_2025
+            python OOS_2025/run_murphy_0021_2025_fresh_v1.py --input "$MURPHY_SOURCE_CSV" --m1-input "$MURPHY_M1_SOURCE_CSV" --output artifacts/murphy_0021_2025/MURPHY_0021_2025.csv --manifest artifacts/murphy_0021_2025/MURPHY_0021_2025_MANIFEST.json
+      - run:
+          name: Verify Murphy 0021 producer tests
+          command: python -m pytest -q tests/evaluation/test_murphy_0021_2025_fresh_v1.py
+      - store_artifacts:
+          path: artifacts/murphy_0021_2025
+          destination: murphy_0021_2025
+  murphy_0022_0023_2025_pit_v1:
+    docker: [{image: cimg/python:3.12}]
+    steps:
+      - checkout
+      - run: python -m pip install --upgrade pip pandas pytest
+      - run:
+          name: Acquire authoritative 2025 H1 + M1 sources
+          command: |
+            set -eu
+            mkdir -p /tmp/murphy_0022_0023/h1 /tmp/murphy_0022_0023/m1
+            if [ -n "${NISON_2025_SOURCE_URL:-}" ]; then curl -L --fail --silent --show-error "$NISON_2025_SOURCE_URL" -o /tmp/murphy_0022_0023/h1/source.zip; elif [ -n "${DROPBOX_ACCESS_TOKEN:-}" ]; then curl -L --fail --silent --show-error https://content.dropboxapi.com/2/files/download -H "Authorization: Bearer ${DROPBOX_ACCESS_TOKEN}" -H 'Dropbox-API-Arg: {"path":"/GBPUSD_H1_2016_2025_MASTER.zip"}' -o /tmp/murphy_0022_0023/h1/source.zip; else echo 'BLOCKED: configure CircleCI project secret NISON_2025_SOURCE_URL or DROPBOX_ACCESS_TOKEN.'; exit 2; fi
+            if [ -n "${MURPHY_M1_SOURCE_URL:-}" ]; then curl -L --fail --silent --show-error "$MURPHY_M1_SOURCE_URL" -o /tmp/murphy_0022_0023/m1/source.zip; elif [ -n "${DROPBOX_ACCESS_TOKEN:-}" ]; then curl -L --fail --silent --show-error https://content.dropboxapi.com/2/files/download -H "Authorization: Bearer ${DROPBOX_ACCESS_TOKEN}" -H 'Dropbox-API-Arg: {"path":"/GBPUSD_M1_MASTER_2016_2026_V1.zip"}' -o /tmp/murphy_0022_0023/m1/source.zip; else echo 'BLOCKED: configure CircleCI project secret MURPHY_M1_SOURCE_URL or DROPBOX_ACCESS_TOKEN.'; exit 2; fi
+            unzip -q /tmp/murphy_0022_0023/h1/source.zip -d /tmp/murphy_0022_0023/h1
+            unzip -q /tmp/murphy_0022_0023/m1/source.zip -d /tmp/murphy_0022_0023/m1
+            H1_CSV=$(find /tmp/murphy_0022_0023/h1 -type f -name 'GBPUSD_H1_2016_2025_MASTER.csv' | head -1)
+            M1_CSV=$(find /tmp/murphy_0022_0023/m1 -type f -name '*.csv' | head -1)
+            test -n "$H1_CSV"
+            test -n "$M1_CSV"
+            echo "export MURPHY_OI_H1_CSV=$H1_CSV" >> "$BASH_ENV"
+            echo "export MURPHY_OI_M1_CSV=$M1_CSV" >> "$BASH_ENV"
+      - run:
+          name: Run PIT-safe Murphy 0022/0023 on all 2025 H1 rows
+          command: |
+            set -eu
+            mkdir -p artifacts/murphy_0022_0023_2025
+            python OOS_2025/run_murphy_0022_0023_2025_pit_v1.py --h1 "$MURPHY_OI_H1_CSV" --m1 "$MURPHY_OI_M1_CSV" --oi evidence/cftc/2025/6b_oi_pit_bound_v1.json --output artifacts/murphy_0022_0023_2025/MURPHY_0022_0023_2025.csv --manifest artifacts/murphy_0022_0023_2025/MURPHY_0022_0023_2025_MANIFEST.json
+      - run:
+          name: Verify Murphy 0022/0023 runtime and PIT tests
+          command: python -m pytest -q tests/evaluation/test_murphy_0021_0023_runtime_dispatch_v1.py tests/evaluation/test_cftc_6b_oi_pit_bound_v1.py
+      - store_artifacts:
+          path: artifacts/murphy_0022_0023_2025
+          destination: murphy_0022_0023_2025
 
 workflows:
   build_and_test:
-    when: pipeline.git.branch != "governed-gate-run-2026-08-29"
-    jobs:
-      - build_and_test
-
-  governed_execution:
-    when:
-      or:
-        - << pipeline.parameters.run_integration_gate >>
-        - << pipeline.parameters.run_governed_backtest >>
-        - pipeline.git.branch == "governed-gate-run-2026-08-29"
-        - pipeline.git.branch == "governed-backtest-run-2026-08-29"
-    jobs:
-      - governed_backtest_only
+    jobs: [nison_runtime_0001_0010, nison_runtime_0011_0020, nison_runtime_0021_0030, nison_runtime_0031_0044, dynamic_mtf_runtime_v1, market_state_contract_v1, market_reader_contract_v1, market_scenario_contract_v1, historical_context_memory_v1, historical_outcome_memory_v1, similarity_memory_v2, memory_integration_v1, outcome_to_scenario_evidence_policy_v1, decision_brain_v1_integration, decision_brain_final_e2e_readiness_v1, risk_execution_runtime_v1, tiz_optional_execution_adapter_v2, decision_brain_pre_oos_freeze_guard_v1, decision_brain_rule_allowlist_v1, rule_adapter_allowlist_runtime_gate_v1, frozen_decision_execution_bridge_v1, frozen_decision_2025_oos_evaluator_contract_v1, three_book_decision_evaluator_v1, nison_evidence_aggregate_v1]
+  development_2016_2024_nison:
+    jobs: [nison_development_2016_2024_v1]
+  nison_2025_full_production:
+    jobs: [nison_2025_full_production_v1]
+  oos_2025_78_rule_coverage:
+    jobs: [oos_2025_78_rule_coverage_v1]
+  murphy_2025_fresh:
+    jobs: [murphy_0021_2025_fresh_v1]
+  murphy_0022_0023_2025_pit:
+    jobs: [murphy_0022_0023_2025_pit_v1]
