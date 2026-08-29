@@ -1,7 +1,6 @@
 # BACKTEST-ONLY / GOVERNED
-# Branch: backtest-only-2026-08-28
-# IMPORTANT: automatic VCS pushes run only the cheap build-and-test workflow.
-# Governed integration/backtest execution remains manual/parameter-gated to prevent accidental credit burn.
+# Branch: governed-backtest-run-2026-08-29
+# This dedicated branch executes the governed 2016-2024 backtest after the gate.
 # 2025 remains locked/OOS.
 version: 2.1
 
@@ -59,10 +58,13 @@ jobs:
           path: artifacts/integration_gate
           destination: governed_integration_gate_2026_08_28
       - when:
-          condition: << pipeline.parameters.run_governed_backtest >>
+          condition:
+            or:
+              - << pipeline.parameters.run_governed_backtest >>
+              - pipeline.git.branch == "governed-backtest-run-2026-08-29"
           steps:
             - run:
-                name: 2016-2024 Decision Brain backtest (only after Gate PASS)
+                name: 2016-2024 Decision Brain backtest v8
                 command: python BACKTEST/CIRCLECI_RUN_GOVERNED_BACKTEST.py
                 no_output_timeout: 20m
             - run:
@@ -87,5 +89,6 @@ workflows:
         - << pipeline.parameters.run_integration_gate >>
         - << pipeline.parameters.run_governed_backtest >>
         - pipeline.git.branch == "governed-gate-run-2026-08-29"
+        - pipeline.git.branch == "governed-backtest-run-2026-08-29"
     jobs:
       - governed_backtest_only
