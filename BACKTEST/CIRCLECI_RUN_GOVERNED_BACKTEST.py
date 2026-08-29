@@ -2,14 +2,18 @@ from __future__ import annotations
 
 import os
 import shutil
+import sys
 from argparse import Namespace
 from pathlib import Path
 
-from BACKTEST import GOVERNED_CANONICAL_RUNNER_V3 as runner
+# Resolve and register repository root BEFORE importing the BACKTEST package.
+# CircleCI executes this file as a script, so the repository root is not
+# guaranteed to be on sys.path yet.
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
-ROOT = Path.cwd()
-if not (ROOT / "BACKTEST" / "GOVERNED_CANONICAL_RUNNER_V3.py").exists():
-    ROOT = Path(__file__).resolve().parents[1]
+from BACKTEST import GOVERNED_CANONICAL_RUNNER_V3 as runner
 
 REQUIRED = (
     "mtf_trend_score",
