@@ -6,6 +6,8 @@ import urllib.request
 from pathlib import Path
 import zipfile
 
+import pandas as pd
+
 FILES = {
     "h1.zip": "/New 8/GBPUSD_H1_2016_2025_MASTER.zip",
     "nison.csv": "/New 8/NISON_2016_2024_FULL_EVIDENCE.csv",
@@ -29,8 +31,6 @@ REQUIRED_BRAIN_MTF_FIELDS = {
     "D1_trend_regime",
 }
 REGIME_FIELDS = tuple(sorted(REQUIRED_BRAIN_MTF_FIELDS - {"timestamp", "mtf_trend_score"}))
-# Existing Decision Brain V1 token vocabulary/representation. This is a
-# compatibility normalization of producer tokens, not new trading logic.
 V1_REGIME_MAP = {
     "BULL_TREND": 1.0,
     "BEAR_TREND": -1.0,
@@ -63,7 +63,7 @@ def download(token: str, remote_path: str, output: Path) -> None:
         raise SystemExit(f"DROPBOX_DOWNLOAD_FAILED path={remote_path} error={exc}") from exc
 
 
-def _normalize_regime(df, field: str, path: Path) -> None:
+def _normalize_regime(df: pd.DataFrame, field: str, path: Path) -> None:
     source = df[field].astype("string").str.strip()
     numeric = pd.to_numeric(df[field], errors="coerce")
     mapped = source.str.upper().map(V1_REGIME_MAP)
@@ -86,8 +86,6 @@ def build_mtf_development_csv(unpacked_root: Path, output: Path) -> None:
         if not matches:
             raise SystemExit(f"MISSING_MTF_ANNUAL_SOURCE year={year}")
         candidates.append(matches[0])
-
-    import pandas as pd
 
     frames: list[pd.DataFrame] = []
     for path in candidates:
