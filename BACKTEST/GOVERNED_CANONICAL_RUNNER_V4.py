@@ -15,6 +15,7 @@ import pandas as pd
 from BACKTEST import GOVERNED_CANONICAL_RUNNER_V3 as base
 
 _original_read_csv = base.read_csv
+_original_brain_row = base.brain_row
 
 
 def read_csv(path: Path, required: set[str], chunksize: int | None = None):
@@ -50,39 +51,40 @@ def read_csv(path: Path, required: set[str], chunksize: int | None = None):
 def brain_row(row: pd.Series) -> dict:
     """Compatibility mapping for V3's existing brain_row() contract.
 
-    The authoritative MTF source uses H4_trend / H1_trend. We map those names
-    into the V3 field names without creating new timeframes or scores.
+    The authoritative MTF source uses H4_trend / H1_trend. We preserve the
+    existing six-timeframe schema and only normalize field names/labels.
     """
-    out = base.brain_row(row.copy())
+    out = _original_brain_row(row.copy())
 
-    aliases = {
-        "H4_trend": "h4_trend",
-        "H1_trend": "h1_trend",
-        "H4_trend_regime": "H4_trend_regime",
-        "H1_trend_regime": "H1_trend_regime",
+    trend_map = {
+        "BULL_TREND": 1.0,
+        "BEAR_TREND": -1.0,
+        "TRANSITION": 0.0,
+        "UNKNOWN": 0.0,
     }
-    for source, target in aliases.items():
+    for tf in ("M5", "M15", "M30", "H1", "H4", "D1"):
+        source = f"{tf}_trend"
         if source in row.index and pd.notna(row[source]):
-            # base.brain_row handles the canonical regime keys; only add the
-            # lower-case aliases used by V3's local compatibility logic.
-            out[target] = row[source]
-
-    # Ensure authoritative H4/H1 trends are normalized into the existing
-    # numeric regime fields when the source provides the textual trend labels.
-    trend_map = {"BULL_TREND": 1.0, "BEAR_TREND": -1.0, "TRANSITION": 0.0, "UNKNOWN": 0.0}
-    for tf in ("H1", "H4"):
-        key = f"{tf}_trend"
-        if key in row.index and pd.notna(row[key]):
-            raw = str(row[key]).upper()
+            raw = str(row[source]).strip().upper()
             out[f"{tf}_trend_regime"] = trend_map.get(raw, out.get(f"{tf}_trend_regime", 0.0))
+        source_regime = f"{tf}_trend_regime"
+        if source_regime in row.index and pd.notna(row[source_regime]):
+            raw = str(row[source_regime]).strip().upper()
+            out[f"{tf}_trend_regime"] = trend_map.get(raw, out.get(f"{tf}_trend_regime", 0.0))
+
+    # Accept the authoritative MTF aggregate score if already present; do not
+    # derive a new score here.
+    for key in ("mtf_trend_score", "mtf_score"):
+        if key in row.index and pd.notna(row[key]):
+            out["mtf_trend_score"] = float(row[key])
+            break
 
     return out
 
 
-# V3 uses brain_row() directly, so replace only that helper. There is no
-# build_row() dependency in the actual V3 revision used by CircleCI.
+# V3 calls brain_row() directly. Replace only that helper after saving the
+# original reference. All other V3 semantics remain untouched.
 base.read_csv = read_csv
-_original_brain_row = base.brain_row
 base.brain_row = brain_row
 
 
