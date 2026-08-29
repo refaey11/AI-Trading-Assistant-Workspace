@@ -74,8 +74,6 @@ def evaluate_risk(
 
     target_distance = abs(take_profit - entry)
     rr = target_distance / stop_distance
-    # Do not weaken the 3R rule. Accept only floating-point representations that
-    # are within a negligible numerical tolerance of the exact canonical boundary.
     if rr < CURRENT_CANONICAL_MIN_RR and not isclose(
         rr, CURRENT_CANONICAL_MIN_RR, rel_tol=0.0, abs_tol=RR_BOUNDARY_TOLERANCE
     ):
