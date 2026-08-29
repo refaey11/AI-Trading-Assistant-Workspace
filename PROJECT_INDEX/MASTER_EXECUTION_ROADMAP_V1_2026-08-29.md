@@ -39,10 +39,13 @@ Evidence: `RUNTIME/DECISION_RUNTIME_V1/CHECKPOINT_2026-08-29_GATE1.md`, `RUNTIME
 
 ## Phase 2 — REAL DECISION REPLAY
 Goal: run the integrated chain on real historical GBPUSD data.
-Deliverables: chronological replay; one DecisionEvent per evaluated timestamp; BUY/SELL/NO_TRADE; reason, evidence, gates, provenance; deterministic replay.
-Exit gate: real data produces a coherent integrated event stream.
-Status: **IN PROGRESS / INITIAL STREAM PRODUCED**
-Observed first run: 401 events; 120 EXECUTABLE; 56 CANDIDATE; 225 NO_TRADE; BUY 70; SELL 106.
+Deliverables: chronological replay; one DecisionEvent per evaluated timestamp/setup; BUY/SELL/NO_TRADE; reason, evidence, gates, provenance; deterministic replay.
+Exit gate: real data produces a coherent integrated event stream and executable events reconcile to existing outcomes.
+Status: **PASS FOR AVAILABLE 2016 ARTIFACTS (2026-08-29)**
+Verified: 401 events; 120 EXECUTABLE; 56 CANDIDATE; 225 NO_TRADE; 120/120 executable events matched the existing filtered execution outcome artifact; no unmatched executable events; no duplicate decision IDs after setup-aware identity fix.
+Observed matched-outcome metrics: win rate 56.67%; PF 1.4554; expectancy +0.17286R; total +20.7432R; max DD -11.9262R.
+Important: these are 2016 artifact-level results, not the official full-period baseline or a claim of future/live profitability.
+Evidence: `RUNTIME/DECISION_RUNTIME_V1/CHECKPOINT_2026-08-29_GATE2.md`, `RUNTIME/DECISION_RUNTIME_V1/artifacts/GATE2_2016_REPLAY_SUMMARY.json`.
 
 ## Phase 3 — TRADE PLAN + RISK
 Goal: convert approved decisions into mechanical trade plans.
@@ -94,11 +97,10 @@ The project is operational only when:
 2026-08-29:
 - Confirmed project is not to be rebuilt.
 - Created isolated branch: build/decision-runtime-v1.
-- Created initial orchestration-only Decision Runtime boundary and contract tests.
-- Created Master Execution Roadmap.
-- Built and ran the first real GBPUSD E2E historical event assembly from supplied project artifacts.
-- Recorded Gate 1 checkpoint and E2E manifest.
-- Next execution gate: run the integrated stream through the existing frozen risk/trade-plan semantics and build the deterministic replay/backtest harness on the same path.
+- Created canonical Decision Runtime boundary and contract tests.
+- Closed Gate 1 with a real 2016 GBPUSD integrated event stream.
+- Closed Gate 2 for the available 2016 artifact set after fixing setup-aware deterministic event identity and reconciling 120/120 executable decisions to existing outcomes.
+- Next execution gate: build the full 2016–2024 canonical replay using the same runtime semantics, without tuning.
 
 ## Anti-loop rule
 No new evaluator, audit, freeze, adapter, or strategy layer may be added unless it directly closes a named gap in this roadmap. After every completed task, record: DONE; VERIFIED BY; ARTIFACT; REMAINING; NEXT SINGLE ACTION.
