@@ -1,0 +1,23 @@
+{
+  "gate": "GATE2_REAL_DECISION_REPLAY",
+  "asset": "GBPUSD",
+  "year": 2016,
+  "decision_events": 401,
+  "executable_events": 120,
+  "candidate_events": 56,
+  "no_trade_events": 225,
+  "matched_execution_outcomes": 120,
+  "unmatched_execution_outcomes": 0,
+  "win_rate": 0.5666666666666667,
+  "profit_factor": 1.4553941501666439,
+  "expectancy_R": 0.1728601604804634,
+  "total_R": 20.743219257655607,
+  "max_drawdown_R": -11.92623908335689,
+  "ambiguous_selected": 0,
+  "ambiguity_policy": "reported_from_existing_filtered_trade_artifact; no new tuning",
+  "chronological": true,
+  "deterministic_identity": true,
+  "future_data_access_not_introduced": true,
+  "new_strategy_semantics": false,
+  "oos_tuning": false
+}
