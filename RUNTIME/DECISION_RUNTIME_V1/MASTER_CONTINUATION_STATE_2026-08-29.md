@@ -20,9 +20,17 @@ Reuse the existing Market/Market State/MTF, Murphy, Nison, Similarity/Historical
 ## Current truth
 GitHub history already contains a Full Decision Brain event orchestration path, historical event producer, OOS assembler, point-in-time evidence layer, execution adapter, and a decision-boundary fix requiring the full 34 Murphy + 44 Nison evidence to be consumed rather than reduced to one selected row.
 
+## Completed in this continuation
+- Added `RUNTIME/DECISION_RUNTIME_V1/historical_context_memory_pit_adapter_v1.py` on branch `build/decision-runtime-v1`.
+- The adapter is transport/validation only; it cannot generate direction, thresholds, tuning, or trade commands.
+- It filters Historical Context Memory by the same pair/context signature and only accepts candidates strictly earlier than `query_as_of`.
+- It explicitly counts future candidates excluded and self-match rows excluded.
+- Local validation against the supplied Historical Context Memory artifact for `GBPUSD` at `2016-01-08T06:00:00Z` returned PASS with 10 eligible candidates, latest eligible candidate `2016-01-08T04:00:00Z`, 7,456 future rows excluded, and 1 self row excluded.
+- This validation used the existing memory artifact schema and did not alter any trading semantics.
+
 ## Immediate next gate
-Do NOT start a new architecture. Restore/audit the existing Full Brain path and prove ONE real pre-2025 GBPUSD event end-to-end:
-Market/MTF -> full governed Murphy evidence -> full governed Nison evidence -> memory evidence -> TIZ state -> Decision Brain -> Risk -> Trade Plan.
+Do NOT start a new architecture. Use the existing Full Brain path and prove ONE real pre-2025 GBPUSD event end-to-end:
+Market/MTF -> full governed Murphy evidence -> full governed Nison evidence -> PIT memory evidence -> TIZ state -> Decision Brain -> Risk -> Trade Plan.
 
 ## Acceptance
 - one authoritative as_of
