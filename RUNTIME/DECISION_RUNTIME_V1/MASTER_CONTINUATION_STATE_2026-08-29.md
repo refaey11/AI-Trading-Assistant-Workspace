@@ -25,8 +25,8 @@ GitHub history already contains a Full Decision Brain event orchestration path, 
 - The adapter is transport/validation only; it cannot generate direction, thresholds, tuning, or trade commands.
 - It filters Historical Context Memory by the same pair/context signature and only accepts candidates strictly earlier than `query_as_of`.
 - It explicitly counts future candidates excluded and self-match rows excluded.
-- Local validation against the supplied Historical Context Memory artifact for `GBPUSD` at `2016-01-08T06:00:00Z` returned PASS with 10 eligible candidates, latest eligible candidate `2016-01-08T04:00:00Z`, 7,456 future rows excluded, and 1 self row excluded.
-- This validation used the existing memory artifact schema and did not alter any trading semantics.
+- The adapter was recorded against the supplied Historical Context Memory artifact for `GBPUSD` at `2016-01-08T06:00:00Z`; the recorded result is PASS with 10 eligible candidates, latest eligible candidate `2016-01-08T04:00:00Z`, 7,456 future rows excluded, and 1 self row excluded.
+- Added `RUNTIME/DECISION_RUNTIME_V1/full_brain_memory_pit_integration_v1.py` as the minimal wrapper that resolves PIT memory and passes it as `historical_evidence` into the existing Full Brain assembler without changing Decision Brain scoring or creating new trading semantics.
 
 ## Immediate next gate
 Do NOT start a new architecture. Use the existing Full Brain path and prove ONE real pre-2025 GBPUSD event end-to-end:
