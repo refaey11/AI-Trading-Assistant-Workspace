@@ -26,6 +26,9 @@ jobs:
           name: Canonical E2E integration contract test
           command: python BACKTEST/INTEGRATION_CONTRACT_TEST_V1.py
       - run:
+          name: Six-timeframe source adapter unit contracts
+          command: pytest -q BACKTEST/test_six_tf_source_adapter_v1.py BACKTEST/test_real_source_e2e_preflight_v1.py
+      - run:
           name: Compile Python sources
           command: python -m compileall -q BACKTEST compatibility RUNTIME RECOVERED_SOURCES
 
