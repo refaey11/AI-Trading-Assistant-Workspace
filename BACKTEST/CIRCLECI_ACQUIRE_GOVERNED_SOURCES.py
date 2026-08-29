@@ -28,6 +28,18 @@ REQUIRED_BRAIN_MTF_FIELDS = {
     "H4_trend_regime",
     "D1_trend_regime",
 }
+REGIME_FIELDS = tuple(sorted(REQUIRED_BRAIN_MTF_FIELDS - {"timestamp", "mtf_trend_score"}))
+# Existing Decision Brain V1 token vocabulary/representation. This is a
+# compatibility normalization of producer tokens, not new trading logic.
+V1_REGIME_MAP = {
+    "BULL_TREND": 1.0,
+    "BEAR_TREND": -1.0,
+    "TRANSITION": 0.0,
+    "UNKNOWN": 0.0,
+    "BULLISH": 1.0,
+    "BEARISH": -1.0,
+    "NEUTRAL": 0.0,
+}
 
 
 def download(token: str, remote_path: str, output: Path) -> None:
@@ -51,6 +63,22 @@ def download(token: str, remote_path: str, output: Path) -> None:
         raise SystemExit(f"DROPBOX_DOWNLOAD_FAILED path={remote_path} error={exc}") from exc
 
 
+def _normalize_regime(df, field: str, path: Path) -> None:
+    source = df[field].astype("string").str.strip()
+    numeric = pd.to_numeric(df[field], errors="coerce")
+    mapped = source.str.upper().map(V1_REGIME_MAP)
+    unknown = numeric.isna() & mapped.isna()
+    if unknown.any():
+        examples = sorted(source[unknown].dropna().unique().tolist())[:10]
+        raise SystemExit(f"MTF_SOURCE_UNKNOWN_REGIME_TOKEN path={path} field={field} examples={examples}")
+    df[f"{field}_source"] = source
+    numeric = numeric.copy()
+    numeric.loc[numeric.isna()] = mapped.loc[numeric.isna()]
+    if numeric.isna().any():
+        raise SystemExit(f"MTF_SOURCE_INVALID_REGIME_VALUE path={path} field={field}")
+    df[field] = numeric.astype(float)
+
+
 def build_mtf_development_csv(unpacked_root: Path, output: Path) -> None:
     candidates: list[Path] = []
     for year in range(2016, 2025):
@@ -70,11 +98,12 @@ def build_mtf_development_csv(unpacked_root: Path, output: Path) -> None:
         df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True, errors="coerce")
         if df["timestamp"].isna().any():
             raise SystemExit(f"MTF_SOURCE_INVALID_TIMESTAMP path={path}")
-        for field in REQUIRED_BRAIN_MTF_FIELDS - {"timestamp"}:
-            numeric = pd.to_numeric(df[field], errors="coerce")
-            if numeric.isna().any():
-                raise SystemExit(f"MTF_SOURCE_NON_NUMERIC_FIELD path={path} field={field}")
-            df[field] = numeric
+        score = pd.to_numeric(df["mtf_trend_score"], errors="coerce")
+        if score.isna().any():
+            raise SystemExit(f"MTF_SOURCE_NON_NUMERIC_FIELD path={path} field=mtf_trend_score")
+        df["mtf_trend_score"] = score.astype(float)
+        for field in REGIME_FIELDS:
+            _normalize_regime(df, field, path)
         frames.append(df)
 
     combined = pd.concat(frames, ignore_index=True).sort_values("timestamp")
