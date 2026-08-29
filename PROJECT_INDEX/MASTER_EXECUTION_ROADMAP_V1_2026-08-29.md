@@ -21,6 +21,7 @@ The project is NOT considered operational when modules pass individually. A gate
 10. MT5 is the broker/execution boundary.
 11. One canonical Decision Event must carry the integrated result.
 12. Backtest, Paper, Demo and Live must use the same decision runtime semantics.
+13. TIZ is optional when unavailable; never synthesize psychological state from market data. Production behavior must record TIZ as UNVERIFIED when absent.
 
 ## Master architecture
 MARKET DATA -> MARKET SNAPSHOT -> MARKET STATE + MTF -> EVIDENCE ADAPTERS (Murphy, Nison, TIZ, Similarity, Historical Outcome) -> DECISION BRAIN -> HARD GATES -> RISK ENGINE -> TRADE PLAN -> EXECUTION ENGINE -> MT5 -> FILL/POSITION -> RESULT/P&L -> MEMORY + n8n.
@@ -48,12 +49,12 @@ Important: these are 2016 artifact-level results, not the official full-period b
 Evidence: `RUNTIME/DECISION_RUNTIME_V1/CHECKPOINT_2026-08-29_GATE2.md`, `RUNTIME/DECISION_RUNTIME_V1/artifacts/GATE2_2016_REPLAY_SUMMARY.json`.
 
 ## Phase 3 — FULL BRAIN INTEGRATION + TRADE PLAN/RISK
-Goal: route a real event through the recovered Decision Brain, governed Three-Book boundary, authoritative TIZ/Risk evidence, and frozen execution-plan adapter.
-Deliverables: Runtime -> full Decision Brain assembler bridge; fail-closed TIZ/Risk authorization; mechanical Entry/SL/TP/R:R/size contract; integration tests.
-Exit gate: one real pre-2025 snapshot can reach a fully assembled decision event without bypassing the production assembler; any missing authoritative TIZ/Risk producer blocks execution.
-Status: **IN PROGRESS — BRIDGE ADDED (2026-08-29)**
-Evidence: `RUNTIME/DECISION_RUNTIME_V1/full_brain_runtime_bridge_v1.py`, `RUNTIME/DECISION_RUNTIME_V1/test_full_brain_runtime_bridge_v1.py`.
-Known compatibility issue being resolved: the Three-Book evaluator documents TIZ as audit/process context while the existing execution adapter requires a READY/PASS/AVAILABLE TIZ process state. No semantic change is authorized; the bridge currently fails closed until the authoritative contract is resolved.
+Goal: route a real event through the recovered Decision Brain, governed Three-Book boundary, optional TIZ process evidence, authoritative Risk evidence, and mechanical execution-plan adapter.
+Deliverables: Runtime -> full Decision Brain assembler bridge; TIZ optionality encoded without synthetic psychology; Risk hard gate; mechanical Entry/SL/TP/R:R/size contract; integration tests.
+Exit gate: one real pre-2025 snapshot can reach a fully assembled decision event without bypassing the production assembler; missing Risk blocks execution; missing TIZ is explicitly marked unverified and does not create direction.
+Status: **IN PROGRESS — TIZ BOUNDARY ALIGNED (2026-08-29)**
+Evidence: `RUNTIME/DECISION_RUNTIME_V1/full_brain_runtime_bridge_v1.py`, `RUNTIME/DECISION_RUNTIME_V1/execution_runtime_adapter_v2.py`, `RUNTIME/DECISION_RUNTIME_V1/test_full_brain_runtime_bridge_v1.py`.
+TIZ resolution: existing authoritative boundary defines TIZ as process-only/direction-neutral; historical market data cannot manufacture private psychological state. Therefore the runtime records TIZ as verified when explicit process evidence exists and UNVERIFIED when absent, while Risk remains a hard execution gate. Source policy: `03_TIZ/TIZ_RUNTIME_BOUNDARY_RESOLUTION_V2.json`.
 
 ## Phase 4 — UNIFIED BACKTEST
 Goal: evaluate the actual integrated Decision Runtime, not isolated modules.
@@ -102,8 +103,10 @@ The project is operational only when:
 - Created canonical Decision Runtime boundary and contract tests.
 - Closed Gate 1 with a real 2016 GBPUSD integrated event stream.
 - Closed Gate 2 for the available 2016 artifact set after fixing setup-aware deterministic event identity and reconciling 120/120 executable decisions to existing outcomes.
-- Added the canonical Full Brain Runtime bridge and tests; it now fails closed when authoritative TIZ/Risk producers are absent.
-- Next execution gate: resolve the existing TIZ/Execution contract boundary, then run the full 2016–2024 canonical replay using the same runtime semantics, without tuning.
+- Added the canonical Full Brain Runtime bridge and tests.
+- Verified existing TIZ boundary resolution and removed TIZ-as-required-blocker from the Runtime development/OOS execution path; TIZ remains explicitly unverified when absent rather than being synthesized.
+- Added execution runtime adapter V2 so Risk remains hard while TIZ is recorded as verified/unverified.
+- Next execution gate: run the full 2016–2024 canonical replay using the same runtime semantics, without tuning.
 
 ## Anti-loop rule
 No new evaluator, audit, freeze, adapter, or strategy layer may be added unless it directly closes a named gap in this roadmap. After every completed task, record: DONE; VERIFIED BY; ARTIFACT; REMAINING; NEXT SINGLE ACTION.
