@@ -12,7 +12,7 @@ The project is NOT considered operational when modules pass individually. A gate
 1. Reuse existing project knowledge. Do not rebuild source knowledge from scratch.
 2. Murphy = primary technical context/direction.
 3. Nison = confirmation/contradiction only; never creates direction alone.
-4. Trading in the Zone = process/psychology context; never direction generation.
+4. Trading in the Zone = process/psychology context; never direction generation; unavailable TIZ must not be synthetically inferred.
 5. Similarity and historical outcome memory = evidence only; never sole decision maker.
 6. Risk is a hard gate.
 7. 2025 is OOS and must never be tuned with.
@@ -21,71 +21,53 @@ The project is NOT considered operational when modules pass individually. A gate
 10. MT5 is the broker/execution boundary.
 11. One canonical Decision Event must carry the integrated result.
 12. Backtest, Paper, Demo and Live must use the same decision runtime semantics.
-13. TIZ is optional when unavailable; never synthesize psychological state from market data. Production behavior must record TIZ as UNVERIFIED when absent.
+13. TIZ is optional when unavailable; never synthesize psychological state from market data. Production behavior records TIZ as UNVERIFIED when absent.
 
 ## Master architecture
 MARKET DATA -> MARKET SNAPSHOT -> MARKET STATE + MTF -> EVIDENCE ADAPTERS (Murphy, Nison, TIZ, Similarity, Historical Outcome) -> DECISION BRAIN -> HARD GATES -> RISK ENGINE -> TRADE PLAN -> EXECUTION ENGINE -> MT5 -> FILL/POSITION -> RESULT/P&L -> MEMORY + n8n.
 
 ## Phase 0 — FREEZE / PROTECT
-Goal: protect existing intelligence and prevent accidental semantic drift.
-Exit gate: current source/contracts/freeze boundaries documented; integration branch isolated.
 Status: DONE/BASELINE PROTECTED.
 
 ## Phase 1 — CANONICAL CONNECT
-Goal: connect existing modules through one orchestration boundary.
-Deliverables: canonical MarketSnapshot; canonical Evidence objects; one Decision Runtime entry point; compatibility tests for every boundary; no hidden module-to-module dependencies.
-Exit gate: one real snapshot can travel through the full evidence path.
-Status: **PASS — FIRST REAL E2E REPLAY VERIFIED (2026-08-29)**
-Evidence: `RUNTIME/DECISION_RUNTIME_V1/CHECKPOINT_2026-08-29_GATE1.md`, `RUNTIME/DECISION_RUNTIME_V1/artifacts/E2E_2016_MANIFEST.json`.
+Status: PASS — FIRST REAL E2E REPLAY VERIFIED (2026-08-29).
+Evidence: `RUNTIME/DECISION_RUNTIME_V1/CHECKPOINT_2026-08-29_GATE1.md`; `RUNTIME/DECISION_RUNTIME_V1/artifacts/E2E_2016_MANIFEST.json`.
 
 ## Phase 2 — REAL DECISION REPLAY
-Goal: run the integrated chain on real historical GBPUSD data.
-Deliverables: chronological replay; one DecisionEvent per evaluated timestamp/setup; BUY/SELL/NO_TRADE; reason, evidence, gates, provenance; deterministic replay.
-Exit gate: real data produces a coherent integrated event stream and executable events reconcile to existing outcomes.
-Status: **PASS FOR AVAILABLE 2016 ARTIFACTS (2026-08-29)**
+Status: PASS FOR AVAILABLE 2016 ARTIFACTS (2026-08-29).
 Verified: 401 events; 120 EXECUTABLE; 56 CANDIDATE; 225 NO_TRADE; 120/120 executable events matched the existing filtered execution outcome artifact; no unmatched executable events; no duplicate decision IDs after setup-aware identity fix.
 Observed matched-outcome metrics: win rate 56.67%; PF 1.4554; expectancy +0.17286R; total +20.7432R; max DD -11.9262R.
-Important: these are 2016 artifact-level results, not the official full-period baseline or a claim of future/live profitability.
-Evidence: `RUNTIME/DECISION_RUNTIME_V1/CHECKPOINT_2026-08-29_GATE2.md`, `RUNTIME/DECISION_RUNTIME_V1/artifacts/GATE2_2016_REPLAY_SUMMARY.json`.
+These are 2016 artifact-level results, not the official full-period baseline or a claim of future/live profitability.
 
 ## Phase 3 — FULL BRAIN INTEGRATION + TRADE PLAN/RISK
 Goal: route a real event through the recovered Decision Brain, governed Three-Book boundary, optional TIZ process evidence, authoritative Risk evidence, and mechanical execution-plan adapter.
-Deliverables: Runtime -> full Decision Brain assembler bridge; TIZ optionality encoded without synthetic psychology; Risk hard gate; mechanical Entry/SL/TP/R:R/size contract; integration tests.
-Exit gate: one real pre-2025 snapshot can reach a fully assembled decision event without bypassing the production assembler; missing Risk blocks execution; missing TIZ is explicitly marked unverified and does not create direction.
-Status: **IN PROGRESS — TIZ BOUNDARY ALIGNED (2026-08-29)**
-Evidence: `RUNTIME/DECISION_RUNTIME_V1/full_brain_runtime_bridge_v1.py`, `RUNTIME/DECISION_RUNTIME_V1/execution_runtime_adapter_v2.py`, `RUNTIME/DECISION_RUNTIME_V1/test_full_brain_runtime_bridge_v1.py`.
-TIZ resolution: existing authoritative boundary defines TIZ as process-only/direction-neutral; historical market data cannot manufacture private psychological state. Therefore the runtime records TIZ as verified when explicit process evidence exists and UNVERIFIED when absent, while Risk remains a hard execution gate. Source policy: `03_TIZ/TIZ_RUNTIME_BOUNDARY_RESOLUTION_V2.json`.
+Status: IN PROGRESS — TIZ POLICY ALIGNED; MTF INPUT CONTRACT IS THE CURRENT BLOCKER.
+Evidence: `RUNTIME/DECISION_RUNTIME_V1/full_brain_runtime_bridge_v1.py`; `RUNTIME/DECISION_RUNTIME_V1/execution_runtime_adapter_v2.py`; `RUNTIME/DECISION_RUNTIME_V1/GATE3C_FIRST_FULL_BRAIN_RUN_SPEC_V1.md`; `RUNTIME/DECISION_RUNTIME_V1/MTF_BRAIN_INPUT_COMPATIBILITY_AUDIT_2026-08-29.md`.
+TIZ policy: existing authoritative boundary defines TIZ as process-only/direction-neutral; historical market data cannot manufacture private psychological state. Runtime records TIZ as verified when explicit process evidence exists and UNVERIFIED when absent. TIZ is not a blocker for development/OOS evaluation. Risk remains a hard execution gate.
+MTF compatibility blocker: recovered Decision Brain requires six numeric trend-regime fields plus `mtf_trend_score`. Existing Dynamic MTF/Market State artifacts expose categorical context and role bindings, while no source-proven deterministic transformation into these Brain numeric fields has been verified. Similarity V2 metadata proves the 57D index schema exists, but current/query producer lineage remains unproven. Do not invent a numerical transform.
+Exit gate: one real pre-2025 snapshot reaches the recovered Decision Brain + Risk + Trade Plan path without bypass and without synthetic MTF inputs.
 
 ## Phase 4 — UNIFIED BACKTEST
 Goal: evaluate the actual integrated Decision Runtime, not isolated modules.
 Development: 2016–2024. OOS: 2025. No 2025 tuning.
 Metrics: PF, expectancy, total R, max DD, win rate, trade count, losing streak, cost/slippage/ambiguity sensitivity.
-Exit gate: reproducible results + no leakage + correct provenance.
 
 ## Phase 5 — PAPER RUNTIME
-Goal: same Decision Runtime on live market data with simulated execution.
-Exit gate: stable real-time event timing, no lookahead, correct state transitions.
+Same Decision Runtime on live market data with simulated execution.
 
 ## Phase 6 — MT5 DEMO EXECUTION
-Goal: send real demo orders through the execution boundary.
-Deliverables: order submission, order result, fill tracking, position tracking, retry/idempotency handling, broker rejection handling.
-Exit gate: Brain decision and MT5 state reconcile correctly.
+Real demo orders through execution boundary, fill/position tracking, retry/idempotency and broker rejection handling.
 
 ## Phase 7 — RECONCILIATION
-Goal: make broker reality authoritative for execution state.
-Compare Brain intent vs order vs fill vs position vs close vs P&L.
-Exit gate: deterministic reconciliation and safe fail-closed behavior.
+Brain intent vs order vs fill vs position vs close vs P&L; broker reality authoritative for execution state.
 
 ## Phase 8 — n8n OPERATIONS
-Goal: automate scheduling, alerts, monitoring, journaling and reporting.
-n8n responsibilities: triggers, calls to Decision Runtime, alerts/Telegram, monitoring, daily reports, trade journal, failure notifications. It must not replace the Decision Brain.
+Triggers, alerts, monitoring, reports, journaling and failure notifications. n8n does not replace the Decision Brain.
 
 ## Phase 9 — CONTROLLED LIVE
-Goal: controlled real-money deployment only after Backtest -> OOS -> Paper -> Demo -> Reconciliation gates pass.
-Start with conservative risk limits and explicit kill-switches.
+Only after Backtest -> OOS -> Paper -> Demo -> Reconciliation gates pass; conservative risk and kill-switches.
 
 ## Definition of DONE
-The project is operational only when:
 1. One current market snapshot enters the runtime.
 2. All required evidence modules run on that same snapshot/as-of time.
 3. Decision Brain outputs a final decision.
@@ -93,20 +75,19 @@ The project is operational only when:
 5. Trade plan is generated for approved trades.
 6. Execution layer can hand it to MT5.
 7. MT5 outcome is captured and reconciled.
-8. The event is journaled for historical outcome/memory.
+8. Event is journaled for historical outcome/memory.
 9. n8n can monitor the lifecycle.
 
 ## Progress log
 2026-08-29:
-- Confirmed project is not to be rebuilt.
-- Created isolated branch: build/decision-runtime-v1.
-- Created canonical Decision Runtime boundary and contract tests.
+- Protected existing project and created isolated `build/decision-runtime-v1`.
 - Closed Gate 1 with a real 2016 GBPUSD integrated event stream.
-- Closed Gate 2 for the available 2016 artifact set after fixing setup-aware deterministic event identity and reconciling 120/120 executable decisions to existing outcomes.
-- Added the canonical Full Brain Runtime bridge and tests.
-- Verified existing TIZ boundary resolution and removed TIZ-as-required-blocker from the Runtime development/OOS execution path; TIZ remains explicitly unverified when absent rather than being synthesized.
-- Added execution runtime adapter V2 so Risk remains hard while TIZ is recorded as verified/unverified.
-- Next execution gate: run the full 2016–2024 canonical replay using the same runtime semantics, without tuning.
+- Closed Gate 2 for available 2016 artifacts after deterministic setup-aware identity fix and 120/120 reconciliation.
+- Added canonical Full Brain bridge.
+- Resolved TIZ integration policy: optional/unverified when unavailable in development/OOS; no synthetic psychology; Risk remains hard gate.
+- Added execution runtime adapter V2 to preserve 0.75 ATR / 2R mechanics while recording TIZ verified/unverified.
+- Reopened the pre-existing MTF -> Decision Brain compatibility gap as the current named blocker. The project contains a completed Feature Engineering V2 artifact and a 57D Similarity V2 index schema, but current/query producer lineage for the exact Brain inputs is not proven. No numerical mapping will be invented.
+- Next single action: recover the exact existing 57D/current-vector producer or serialized feature artifact and wire its already-produced fields into the Brain without inventing a transform.
 
 ## Anti-loop rule
 No new evaluator, audit, freeze, adapter, or strategy layer may be added unless it directly closes a named gap in this roadmap. After every completed task, record: DONE; VERIFIED BY; ARTIFACT; REMAINING; NEXT SINGLE ACTION.
