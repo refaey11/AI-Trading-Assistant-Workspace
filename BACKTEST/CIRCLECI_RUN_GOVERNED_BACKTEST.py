@@ -5,7 +5,7 @@ import subprocess
 from pathlib import Path
 
 ROOT = Path.cwd()
-if not (ROOT / "BACKTEST" / "GOVERNED_CANONICAL_RUNNER_V3.py").exists():
+if not (ROOT / "BACKTEST" / "GOVERNED_CANONICAL_RUNNER_V4.py").exists():
     ROOT = Path(__file__).resolve().parents[1]
 
 env = os.environ.copy()
@@ -13,7 +13,7 @@ env["PYTHONPATH"] = os.pathsep.join(filter(None, [str(ROOT), env.get("PYTHONPATH
 
 cmd = [
     "python",
-    str(ROOT / "BACKTEST" / "GOVERNED_CANONICAL_RUNNER_V3.py"),
+    str(ROOT / "BACKTEST" / "GOVERNED_CANONICAL_RUNNER_V4.py"),
     "--h1", os.environ["H1"],
     "--market", str(ROOT / "artifacts/raw/market_state.csv"),
     "--mtf", os.environ["MTF"],
