@@ -25,5 +25,6 @@ cmd = [
     "--retrieval", os.environ["RET_DIR"],
     "--output-dir", str(ROOT / "artifacts/decision_brain_backtest_2016_2024"),
     "--mtf-source-report", os.environ["MTF_SOURCE_REPORT"],
+    "--mtf-full-dir", os.environ["MTF_FULL_DIR"],
 ]
 subprocess.run(cmd, check=True, env=env)
