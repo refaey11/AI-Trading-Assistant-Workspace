@@ -67,15 +67,14 @@ def _normalize_regime(df: pd.DataFrame, field: str, path: Path) -> None:
     source = df[field].astype("string").str.strip()
     numeric = pd.to_numeric(df[field], errors="coerce")
     mapped = source.str.upper().map(V1_REGIME_MAP)
-    unknown = numeric.isna() & mapped.isna()
+    missing = source.isna() | source.eq("")
+    unknown = numeric.isna() & mapped.isna() & ~missing
     if unknown.any():
         examples = sorted(source[unknown].dropna().unique().tolist())[:10]
         raise SystemExit(f"MTF_SOURCE_UNKNOWN_REGIME_TOKEN path={path} field={field} examples={examples}")
     df[f"{field}_source"] = source
     numeric = numeric.copy()
     numeric.loc[numeric.isna()] = mapped.loc[numeric.isna()]
-    if numeric.isna().any():
-        raise SystemExit(f"MTF_SOURCE_INVALID_REGIME_VALUE path={path} field={field}")
     df[field] = numeric.astype(float)
 
 
@@ -88,6 +87,7 @@ def build_mtf_development_csv(unpacked_root: Path, output: Path) -> None:
         candidates.append(matches[0])
 
     frames: list[pd.DataFrame] = []
+    skipped_rows = 0
     for path in candidates:
         df = pd.read_csv(path, low_memory=False)
         missing = sorted(REQUIRED_BRAIN_MTF_FIELDS - set(df.columns))
@@ -102,6 +102,14 @@ def build_mtf_development_csv(unpacked_root: Path, output: Path) -> None:
         df["mtf_trend_score"] = score.astype(float)
         for field in REGIME_FIELDS:
             _normalize_regime(df, field, path)
+        valid = df[list(REGIME_FIELDS)].notna().all(axis=1)
+        skipped = int((~valid).sum())
+        if skipped:
+            skipped_rows += skipped
+            print(f"MTF_SOURCE_INCOMPLETE_ROWS path={path} skipped={skipped}")
+            df = df.loc[valid].copy()
+        if df.empty:
+            raise SystemExit(f"MTF_SOURCE_EMPTY_VALID_ROWS path={path}")
         frames.append(df)
 
     combined = pd.concat(frames, ignore_index=True).sort_values("timestamp")
@@ -113,7 +121,7 @@ def build_mtf_development_csv(unpacked_root: Path, output: Path) -> None:
     output.parent.mkdir(parents=True, exist_ok=True)
     combined.to_csv(output, index=False)
     print(
-        f"MTF_BRAIN_SOURCE_READY rows={len(combined)} "
+        f"MTF_BRAIN_SOURCE_READY rows={len(combined)} skipped_incomplete_rows={skipped_rows} "
         f"from={combined.timestamp.min().isoformat()} to={combined.timestamp.max().isoformat()}"
     )
 
