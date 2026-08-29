@@ -67,14 +67,15 @@ def main() -> int:
 
     paths = {
         "H1": next((p for p in (unpacked / "h1").rglob("GBPUSD_H1_2016_2025_MASTER.csv")), None),
+        "MARKET_STATE": raw / "market_state.csv",
         "MURPHY": next((p for p in (unpacked / "murphy").rglob("MURPHY_2016_2024_FULL_EVIDENCE.csv")), None),
         "MTF": next((p for p in (unpacked / "mtf").rglob("GBPUSD_MTF_H4_H1.csv")), None),
         "HC": next((p for p in (unpacked / "historical_context").rglob("HISTORICAL_CONTEXT_MEMORY.csv")), None),
         "HO": next((p for p in (unpacked / "historical_outcome").rglob("HISTORICAL_OUTCOMES.csv")), None),
     }
     for key, value in paths.items():
-        if value is None:
-            raise SystemExit(f"MISSING {key} CSV")
+        if not value.exists():
+            raise SystemExit(f"MISSING {key} CSV: {value}")
         print(f"FOUND {key}={value}")
 
     with Path(os.environ.get("BASH_ENV", "/tmp/bash_env")).open("a", encoding="utf-8") as env:
