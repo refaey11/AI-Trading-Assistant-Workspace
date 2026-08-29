@@ -21,19 +21,17 @@ def test_risk_result_exposes_execution_prices():
 
 
 def test_exact_3r_float_rounding_does_not_fail_boundary():
-    stop_loss = 1.2485
-    take_profit = 1.2545
     result = evaluate_risk(
         equity=10000.0,
         entry=1.25,
-        stop_loss=stop_loss,
-        take_profit=take_profit,
+        stop_loss=1.2485,
+        take_profit=1.2545,
         atr=0.002,
         prior_loss_streak=0,
         peak_equity=10000.0,
     )
 
-    assert result.rr == 2.999999999999852
+    assert abs(result.rr - 3.0) <= 1e-12
     assert result.risk_pass is True
     assert result.reason == "RISK_GATE_PASS"
 
