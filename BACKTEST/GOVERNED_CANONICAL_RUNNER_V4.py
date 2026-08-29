@@ -5,6 +5,7 @@ from __future__ import annotations
 Compatibility repair only:
 - preserves multiple Murphy/Nison rule rows sharing a timestamp;
 - prevents rule-level evidence from being collapsed before aggregation;
+- maps authoritative MTF field names without changing their meaning;
 - preserves the existing Decision Brain V1, Handoff, Risk and TIZ boundaries;
 - keeps 2025 excluded from development consumption.
 """
@@ -16,6 +17,7 @@ import pandas as pd
 from BACKTEST import GOVERNED_CANONICAL_RUNNER_V3 as base
 
 _original_read_csv = base.read_csv
+_original_build_row = base.build_row
 
 
 def read_csv(path: Path, required: set[str], chunksize: int | None = None):
@@ -46,7 +48,23 @@ def read_csv(path: Path, required: set[str], chunksize: int | None = None):
     return pd.concat(parts, ignore_index=True).sort_values(["timestamp", *sorted((required - {"timestamp"}))]).reset_index(drop=True)
 
 
+def build_row(market, mtf):
+    """Normalize authoritative MTF field names into the V3 adapter names.
+
+    This is a field-name compatibility mapping only. It does not infer a new
+    score or synthesize any timeframe that the source contract does not have.
+    """
+    market2 = dict(market or {})
+    mtf2 = dict(mtf or {})
+    if "trend" not in market2 and "H1_trend" in market2:
+        market2["trend"] = market2["H1_trend"]
+    if "h4_trend" not in mtf2 and "H4_trend" in mtf2:
+        mtf2["h4_trend"] = mtf2["H4_trend"]
+    return _original_build_row(market2, mtf2)
+
+
 base.read_csv = read_csv
+base.build_row = build_row
 
 
 def main():
@@ -58,7 +76,6 @@ def main():
     ):
         p.add_argument("--" + name, required=True, type=Path)
     return base.run(p.parse_args())
-
 
 if __name__ == "__main__":
     main()
