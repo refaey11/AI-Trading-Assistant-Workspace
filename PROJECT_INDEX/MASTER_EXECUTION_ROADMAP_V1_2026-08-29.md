@@ -47,11 +47,13 @@ Observed matched-outcome metrics: win rate 56.67%; PF 1.4554; expectancy +0.1728
 Important: these are 2016 artifact-level results, not the official full-period baseline or a claim of future/live profitability.
 Evidence: `RUNTIME/DECISION_RUNTIME_V1/CHECKPOINT_2026-08-29_GATE2.md`, `RUNTIME/DECISION_RUNTIME_V1/artifacts/GATE2_2016_REPLAY_SUMMARY.json`.
 
-## Phase 3 — TRADE PLAN + RISK
-Goal: convert approved decisions into mechanical trade plans.
-Deliverables: entry, stop loss, take profit, R:R, position size, risk gate, execution eligibility.
-Exit gate: every executable decision has a complete risk-approved plan.
-Status: NEXT.
+## Phase 3 — FULL BRAIN INTEGRATION + TRADE PLAN/RISK
+Goal: route a real event through the recovered Decision Brain, governed Three-Book boundary, authoritative TIZ/Risk evidence, and frozen execution-plan adapter.
+Deliverables: Runtime -> full Decision Brain assembler bridge; fail-closed TIZ/Risk authorization; mechanical Entry/SL/TP/R:R/size contract; integration tests.
+Exit gate: one real pre-2025 snapshot can reach a fully assembled decision event without bypassing the production assembler; any missing authoritative TIZ/Risk producer blocks execution.
+Status: **IN PROGRESS — BRIDGE ADDED (2026-08-29)**
+Evidence: `RUNTIME/DECISION_RUNTIME_V1/full_brain_runtime_bridge_v1.py`, `RUNTIME/DECISION_RUNTIME_V1/test_full_brain_runtime_bridge_v1.py`.
+Known compatibility issue being resolved: the Three-Book evaluator documents TIZ as audit/process context while the existing execution adapter requires a READY/PASS/AVAILABLE TIZ process state. No semantic change is authorized; the bridge currently fails closed until the authoritative contract is resolved.
 
 ## Phase 4 — UNIFIED BACKTEST
 Goal: evaluate the actual integrated Decision Runtime, not isolated modules.
@@ -100,7 +102,8 @@ The project is operational only when:
 - Created canonical Decision Runtime boundary and contract tests.
 - Closed Gate 1 with a real 2016 GBPUSD integrated event stream.
 - Closed Gate 2 for the available 2016 artifact set after fixing setup-aware deterministic event identity and reconciling 120/120 executable decisions to existing outcomes.
-- Next execution gate: build the full 2016–2024 canonical replay using the same runtime semantics, without tuning.
+- Added the canonical Full Brain Runtime bridge and tests; it now fails closed when authoritative TIZ/Risk producers are absent.
+- Next execution gate: resolve the existing TIZ/Execution contract boundary, then run the full 2016–2024 canonical replay using the same runtime semantics, without tuning.
 
 ## Anti-loop rule
 No new evaluator, audit, freeze, adapter, or strategy layer may be added unless it directly closes a named gap in this roadmap. After every completed task, record: DONE; VERIFIED BY; ARTIFACT; REMAINING; NEXT SINGLE ACTION.
