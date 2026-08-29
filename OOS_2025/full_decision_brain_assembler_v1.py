@@ -11,7 +11,7 @@ from typing import Any, Mapping
 
 from compatibility.decision_brain_v1_handoff_adapter import assess_with_governance
 from evaluation.three_book_decision_evaluator_v1 import evaluate_three_book_decision
-from OOS_2025.execution_oos_adapter_v1 import build_execution_plan
+from OOS_2025.execution_oos_compatibility_v1 import build_execution_plan
 
 
 def assemble_decision_event(
@@ -69,6 +69,7 @@ def assemble_decision_event(
         "atr": atr,
         "risk_pass": True,
         "tiz_process_state": tiz_evidence.get("process_state") or tiz_evidence.get("process_gate") or tiz_evidence.get("status"),
+        "mode": mode,
     })
     if execution_plan.get("status") != "EXECUTABLE":
         return {"status": "NOT_EXECUTABLE", "decision": decision, "governance": governance, "execution_plan": execution_plan}
