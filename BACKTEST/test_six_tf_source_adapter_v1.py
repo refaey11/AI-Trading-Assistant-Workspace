@@ -30,7 +30,8 @@ def test_discovery_requires_real_csv_content(tmp_path: Path) -> None:
     for tf in SIX_TF:
         _write_ohlc(tmp_path / f"GBPUSD_{tf}_DATA.csv", ["2016-01-04T00:00:00Z", "2016-01-04T00:05:00Z"], tf)
 
-    by_tf, _ = discover(tmp_path, max_rows=10)
+    by_tf, _, out_of_scope = discover(tmp_path, max_rows=10)
+    assert out_of_scope == []
     assert all(by_tf[tf] for tf in SIX_TF)
     assert sorted(by_tf) == sorted(SIX_TF)
     for tf in SIX_TF:
@@ -38,16 +39,26 @@ def test_discovery_requires_real_csv_content(tmp_path: Path) -> None:
         assert by_tf[tf][0]["has_2025_sample"] is False
 
 
-def test_duplicate_timeframe_is_visible(tmp_path: Path) -> None:
+def test_noncanonical_symbol_is_out_of_scope(tmp_path: Path) -> None:
+    for tf in ("M5",):
+        _write_ohlc(tmp_path / f"EURUSD_{tf}_DATA.csv", ["2016-01-04T00:00:00Z", "2016-01-04T00:05:00Z"], tf)
+
+    by_tf, _, out_of_scope = discover(tmp_path, max_rows=10)
+    assert by_tf["M5"] == []
+    assert len(out_of_scope) == 1
+
+
+def test_duplicate_canonical_timeframe_is_visible(tmp_path: Path) -> None:
     _write_ohlc(tmp_path / "GBPUSD_M5_A.csv", ["2016-01-04T00:00:00Z", "2016-01-04T00:05:00Z"], "M5")
     _write_ohlc(tmp_path / "GBPUSD_M5_B.csv", ["2016-01-04T00:00:00Z", "2016-01-04T00:05:00Z"], "M5")
-    by_tf, _ = discover(tmp_path, max_rows=10)
+    by_tf, _, out_of_scope = discover(tmp_path, max_rows=10)
+    assert out_of_scope == []
     assert len(by_tf["M5"]) == 2
 
 
 def test_2025_is_detected_not_relabelled(tmp_path: Path) -> None:
     _write_ohlc(tmp_path / "GBPUSD_M5_DATA.csv", ["2025-01-02T00:00:00Z", "2025-01-02T00:05:00Z"], "M5")
-    by_tf, _ = discover(tmp_path, max_rows=10)
+    by_tf, _, _ = discover(tmp_path, max_rows=10)
     assert by_tf["M5"][0]["has_2025_sample"] is True
 
 
