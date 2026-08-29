@@ -5,9 +5,10 @@ from __future__ import annotations
 The existing V3 runner remains the execution core. This wrapper adds only the
 missing integration boundary: it loads the canonical native M5/M15/M30/H1/H4/D1
 source files, performs point-in-time joins onto the H1 event clock, invokes the
-existing Dynamic MTF resolver + binder, and records their result. No trend,
-setup, confirmation, SL/TP, ATR, risk, or trade decision is inferred here.
-2025 remains excluded from development consumption.
+existing Dynamic MTF resolver + binder, validates the authoritative TIZ process
+boundary, and records their results. No trend, setup, confirmation, SL/TP, ATR,
+risk, or trade decision is inferred here. 2025 remains excluded from development
+consumption.
 """
 
 import argparse
@@ -28,6 +29,8 @@ _original_brain_row = base.brain_row
 DYNAMIC_MTF_BY_TIMESTAMP: dict[str, dict[str, Any]] = {}
 MTF_SOURCE_REPORT: Path | None = None
 NATIVE_MTF_FRAME: pd.DataFrame | None = None
+TIZ_BOUNDARY_MARKER = "TIZ_RUNTIME_BOUNDARY_RESOLUTION_V2"
+TIZ_BOUNDARY_PATH = Path(__file__).resolve().parents[1] / "03_TIZ/TIZ_RUNTIME_BOUNDARY_RESOLUTION_V2.json"
 
 _ALLOWED_NATIVE_FIELDS = (
     "trend",
@@ -93,6 +96,23 @@ def _load_source_report(path: Path) -> dict[str, Any]:
     return data
 
 
+def _validate_tiz_boundary() -> dict[str, Any]:
+    if not TIZ_BOUNDARY_PATH.exists():
+        raise ValueError(f"{TIZ_BOUNDARY_MARKER} missing")
+    data = json.loads(TIZ_BOUNDARY_PATH.read_text(encoding="utf-8"))
+    required = {
+        "status": "AUTHORITATIVE_BOUNDARY",
+        "role": "process_only",
+        "direction": "NEUTRAL",
+    }
+    for key, expected in required.items():
+        if data.get(key) != expected:
+            raise ValueError(f"TIZ boundary violation {key}={data.get(key)!r} expected={expected!r}")
+    if data.get("producer_rules", {}).get("no_direction_generation") is not True:
+        raise ValueError("TIZ boundary must prohibit direction generation")
+    return {"status": data["status"], "role": data["role"], "direction": data["direction"]}
+
+
 def _timestamp_series(frame: pd.DataFrame) -> pd.Series:
     lower = {str(c).strip().lower(): c for c in frame.columns}
     for name in ("timestamp", "datetime"):
@@ -116,7 +136,6 @@ def _explicit_bool(value: Any) -> bool | None:
 
 
 def _load_native_six_tf_frame(root: Path, h1_path: Path) -> pd.DataFrame:
-    # The adapter first proves exactly one native source file for each TF.
     by_tf, _ = discover(root, max_rows=200)
     missing = [tf for tf in SIX_TF if not by_tf[tf]]
     ambiguous = {tf: len(by_tf[tf]) for tf in SIX_TF if len(by_tf[tf]) != 1}
@@ -285,6 +304,7 @@ def _apply_dynamic_gate(output_dir: Path) -> dict[str, Any]:
         "dynamic_mtf_status_counts": {str(k): int(v) for k, v in counts.items()},
         "trade_allowed_after_dynamic_mtf_gate": int(events["trade_allowed"].sum()) if len(events) else 0,
         "native_six_tf_source_report": str(MTF_SOURCE_REPORT) if MTF_SOURCE_REPORT else None,
+        "tiz_boundary": str(TIZ_BOUNDARY_PATH),
         "2025_locked": bool((events["timestamp"].dt.year == 2025).sum() == 0),
         "governance": {
             "dynamic_mtf_is_not_direction_generator": True,
@@ -310,6 +330,7 @@ def main():
 
     MTF_SOURCE_REPORT = args.mtf_source_report
     _load_source_report(MTF_SOURCE_REPORT)
+    _validate_tiz_boundary()
     NATIVE_MTF_FRAME = _load_native_six_tf_frame(args.mtf_full_dir, args.h1)
     result = base.run(args)
     gate_report = _apply_dynamic_gate(args.output_dir)
