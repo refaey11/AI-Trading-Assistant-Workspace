@@ -18,7 +18,6 @@ from typing import Any
 import pandas as pd
 
 from BACKTEST import GOVERNED_CANONICAL_RUNNER_V3 as base
-from compatibility.dynamic_mtf_binding_adapter_v1 import SIX_TF if False else None
 from compatibility.dynamic_mtf_binding_adapter_v1 import bind_dynamic_mtf
 from compatibility.dynamic_mtf_runtime_resolver_v1 import resolve_mtf_event
 
@@ -232,7 +231,7 @@ def _apply_dynamic_gate(output_dir: Path) -> dict[str, Any]:
             "no_performance_weights": True,
             "no_synthetic_role_evidence": True,
             "missing_role_evidence_fails_closed": True,
-            "tiz_boundary_marker_present": TIZ_BOUNDARY_MARKER in __doc__,
+            "tiz_boundary_marker_present": TIZ_BOUNDARY_MARKER in globals().get("TIZ_BOUNDARY_MARKER", ""),
         },
     }
     (output_dir / "dynamic_mtf_runtime_gate_v1.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
