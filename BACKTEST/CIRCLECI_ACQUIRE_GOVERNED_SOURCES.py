@@ -5,6 +5,7 @@ import os
 import urllib.request
 from pathlib import Path
 import zipfile
+import pandas as pd
 
 FILES = {
     "h1.zip": "/New 8/GBPUSD_H1_2016_2025_MASTER.zip",
@@ -86,8 +87,6 @@ def build_mtf_development_csv(unpacked_root: Path, output: Path) -> None:
         if not matches:
             raise SystemExit(f"MISSING_MTF_ANNUAL_SOURCE year={year}")
         candidates.append(matches[0])
-
-    import pandas as pd
 
     frames: list[pd.DataFrame] = []
     for path in candidates:
