@@ -1,22 +1,13 @@
 from dataclasses import dataclass
 from typing import Optional
-import math
 
-# Preserved from the existing Risk Engine V1 research policy where compatible.
+from risk_engine.risk_execution_runtime_v1 import RiskRequest, evaluate_risk as evaluate_risk_runtime
+
 BASE_RISK_PCT = 0.005
 AFTER_TWO_LOSSES_RISK_PCT = 0.0025
 MAX_RISK_PCT = 0.015
 MIN_STOP_ATR = 0.5
 MAX_STOP_ATR = 4.0
-DRAWDOWN_BREAKER_PCT = 0.05
-
-# Reconciled from the existing frozen execution contract:
-# the recovered execution adapter explicitly derives a 2R target.
-# The recovered Risk Engine V1 research prototype itself uses 1.5R, but is
-# documented as research-only and is not the current execution target.
-CURRENT_CANONICAL_MIN_RR = 2.0
-RR_ABS_TOLERANCE = 1e-12
-RR_REL_TOLERANCE = 1e-12
 
 
 @dataclass(frozen=True)
@@ -41,13 +32,15 @@ def evaluate_risk(
     prior_loss_streak: int,
     peak_equity: float,
     risk_budget_pct: Optional[float] = None,
+    stop_mode: str = "structure",
 ) -> RiskResult:
-    """Validate the existing hard-gate contract without inventing SL/TP semantics.
+    """Thin compatibility adapter over the recovered Risk Engine runtime.
 
-    Numeric SL/TP/ATR must be supplied by the upstream execution component.
+    No RR minimum is invented here. The recovered runtime validates the existing
+    hard gates and consumes upstream stop/target distances. RR is returned only
+    as audit information.
     """
-    if equity <= 0 or peak_equity <= 0 or entry <= 0:
-        return RiskResult(False, 0.0, None, None, None, "INVALID_EQUITY_OR_ENTRY")
+    del peak_equity  # Drawdown is tracked elsewhere; the recovered runtime does not halt on it.
 
     risk_pct = (
         risk_budget_pct
@@ -57,45 +50,36 @@ def evaluate_risk(
     if risk_pct <= 0 or risk_pct > MAX_RISK_PCT:
         return RiskResult(False, 0.0, None, None, None, "RISK_BUDGET_INVALID", stop_loss, take_profit)
 
-    drawdown = max(0.0, (peak_equity - equity) / peak_equity)
-    if drawdown >= DRAWDOWN_BREAKER_PCT:
-        return RiskResult(False, risk_pct, None, None, None, "DRAWDOWN_CIRCUIT_BREAKER", stop_loss, take_profit)
-
     if stop_loss is None or take_profit is None or atr is None or atr <= 0:
         return RiskResult(False, risk_pct, None, None, None, "MISSING_EXECUTION_INPUT", stop_loss, take_profit)
 
     stop_distance = abs(entry - stop_loss)
+    target_distance = abs(take_profit - entry)
     if stop_distance <= 0:
         return RiskResult(False, risk_pct, stop_distance, None, None, "NON_POSITIVE_STOP_DISTANCE", stop_loss, take_profit)
 
-    stop_atr = stop_distance / atr
-    if stop_atr < MIN_STOP_ATR or stop_atr > MAX_STOP_ATR:
-        return RiskResult(False, risk_pct, stop_distance, None, None, "STOP_DISTANCE_OUT_OF_RANGE", stop_loss, take_profit)
-
-    target_distance = abs(take_profit - entry)
     rr = target_distance / stop_distance
-    rr_ok = math.isclose(rr, CURRENT_CANONICAL_MIN_RR, rel_tol=RR_REL_TOLERANCE, abs_tol=RR_ABS_TOLERANCE) or rr > CURRENT_CANONICAL_MIN_RR
-    if not rr_ok:
-        return RiskResult(
-            False,
-            risk_pct,
-            stop_distance,
-            rr,
-            None,
-            "RR_BELOW_CURRENT_CANONICAL_MINIMUM",
-            stop_loss,
-            take_profit,
-        )
+    runtime_result = evaluate_risk_runtime(
+        RiskRequest(
+            equity=equity,
+            risk_percent=risk_pct,
+            entry_price=entry,
+            stop_distance=stop_distance,
+            take_profit_distance=target_distance,
+            stop_mode=stop_mode,
+            risk_budget_locked=True,
+        ),
+        "BUY" if take_profit >= entry else "SELL",
+        atr,
+    )
 
-    risk_money = equity * risk_pct
-    position_size = risk_money / stop_distance
     return RiskResult(
-        True,
-        risk_pct,
-        stop_distance,
-        rr,
-        position_size,
-        "RISK_GATE_PASS",
-        stop_loss,
-        take_profit,
+        risk_pass=runtime_result.risk_pass,
+        risk_percent=risk_pct,
+        stop_distance=stop_distance,
+        rr=rr,
+        position_size=runtime_result.position_size,
+        reason=("RISK_GATE_PASS" if runtime_result.risk_pass else runtime_result.reason),
+        stop_loss=runtime_result.stop_loss,
+        take_profit=runtime_result.take_profit,
     )
