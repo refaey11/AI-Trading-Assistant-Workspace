@@ -39,15 +39,12 @@ jobs:
         with:
           ref: gate3c-single-event-e2e-v1
           fetch-depth: 1
-
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-
       - name: Install dependencies
         run: python -m pip install --upgrade pip pandas pytest
-
       - name: Verify target is 2016-2024
         env:
           EVENT_TS: ${{ inputs.timestamp }}
@@ -60,7 +57,6 @@ jobs:
               raise SystemExit("FAIL_CLOSED: event must be inside 2016-2024")
           print(ts.isoformat())
           PY
-
       - name: Acquire one-event source slices
         env:
           DROPBOX_ACCESS_TOKEN: ${{ secrets.DROPBOX_ACCESS_TOKEN }}
@@ -92,7 +88,7 @@ jobs:
           import pandas as pd
           ts=pd.Timestamp(os.environ['EVENT_TS'], tz='UTC')
           root=Path('/tmp/gate3c')
-          def filt(src,dst):
+          def exact_filt(src,dst):
               df=pd.read_csv(src)
               if 'timestamp' not in df.columns:
                   raise SystemExit(f'BLOCKED_TIMESTAMP_COLUMN_MISSING:{src}')
@@ -101,13 +97,23 @@ jobs:
               if len(part) != 1:
                   raise SystemExit(f'BLOCKED_EVENT_ROW_COUNT:{src}:expected=1:observed={len(part)}:target={ts.isoformat()}')
               part.to_csv(dst,index=False)
-          filt(root/'source'/'nison.csv',root/'event_nison.csv')
-          filt(root/'source'/'market_state.csv',root/'event_context.csv')
+          def nison_filt(src,dst):
+              df=pd.read_csv(src)
+              if 'timestamp' not in df.columns:
+                  raise SystemExit(f'BLOCKED_TIMESTAMP_COLUMN_MISSING:{src}')
+              parsed=pd.to_datetime(df['timestamp'], utc=True, errors='coerce')
+              part=df.loc[parsed.eq(ts)].copy()
+              if len(part) == 0:
+                  part=df.loc[parsed.dt.date.eq(ts.date())].copy()
+              if len(part) != 1:
+                  raise SystemExit(f'BLOCKED_EVENT_ROW_COUNT:{src}:expected=1:observed={len(part)}:target_date={ts.date().isoformat()}')
+              part.to_csv(dst,index=False)
+          nison_filt(root/'source'/'nison.csv',root/'event_nison.csv')
+          exact_filt(root/'source'/'market_state.csv',root/'event_context.csv')
           h=list((root/'unpacked'/'h1').rglob('GBPUSD_H1_2016_2025_MASTER.csv'))
           if not h: raise SystemExit('BLOCKED_H1_MASTER_CSV_NOT_FOUND')
-          filt(h[0],root/'event_h1.csv')
+          exact_filt(h[0],root/'event_h1.csv')
           PY
-
       - name: Build authoritative risk evidence
         env:
           EVENT_TS: ${{ inputs.timestamp }}
@@ -115,43 +121,18 @@ jobs:
           PEAK_EQUITY: ${{ inputs.peak_equity }}
           PRIOR_LOSS_STREAK: ${{ inputs.prior_loss_streak }}
         run: |
-          python OOS_2025/build_single_event_risk_evidence_v1.py \
-            --timestamp "$EVENT_TS" \
-            --h1 /tmp/gate3c/event_h1.csv \
-            --market-state /tmp/gate3c/event_context.csv \
-            --murphy-root /tmp/gate3c/unpacked/murphy \
-            --output /tmp/gate3c/unpacked/retrieval/gate3c_risk_evidence.csv \
-            --equity "$EQUITY" \
-            --peak-equity "$PEAK_EQUITY" \
-            --prior-loss-streak "$PRIOR_LOSS_STREAK"
-
+          python OOS_2025/build_single_event_risk_evidence_v1.py --timestamp "$EVENT_TS" --h1 /tmp/gate3c/event_h1.csv --market-state /tmp/gate3c/event_context.csv --murphy-root /tmp/gate3c/unpacked/murphy --output /tmp/gate3c/unpacked/retrieval/gate3c_risk_evidence.csv --equity "$EQUITY" --peak-equity "$PEAK_EQUITY" --prior-loss-streak "$PRIOR_LOSS_STREAK"
       - name: Build canonical event
         env:
           EVENT_TS: ${{ inputs.timestamp }}
         run: |
-          python tools/gate3c_build_single_event_bundle_v1.py \
-            --timestamp "$EVENT_TS" \
-            --h1 /tmp/gate3c/event_h1.csv \
-            --market-state /tmp/gate3c/event_context.csv \
-            --nison /tmp/gate3c/event_nison.csv \
-            --murphy-root /tmp/gate3c/unpacked/murphy \
-            --mtf-root /tmp/gate3c/unpacked/mtf \
-            --historical-context-root /tmp/gate3c/unpacked/hc \
-            --historical-outcome-root /tmp/gate3c/unpacked/ho \
-            --similarity-root /tmp/gate3c/unpacked/similarity \
-            --retrieval-root /tmp/gate3c/unpacked/retrieval \
-            --output /tmp/gate3c/canonical_event.json
-
+          python tools/gate3c_build_single_event_bundle_v1.py --timestamp "$EVENT_TS" --h1 /tmp/gate3c/event_h1.csv --market-state /tmp/gate3c/event_context.csv --nison /tmp/gate3c/event_nison.csv --murphy-root /tmp/gate3c/unpacked/murphy --mtf-root /tmp/gate3c/unpacked/mtf --historical-context-root /tmp/gate3c/unpacked/hc --historical-outcome-root /tmp/gate3c/unpacked/ho --similarity-root /tmp/gate3c/unpacked/similarity --retrieval-root /tmp/gate3c/unpacked/retrieval --output /tmp/gate3c/canonical_event.json
       - name: Run single real-event E2E
         run: |
-          python RUNTIME/DECISION_RUNTIME_V1/gate3c_single_event_e2e_v1.py \
-            --event /tmp/gate3c/canonical_event.json \
-            --output /tmp/gate3c/gate3c_result.json
-
+          python RUNTIME/DECISION_RUNTIME_V1/gate3c_single_event_e2e_v1.py --event /tmp/gate3c/canonical_event.json --output /tmp/gate3c/gate3c_result.json
       - name: Print result
         if: always()
         run: cat /tmp/gate3c/gate3c_result.json 2>/dev/null || true
-
       - name: Upload one-event result
         if: always()
         uses: actions/upload-artifact@v4
