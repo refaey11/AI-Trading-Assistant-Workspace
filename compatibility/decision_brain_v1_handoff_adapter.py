@@ -91,7 +91,13 @@ def assess_with_governance(
     nison = dict(nison_evidence or {})
 
     tiz_gate = _normalize_gate(tiz.get("process_gate") or tiz.get("status"))
-    risk_gate = _normalize_gate(risk.get("risk_status") or risk.get("status"))
+    # Authoritative risk evidence is expressed by risk_pass in the Gate 3C
+    # canonical contract. Prefer that field over legacy status labels when it
+    # is present so a true risk_pass cannot be downgraded to NOT_EVALUABLE.
+    if "risk_pass" in risk:
+        risk_gate = "PASS" if risk.get("risk_pass") is True else "FAIL"
+    else:
+        risk_gate = _normalize_gate(risk.get("risk_status") or risk.get("status"))
     nison_confirmation = str(nison.get("confirmation") or "ABSENT").upper()
     nison_contradiction = bool(nison.get("contradiction", False))
 
