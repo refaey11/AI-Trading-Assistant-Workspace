@@ -1,0 +1,1 @@
+MTF repair: pandas is now imported at module scope in CIRCLECI_ACQUIRE_GOVERNED_SOURCES.py so _normalize_regime can access pd during source-backed normalization.
