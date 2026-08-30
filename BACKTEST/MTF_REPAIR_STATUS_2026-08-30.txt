@@ -1,0 +1,3 @@
+Repair branch created: fix/mtf-import-2026-08-30
+Target: gate3c-preflight-2026-08-30
+Change: module-scope pandas import for MTF regime normalization.
