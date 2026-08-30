@@ -49,7 +49,11 @@ def read_rows_at(path: Path, ts: pd.Timestamp, *, rule_col: str | None = None, e
     df = pd.read_csv(path)
     if "timestamp" not in df.columns:
         raise ValueError(f"{path}: missing timestamp")
-    df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True, errors="coerce")
+    # Source packages can legitimately mix naive timestamps with offset-aware
+    # ISO timestamps. Parse each cell independently and canonicalize to UTC.
+    df["timestamp"] = pd.to_datetime(
+        df["timestamp"], utc=True, errors="coerce", format="mixed"
+    )
     df = df.dropna(subset=["timestamp"]).sort_values("timestamp", kind="stable")
     if exact:
         part = df.loc[df["timestamp"].eq(ts)]
@@ -94,7 +98,7 @@ def build(event_ts: str, h1: Path, market_state: Path, nison: Path, murphy_root:
             ndf = ndf.rename(columns={"rule_id": "source_rule_id"})
         else:
             raise ValueError("BLOCKED_NISON_SCHEMA")
-    ndf["timestamp"] = pd.to_datetime(ndf["timestamp"], utc=True, errors="raise")
+    ndf["timestamp"] = pd.to_datetime(ndf["timestamp"], utc=True, errors="raise", format="mixed")
     nrows = ndf.loc[ndf["timestamp"].eq(ts)].drop(columns=["timestamp"]).to_dict("records")
     nids = sorted({str(r["source_rule_id"]) for r in nrows})
     if nids != sorted(NISON_IDS):
@@ -103,7 +107,7 @@ def build(event_ts: str, h1: Path, market_state: Path, nison: Path, murphy_root:
     # Murphy: source must carry all governed 34 rule rows at the same timestamp.
     m_csv = find_csv(murphy_root, {"timestamp", "source_rule_id"}, hints=("MURPHY", "2016_2024", "FULL", "EVIDENCE"))
     mdf = pd.read_csv(m_csv)
-    mdf["timestamp"] = pd.to_datetime(mdf["timestamp"], utc=True, errors="raise")
+    mdf["timestamp"] = pd.to_datetime(mdf["timestamp"], utc=True, errors="raise", format="mixed")
     mrows = mdf.loc[mdf["timestamp"].eq(ts)].drop(columns=["timestamp"]).to_dict("records")
     mids = sorted({str(r["source_rule_id"]) for r in mrows if str(r.get("source_rule_id") or "")})
     if mids != sorted(MURPHY_IDS):
