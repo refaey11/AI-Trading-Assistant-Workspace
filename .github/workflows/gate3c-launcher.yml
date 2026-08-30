@@ -88,7 +88,7 @@ jobs:
           import pandas as pd
           ts=pd.Timestamp(os.environ['EVENT_TS'], tz='UTC')
           root=Path('/tmp/gate3c')
-          def exact_filt(src,dst):
+          def exact_one(src,dst):
               df=pd.read_csv(src)
               if 'timestamp' not in df.columns:
                   raise SystemExit(f'BLOCKED_TIMESTAMP_COLUMN_MISSING:{src}')
@@ -97,22 +97,26 @@ jobs:
               if len(part) != 1:
                   raise SystemExit(f'BLOCKED_EVENT_ROW_COUNT:{src}:expected=1:observed={len(part)}:target={ts.isoformat()}')
               part.to_csv(dst,index=False)
-          def nison_filt(src,dst):
+          def nison_44(src,dst):
               df=pd.read_csv(src)
               if 'timestamp' not in df.columns:
                   raise SystemExit(f'BLOCKED_TIMESTAMP_COLUMN_MISSING:{src}')
+              if 'source_rule_id' not in df.columns and 'rule_id' in df.columns:
+                  df=df.rename(columns={'rule_id':'source_rule_id'})
+              if 'source_rule_id' not in df.columns:
+                  raise SystemExit(f'BLOCKED_NISON_SCHEMA:{src}')
               parsed=pd.to_datetime(df['timestamp'], utc=True, errors='coerce')
               part=df.loc[parsed.eq(ts)].copy()
-              if len(part) == 0:
-                  part=df.loc[parsed.dt.date.eq(ts.date())].copy()
-              if len(part) != 1:
-                  raise SystemExit(f'BLOCKED_EVENT_ROW_COUNT:{src}:expected=1:observed={len(part)}:target_date={ts.date().isoformat()}')
+              ids={str(x) for x in part['source_rule_id'].tolist()}
+              expected={f'NISON_{i:04d}' for i in range(1,45)}
+              if ids != expected or len(part) != 44:
+                  raise SystemExit(f'BLOCKED_NISON_44_FANIN:{src}:expected_rows=44:observed_rows={len(part)}:observed_ids={len(ids)}')
               part.to_csv(dst,index=False)
-          nison_filt(root/'source'/'nison.csv',root/'event_nison.csv')
-          exact_filt(root/'source'/'market_state.csv',root/'event_context.csv')
+          nison_44(root/'source'/'nison.csv',root/'event_nison.csv')
+          exact_one(root/'source'/'market_state.csv',root/'event_context.csv')
           h=list((root/'unpacked'/'h1').rglob('GBPUSD_H1_2016_2025_MASTER.csv'))
           if not h: raise SystemExit('BLOCKED_H1_MASTER_CSV_NOT_FOUND')
-          exact_filt(h[0],root/'event_h1.csv')
+          exact_one(h[0],root/'event_h1.csv')
           PY
       - name: Build authoritative risk evidence
         env:
