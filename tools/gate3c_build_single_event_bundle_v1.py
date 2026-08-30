@@ -1,9 +1,4 @@
-"""Build exactly one Gate 3C canonical event from existing source files.
-
-The builder is intentionally fail-closed. It discovers source CSVs inside supplied
-project-package roots, selects only one as-of snapshot, and never manufactures
-missing rule IDs, MTF values, memory rows, or risk/account state.
-"""
+"""Build exactly one Gate 3C canonical event from existing source files."""
 from __future__ import annotations
 
 import argparse
@@ -51,6 +46,39 @@ def read_rows_at(path: Path, ts: pd.Timestamp, *, exact: bool = True) -> list[di
 
 def split_rule_ids(value: Any) -> list[str]:
     return [x.strip() for x in str(value or "").split("|") if x.strip() and x.strip().upper() not in {"NONE","NULL","NAN","NISON_NONE"}]
+
+
+def similarity_json_asof(root: Path, ts: pd.Timestamp) -> dict[str, Any]:
+    files = sorted(root.rglob("*.json")) if root.exists() else []
+    files = [p for p in files if "SIMILAR" in p.name.upper() or "CONTEXT" in p.name.upper()]
+    if not files:
+        raise ValueError(f"BLOCKED_SIMILARITY_SOURCE_NOT_FOUND:{root}")
+    path = files[0]
+    data = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(data, list):
+        raise ValueError(f"BLOCKED_SIMILARITY_SCHEMA:{path.name}")
+    historical: list[dict[str, Any]] = []
+    for item in data:
+        if not isinstance(item, dict):
+            continue
+        for row in item.get("similar_contexts") or []:
+            if not isinstance(row, dict) or "timestamp" not in row:
+                continue
+            try:
+                rts = pd.Timestamp(row["timestamp"], tz="UTC")
+            except Exception:
+                continue
+            if rts <= ts:
+                historical.append(dict(row))
+    historical.sort(key=lambda r: float(r.get("similarity", float("inf"))))
+    if not historical:
+        raise ValueError(f"BLOCKED_SIMILARITY_NOT_AVAILABLE_AS_OF_EVENT:{ts.isoformat()}")
+    return {
+        "status": "AVAILABLE",
+        "source": str(path),
+        "row": {"current_context": None, "similar_contexts": historical, "as_of": ts.isoformat()},
+        "provenance": {"future_current_context_excluded": True, "historical_rows_retained": len(historical)},
+    }
 
 
 def build(event_ts: str, h1: Path, market_state: Path, nison: Path, murphy_root: Path,
@@ -112,7 +140,7 @@ def build(event_ts: str, h1: Path, market_state: Path, nison: Path, murphy_root:
 
     historical_context = memory_asof(historical_context_root,("HISTORICAL","CONTEXT"))
     historical_outcome = memory_asof(historical_outcome_root,("HISTORICAL","OUTCOME"))
-    similarity = memory_asof(similarity_root,("SIMILARITY","MEMORY"))
+    similarity = similarity_json_asof(similarity_root, ts)
     retrieval = memory_asof(retrieval_root,("RETRIEVAL","CONTEXT"))
 
     risk_csv = None
@@ -157,7 +185,8 @@ def build(event_ts: str, h1: Path, market_state: Path, nison: Path, murphy_root:
         "risk":risk,"entry_price":risk.get("entry_price"),"atr":risk.get("atr"),
         "provenance":{"builder":"gate3c_build_single_event_bundle_v1","source_backed_only":True,
                        "murphy_governed_registry_count":len(MURPHY_IDS),"murphy_event_rule_count":len(mids),
-                       "nison_rule_count":len(nids),"mtf_fields":sorted(MTF_FIELDS),"oos_tuning":False}
+                       "nison_rule_count":len(nids),"mtf_fields":sorted(MTF_FIELDS),"oos_tuning":False,
+                       "similarity_future_context_excluded":True}
     }
 
 
