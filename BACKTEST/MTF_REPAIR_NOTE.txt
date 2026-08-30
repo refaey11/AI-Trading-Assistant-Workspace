@@ -1,0 +1,1 @@
+Targeted functional repair only: module-scope pandas import in CIRCLECI_ACQUIRE_GOVERNED_SOURCES.py. No trading logic changes.
