@@ -11,7 +11,7 @@ on:
         description: "UTC event timestamp"
         required: true
         type: string
-        default: "2016-04-20T09:00:00Z"
+        default: "2016-02-23T09:00:00Z"
       equity:
         description: "Evaluation equity"
         required: true
@@ -92,7 +92,7 @@ jobs:
               df=pd.read_csv(src)
               if 'timestamp' not in df.columns:
                   raise SystemExit(f'BLOCKED_TIMESTAMP_COLUMN_MISSING:{src}')
-              parsed=pd.to_datetime(df['timestamp'], utc=True, errors='coerce')
+              parsed=pd.to_datetime(df['timestamp'], utc=True, errors='coerce', format='mixed')
               part=df.loc[parsed.eq(ts)].copy()
               if len(part) != 1:
                   raise SystemExit(f'BLOCKED_EVENT_ROW_COUNT:{src}:expected=1:observed={len(part)}:target={ts.isoformat()}')
@@ -105,11 +105,11 @@ jobs:
                   df=df.rename(columns={'rule_id':'source_rule_id'})
               if 'source_rule_id' not in df.columns:
                   raise SystemExit(f'BLOCKED_NISON_SCHEMA:{src}')
-              parsed=pd.to_datetime(df['timestamp'], utc=True, errors='coerce')
+              parsed=pd.to_datetime(df['timestamp'], utc=True, errors='coerce', format='mixed')
               part=df.loc[parsed.eq(ts)].copy()
-              ids={str(x) for x in part['source_rule_id'].tolist()}
               expected={f'NISON_{i:04d}' for i in range(1,45)}
-              if ids != expected or len(part) != 44:
+              ids={str(x) for x in part['source_rule_id'].tolist()}
+              if len(part) != 44 or ids != expected:
                   raise SystemExit(f'BLOCKED_NISON_44_FANIN:{src}:expected_rows=44:observed_rows={len(part)}:observed_ids={len(ids)}')
               part.to_csv(dst,index=False)
           nison_44(root/'source'/'nison.csv',root/'event_nison.csv')
