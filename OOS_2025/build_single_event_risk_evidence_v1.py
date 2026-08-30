@@ -41,17 +41,24 @@ def _find_murphy(root: Path) -> Path:
     return candidates[0][1]
 
 
-def _one_row(path: Path, ts: pd.Timestamp) -> pd.Series:
+def _rows_at(path: Path, ts: pd.Timestamp) -> pd.DataFrame:
     df = pd.read_csv(path)
     if "timestamp" not in df.columns:
         raise ValueError(f"{path}: missing timestamp")
-    df["timestamp"] = pd.to_datetime(
-        df["timestamp"], utc=True, errors="raise", format="mixed"
-    )
-    part = df.loc[df["timestamp"].eq(ts)].copy()
-    if len(part) != 1:
-        raise ValueError(f"{path}: expected exactly one row at {ts.isoformat()}, observed={len(part)}")
-    return part.iloc[0]
+    df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True, errors="raise", format="mixed")
+    return df.loc[df["timestamp"].eq(ts)].copy()
+
+
+def _one_directional_murphy_row(path: Path, ts: pd.Timestamp) -> pd.Series:
+    part = _rows_at(path, ts)
+    if part.empty:
+        raise ValueError(f"{path}: no Murphy evidence at {ts.isoformat()}")
+    status = part.get("status", pd.Series(index=part.index, dtype=object)).astype(str).str.upper().str.strip()
+    direction = part.get("direction", pd.Series(index=part.index, dtype=object)).astype(str).str.upper().str.strip()
+    candidates = part.loc[status.eq("PASS") & direction.isin({"BUY", "SELL", "BULLISH", "BEARISH"})].copy()
+    if len(candidates) != 1:
+        raise ValueError(f"{path}: expected exactly one directional PASS row at {ts.isoformat()}, observed={len(candidates)}")
+    return candidates.iloc[0]
 
 
 def _scalar(row: pd.Series, names: tuple[str, ...], label: str) -> float:
@@ -70,15 +77,21 @@ def build(*, timestamp: str, h1: Path, market_state: Path, murphy_root: Path, ou
     if equity <= 0 or peak_equity <= 0 or prior_loss_streak < 0:
         raise ValueError("invalid evaluation account bootstrap")
 
-    h1_row = _one_row(h1, ts)
-    market_row = _one_row(market_state, ts)
+    h1_rows = _rows_at(h1, ts)
+    market_rows = _rows_at(market_state, ts)
+    if len(h1_rows) != 1:
+        raise ValueError(f"{h1}: expected exactly one row at {ts.isoformat()}, observed={len(h1_rows)}")
+    if len(market_rows) != 1:
+        raise ValueError(f"{market_state}: expected exactly one row at {ts.isoformat()}, observed={len(market_rows)}")
+    h1_row = h1_rows.iloc[0]
+    market_row = market_rows.iloc[0]
     murphy_path = _find_murphy(murphy_root)
-    murphy_row = _one_row(murphy_path, ts)
+    murphy_row = _one_directional_murphy_row(murphy_path, ts)
 
     direction = str(murphy_row.get("direction") or "").upper()
-    if direction in {"BULLISH"}:
+    if direction == "BULLISH":
         direction = "BUY"
-    elif direction in {"BEARISH"}:
+    elif direction == "BEARISH":
         direction = "SELL"
     if direction not in {"BUY", "SELL"}:
         raise ValueError(f"INVALID_DIRECTION:{direction}")
@@ -89,53 +102,29 @@ def build(*, timestamp: str, h1: Path, market_state: Path, murphy_root: Path, ou
     frozen = _load(ROOT / "OOS_2025" / "frozen_candidate_risk_profile_v1.py", "frozen_candidate_risk")
     canonical = _load(ROOT / "risk_engine" / "risk_execution_runtime_v1.py", "canonical_risk")
 
-    frozen_result = frozen.evaluate_frozen_candidate_risk(
-        direction=direction,
-        equity=equity,
-        peak_equity=peak_equity,
-        entry=entry,
-        atr=atr,
-        prior_loss_streak=prior_loss_streak,
-    )
+    frozen_result = frozen.evaluate_frozen_candidate_risk(direction=direction, equity=equity, peak_equity=peak_equity,
+                                                          entry=entry, atr=atr, prior_loss_streak=prior_loss_streak)
     if not frozen_result.risk_pass:
         raise ValueError(f"FROZEN_CANDIDATE_RISK_BLOCKED:{frozen_result.reason}")
 
     stop_distance = 0.75 * atr
     reward_distance = 2.0 * stop_distance
     canonical_result = canonical.evaluate_risk(
-        canonical.RiskRequest(
-            equity=equity,
-            risk_percent=frozen_result.risk_percent,
-            entry_price=entry,
-            stop_distance=stop_distance,
-            take_profit_distance=reward_distance,
-            stop_mode="structure",
-            risk_budget_locked=True,
-        ),
-        direction,
-        atr,
-    )
+        canonical.RiskRequest(equity=equity, risk_percent=frozen_result.risk_percent, entry_price=entry,
+                              stop_distance=stop_distance, take_profit_distance=reward_distance,
+                              stop_mode="structure", risk_budget_locked=True),
+        direction, atr)
     if not canonical_result.risk_pass:
         raise ValueError(f"CANONICAL_RISK_ENGINE_BLOCKED:{canonical_result.reason}")
 
     fields = {
-        "timestamp": ts.isoformat(),
-        "direction": direction,
-        "equity": equity,
-        "peak_equity": peak_equity,
-        "prior_loss_streak": prior_loss_streak,
-        "entry_price": entry,
-        "atr": atr,
-        "risk_percent": frozen_result.risk_percent,
-        "stop_loss": frozen_result.stop_loss,
-        "take_profit": frozen_result.take_profit,
-        "position_size": frozen_result.position_size,
-        "risk_pass": True,
-        "risk_money": equity * frozen_result.risk_percent,
-        "rr": 2.0,
-        "risk_budget_locked": True,
-        "stop_mode": "structure",
-        "authoritative": True,
+        "timestamp": ts.isoformat(), "direction": direction, "equity": equity,
+        "peak_equity": peak_equity, "prior_loss_streak": prior_loss_streak,
+        "entry_price": entry, "atr": atr, "risk_percent": frozen_result.risk_percent,
+        "stop_loss": frozen_result.stop_loss, "take_profit": frozen_result.take_profit,
+        "position_size": frozen_result.position_size, "risk_pass": True,
+        "risk_money": equity * frozen_result.risk_percent, "rr": 2.0,
+        "risk_budget_locked": True, "stop_mode": "structure", "authoritative": True,
         "authority_scope": "evaluation_single_event",
         "account_state_source": "explicit_single_event_evaluation_bootstrap",
         "risk_profile_source": "OOS_2025/frozen_candidate_risk_profile_v1.py",
@@ -151,9 +140,10 @@ def build(*, timestamp: str, h1: Path, market_state: Path, murphy_root: Path, ou
 
     output.parent.mkdir(parents=True, exist_ok=True)
     pd.DataFrame([fields]).to_csv(output, index=False)
-    return {"status": "PASS", "timestamp": ts.isoformat(), "direction": direction, "risk_percent": frozen_result.risk_percent,
-            "stop_loss": frozen_result.stop_loss, "take_profit": frozen_result.take_profit,
-            "position_size": frozen_result.position_size, "authority_scope": "evaluation_single_event"}
+    return {"status": "PASS", "timestamp": ts.isoformat(), "direction": direction,
+            "risk_percent": frozen_result.risk_percent, "stop_loss": frozen_result.stop_loss,
+            "take_profit": frozen_result.take_profit, "position_size": frozen_result.position_size,
+            "authority_scope": "evaluation_single_event"}
 
 
 def main() -> int:
@@ -167,9 +157,9 @@ def main() -> int:
     p.add_argument("--peak-equity", type=float, default=10000.0)
     p.add_argument("--prior-loss-streak", type=int, default=0)
     a = p.parse_args()
-    report = build(timestamp=a.timestamp, h1=a.h1, market_state=a.market_state,
-                   murphy_root=a.murphy_root, output=a.output, equity=a.equity,
-                   peak_equity=a.peak_equity, prior_loss_streak=a.prior_loss_streak)
+    report = build(timestamp=a.timestamp, h1=a.h1, market_state=a.market_state, murphy_root=a.murphy_root,
+                   output=a.output, equity=a.equity, peak_equity=a.peak_equity,
+                   prior_loss_streak=a.prior_loss_streak)
     print(json.dumps(report, indent=2))
     return 0
 
