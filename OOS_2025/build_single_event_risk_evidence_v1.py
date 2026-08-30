@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import importlib.util
 import json
+import sys
 from pathlib import Path
 
 import pandas as pd
@@ -15,6 +16,7 @@ def _load(path: Path, name: str):
     if not spec or not spec.loader:
         raise RuntimeError(f"cannot load {path}")
     module = importlib.util.module_from_spec(spec)
+    sys.modules[name] = module
     spec.loader.exec_module(module)
     return module
 
@@ -43,10 +45,6 @@ def _one_row(path: Path, ts: pd.Timestamp) -> pd.Series:
     df = pd.read_csv(path)
     if "timestamp" not in df.columns:
         raise ValueError(f"{path}: missing timestamp")
-    # Murphy source files can contain mixed timestamp representations
-    # (e.g. naive `YYYY-MM-DD HH:MM:SS` alongside offset-aware ISO values).
-    # `format="mixed"` lets pandas parse each cell independently while
-    # `utc=True` canonicalizes all values to UTC before exact matching.
     df["timestamp"] = pd.to_datetime(
         df["timestamp"], utc=True, errors="raise", format="mixed"
     )
