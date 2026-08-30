@@ -27,10 +27,13 @@ on:
         required: true
         type: string
         default: "0"
+  push:
+    branches:
+      - main
 
 jobs:
   single_event:
-    if: ${{ inputs.confirm == 'RUN_SINGLE_EVENT' }}
+    if: ${{ (github.event_name == 'push' && github.event.head_commit.message == 'CI: single-shot Gate 3C auth probe') || inputs.confirm == 'RUN_SINGLE_EVENT' }}
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -47,7 +50,7 @@ jobs:
         run: python -m pip install --upgrade pip pandas pytest
       - name: Verify target is 2016-2024
         env:
-          EVENT_TS: ${{ inputs.timestamp }}
+          EVENT_TS: ${{ inputs.timestamp || '2020-01-03T06:00:00Z' }}
         run: |
           python - <<'PY'
           import os
@@ -60,18 +63,33 @@ jobs:
       - name: Acquire one-event source slices
         env:
           DROPBOX_ACCESS_TOKEN: ${{ secrets.DROPBOX_ACCESS_TOKEN }}
-          EVENT_TS: ${{ inputs.timestamp }}
+          EVENT_TS: ${{ inputs.timestamp || '2020-01-03T06:00:00Z' }}
         run: |
           set -euo pipefail
           test -n "$DROPBOX_ACCESS_TOKEN"
+          TOKEN="$(printf '%s' "$DROPBOX_ACCESS_TOKEN" | tr -d '\r\n' | sed -E 's/^Bearer[[:space:]]+//; s/^\"//; s/\"$//')"
+          test -n "$TOKEN"
           mkdir -p /tmp/gate3c/source /tmp/gate3c/unpacked
+          check_dropbox_auth(){
+            curl -L --fail --silent --show-error --request POST https://api.dropboxapi.com/2/check/user \
+              -H "Authorization: Bearer ${TOKEN}" \
+              -H "Content-Type: application/json" \
+              --data '{}' >/tmp/gate3c/dropbox_auth.json
+            python - <<'PY'
+          import json
+          p='/tmp/gate3c/dropbox_auth.json'
+          data=json.load(open(p))
+          print('Dropbox auth OK:', data.get('name',{}).get('display_name','unknown'))
+          PY
+          }
           download(){
             local path="$1"; local out="$2"
             curl -L --fail --silent --show-error https://content.dropboxapi.com/2/files/download \
-              -H "Authorization: Bearer ${DROPBOX_ACCESS_TOKEN}" \
+              -H "Authorization: Bearer ${TOKEN}" \
               -H "Dropbox-API-Arg: {\"path\":\"${path}\"}" \
               -o "$out"
           }
+          check_dropbox_auth
           download "/New 8/GBPUSD_H1_2016_2025_MASTER.zip" /tmp/gate3c/source/h1.zip
           download "/New 8/MURPHY_HISTORICAL_34_RULE_FANIN_2016_2024.zip" /tmp/gate3c/source/murphy.zip
           download "/MTF_ALIGNMENT_GBPUSD_V1.zip" /tmp/gate3c/source/mtf.zip
@@ -120,15 +138,15 @@ jobs:
           PY
       - name: Build authoritative risk evidence
         env:
-          EVENT_TS: ${{ inputs.timestamp }}
-          EQUITY: ${{ inputs.equity }}
-          PEAK_EQUITY: ${{ inputs.peak_equity }}
-          PRIOR_LOSS_STREAK: ${{ inputs.prior_loss_streak }}
+          EVENT_TS: ${{ inputs.timestamp || '2020-01-03T06:00:00Z' }}
+          EQUITY: ${{ inputs.equity || '10000' }}
+          PEAK_EQUITY: ${{ inputs.peak_equity || '10000' }}
+          PRIOR_LOSS_STREAK: ${{ inputs.prior_loss_streak || '0' }}
         run: |
           python OOS_2025/build_single_event_risk_evidence_v1.py --timestamp "$EVENT_TS" --h1 /tmp/gate3c/event_h1.csv --market-state /tmp/gate3c/event_context.csv --murphy-root /tmp/gate3c/unpacked/murphy --output /tmp/gate3c/unpacked/retrieval/gate3c_risk_evidence.csv --equity "$EQUITY" --peak-equity "$PEAK_EQUITY" --prior-loss-streak "$PRIOR_LOSS_STREAK"
       - name: Build canonical event
         env:
-          EVENT_TS: ${{ inputs.timestamp }}
+          EVENT_TS: ${{ inputs.timestamp || '2020-01-03T06:00:00Z' }}
         run: |
           python tools/gate3c_build_single_event_bundle_v1.py --timestamp "$EVENT_TS" --h1 /tmp/gate3c/event_h1.csv --market-state /tmp/gate3c/event_context.csv --nison /tmp/gate3c/event_nison.csv --murphy-root /tmp/gate3c/unpacked/murphy --mtf-root /tmp/gate3c/unpacked/mtf --historical-context-root /tmp/gate3c/unpacked/hc --historical-outcome-root /tmp/gate3c/unpacked/ho --similarity-root /tmp/gate3c/unpacked/similarity --retrieval-root /tmp/gate3c/unpacked/retrieval --output /tmp/gate3c/canonical_event.json
       - name: Run single real-event E2E
