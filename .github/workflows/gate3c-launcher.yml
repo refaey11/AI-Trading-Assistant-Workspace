@@ -11,7 +11,7 @@ on:
         description: "UTC event timestamp"
         required: true
         type: string
-        default: "2016-02-23T09:00:00Z"
+        default: "2020-01-03T06:00:00Z"
       equity:
         description: "Evaluation equity"
         required: true
