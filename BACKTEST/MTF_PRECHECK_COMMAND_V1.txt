@@ -1,0 +1,11 @@
+PRECHECK_ONLY
+
+Verified source facts before any governed run:
+- Development window: 2016-2024.
+- 2025 remains OOS locked.
+- MTF Brain contract: M5/M15/M30/H1/H4/D1 plus mtf_trend_score.
+- TIZ remains process-only/optional and never generates direction.
+- Murphy/Nison/Brain V1/Risk semantics are protected.
+- No full backtest is authorized by this precheck.
+
+Current concrete code blocker: BACKTEST/CIRCLECI_ACQUIRE_GOVERNED_SOURCES.py references pandas in _normalize_regime() before pandas is imported at module scope; local build_182 reported NameError: pd is not defined.
