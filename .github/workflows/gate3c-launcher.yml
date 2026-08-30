@@ -88,14 +88,19 @@ jobs:
           for z in h1 murphy mtf hc ho similarity retrieval; do unzip -q "/tmp/gate3c/source/${z}.zip" -d "/tmp/gate3c/unpacked/${z}"; done
           python - <<'PY'
           from pathlib import Path
-          import os, csv
-          ts=os.environ['EVENT_TS']; root=Path('/tmp/gate3c')
+          import os
+          import pandas as pd
+          ts=pd.Timestamp(os.environ['EVENT_TS'], tz='UTC')
+          root=Path('/tmp/gate3c')
           def filt(src,dst):
-              with open(src,encoding='utf-8',newline='') as f, open(dst,'w',encoding='utf-8',newline='') as g:
-                  r=csv.DictReader(f); w=csv.DictWriter(g,fieldnames=r.fieldnames); w.writeheader()
-                  for row in r:
-                      v=str(row.get('timestamp',''))
-                      if v.replace('+00:00','Z')==ts or v==ts.replace('Z','+00:00'): w.writerow(row)
+              df=pd.read_csv(src)
+              if 'timestamp' not in df.columns:
+                  raise SystemExit(f'BLOCKED_TIMESTAMP_COLUMN_MISSING:{src}')
+              parsed=pd.to_datetime(df['timestamp'], utc=True, errors='coerce')
+              part=df.loc[parsed.eq(ts)].copy()
+              if len(part) != 1:
+                  raise SystemExit(f'BLOCKED_EVENT_ROW_COUNT:{src}:expected=1:observed={len(part)}:target={ts.isoformat()}')
+              part.to_csv(dst,index=False)
           filt(root/'source'/'nison.csv',root/'event_nison.csv')
           filt(root/'source'/'market_state.csv',root/'event_context.csv')
           h=list((root/'unpacked'/'h1').rglob('GBPUSD_H1_2016_2025_MASTER.csv'))
