@@ -75,8 +75,17 @@ def run(event: Mapping[str, Any]) -> dict[str, Any]:
     fanin = _load_module(ROOT / "OOS_2025" / "governed_rule_fan_in_v1.py", "governed_fan_in")
     mdf = pd.DataFrame(murphy_rows)
     ndf = pd.DataFrame(nison_rows)
-    mdf["timestamp"] = pd.to_datetime(mdf["timestamp"], utc=True, errors="raise", format="mixed")
-    ndf["timestamp"] = pd.to_datetime(ndf["timestamp"], utc=True, errors="raise", format="mixed")
+    # The canonical builder intentionally keeps timestamp at the event-envelope
+    # level, not repeated on every row. Restore that event timestamp solely for
+    # the lossless fan-in API; no new evidence is created.
+    if "timestamp" not in mdf.columns:
+        mdf["timestamp"] = ts
+    else:
+        mdf["timestamp"] = pd.to_datetime(mdf["timestamp"], utc=True, errors="raise", format="mixed")
+    if "timestamp" not in ndf.columns:
+        ndf["timestamp"] = ts
+    else:
+        ndf["timestamp"] = pd.to_datetime(ndf["timestamp"], utc=True, errors="raise", format="mixed")
     envelope = fanin.combine_timestamp_evidence(mdf, ndf).get(ts)
     if envelope is None:
         return {"gate3c":"BLOCKED","stage":"RULE_FAN_IN","reason":"NO_COMBINED_EVENT_AT_AS_OF"}
