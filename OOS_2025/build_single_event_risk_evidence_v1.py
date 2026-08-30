@@ -43,7 +43,13 @@ def _one_row(path: Path, ts: pd.Timestamp) -> pd.Series:
     df = pd.read_csv(path)
     if "timestamp" not in df.columns:
         raise ValueError(f"{path}: missing timestamp")
-    df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True, errors="raise")
+    # Murphy source files can contain mixed timestamp representations
+    # (e.g. naive `YYYY-MM-DD HH:MM:SS` alongside offset-aware ISO values).
+    # `format="mixed"` lets pandas parse each cell independently while
+    # `utc=True` canonicalizes all values to UTC before exact matching.
+    df["timestamp"] = pd.to_datetime(
+        df["timestamp"], utc=True, errors="raise", format="mixed"
+    )
     part = df.loc[df["timestamp"].eq(ts)].copy()
     if len(part) != 1:
         raise ValueError(f"{path}: expected exactly one row at {ts.isoformat()}, observed={len(part)}")
