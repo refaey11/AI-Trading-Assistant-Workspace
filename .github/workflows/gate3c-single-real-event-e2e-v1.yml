@@ -13,6 +13,21 @@ on:
         required: true
         type: string
         default: "2016-04-20T09:00:00Z"
+      equity:
+        description: "Explicit evaluation account equity"
+        required: true
+        type: string
+        default: "10000"
+      peak_equity:
+        description: "Explicit evaluation account peak equity"
+        required: true
+        type: string
+        default: "10000"
+      prior_loss_streak:
+        description: "Explicit prior loss streak for this single-event proof"
+        required: true
+        type: string
+        default: "0"
 
 jobs:
   single_real_event_e2e:
@@ -69,10 +84,9 @@ jobs:
           for z in h1 murphy mtf hc ho similarity retrieval; do unzip -q "/tmp/gate3c/source/${z}.zip" -d "/tmp/gate3c/unpacked/${z}"; done
           python - <<'PY'
           from pathlib import Path
-          import os, zipfile, csv, json
+          import os, csv
           ts = os.environ['EVENT_TS']
           root = Path('/tmp/gate3c')
-          # Stream the large Nison CSV: only the requested timestamp is retained.
           src = root/'source'/'nison.csv'
           out = root/'event_nison.csv'
           with src.open('r', encoding='utf-8', newline='') as f, out.open('w', encoding='utf-8', newline='') as g:
@@ -80,7 +94,6 @@ jobs:
               for row in r:
                   if str(row.get('timestamp','')).replace('+00:00','Z') == ts:
                       w.writerow(row)
-          # Filter the H1/market-state sources to the exact as-of timestamp.
           def filter_csv(srcpath, dst, key='timestamp'):
               with open(srcpath, 'r', encoding='utf-8', newline='') as f, open(dst, 'w', encoding='utf-8', newline='') as g:
                   r=csv.DictReader(f); w=csv.DictWriter(g, fieldnames=r.fieldnames); w.writeheader()
@@ -89,10 +102,30 @@ jobs:
                       if v.replace('+00:00','Z') == ts or v == ts.replace('Z','+00:00'):
                           w.writerow(row)
           h1s = list((root/'unpacked'/'h1').rglob('GBPUSD_H1_2016_2025_MASTER.csv'))
-          if h1s: filter_csv(h1s[0], root/'event_h1.csv')
+          if not h1s:
+              raise SystemExit('BLOCKED_H1_MASTER_CSV_NOT_FOUND')
+          filter_csv(h1s[0], root/'event_h1.csv')
           filter_csv(root/'source'/'market_state.csv', root/'event_context.csv')
           print('prepared event slices for', ts)
           PY
+
+      - name: Build authoritative single-event risk evidence
+        env:
+          EVENT_TS: ${{ inputs.timestamp }}
+          EQUITY: ${{ inputs.equity }}
+          PEAK_EQUITY: ${{ inputs.peak_equity }}
+          PRIOR_LOSS_STREAK: ${{ inputs.prior_loss_streak }}
+        run: |
+          set -euo pipefail
+          python OOS_2025/build_single_event_risk_evidence_v1.py \
+            --timestamp "$EVENT_TS" \
+            --h1 /tmp/gate3c/event_h1.csv \
+            --market-state /tmp/gate3c/event_context.csv \
+            --murphy-root /tmp/gate3c/unpacked/murphy \
+            --output /tmp/gate3c/unpacked/retrieval/gate3c_risk_evidence.csv \
+            --equity "$EQUITY" \
+            --peak-equity "$PEAK_EQUITY" \
+            --prior-loss-streak "$PRIOR_LOSS_STREAK"
 
       - name: Build single canonical event input
         env:
