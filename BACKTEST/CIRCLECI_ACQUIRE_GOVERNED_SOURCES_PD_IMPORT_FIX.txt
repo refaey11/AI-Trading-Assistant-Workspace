@@ -1,0 +1,8 @@
+STATUS: corrective patch prepared for BACKTEST/CIRCLECI_ACQUIRE_GOVERNED_SOURCES.py
+
+Root cause confirmed from commit a43f18706ee31f034a5f2869d314b02d0fdd4f6e and local build_182:
+_normalize_regime() calls pd.to_numeric(), but pandas was imported only inside build_mtf_development_csv().
+
+Required code change: move/import `import pandas as pd` at module scope before _normalize_regime().
+
+This is a compatibility/import-scope fix only. No strategy semantics, Murphy, Nison, Brain V1, TIZ policy, Risk policy, or 2025 behavior changes.
