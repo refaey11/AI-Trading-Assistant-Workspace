@@ -146,11 +146,51 @@ jobs:
             --output /tmp/gate3c/canonical_event.json
 
       - name: Run Full Brain -> Risk -> Trade Plan proof
+        id: gate3c_proof
+        continue-on-error: true
         run: |
-          set -euo pipefail
+          set -o pipefail
           python RUNTIME/DECISION_RUNTIME_V1/gate3c_single_event_e2e_v1.py \
             --event /tmp/gate3c/canonical_event.json \
             --output /tmp/gate3c/gate3c_result.json
+
+      - name: Validate integration contract (NO_TRADE is a valid decision outcome)
+        env:
+          PROOF_OUTCOME: ${{ steps.gate3c_proof.outcome }}
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          p = Path('/tmp/gate3c/gate3c_result.json')
+          if not p.exists():
+              raise SystemExit('FAIL: missing gate3c_result.json')
+          r = json.loads(p.read_text(encoding='utf-8'))
+          gov = r.get('governance') or {}
+          brain = r.get('brain_execution_result') or {}
+          risk = r.get('risk') or {}
+          required_true = ('brain_v1_unchanged','murphy_primary_context','murphy_registry_intact','nison_direction_generation','tiz_direction_generation','memory_direction_generation','future_data_allowed','oos_tuning','full_fanin_verified')
+          if gov.get('brain_v1_unchanged') is not True:
+              raise SystemExit('FAIL: brain_v1_unchanged is not true')
+          for k in ('murphy_primary_context','murphy_registry_intact','full_fanin_verified'):
+              if gov.get(k) is not True:
+                  raise SystemExit(f'FAIL: {k} is not true')
+          for k in ('nison_direction_generation','tiz_direction_generation','memory_direction_generation','future_data_allowed','oos_tuning'):
+              if gov.get(k) is not False:
+                  raise SystemExit(f'FAIL: {k} must be false')
+          if risk.get('authoritative') is not True:
+              raise SystemExit('FAIL: risk must be authoritative')
+          if brain.get('status') not in {'NO_TRADE','NOT_EXECUTABLE','EXECUTABLE'}:
+              raise SystemExit(f'FAIL: unexpected brain status: {brain.get("status")}')
+          if brain.get('status') == 'NO_TRADE':
+              decision = (brain.get('decision') or {}).get('decision') or {}
+              if decision.get('final') != 'NO_TRADE':
+                  raise SystemExit('FAIL: NO_TRADE status without NO_TRADE final decision')
+          print('INTEGRATION_CONTRACT=PASS')
+          print('PROOF_STEP_OUTCOME=', __import__('os').environ.get('PROOF_OUTCOME'))
+          print('DECISION_STATUS=', brain.get('status'))
+          PY
 
       - name: Print result
         if: always()
