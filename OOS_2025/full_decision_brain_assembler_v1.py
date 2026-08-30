@@ -62,12 +62,21 @@ def assemble_decision_event(
     if decision["decision"]["final"] not in {"BUY", "SELL"}:
         return {"status": "NO_TRADE", "decision": decision, "governance": governance, "execution_plan": {"status": "NOT_EXECUTABLE", "reason": "decision_not_approved"}}
 
+    # Risk is a hard execution gate. Do not synthesize/pass risk approval here;
+    # consume the upstream authoritative Risk result that was already supplied
+    # to the Three-Book boundary. Missing/false risk evidence must fail closed.
+    upstream_risk_pass = (
+        risk_evidence.get("risk_pass")
+        if "risk_pass" in risk_evidence
+        else str(risk_evidence.get("risk_status") or risk_evidence.get("status") or "").upper() == "PASS"
+    )
+
     execution_plan = build_execution_plan({
         "timestamp": query_as_of,
         "final_action": decision["decision"]["final"],
         "entry_price": entry_price,
         "atr": atr,
-        "risk_pass": True,
+        "risk_pass": upstream_risk_pass is True,
         "tiz_process_state": tiz_evidence.get("process_state") or tiz_evidence.get("process_gate") or tiz_evidence.get("status"),
     })
     if execution_plan.get("status") != "EXECUTABLE":
