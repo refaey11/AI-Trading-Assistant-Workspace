@@ -58,7 +58,7 @@ jobs:
           }
           download "/New 8/GBPUSD_H1_2016_2025_MASTER.zip" /tmp/gate3c/source/h1.zip
           download "/New 8/MURPHY_HISTORICAL_34_RULE_FANIN_2016_2024.zip" /tmp/gate3c/source/murphy.zip
-          download "/New 8/MTF_ALIGNMENT_GBPUSD_V1.zip" /tmp/gate3c/source/mtf.zip
+          download "/MTF_ALIGNMENT_GBPUSD_V1.zip" /tmp/gate3c/source/mtf.zip
           download "/New 8/GBPUSD_MARKET_STATE 6.csv" /tmp/gate3c/source/market_state.csv
           download "/New 8/NISON_2016_2024_FULL_EVIDENCE.csv" /tmp/gate3c/source/nison.csv
           download "/AI_Trading_Assistant_FULL_PROJECT_V1/AI_Trading_Assistant_HISTORICAL_CONTEXT_MEMORY_V1.zip" /tmp/gate3c/source/hc.zip
@@ -78,7 +78,7 @@ jobs:
           from pathlib import Path
           import os, subprocess, sys
           import pandas as pd
-          root=Path('/tmp/gate3c'); out=root/'event_h1.csv'
+          root=Path('/tmp/gate3c')
           h1s=list((root/'unpacked'/'h1').rglob('GBPUSD_H1_2016_2025_MASTER.csv'))
           if not h1s: raise SystemExit('BLOCKED_H1_MASTER_CSV_NOT_FOUND')
           h1=pd.read_csv(h1s[0]); ms=pd.read_csv(root/'source'/'market_state.csv'); ns=pd.read_csv(root/'source'/'nison.csv')
@@ -93,7 +93,6 @@ jobs:
           candidates=sorted(set(h1['timestamp'].dropna()) & set(ms['timestamp'].dropna()) & set(nvalid[nvalid].index))
           candidates=[x for x in candidates if 2016 <= x.year <= 2024]
           if not candidates: raise SystemExit('BLOCKED_NO_H1_MARKET_NISON_COMMON_EVENT')
-          # Try candidates in chronological order; no tuning or scoring is performed.
           for ts in candidates:
               tsiso=ts.isoformat().replace('+00:00','Z')
               evh=h1[h1.timestamp.eq(ts)].copy(); evm=ms[ms.timestamp.eq(ts)].copy(); evn=ns[ns.timestamp.eq(ts)].copy()
