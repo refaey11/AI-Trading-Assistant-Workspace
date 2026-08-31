@@ -1,0 +1,150 @@
+name: Current Stack Development Backtest 2016-2024 V2
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: "Type RUN_CURRENT_STACK_BACKTEST to execute"
+        required: true
+        type: string
+        default: ""
+  push:
+    branches: [current-stack-dev-backtest-2016-2024-v1]
+
+jobs:
+  current_stack_backtest:
+    if: ${{ github.event_name == 'push' || inputs.confirm == 'RUN_CURRENT_STACK_BACKTEST' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      DROPBOX_ACCESS_TOKEN: ${{ secrets.DROPBOX_ACCESS_TOKEN }}
+      PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/OOS_2025
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: python -m pip install --upgrade pip pandas pytest
+
+      - name: Enforce development window
+        run: |
+          python - <<'PY'
+          from datetime import datetime, timezone
+          assert datetime(2016,1,1,tzinfo=timezone.utc) < datetime(2025,1,1,tzinfo=timezone.utc)
+          print('WINDOW=2016-2024')
+          print('2025_OOS_LOCKED=True')
+          PY
+
+      - name: Acquire current-stack governed sources
+        run: |
+          set -euo pipefail
+          test -n "$DROPBOX_ACCESS_TOKEN"
+          TOKEN="$(printf '%s' "$DROPBOX_ACCESS_TOKEN" | tr -d '\r\n' | sed -E 's/^Bearer[[:space:]]+//; s/^\"//; s/\"$//')"
+          mkdir -p artifacts/source
+          download(){
+            local path="$1"; local out="$2"
+            curl -L --fail --silent --show-error https://content.dropboxapi.com/2/files/download \
+              -H "Authorization: Bearer ${TOKEN}" \
+              -H "Dropbox-API-Arg: {\"path\":\"${path}\"}" \
+              -o "$out"
+          }
+          download "/New 8/GBPUSD_H1_2016_2025_MASTER.zip" artifacts/source/h1.zip
+          download "/New 8/MURPHY_HISTORICAL_34_RULE_FANIN_2016_2024.zip" artifacts/source/murphy.zip
+          download "/New 8/NISON_2016_2024_FULL_EVIDENCE.csv" artifacts/source/nison.csv
+          download "/New 8/GBPUSD_MARKET_STATE 6.csv" artifacts/source/market_state.csv
+          download "/MTF_ALIGNMENT_GBPUSD_V1.zip" artifacts/source/mtf.zip
+          for f in artifacts/source/h1.zip artifacts/source/murphy.zip artifacts/source/nison.csv artifacts/source/market_state.csv artifacts/source/mtf.zip; do test -s "$f"; done
+          unzip -q artifacts/source/h1.zip -d artifacts/source/h1
+          unzip -q artifacts/source/murphy.zip -d artifacts/source/murphy
+          unzip -q artifacts/source/mtf.zip -d artifacts/source/mtf
+
+      - name: Resolve and validate governed Murphy source
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import pandas as pd
+          root=Path('artifacts/source/murphy')
+          files=[]
+          for p in root.rglob('*.csv'):
+              try: cols=set(pd.read_csv(p,nrows=0).columns)
+              except Exception: continue
+              if {'timestamp','source_rule_id'}.issubset(cols): files.append(p)
+          if not files: raise SystemExit('BLOCKED_MURPHY_CSV_NOT_FOUND')
+          expected={f'MURPHY_{i:04d}' for i in [3,4,6,7,18,19,21,22,23,25,26,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,47,48,49,50,51]}
+          chosen=None
+          for p in files:
+              df=pd.read_csv(p,usecols=['timestamp','source_rule_id'])
+              ids={rid.strip() for v in df.source_rule_id.dropna() for rid in str(v).split('|') if rid.strip()}
+              years=pd.to_datetime(df.timestamp,utc=True,errors='coerce').dt.year.dropna()
+              if ids==expected and not years.empty and int(years.min())==2016 and int(years.max())==2024:
+                  chosen=p; break
+          if chosen is None: raise SystemExit('BLOCKED_MURPHY_34_RULE_ENVELOPE_NOT_PROVEN')
+          Path('artifacts/source/MURPHY_CURRENT_STACK.csv').write_bytes(chosen.read_bytes())
+          print('MURPHY_SOURCE_PASS', chosen)
+          PY
+
+      - name: Resolve current-stack MTF source
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import pandas as pd
+          req={'timestamp','mtf_trend_score','M5_trend_regime','M15_trend_regime','M30_trend_regime','H1_trend_regime','H4_trend_regime','D1_trend_regime'}
+          root=Path('artifacts/source/mtf')
+          matches=[]
+          for p in root.rglob('*.csv'):
+              try: cols=set(pd.read_csv(p,nrows=0).columns)
+              except Exception: continue
+              if req.issubset(cols): matches.append(p)
+          if not matches: raise SystemExit('BLOCKED_MTF_CURRENT_STACK_SOURCE_NOT_FOUND')
+          Path('artifacts/source/MTF_CURRENT_STACK.csv').write_bytes(sorted(matches)[0].read_bytes())
+          print('MTF_SOURCE_PASS', sorted(matches)[0])
+          PY
+
+      - name: Run current-stack historical replay
+        run: |
+          H1=$(find artifacts/source/h1 -type f -name 'GBPUSD_H1_2016_2025_MASTER.csv' | head -1)
+          test -n "$H1"
+          python DEVELOPMENT_2016_2024/current_stack_historical_replay_v2.py \
+            --h1 "$H1" \
+            --market-state artifacts/source/market_state.csv \
+            --murphy artifacts/source/MURPHY_CURRENT_STACK.csv \
+            --nison artifacts/source/nison.csv \
+            --mtf artifacts/source/MTF_CURRENT_STACK.csv \
+            --output-dir artifacts/current_stack_backtest_2016_2024
+
+      - name: Validate current-stack replay manifest
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('artifacts/current_stack_backtest_2016_2024/current_stack_validation_manifest_2016_2024.json')
+          d=json.loads(p.read_text())
+          required={
+            'window_2016_2024_only':True,
+            'future_data_used':False,
+            'murphy_governed_rules':34,
+            'nison_governed_rules':44,
+            'nison_generates_direction':False,
+            'tiz_generates_direction':False,
+            'memory_generates_direction':False,
+            'risk_authoritative':True,
+            'brain_semantics_changed':False,
+            'official_profitability_claim_allowed':False,
+          }
+          for k,v in required.items(): assert d.get(k)==v,(k,d.get(k),v)
+          print('CURRENT_STACK_MANIFEST_PASS')
+          print(json.dumps(d,indent=2))
+          PY
+
+      - name: Upload current-stack development artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: current-stack-development-backtest-2016-2024-v2
+          path: artifacts/current_stack_backtest_2016_2024
+          if-no-files-found: ignore
