@@ -26,6 +26,10 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
+      - name: Component completeness gate — FIRST
+        run: |
+          set -euo pipefail
+          python DEVELOPMENT_2016_2024/current_stack_component_completeness_gate_v1.py
       - name: Install dependencies
         run: python -m pip install --upgrade pip pandas pytest
       - name: Enforce development window
@@ -127,5 +131,5 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: current-stack-development-backtest-2016-2024-v2
-          path: artifacts/current_stack_backtest_2016_2024
+          path: artifacts
           if-no-files-found: ignore
