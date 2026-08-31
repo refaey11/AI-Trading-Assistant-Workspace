@@ -62,33 +62,47 @@ jobs:
       - name: Recover current Murphy development evidence from Dropbox project workspace
         run: |
           set -eu
-          mkdir -p artifacts/murphy
+          mkdir -p artifacts/murphy/unpacked
           python - <<'PY'
-          import json, os, urllib.request
+          import json, os
           from pathlib import Path
+          from urllib.request import Request, urlopen
           token=os.environ['DROPBOX_ACCESS_TOKEN']
-          candidates=[
-              '/AI_Trading_Assistant_FULL_PROJECT_V1/MURPHY_2016_2024_FULL_EVIDENCE.csv',
-              '/AI_Trading_Assistant_FULL_PROJECT_V1/MURPHY_2016_2024_FULL_34_RULE_FANIN_SOURCE_PRESERVING.csv',
-              '/AI_Trading_Assistant_FULL_PROJECT_V1/MURPHY_HISTORICAL_EVIDENCE_NORMALIZED_2016_2024.csv',
-              '/MURPHY_2016_2024_FULL_EVIDENCE.csv',
-              '/MURPHY_2016_2024_FULL_34_RULE_FANIN_SOURCE_PRESERVING.csv',
-              '/MURPHY_HISTORICAL_EVIDENCE_NORMALIZED_2016_2024.csv',
-          ]
-          out=Path('artifacts/murphy/MURPHY_2016_2024_FULL_EVIDENCE.csv')
-          for path in candidates:
-              req=urllib.request.Request('https://content.dropboxapi.com/2/files/download', data=b'', method='POST', headers={'Authorization':f'Bearer {token}','Dropbox-API-Arg':json.dumps({'path':path})})
+          path='/New 8/MURPHY_HISTORICAL_34_RULE_FANIN_2016_2024.zip'
+          req=Request('https://content.dropboxapi.com/2/files/download', data=b'', method='POST', headers={'Authorization':f'Bearer {token}','Dropbox-API-Arg':json.dumps({'path':path})})
+          out=Path('artifacts/murphy/MURPHY_HISTORICAL_34_RULE_FANIN_2016_2024.zip')
+          with urlopen(req, timeout=300) as r: out.write_bytes(r.read())
+          print('Downloaded Murphy source:', out, out.stat().st_size)
+          PY
+          unzip -q artifacts/murphy/MURPHY_HISTORICAL_34_RULE_FANIN_2016_2024.zip -d artifacts/murphy/unpacked
+          python - <<'PY'
+          from pathlib import Path
+          import pandas as pd
+          root=Path('artifacts/murphy/unpacked')
+          candidates=[]
+          for p in root.rglob('*.csv'):
               try:
-                  with urllib.request.urlopen(req, timeout=300) as r:
-                      data=r.read()
-                  if data:
-                      out.write_bytes(data)
-                      print(f'Recovered Murphy from {path}: {len(data)} bytes')
-                      break
-              except Exception as exc:
-                  print(f'Unavailable {path}: {exc}')
-          else:
-              raise SystemExit('No source-backed Murphy 2016-2024 evidence found.')
+                  cols=pd.read_csv(p,nrows=0).columns.tolist()
+              except Exception:
+                  continue
+              if 'timestamp' in cols and ('rule_id' in cols or 'source_rule_id' in cols):
+                  candidates.append(p)
+          if not candidates:
+              raise SystemExit('BLOCKED_MURPHY_CSV_NOT_FOUND_IN_GOVERNED_ZIP')
+          scored=[]
+          for p in candidates:
+              df=pd.read_csv(p)
+              key='source_rule_id' if 'source_rule_id' in df.columns else 'rule_id'
+              years=pd.to_datetime(df['timestamp'],utc=True,errors='coerce').dt.year.dropna()
+              score=(len(df),df[key].astype(str).nunique(),int(years.min()) if len(years) else 0,int(years.max()) if len(years) else 0)
+              scored.append((score,p))
+          scored.sort(reverse=True)
+          score,p=scored[0]
+          if score[1] < 34 or score[2] > 2016 or score[3] < 2024:
+              raise SystemExit(f'BLOCKED_MURPHY_SCHEMA_SCOPE:{score}:{p}')
+          out=Path('artifacts/murphy/MURPHY_2016_2024_FULL_EVIDENCE.csv')
+          out.write_bytes(p.read_bytes())
+          print('Using governed Murphy source:',p,'rows=',score[0],'rules=',score[1],'years=',score[2],'-',score[3])
           PY
           test -s artifacts/murphy/MURPHY_2016_2024_FULL_EVIDENCE.csv
       - name: Acquire Market State context
