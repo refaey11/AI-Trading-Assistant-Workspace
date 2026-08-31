@@ -121,14 +121,27 @@ def run(h1: Path, market_state: Path, murphy: Path, nison: Path, mtf: Path, outp
 
         nstatus = ng.status.astype(str).str.upper().str.strip() if "status" in ng.columns else pd.Series(dtype=object)
         passed = ng.loc[nstatus.eq("PASS")]
-        failed = ng.loc[nstatus.eq("FAIL")]
         ndirs = {str(x).upper().strip() for x in passed.get("direction", pd.Series(dtype=object)) if str(x).upper().strip() in {"BUY","SELL","BULLISH","BEARISH"}}
-        confirmation = "ABSENT" if not ndirs else ("BULLISH" if len(ndirs)==1 and next(iter(ndirs)) in {"BUY","BULLISH"} else "BEARISH" if len(ndirs)==1 else "CONFLICTED")
-        contradiction = not failed.empty
+        murphy_direction = str(mr.direction_norm).upper().strip()
+        normalized_ndirs = {"BUY" if d in {"BUY","BULLISH"} else "SELL" for d in ndirs}
+        aligned = normalized_ndirs & {murphy_direction}
+        opposite = normalized_ndirs & ({"SELL"} if murphy_direction == "BUY" else {"BUY"})
+
+        # In the canonical Nison historical evidence, FAIL means the tested
+        # candlestick condition did not match. It is not a directional
+        # contradiction. A contradiction requires an explicit directional
+        # Nison PASS opposite to the Murphy direction.
+        if opposite and aligned:
+            confirmation = "WEAK"
+        elif aligned:
+            confirmation = "CONFIRMED"
+        else:
+            confirmation = "ABSENT"
+        contradiction = bool(opposite)
 
         entry = scalar(bar_row, ("entry_price","close"))
         atr = scalar(market_row, ("atr","atr20","H1_atr"))
-        direction = str(mr.direction_norm)
+        direction = murphy_direction
         frozen_result = frozen.evaluate_frozen_candidate_risk(direction=direction, equity=equity, peak_equity=peak_equity, entry=entry, atr=atr, prior_loss_streak=loss_streak)
         rr_target = 1.5 * atr
         rr_request = canonical.RiskRequest(equity=equity, risk_percent=frozen_result.risk_percent, entry_price=entry, stop_distance=0.75*atr, take_profit_distance=rr_target, stop_mode="structure", risk_budget_locked=True)
@@ -151,7 +164,7 @@ def run(h1: Path, market_state: Path, murphy: Path, nison: Path, mtf: Path, outp
         )
         decision = (brain_result.get("decision") or {}).get("decision") or {}
         final = decision.get("final")
-        event={"timestamp":ts.isoformat(),"murphy_direction":direction,"murphy_rule_count":len(set(mr.expanded_ids)),"nison_rule_count":len(nids),"nison_confirmation":confirmation,"nison_contradiction":contradiction,"risk_pass":risk["risk_pass"],"brain_status":brain_result.get("status"),"brain_final":final,"equity_before":equity,"loss_streak_before":loss_streak,"entry_price":entry,"atr":atr,"stop_loss":risk["stop_loss"],"take_profit":risk["take_profit"],"source_rule_ids":sorted(set(mr.expanded_ids).union(nids)),"future_data_used":False}
+        event={"timestamp":ts.isoformat(),"murphy_direction":direction,"murphy_rule_count":len(set(mr.expanded_ids)),"nison_rule_count":len(nids),"nison_confirmation":confirmation,"nison_contradiction":contradiction,"nison_pass_direction_count":len(normalized_ndirs),"nison_fail_count":int(nstatus.eq("FAIL").sum()),"nison_not_evaluable_count":int(nstatus.eq("NOT_EVALUABLE").sum()),"risk_pass":risk["risk_pass"],"brain_status":brain_result.get("status"),"brain_final":final,"equity_before":equity,"loss_streak_before":loss_streak,"entry_price":entry,"atr":atr,"stop_loss":risk["stop_loss"],"take_profit":risk["take_profit"],"source_rule_ids":sorted(set(mr.expanded_ids).union(nids)),"future_data_used":False}
 
         if brain_result.get("status")=="EXECUTABLE" and final in {"BUY","SELL"} and risk["risk_pass"] and not contradiction and ts in exact_bar_pos:
             outcome,r_mult,exit_ts=simulate_exit(bars,exact_bar_pos[ts],final,risk["stop_loss"],risk["take_profit"])
@@ -171,7 +184,7 @@ def run(h1: Path, market_state: Path, murphy: Path, nison: Path, mtf: Path, outp
     metrics={"status":"CURRENT_STACK_DEVELOPMENT_RESULT","window":"2016-2024","candidate_events":int(len(candidates)),"evaluated_events":int(len(events)),"executed_trades":int(len(closed)),"costs_applied":False,"tuning_applied":False,"official_profitability_claim":False,"murphy_registry_rules":len(MURPHY_IDS),"murphy_source_backed_rules_observed":len(observed_m)}
     if not closed.empty:
         wins=int((closed.r_multiple>0).sum()); losses=int((closed.r_multiple<0).sum()); gw=float(closed.loc[closed.r_multiple>0,"r_multiple"].sum()); gl=float(-closed.loc[closed.r_multiple<0,"r_multiple"].sum()); eq=closed.r_multiple.cumsum(); metrics.update({"wins":wins,"losses":losses,"win_rate":wins/len(closed),"profit_factor":gw/gl if gl else None,"expectancy_R":float(closed.r_multiple.mean()),"total_R":float(closed.r_multiple.sum()),"max_drawdown_R":float((eq-eq.cummax()).min())})
-    validation={"window_2016_2024_only":True,"future_data_used":False,"murphy_governed_rules":34,"murphy_source_backed_rules_observed":len(observed_m),"nison_governed_rules":44,"nison_generates_direction":False,"tiz_generates_direction":False,"memory_generates_direction":False,"risk_authoritative":True,"brain_semantics_changed":False,"official_profitability_claim_allowed":False}
+    validation={"window_2016_2024_only":True,"future_data_used":False,"murphy_governed_rules":34,"murphy_source_backed_rules_observed":len(observed_m),"nison_governed_rules":44,"nison_generates_direction":False,"tiz_generates_direction":False,"memory_generates_direction":False,"risk_authoritative":True,"brain_semantics_changed":False,"official_profitability_claim_allowed":False,"nison_fail_is_not_contradiction":True,"nison_contradiction_requires_opposite_directional_pass":True}
     (out/"current_stack_backtest_metrics_2016_2024.json").write_text(json.dumps(metrics,indent=2),encoding="utf-8")
     (out/"current_stack_validation_manifest_2016_2024.json").write_text(json.dumps(validation,indent=2),encoding="utf-8")
     print(json.dumps({"metrics":metrics,"validation":validation},indent=2))
