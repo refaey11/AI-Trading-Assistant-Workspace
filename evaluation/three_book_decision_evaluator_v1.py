@@ -39,31 +39,31 @@ def evaluate_three_book_decision(
 ) -> dict[str, Any]:
     """Evaluate the existing contract with TIZ as audit-only process context."""
     if not _rule_ids_allowed(source_rule_ids):
-        return _no_trade("RULE_ALLOWLIST_REJECT", timestamp, source_rule_ids, tiz_evidence)
+        return _no_trade("RULE_ALLOWLIST_REJECT", timestamp, source_rule_ids, tiz_evidence, murphy_evidence, nison_evidence, risk_evidence)
 
     bias = _norm(brain_assessment.get("directional_bias"))
     murphy_status = _norm(murphy_evidence.get("status"))
     murphy_direction = _norm(murphy_evidence.get("direction") or murphy_evidence.get("candidate_direction"))
 
     if murphy_status != "PASS":
-        return _no_trade("MURPHY_CONTEXT_NOT_PASS", timestamp, source_rule_ids, tiz_evidence)
+        return _no_trade("MURPHY_CONTEXT_NOT_PASS", timestamp, source_rule_ids, tiz_evidence, murphy_evidence, nison_evidence, risk_evidence)
     if murphy_direction in {"BULL", "BULLISH", "BUY"} and bias != "BULLISH":
-        return _no_trade("MURPHY_BRAIN_DIRECTION_CONFLICT", timestamp, source_rule_ids, tiz_evidence)
+        return _no_trade("MURPHY_BRAIN_DIRECTION_CONFLICT", timestamp, source_rule_ids, tiz_evidence, murphy_evidence, nison_evidence, risk_evidence)
     if murphy_direction in {"BEAR", "BEARISH", "SELL"} and bias != "BEARISH":
-        return _no_trade("MURPHY_BRAIN_DIRECTION_CONFLICT", timestamp, source_rule_ids, tiz_evidence)
+        return _no_trade("MURPHY_BRAIN_DIRECTION_CONFLICT", timestamp, source_rule_ids, tiz_evidence, murphy_evidence, nison_evidence, risk_evidence)
 
     if not bool(risk_evidence.get("risk_pass", False)):
-        return _no_trade("RISK_GATE_FAIL_OR_NOT_EVALUABLE", timestamp, source_rule_ids, tiz_evidence)
+        return _no_trade("RISK_GATE_FAIL_OR_NOT_EVALUABLE", timestamp, source_rule_ids, tiz_evidence, murphy_evidence, nison_evidence, risk_evidence)
     if not str(risk_evidence.get("stop_loss") or "").strip():
-        return _no_trade("STOP_LOSS_UNDEFINED", timestamp, source_rule_ids, tiz_evidence)
+        return _no_trade("STOP_LOSS_UNDEFINED", timestamp, source_rule_ids, tiz_evidence, murphy_evidence, nison_evidence, risk_evidence)
 
     nison_confirmation = _norm(nison_evidence.get("confirmation"))
     nison_contradiction = bool(nison_evidence.get("contradiction", False)) or nison_confirmation in {"CONTRADICTED", "CONTRADICTION"}
     if nison_contradiction:
-        return _no_trade("NISON_CONTRADICTION", timestamp, source_rule_ids, tiz_evidence)
+        return _no_trade("NISON_CONTRADICTION", timestamp, source_rule_ids, tiz_evidence, murphy_evidence, nison_evidence, risk_evidence)
 
     if bias not in {"BULLISH", "BEARISH"}:
-        return _no_trade("BRAIN_DIRECTION_NOT_EXECUTABLE", timestamp, source_rule_ids, tiz_evidence)
+        return _no_trade("BRAIN_DIRECTION_NOT_EXECUTABLE", timestamp, source_rule_ids, tiz_evidence, murphy_evidence, nison_evidence, risk_evidence)
 
     final = "BUY" if bias == "BULLISH" else "SELL"
     strength = "strong" if nison_confirmation == "CONFIRMED" else "medium"
@@ -95,13 +95,22 @@ def evaluate_three_book_decision(
     }
 
 
-def _no_trade(reason: str, timestamp: str, source_rule_ids: Sequence[str], tiz_evidence: Mapping[str, Any]) -> dict[str, Any]:
+def _no_trade(
+    reason: str,
+    timestamp: str,
+    source_rule_ids: Sequence[str],
+    tiz_evidence: Mapping[str, Any],
+    murphy_evidence: Mapping[str, Any],
+    nison_evidence: Mapping[str, Any],
+    risk_evidence: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Return a terminal NO_TRADE decision while preserving audit evidence."""
     return {
         "signal": {"direction": "NO_TRADE", "confidence": 0.0, "status": "REJECTED"},
-        "murphy": {},
-        "nison": {},
+        "murphy": dict(murphy_evidence),
+        "nison": dict(nison_evidence),
         "trading_zone": dict(tiz_evidence),
-        "risk_engine": {},
+        "risk_engine": dict(risk_evidence),
         "decision": {"logic": "reject", "reasons_for": [], "reasons_against": [reason], "final": "NO_TRADE"},
         "audit": {
             "source_refs": list(source_rule_ids),
