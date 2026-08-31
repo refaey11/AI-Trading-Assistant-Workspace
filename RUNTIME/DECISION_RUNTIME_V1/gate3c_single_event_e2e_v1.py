@@ -120,8 +120,20 @@ def run(event: Mapping[str, Any]) -> dict[str, Any]:
     )
 
     brain_decision = result.get("decision") or {}
+    result_status = result.get("status")
+    if result_status == "EXECUTABLE":
+        gate_status = "PASS"
+        process_exit = 0
+    elif result_status == "NO_TRADE":
+        gate_status = "NO_TRADE"
+        process_exit = 0
+    else:
+        gate_status = "BLOCKED"
+        process_exit = 2
+
     return {
-        "gate3c":"PASS" if result.get("status")=="EXECUTABLE" else "BLOCKED",
+        "gate3c": gate_status,
+        "process_exit": process_exit,
         "query_as_of":ts.isoformat(), "symbol":event.get("symbol","GBPUSD"),
         "mtf":{k:mtf[k] for k in sorted(required_mtf)},
         "rule_envelope":{"murphy_event":len(murphy_ids),"murphy_governed_registry":len(MURPHY_IDS),"nison":len(nison_ids)},
@@ -138,7 +150,7 @@ def main() -> int:
     parser=argparse.ArgumentParser(); parser.add_argument("--event",required=True,type=Path); parser.add_argument("--output",required=True,type=Path)
     args=parser.parse_args(); result=run(json.loads(args.event.read_text(encoding="utf-8")))
     args.output.parent.mkdir(parents=True,exist_ok=True); args.output.write_text(json.dumps(result,indent=2,default=str),encoding="utf-8")
-    print(json.dumps(result,indent=2,default=str)); return 0 if result.get("gate3c")=="PASS" else 2
+    print(json.dumps(result,indent=2,default=str)); return int(result.get("process_exit", 2))
 
 
 if __name__ == "__main__":
