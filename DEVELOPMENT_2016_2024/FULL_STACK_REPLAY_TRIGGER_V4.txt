@@ -1,0 +1,4 @@
+Full-stack 2016-2024 replay trigger.
+This marker exists only to trigger the governed current-stack workflow after Murphy source-resolution verification.
+No strategy parameters changed.
+2025 remains locked OOS.
