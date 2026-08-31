@@ -1,0 +1,4 @@
+Trigger for the governed Current Stack Development Backtest 2016-2024 V2.
+No strategy parameters changed.
+Legacy workflow disabled.
+2025 remains locked OOS.
