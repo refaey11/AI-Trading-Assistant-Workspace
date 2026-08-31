@@ -74,7 +74,7 @@ jobs:
           }
           download "/New 8/GBPUSD_H1_2016_2025_MASTER.zip" /tmp/gate3c/source/h1.zip
           download "/New 8/MURPHY_HISTORICAL_34_RULE_FANIN_2016_2024.zip" /tmp/gate3c/source/murphy.zip
-          download "/New 8/MTF_ALIGNMENT_GBPUSD_V1.zip" /tmp/gate3c/source/mtf.zip
+          download "/MTF_ALIGNMENT_GBPUSD_V1.zip" /tmp/gate3c/source/mtf.zip
           download "/New 8/GBPUSD_MARKET_STATE 6.csv" /tmp/gate3c/source/market_state.csv
           download "/New 8/NISON_2016_2024_FULL_EVIDENCE.csv" /tmp/gate3c/source/nison.csv
           download "/AI_Trading_Assistant_FULL_PROJECT_V1/AI_Trading_Assistant_HISTORICAL_CONTEXT_MEMORY_V1.zip" /tmp/gate3c/source/hc.zip
@@ -170,7 +170,6 @@ jobs:
           gov = r.get('governance') or {}
           brain = r.get('brain_execution_result') or {}
           risk = r.get('risk') or {}
-          required_true = ('brain_v1_unchanged','murphy_primary_context','murphy_registry_intact','nison_direction_generation','tiz_direction_generation','memory_direction_generation','future_data_allowed','oos_tuning','full_fanin_verified')
           if gov.get('brain_v1_unchanged') is not True:
               raise SystemExit('FAIL: brain_v1_unchanged is not true')
           for k in ('murphy_primary_context','murphy_registry_intact','full_fanin_verified'):
