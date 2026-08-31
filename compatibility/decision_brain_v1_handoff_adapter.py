@@ -31,45 +31,37 @@ def _year(value: Any) -> int | None:
 
 def _normalize_gate(value: Any) -> str:
     text = str(value or "").strip().upper()
-    if text in {"PASS", "FAIL", "NOT_EVALUABLE"}:
-        return text
-    return "NOT_EVALUABLE"
+    return text if text in {"PASS", "FAIL", "NOT_EVALUABLE"} else "NOT_EVALUABLE"
 
 
 def _normalize_risk_gate(risk: Mapping[str, Any]) -> str:
-    """Normalize the canonical risk envelope without inventing a risk result.
-
-    Some Gate 3C callers expose the authoritative boolean as ``risk_pass``
-    rather than a textual ``risk_status``/``status`` field. Preserve that
-    canonical outcome instead of incorrectly converting a true risk pass into
-    NOT_EVALUABLE.
-    """
     textual = risk.get("risk_status") or risk.get("status")
     if textual is not None and str(textual).strip() != "":
         return _normalize_gate(textual)
-
     if "risk_pass" in risk and risk.get("risk_pass") is not None:
         return "PASS" if bool(risk.get("risk_pass")) else "FAIL"
-
     return "NOT_EVALUABLE"
 
 
 def _sanitize_historical(historical: Mapping[str, Any] | None) -> dict[str, Any]:
-    """Keep historical metadata but never pass predicted_return as direction."""
     payload = dict(historical or {})
+    sources = deepcopy(payload.get("sources", {}))
     sanitized = {
-        "retrieval_status": payload.get("retrieval_status"),
+        "retrieval_status": payload.get("retrieval_status") or payload.get("status"),
         "candidate_count": payload.get("candidate_count"),
         "top_k_returned": payload.get("top_k_returned"),
         "nearest_distance": payload.get("nearest_distance"),
         "distance_summary": deepcopy(payload.get("distance_summary", {})),
-        "historical_evidence_ids_or_positions": deepcopy(
-            payload.get("historical_evidence_ids_or_positions", [])
-        ),
+        "historical_evidence_ids_or_positions": deepcopy(payload.get("historical_evidence_ids_or_positions", [])),
         "evidence_time_range": deepcopy(payload.get("evidence_time_range", {})),
         "outcome_evidence": deepcopy(payload.get("outcome_evidence", {})),
         "context_evidence": deepcopy(payload.get("context_evidence", {})),
         "warnings": deepcopy(payload.get("warnings", [])),
+        "sources": sources,
+        "memory_role": payload.get("memory_role", "EVIDENCE_ONLY"),
+        "query_as_of": payload.get("query_as_of"),
+        "provenance": deepcopy(payload.get("provenance", {})),
+        "consumed_by_decision_boundary": bool(payload.get("consumed_by_decision_boundary", False)),
         "predicted_return_used_as_direction": False,
     }
     return sanitized
@@ -100,7 +92,7 @@ def assess_with_governance(
         return {"status": "NOT_EVALUABLE", "reason": "FUTURE_DATA_FORBIDDEN"}
 
     row_copy = deepcopy(dict(row))
-    # Similarity remains metadata/evidence only. Never pass predicted_return.
+    # Similarity remains evidence-only and is never passed as a directional signal.
     assessment = decision_brain_module.assess(row_copy, similarity=None)
     assessment_dict = asdict(assessment)
 
@@ -113,25 +105,20 @@ def assess_with_governance(
     nison_confirmation = str(nison.get("confirmation") or "ABSENT").upper()
     nison_contradiction = bool(nison.get("contradiction", False))
 
-    hard_blocks = []
-    needs_review = []
+    hard_blocks: list[str] = []
+    needs_review: list[str] = []
     if tiz_gate == "FAIL":
         hard_blocks.append("TIZ_PROCESS_GATE_FAIL")
     elif tiz_gate == "NOT_EVALUABLE":
         needs_review.append("TIZ_PROCESS_GATE_NOT_EVALUABLE")
-
     if risk_gate == "FAIL":
         hard_blocks.append("RISK_GATE_FAIL")
     elif risk_gate == "NOT_EVALUABLE":
         needs_review.append("RISK_GATE_NOT_EVALUABLE")
-
     if nison_contradiction or nison_confirmation in {"CONTRADICTED", "CONTRADICTION"}:
         needs_review.append("NISON_CONTRADICTION")
 
-    execution_eligible = not hard_blocks and not needs_review and bool(
-        assessment_dict.get("directional_bias") not in {"neutral", "conflicted"}
-    )
-
+    history = _sanitize_historical(historical_evidence)
     return {
         "status": "PASS",
         "mode": mode,
@@ -142,9 +129,9 @@ def assess_with_governance(
         "nison_evidence": nison,
         "tiz_evidence": tiz,
         "risk_evidence": risk,
-        "historical_evidence": _sanitize_historical(historical_evidence),
+        "historical_evidence": history,
         "execution": {
-            "eligible": execution_eligible,
+            "eligible": not hard_blocks and not needs_review and assessment_dict.get("directional_bias") not in {"neutral", "conflicted"},
             "hard_blocks": hard_blocks,
             "needs_review": needs_review,
             "final_trade_decision": None,
@@ -158,6 +145,7 @@ def assess_with_governance(
             "risk_gate_overridable": False,
             "future_data_allowed": False,
             "2025_used_for_tuning": False,
+            "historical_memory_consumed_downstream": bool(history.get("consumed_by_decision_boundary")),
         },
         "provenance": deepcopy(provenance or {}),
     }
