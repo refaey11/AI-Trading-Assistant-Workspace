@@ -1,0 +1,4 @@
+Current-stack development replay fix checkpoint.
+Nison FAIL means the tested rule did not match; it is not a directional contradiction.
+A Nison contradiction requires an explicit opposite-direction Nison PASS.
+Development window remains 2016-2024 only; 2025 remains locked/OOS.
