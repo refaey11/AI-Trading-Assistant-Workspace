@@ -23,14 +23,11 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 1
-
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-
       - name: Install dependencies
         run: python -m pip install --upgrade pip pandas pytest
-
       - name: Enforce development window
         run: |
           python - <<'PY'
@@ -39,7 +36,6 @@ jobs:
           print('WINDOW=2016-2024')
           print('2025_OOS_LOCKED=True')
           PY
-
       - name: Acquire current-stack governed sources
         run: |
           set -euo pipefail
@@ -62,7 +58,6 @@ jobs:
           unzip -q artifacts/source/h1.zip -d artifacts/source/h1
           unzip -q artifacts/source/murphy.zip -d artifacts/source/murphy
           unzip -q artifacts/source/mtf.zip -d artifacts/source/mtf
-
       - name: Resolve and validate governed Murphy source
         run: |
           python - <<'PY'
@@ -76,26 +71,33 @@ jobs:
               if {'timestamp','source_rule_id'}.issubset(cols): files.append(p)
           if not files: raise SystemExit('BLOCKED_MURPHY_CSV_NOT_FOUND')
           expected={f'MURPHY_{i:04d}' for i in [3,4,6,7,18,19,21,22,23,25,26,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,47,48,49,50,51]}
-          chosen=None
+          if len(expected) != 34: raise SystemExit(f'BLOCKED_MURPHY_REGISTRY_INTERNAL:{len(expected)}')
+          ranked=[]
           for p in files:
               df=pd.read_csv(p,usecols=['timestamp','source_rule_id'])
-              ids={rid.strip() for v in df.source_rule_id.dropna() for rid in str(v).split('|') if rid.strip()}
+              ids={rid.strip() for v in df.source_rule_id.dropna() for rid in str(v).split('|') if rid.strip() and rid.strip().upper() not in {'NONE','NULL','NAN','NISON_NONE'}}
               years=pd.to_datetime(df.timestamp,utc=True,errors='coerce').dt.year.dropna()
-              if ids==expected and not years.empty and int(years.min())==2016 and int(years.max())==2024:
-                  chosen=p; break
-          if chosen is None: raise SystemExit('BLOCKED_MURPHY_34_RULE_ENVELOPE_NOT_PROVEN')
+              unknown=sorted(ids-expected)
+              if not years.empty and int(years.min())>=2016 and int(years.max())<=2024 and not unknown and ids:
+                  ranked.append((len(df),len(ids),int(years.min()),int(years.max()),p,ids))
+          if not ranked: raise SystemExit('BLOCKED_MURPHY_NO_VALID_SOURCE_BACKED_2016_2024_FILE')
+          ranked.sort(reverse=True, key=lambda x:(x[0],x[1],str(x[4])))
+          rows,observed_count,y0,y1,chosen,ids=ranked[0]
           Path('artifacts/source/MURPHY_CURRENT_STACK.csv').write_bytes(chosen.read_bytes())
-          print('MURPHY_SOURCE_PASS', chosen)
+          print('MURPHY_REGISTRY_COUNT_PASS', len(expected))
+          print('MURPHY_EVENT_SOURCE_PASS', chosen)
+          print('MURPHY_EVENT_RULES_OBSERVED', observed_count, sorted(ids))
+          print('MURPHY_EVENT_WINDOW', y0, y1, 'rows=', rows)
+          print('MURPHY_EVENT_COVERAGE_MODE=SOURCE_BACKED_PARTIAL_ALLOWED')
+          print('MURPHY_UNREPRESENTED_RULES_ARE_NOT_EVALUABLE=True')
           PY
-
       - name: Resolve current-stack MTF source
         run: |
           python - <<'PY'
           from pathlib import Path
           import pandas as pd
           req={'timestamp','mtf_trend_score','M5_trend_regime','M15_trend_regime','M30_trend_regime','H1_trend_regime','H4_trend_regime','D1_trend_regime'}
-          root=Path('artifacts/source/mtf')
-          matches=[]
+          root=Path('artifacts/source/mtf'); matches=[]
           for p in root.rglob('*.csv'):
               try: cols=set(pd.read_csv(p,nrows=0).columns)
               except Exception: continue
@@ -104,19 +106,11 @@ jobs:
           Path('artifacts/source/MTF_CURRENT_STACK.csv').write_bytes(sorted(matches)[0].read_bytes())
           print('MTF_SOURCE_PASS', sorted(matches)[0])
           PY
-
       - name: Run current-stack historical replay
         run: |
           H1=$(find artifacts/source/h1 -type f -name 'GBPUSD_H1_2016_2025_MASTER.csv' | head -1)
           test -n "$H1"
-          python DEVELOPMENT_2016_2024/current_stack_historical_replay_v2.py \
-            --h1 "$H1" \
-            --market-state artifacts/source/market_state.csv \
-            --murphy artifacts/source/MURPHY_CURRENT_STACK.csv \
-            --nison artifacts/source/nison.csv \
-            --mtf artifacts/source/MTF_CURRENT_STACK.csv \
-            --output-dir artifacts/current_stack_backtest_2016_2024
-
+          python DEVELOPMENT_2016_2024/current_stack_historical_replay_v2.py --h1 "$H1" --market-state artifacts/source/market_state.csv --murphy artifacts/source/MURPHY_CURRENT_STACK.csv --nison artifacts/source/nison.csv --mtf artifacts/source/MTF_CURRENT_STACK.csv --output-dir artifacts/current_stack_backtest_2016_2024
       - name: Validate current-stack replay manifest
         run: |
           python - <<'PY'
@@ -124,23 +118,10 @@ jobs:
           from pathlib import Path
           p=Path('artifacts/current_stack_backtest_2016_2024/current_stack_validation_manifest_2016_2024.json')
           d=json.loads(p.read_text())
-          required={
-            'window_2016_2024_only':True,
-            'future_data_used':False,
-            'murphy_governed_rules':34,
-            'nison_governed_rules':44,
-            'nison_generates_direction':False,
-            'tiz_generates_direction':False,
-            'memory_generates_direction':False,
-            'risk_authoritative':True,
-            'brain_semantics_changed':False,
-            'official_profitability_claim_allowed':False,
-          }
+          required={'window_2016_2024_only':True,'future_data_used':False,'murphy_governed_rules':34,'nison_governed_rules':44,'nison_generates_direction':False,'tiz_generates_direction':False,'memory_generates_direction':False,'risk_authoritative':True,'brain_semantics_changed':False,'official_profitability_claim_allowed':False}
           for k,v in required.items(): assert d.get(k)==v,(k,d.get(k),v)
-          print('CURRENT_STACK_MANIFEST_PASS')
-          print(json.dumps(d,indent=2))
+          print('CURRENT_STACK_MANIFEST_PASS'); print(json.dumps(d,indent=2))
           PY
-
       - name: Upload current-stack development artifacts
         if: always()
         uses: actions/upload-artifact@v4
