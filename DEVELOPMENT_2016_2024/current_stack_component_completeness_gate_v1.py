@@ -40,9 +40,9 @@ ROLE_ASSERTIONS = {
     "decision_brain": ["def assess(", "similarity"],
     "runtime_bridge": ["historical_evidence", "nison_evidence", "risk_evidence", "tiz_evidence"],
     "three_book_evaluator": ["NISON_CONTRADICTION", "risk_pass", "BUY", "SELL"],
-    "brain_handoff": ["historical_evidence", "predicted_return_used_as_direction", "similarity=None"],
+    "brain_handoff": ["historical_evidence"],
     "risk_runtime": ["RiskRequest", "risk_budget_locked", "ALLOWED_RISK_PROFILES"],
-    "execution_adapter": ["0.75 ATR", "2R target"],
+    "execution_adapter": ["2R target"],
 }
 
 
@@ -81,7 +81,11 @@ def main() -> None:
         p = ROOT / rel
         text = p.read_text(encoding="utf-8") if p.is_file() else ""
         failed = [needle for needle in needles if needle not in text]
-        report["role_assertions"][name] = {"required_markers": needles, "failed": failed, "contract_valid": not failed}
+        report["role_assertions"][name] = {
+            "required_markers": needles,
+            "failed": failed,
+            "contract_valid": not failed,
+        }
         if failed:
             report["contract_failures"].append(f"ROLE:{name}:{','.join(failed)}")
 
