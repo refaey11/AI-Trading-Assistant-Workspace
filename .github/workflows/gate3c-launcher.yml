@@ -33,7 +33,7 @@ on:
 
 jobs:
   single_event:
-    if: ${{ (github.event_name == 'push' && github.event.head_commit.message == 'CI: single-shot Gate 3C auth probe') || inputs.confirm == 'RUN_SINGLE_EVENT' }}
+    if: "${{ (github.event_name == 'push' && github.event.head_commit.message == 'CI: single-shot Gate 3C auth probe') || inputs.confirm == 'RUN_SINGLE_EVENT' }}"
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
