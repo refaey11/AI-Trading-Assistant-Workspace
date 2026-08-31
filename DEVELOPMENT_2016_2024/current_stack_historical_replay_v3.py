@@ -19,19 +19,10 @@ def _load_module(path: Path, name: str):
     return module
 
 
-def run(
-    h1: Path,
-    market_state: Path,
-    murphy: Path,
-    nison: Path,
-    mtf: Path,
-    historical_context: Path,
-    historical_outcome: Path,
-    similarity_artifact: Path,
-    retrieval_artifact: Path,
-    scenario_artifact: Path,
-    output_dir: Path,
-) -> None:
+def run(h1: Path, market_state: Path, murphy: Path, nison: Path, mtf: Path,
+        historical_context: Path, historical_outcome: Path,
+        similarity_artifact: Path, retrieval_artifact: Path, scenario_artifact: Path,
+        output_dir: Path) -> None:
     replay = _load_module(
         ROOT / "DEVELOPMENT_2016_2024" / "current_stack_historical_replay_v2.py",
         "current_stack_historical_replay_v2_engine",
@@ -55,7 +46,6 @@ def run(
                 enriched = dict(kwargs)
                 query_as_of = enriched.get("query_as_of")
                 event_row = dict(enriched.get("row") or {})
-                murphy_evidence = dict(enriched.get("murphy_evidence") or {})
                 memory = provider.evidence(query_as_of, event_row)
                 enriched["historical_evidence"] = {
                     "status": memory["status"],
@@ -64,17 +54,18 @@ def run(
                     "governance": memory["governance"],
                     "query_as_of": memory["query_as_of"],
                 }
-                provenance = dict(enriched.get("provenance") or {})
-                provenance.update({
-                    "historical_memory_provider": "current_stack_historical_memory_provider_v1",
-                    "memory_full_stack_wired": True,
-                    "memory_evidence_only": True,
-                    "similarity_snapshot_reuse_forbidden": True,
-                    "retrieval_snapshot_reuse_forbidden": True,
-                    "scenario_snapshot_reuse_forbidden": True,
-                })
-                enriched["provenance"] = provenance
-                return original_cycle(**enriched)
+                result = original_cycle(**enriched)
+                if isinstance(result, dict):
+                    result.setdefault("provenance", {}).update({
+                        "historical_memory_provider": "current_stack_historical_memory_provider_v1",
+                        "memory_full_stack_wired": True,
+                        "memory_evidence_only": True,
+                        "similarity_snapshot_reuse_forbidden": True,
+                        "retrieval_snapshot_reuse_forbidden": True,
+                        "scenario_snapshot_reuse_forbidden": True,
+                    })
+                    result.setdefault("historical_memory", memory)
+                return result
 
             module.run_full_brain_cycle = wrapped_cycle
         return module
@@ -85,16 +76,7 @@ def run(
 
 if __name__ == "__main__":
     p = argparse.ArgumentParser()
-    p.add_argument("--h1", required=True, type=Path)
-    p.add_argument("--market-state", required=True, type=Path)
-    p.add_argument("--murphy", required=True, type=Path)
-    p.add_argument("--nison", required=True, type=Path)
-    p.add_argument("--mtf", required=True, type=Path)
-    p.add_argument("--historical-context", required=True, type=Path)
-    p.add_argument("--historical-outcome", required=True, type=Path)
-    p.add_argument("--similarity-artifact", required=True, type=Path)
-    p.add_argument("--retrieval-artifact", required=True, type=Path)
-    p.add_argument("--scenario-artifact", required=True, type=Path)
-    p.add_argument("--output-dir", required=True, type=Path)
+    for arg in ["h1", "market_state", "murphy", "nison", "mtf", "historical_context", "historical_outcome", "similarity_artifact", "retrieval_artifact", "scenario_artifact", "output_dir"]:
+        p.add_argument(f"--{arg.replace('_','-')}", required=True, type=Path)
     a = p.parse_args()
     run(a.h1, a.market_state, a.murphy, a.nison, a.mtf, a.historical_context, a.historical_outcome, a.similarity_artifact, a.retrieval_artifact, a.scenario_artifact, a.output_dir)
