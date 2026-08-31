@@ -1,0 +1,2 @@
+Gate 3C single-event probe trigger marker.
+Target default event: 2016-02-23T09:00:00Z
