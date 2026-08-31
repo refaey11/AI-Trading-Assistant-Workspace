@@ -30,6 +30,10 @@ jobs:
         run: |
           set -euo pipefail
           python DEVELOPMENT_2016_2024/current_stack_component_completeness_gate_v1.py
+      - name: Runtime wiring gate — SECOND
+        run: |
+          set -euo pipefail
+          python DEVELOPMENT_2016_2024/current_stack_runtime_wiring_gate_v1.py
       - name: Install dependencies
         run: python -m pip install --upgrade pip pandas pytest
       - name: Enforce development window
