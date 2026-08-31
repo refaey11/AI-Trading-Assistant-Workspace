@@ -145,7 +145,7 @@ jobs:
           test -n "$HC" && test -n "$HO" && test -n "$SIM" && test -n "$RET" && test -n "$SCN"
           printf 'HISTORICAL_CONTEXT=%s\nHISTORICAL_OUTCOME=%s\nSIMILARITY_ARTIFACT=%s\nRETRIEVAL_ARTIFACT=%s\nSCENARIO_ARTIFACT=%s\n' "$HC" "$HO" "$SIM" "$RET" "$SCN" > artifacts/source/memory/RESOLVED_MEMORY_PATHS.txt
 
-      - name: Run full current-stack replay
+      - name: Run event-driven full-stack replay
         run: |
           H1=$(find artifacts/source/h1 -type f -name 'GBPUSD_H1_2016_2025_MASTER.csv' | head -1)
           HC=$(grep '^HISTORICAL_CONTEXT=' artifacts/source/memory/RESOLVED_MEMORY_PATHS.txt | cut -d= -f2-)
@@ -153,7 +153,7 @@ jobs:
           SIM=$(grep '^SIMILARITY_ARTIFACT=' artifacts/source/memory/RESOLVED_MEMORY_PATHS.txt | cut -d= -f2-)
           RET=$(grep '^RETRIEVAL_ARTIFACT=' artifacts/source/memory/RESOLVED_MEMORY_PATHS.txt | cut -d= -f2-)
           SCN=$(grep '^SCENARIO_ARTIFACT=' artifacts/source/memory/RESOLVED_MEMORY_PATHS.txt | cut -d= -f2-)
-          python DEVELOPMENT_2016_2024/current_stack_historical_replay_v3.py \
+          python DEVELOPMENT_2016_2024/current_stack_historical_replay_v4.py \
             --h1 "$H1" \
             --market-state artifacts/source/market_state.csv \
             --murphy artifacts/source/MURPHY_CURRENT_STACK.csv \
@@ -173,7 +173,7 @@ jobs:
           from pathlib import Path
           p=Path('artifacts/current_stack_backtest_2016_2024/current_stack_validation_manifest_2016_2024.json')
           d=json.loads(p.read_text())
-          required={'window_2016_2024_only':True,'future_data_used':False,'nison_generates_direction':False,'tiz_generates_direction':False,'memory_generates_direction':False,'risk_authoritative':True,'brain_semantics_changed':False,'official_profitability_claim_allowed':False}
+          required={'window_2016_2024_only':True,'future_data_used':False,'nison_generates_direction':False,'tiz_generates_direction':False,'memory_generates_direction':False,'risk_authoritative':True,'brain_semantics_changed':False,'official_profitability_claim_allowed':False,'trade_lifecycle_event_driven':True,'pnl_recorded_only_on_exit':True,'risk_state_updates_only_on_realized_pnl':True}
           for k,v in required.items(): assert d.get(k)==v,(k,d.get(k),v)
           print('CURRENT_STACK_MANIFEST_PASS')
           print(json.dumps(d,indent=2))
@@ -183,6 +183,6 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: current-stack-development-backtest-2016-2024-launcher
+          name: current-stack-development-backtest-2016-2024-v4
           path: artifacts
           if-no-files-found: ignore
