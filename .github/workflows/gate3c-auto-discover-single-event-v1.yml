@@ -67,7 +67,7 @@ jobs:
           download "/AI_Trading_Assistant_FULL_PROJECT_V1/AI_Trading_Assistant_CONTEXT_AWARE_RETRIEVAL_V2.zip" /tmp/gate3c/source/retrieval.zip
           for z in h1 murphy mtf hc ho similarity retrieval; do unzip -q "/tmp/gate3c/source/${z}.zip" -d "/tmp/gate3c/unpacked/${z}"; done
 
-      - name: Discover a real event instead of guessing a timestamp
+      - name: Discover a real event with bounded preflight
         env:
           EQUITY: ${{ inputs.equity }}
           PEAK_EQUITY: ${{ inputs.peak_equity }}
@@ -76,33 +76,115 @@ jobs:
           set -euo pipefail
           python - <<'PY'
           from pathlib import Path
-          import os, subprocess, sys
+          import os, shutil, subprocess, sys
           import pandas as pd
+
           root=Path('/tmp/gate3c')
           h1s=list((root/'unpacked'/'h1').rglob('GBPUSD_H1_2016_2025_MASTER.csv'))
           if not h1s: raise SystemExit('BLOCKED_H1_MASTER_CSV_NOT_FOUND')
-          h1=pd.read_csv(h1s[0]); ms=pd.read_csv(root/'source'/'market_state.csv'); ns=pd.read_csv(root/'source'/'nison.csv')
+          h1=pd.read_csv(h1s[0])
+          ms=pd.read_csv(root/'source'/'market_state.csv')
+          ns=pd.read_csv(root/'source'/'nison.csv')
+
           for df,name in ((h1,'H1'),(ms,'MARKET_STATE'),(ns,'NISON')):
               if 'timestamp' not in df.columns: raise SystemExit(f'BLOCKED_TIMESTAMP_COLUMN_MISSING:{name}')
               df['timestamp']=pd.to_datetime(df['timestamp'],utc=True,errors='coerce',format='mixed')
+
           nkey='source_rule_id' if 'source_rule_id' in ns.columns else 'rule_id'
           if nkey not in ns.columns: raise SystemExit('BLOCKED_NISON_SCHEMA')
           ns[nkey]=ns[nkey].astype(str)
           expected={f'NISON_{i:04d}' for i in range(1,45)}
           nvalid=ns.groupby('timestamp')[nkey].apply(lambda x:set(x.astype(str))==expected and len(x)==44)
-          candidates=sorted(set(h1['timestamp'].dropna()) & set(ms['timestamp'].dropna()) & set(nvalid[nvalid].index))
+
+          # Risk evidence requires an exact Murphy row. Include Murphy in the
+          # structural intersection before invoking the expensive Python gates.
+          murphy_files=[]
+          for p in (root/'unpacked'/'murphy').rglob('*.csv'):
+              try:
+                  cols=set(pd.read_csv(p,nrows=0).columns)
+              except Exception:
+                  continue
+              if {'timestamp','direction'}.issubset(cols):
+                  murphy_files.append(p)
+          if not murphy_files: raise SystemExit('BLOCKED_MURPHY_SOURCE_NOT_FOUND')
+          murphy_files.sort(key=lambda p: (-sum(k in p.name.upper() for k in ('MURPHY','HISTORICAL','FANIN','EVIDENCE')), str(p)))
+          murphy_path=murphy_files[0]
+          murphy=pd.read_csv(murphy_path)
+          murphy['timestamp']=pd.to_datetime(murphy['timestamp'],utc=True,errors='coerce',format='mixed')
+          murphy_ts=set(murphy['timestamp'].dropna())
+
+          candidates=sorted(
+              set(h1['timestamp'].dropna()) &
+              set(ms['timestamp'].dropna()) &
+              set(nvalid[nvalid].index) &
+              murphy_ts,
+              reverse=True,
+          )
           candidates=[x for x in candidates if 2016 <= x.year <= 2024]
-          if not candidates: raise SystemExit('BLOCKED_NO_H1_MARKET_NISON_COMMON_EVENT')
-          for ts in candidates:
+          if not candidates: raise SystemExit('BLOCKED_NO_H1_MARKET_NISON_MURPHY_COMMON_EVENT')
+
+          print(f'PRECHECK_CANDIDATES={len(candidates)}')
+          print(f'FIRST_CANDIDATE={candidates[0].isoformat()}')
+
+          # The old implementation tried candidates from 2016 forward and could
+          # spend the entire 20-minute job repeatedly loading large source files.
+          # Start from the newest valid historical event so similarity has the
+          # largest possible as-of history, and bound each gate invocation.
+          for idx,ts in enumerate(candidates,1):
               tsiso=ts.isoformat().replace('+00:00','Z')
-              evh=h1[h1.timestamp.eq(ts)].copy(); evm=ms[ms.timestamp.eq(ts)].copy(); evn=ns[ns.timestamp.eq(ts)].copy()
-              evh.to_csv(root/'event_h1.csv',index=False); evm.to_csv(root/'event_context.csv',index=False); evn.to_csv(root/'event_nison.csv',index=False)
+              print(f'PREFLIGHT {idx}/{len(candidates)} {tsiso}', flush=True)
+              evh=h1[h1.timestamp.eq(ts)].copy()
+              evm=ms[ms.timestamp.eq(ts)].copy()
+              evn=ns[ns.timestamp.eq(ts)].copy()
+              evh.to_csv(root/'event_h1.csv',index=False)
+              evm.to_csv(root/'event_context.csv',index=False)
+              evn.to_csv(root/'event_nison.csv',index=False)
+
+              # Give the risk builder a one-row Murphy source so it does not
+              # reload/scan the full historical Murphy CSV on every candidate.
+              candidate_murphy_root=root/'candidate_murphy'
+              if candidate_murphy_root.exists(): shutil.rmtree(candidate_murphy_root)
+              candidate_murphy_root.mkdir(parents=True)
+              murphy[murphy.timestamp.eq(ts)].to_csv(candidate_murphy_root/'MURPHY_candidate.csv',index=False)
+
               env=os.environ.copy(); env['EVENT_TS']=tsiso
               risk=root/'unpacked'/'retrieval'/'gate3c_risk_evidence.csv'
-              r=subprocess.run([sys.executable,'OOS_2025/build_single_event_risk_evidence_v1.py','--timestamp',tsiso,'--h1',str(root/'event_h1.csv'),'--market-state',str(root/'event_context.csv'),'--murphy-root',str(root/'unpacked'/'murphy'),'--output',str(risk),'--equity',env['EQUITY'],'--peak-equity',env['PEAK_EQUITY'],'--prior-loss-streak',env['PRIOR_LOSS_STREAK']],env=env,capture_output=True,text=True)
-              if r.returncode: continue
-              c=subprocess.run([sys.executable,'tools/gate3c_build_single_event_bundle_v1.py','--timestamp',tsiso,'--h1',str(root/'event_h1.csv'),'--market-state',str(root/'event_context.csv'),'--nison',str(root/'event_nison.csv'),'--murphy-root',str(root/'unpacked'/'murphy'),'--mtf-root',str(root/'unpacked'/'mtf'),'--historical-context-root',str(root/'unpacked'/'hc'),'--historical-outcome-root',str(root/'unpacked'/'ho'),'--similarity-root',str(root/'unpacked'/'similarity'),'--retrieval-root',str(root/'unpacked'/'retrieval'),'--output',str(root/'canonical_event.json')],env=env,capture_output=True,text=True)
-              if c.returncode: continue
+              try:
+                  r=subprocess.run(
+                      [sys.executable,'OOS_2025/build_single_event_risk_evidence_v1.py',
+                       '--timestamp',tsiso,'--h1',str(root/'event_h1.csv'),
+                       '--market-state',str(root/'event_context.csv'),
+                       '--murphy-root',str(candidate_murphy_root),
+                       '--output',str(risk),'--equity',env['EQUITY'],
+                       '--peak-equity',env['PEAK_EQUITY'],
+                       '--prior-loss-streak',env['PRIOR_LOSS_STREAK']],
+                      env=env,capture_output=True,text=True,timeout=20)
+              except subprocess.TimeoutExpired:
+                  print('  RISK_TIMEOUT', flush=True); continue
+              if r.returncode:
+                  print('  RISK_BLOCKED', (r.stderr.strip().splitlines()[-1] if r.stderr.strip() else 'unknown'), flush=True)
+                  continue
+
+              try:
+                  c=subprocess.run(
+                      [sys.executable,'tools/gate3c_build_single_event_bundle_v1.py',
+                       '--timestamp',tsiso,'--h1',str(root/'event_h1.csv'),
+                       '--market-state',str(root/'event_context.csv'),
+                       '--nison',str(root/'event_nison.csv'),
+                       '--murphy-root',str(candidate_murphy_root),
+                       '--mtf-root',str(root/'unpacked'/'mtf'),
+                       '--historical-context-root',str(root/'unpacked'/'hc'),
+                       '--historical-outcome-root',str(root/'unpacked'/'ho'),
+                       '--similarity-root',str(root/'unpacked'/'similarity'),
+                       '--retrieval-root',str(root/'unpacked'/'retrieval'),
+                       '--output',str(root/'canonical_event.json')],
+                      env=env,capture_output=True,text=True,timeout=30)
+              except subprocess.TimeoutExpired:
+                  print('  CANONICAL_TIMEOUT', flush=True); continue
+              if c.returncode:
+                  print('  CANONICAL_BLOCKED', (c.stderr.strip().splitlines()[-1] if c.stderr.strip() else 'unknown'), flush=True)
+                  continue
+
               Path('/tmp/gate3c/EVENT_TS').write_text(tsiso+'\n')
               print('DISCOVERED_VALID_EVENT='+tsiso)
               print('Gate 3C source alignment passed through canonical bundle.')
