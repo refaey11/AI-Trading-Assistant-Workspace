@@ -89,12 +89,21 @@ jobs:
                   candidates.append(p)
           if not candidates:
               raise SystemExit('BLOCKED_MURPHY_CSV_NOT_FOUND_IN_GOVERNED_ZIP')
+
+          def expand_rule_ids(value):
+              if pd.isna(value):
+                  return set()
+              return {part.strip() for part in str(value).split('|') if part.strip()}
+
           scored=[]
           for p in candidates:
               df=pd.read_csv(p)
               key='source_rule_id' if 'source_rule_id' in df.columns else 'rule_id'
+              observed_rules=set()
+              for value in df[key].dropna():
+                  observed_rules.update(expand_rule_ids(value))
               years=pd.to_datetime(df['timestamp'],utc=True,errors='coerce').dt.year.dropna()
-              score=(len(df),df[key].astype(str).nunique(),int(years.min()) if len(years) else 0,int(years.max()) if len(years) else 0)
+              score=(len(df),len(observed_rules),int(years.min()) if len(years) else 0,int(years.max()) if len(years) else 0)
               scored.append((score,p))
           scored.sort(reverse=True)
           score,p=scored[0]
