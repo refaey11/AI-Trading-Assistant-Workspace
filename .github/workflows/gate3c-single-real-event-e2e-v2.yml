@@ -85,28 +85,51 @@ jobs:
           python - <<'PY'
           from pathlib import Path
           import os, csv
-          ts = os.environ['EVENT_TS']
+          from datetime import datetime, timezone
+
+          raw_ts = os.environ['EVENT_TS']
+          target = datetime.fromisoformat(raw_ts.replace('Z','+00:00')).astimezone(timezone.utc)
           root = Path('/tmp/gate3c')
-          src = root/'source'/'nison.csv'
-          out = root/'event_nison.csv'
-          with src.open('r', encoding='utf-8', newline='') as f, out.open('w', encoding='utf-8', newline='') as g:
-              r = csv.DictReader(f); w = csv.DictWriter(g, fieldnames=r.fieldnames); w.writeheader()
-              for row in r:
-                  if str(row.get('timestamp','')).replace('+00:00','Z') == ts:
-                      w.writerow(row)
+
+          def parse_utc(value):
+              value = str(value).strip()
+              if not value:
+                  return None
+              try:
+                  dt = datetime.fromisoformat(value.replace('Z','+00:00'))
+              except ValueError:
+                  return None
+              if dt.tzinfo is None:
+                  dt = dt.replace(tzinfo=timezone.utc)
+              return dt.astimezone(timezone.utc)
+
           def filter_csv(srcpath, dst, key='timestamp'):
+              count = 0
               with open(srcpath, 'r', encoding='utf-8', newline='') as f, open(dst, 'w', encoding='utf-8', newline='') as g:
-                  r=csv.DictReader(f); w=csv.DictWriter(g, fieldnames=r.fieldnames); w.writeheader()
+                  r = csv.DictReader(f)
+                  if not r.fieldnames:
+                      raise SystemExit(f'BLOCKED_EMPTY_CSV_HEADER: {srcpath}')
+                  w = csv.DictWriter(g, fieldnames=r.fieldnames)
+                  w.writeheader()
                   for row in r:
-                      v=str(row.get(key,''))
-                      if v.replace('+00:00','Z') == ts or v == ts.replace('Z','+00:00'):
+                      parsed = parse_utc(row.get(key, ''))
+                      if parsed == target:
                           w.writerow(row)
+                          count += 1
+              print(f'{dst.name}: matched={count} target={target.isoformat()} source={srcpath}')
+              return count
+
+          nison_matches = filter_csv(root/'source'/'nison.csv', root/'event_nison.csv')
           h1s = list((root/'unpacked'/'h1').rglob('GBPUSD_H1_2016_2025_MASTER.csv'))
           if not h1s:
               raise SystemExit('BLOCKED_H1_MASTER_CSV_NOT_FOUND')
-          filter_csv(h1s[0], root/'event_h1.csv')
-          filter_csv(root/'source'/'market_state.csv', root/'event_context.csv')
-          print('prepared event slices for', ts)
+          h1_matches = filter_csv(h1s[0], root/'event_h1.csv')
+          context_matches = filter_csv(root/'source'/'market_state.csv', root/'event_context.csv')
+          if h1_matches != 1:
+              raise SystemExit(f'BLOCKED_H1_EVENT_CARDINALITY: expected=1 observed={h1_matches} target={target.isoformat()}')
+          if context_matches > 1:
+              raise SystemExit(f'BLOCKED_MARKET_STATE_EVENT_CARDINALITY: expected<=1 observed={context_matches} target={target.isoformat()}')
+          print('prepared event slices for', target.isoformat())
           PY
 
       - name: Build authoritative single-event risk evidence
