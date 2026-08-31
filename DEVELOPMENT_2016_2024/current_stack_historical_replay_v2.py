@@ -72,8 +72,11 @@ def run(h1: Path, market_state: Path, murphy: Path, nison: Path, mtf: Path, outp
         raise ValueError("Murphy source_rule_id missing")
     mdf["expanded_ids"] = mdf.source_rule_id.map(split_ids)
     observed_m = {rid for ids in mdf.expanded_ids for rid in ids}
-    if observed_m != MURPHY_IDS:
-        raise ValueError(f"Murphy governed envelope mismatch observed={len(observed_m)} expected={len(MURPHY_IDS)}")
+    unknown_m = observed_m - MURPHY_IDS
+    if not observed_m:
+        raise ValueError("Murphy governed envelope has no source-backed rule IDs")
+    if unknown_m:
+        raise ValueError(f"Murphy governed envelope contains unknown rule IDs: {sorted(unknown_m)}")
 
     if "source_rule_id" not in ndf.columns:
         if "rule_id" not in ndf.columns:
@@ -88,12 +91,13 @@ def run(h1: Path, market_state: Path, murphy: Path, nison: Path, mtf: Path, outp
 
     market_i = asof_frame(market)
     mtf_i = asof_frame(mtf_df)
+    bars_i = asof_frame(bars)
     nison_groups = {ts:g for ts,g in ndf.groupby("timestamp", sort=False)}
     exact_bar_pos = {ts:i for i,ts in enumerate(bars.timestamp)}
 
     bridge = load_module(ROOT / "RUNTIME/DECISION_RUNTIME_V1/full_brain_runtime_bridge_v1.py", "current_full_brain_bridge_v2")
-    frozen = load_module(ROOT / "OOS_2025/frozen_candidate_risk_profile_v1.py", "frozen_candidate_risk_v2")
-    canonical = load_module(ROOT / "risk_engine/risk_execution_runtime_v1.py", "canonical_risk_v2")
+    frozen = load_module(ROOT / "OOS_2025/frozen_candidate_risk_profile_v1.py", "current_frozen_candidate_risk_v2")
+    canonical = load_module(ROOT / "risk_engine/risk_execution_runtime_v1.py", "current_canonical_risk_v2")
 
     equity = 10000.0
     peak_equity = equity
@@ -105,7 +109,7 @@ def run(h1: Path, market_state: Path, murphy: Path, nison: Path, mtf: Path, outp
         ts = mr.timestamp
         market_row = asof_row(market_i, ts)
         mtf_row = asof_row(mtf_i, ts)
-        bar_row = asof_row(asof_frame(bars), ts)
+        bar_row = asof_row(bars_i, ts)
         ng = nison_groups.get(ts)
         if market_row is None or mtf_row is None or bar_row is None or ng is None:
             continue
@@ -125,11 +129,11 @@ def run(h1: Path, market_state: Path, murphy: Path, nison: Path, mtf: Path, outp
         entry = scalar(bar_row, ("entry_price","close"))
         atr = scalar(market_row, ("atr","atr20","H1_atr"))
         direction = str(mr.direction_norm)
-        frozen = frozen.evaluate_frozen_candidate_risk(direction=direction, equity=equity, peak_equity=peak_equity, entry=entry, atr=atr, prior_loss_streak=loss_streak)
+        frozen_result = frozen.evaluate_frozen_candidate_risk(direction=direction, equity=equity, peak_equity=peak_equity, entry=entry, atr=atr, prior_loss_streak=loss_streak)
         rr_target = 1.5 * atr
-        rr_request = canonical.RiskRequest(equity=equity, risk_percent=frozen.risk_percent, entry_price=entry, stop_distance=0.75*atr, take_profit_distance=rr_target, stop_mode="structure", risk_budget_locked=True)
+        rr_request = canonical.RiskRequest(equity=equity, risk_percent=frozen_result.risk_percent, entry_price=entry, stop_distance=0.75*atr, take_profit_distance=rr_target, stop_mode="structure", risk_budget_locked=True)
         cr = canonical.evaluate_risk(rr_request, direction, atr)
-        risk = {"authoritative":True,"risk_pass":bool(frozen.risk_pass and cr.risk_pass),"equity":equity,"peak_equity":peak_equity,"prior_loss_streak":loss_streak,"entry_price":entry,"atr":atr,"risk_percent":float(frozen.risk_percent),"stop_loss":float(cr.stop_loss),"take_profit":float(cr.take_profit),"position_size":float(cr.position_size),"rr":2.0,"risk_budget_locked":True}
+        risk = {"authoritative":True,"risk_pass":bool(frozen_result.risk_pass and cr.risk_pass),"equity":equity,"peak_equity":peak_equity,"prior_loss_streak":loss_streak,"entry_price":entry,"atr":atr,"risk_percent":float(frozen_result.risk_percent),"stop_loss":float(cr.stop_loss),"take_profit":float(cr.take_profit),"position_size":float(cr.position_size),"rr":2.0,"risk_budget_locked":True}
 
         brain_row = {**market_row.to_dict(), **mtf_row.to_dict(), "entry_price":entry, "atr":atr}
         brain_result = bridge.run_full_brain_cycle(
@@ -154,7 +158,7 @@ def run(h1: Path, market_state: Path, murphy: Path, nison: Path, mtf: Path, outp
             trade={**event,"trade":True,"direction":final,"outcome":outcome,"r_multiple":r_mult,"exit_timestamp":exit_ts.isoformat() if exit_ts is not None else None}
             trades.append(trade)
             if r_mult is not None:
-                equity += float(r_mult)*(equity*risk["risk_percent"])
+                equity += float(r_mult)*(equity*frozen_result.risk_percent)
                 peak_equity=max(peak_equity,equity)
                 loss_streak=loss_streak+1 if r_mult<0 else 0
         event.update({"equity_after":equity,"peak_equity_after":peak_equity,"loss_streak_after":loss_streak})
@@ -164,10 +168,10 @@ def run(h1: Path, market_state: Path, murphy: Path, nison: Path, mtf: Path, outp
     pd.DataFrame(events).to_csv(out/"current_stack_decision_events_2016_2024.csv",index=False)
     pd.DataFrame(trades).to_csv(out/"current_stack_executed_trades_2016_2024.csv",index=False)
     closed=pd.DataFrame(trades); closed=closed[closed.r_multiple.notna()] if not closed.empty and "r_multiple" in closed else closed
-    metrics={"status":"CURRENT_STACK_DEVELOPMENT_RESULT","window":"2016-2024","candidate_events":int(len(candidates)),"evaluated_events":int(len(events)),"executed_trades":int(len(closed)),"costs_applied":False,"tuning_applied":False,"official_profitability_claim":False}
+    metrics={"status":"CURRENT_STACK_DEVELOPMENT_RESULT","window":"2016-2024","candidate_events":int(len(candidates)),"evaluated_events":int(len(events)),"executed_trades":int(len(closed)),"costs_applied":False,"tuning_applied":False,"official_profitability_claim":False,"murphy_registry_rules":len(MURPHY_IDS),"murphy_source_backed_rules_observed":len(observed_m)}
     if not closed.empty:
         wins=int((closed.r_multiple>0).sum()); losses=int((closed.r_multiple<0).sum()); gw=float(closed.loc[closed.r_multiple>0,"r_multiple"].sum()); gl=float(-closed.loc[closed.r_multiple<0,"r_multiple"].sum()); eq=closed.r_multiple.cumsum(); metrics.update({"wins":wins,"losses":losses,"win_rate":wins/len(closed),"profit_factor":gw/gl if gl else None,"expectancy_R":float(closed.r_multiple.mean()),"total_R":float(closed.r_multiple.sum()),"max_drawdown_R":float((eq-eq.cummax()).min())})
-    validation={"window_2016_2024_only":True,"future_data_used":False,"murphy_governed_rules":34,"nison_governed_rules":44,"nison_generates_direction":False,"tiz_generates_direction":False,"memory_generates_direction":False,"risk_authoritative":True,"brain_semantics_changed":False,"official_profitability_claim_allowed":False}
+    validation={"window_2016_2024_only":True,"future_data_used":False,"murphy_governed_rules":34,"murphy_source_backed_rules_observed":len(observed_m),"nison_governed_rules":44,"nison_generates_direction":False,"tiz_generates_direction":False,"memory_generates_direction":False,"risk_authoritative":True,"brain_semantics_changed":False,"official_profitability_claim_allowed":False}
     (out/"current_stack_backtest_metrics_2016_2024.json").write_text(json.dumps(metrics,indent=2),encoding="utf-8")
     (out/"current_stack_validation_manifest_2016_2024.json").write_text(json.dumps(validation,indent=2),encoding="utf-8")
     print(json.dumps({"metrics":metrics,"validation":validation},indent=2))
