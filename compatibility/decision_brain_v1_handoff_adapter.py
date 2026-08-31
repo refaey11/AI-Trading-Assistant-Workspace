@@ -36,6 +36,24 @@ def _normalize_gate(value: Any) -> str:
     return "NOT_EVALUABLE"
 
 
+def _normalize_risk_gate(risk: Mapping[str, Any]) -> str:
+    """Normalize the canonical risk envelope without inventing a risk result.
+
+    Some Gate 3C callers expose the authoritative boolean as ``risk_pass``
+    rather than a textual ``risk_status``/``status`` field. Preserve that
+    canonical outcome instead of incorrectly converting a true risk pass into
+    NOT_EVALUABLE.
+    """
+    textual = risk.get("risk_status") or risk.get("status")
+    if textual is not None and str(textual).strip() != "":
+        return _normalize_gate(textual)
+
+    if "risk_pass" in risk and risk.get("risk_pass") is not None:
+        return "PASS" if bool(risk.get("risk_pass")) else "FAIL"
+
+    return "NOT_EVALUABLE"
+
+
 def _sanitize_historical(historical: Mapping[str, Any] | None) -> dict[str, Any]:
     """Keep historical metadata but never pass predicted_return as direction."""
     payload = dict(historical or {})
@@ -91,13 +109,7 @@ def assess_with_governance(
     nison = dict(nison_evidence or {})
 
     tiz_gate = _normalize_gate(tiz.get("process_gate") or tiz.get("status"))
-    # Authoritative risk evidence is expressed by risk_pass in the Gate 3C
-    # canonical contract. Prefer that field over legacy status labels when it
-    # is present so a true risk_pass cannot be downgraded to NOT_EVALUABLE.
-    if "risk_pass" in risk:
-        risk_gate = "PASS" if risk.get("risk_pass") is True else "FAIL"
-    else:
-        risk_gate = _normalize_gate(risk.get("risk_status") or risk.get("status"))
+    risk_gate = _normalize_risk_gate(risk)
     nison_confirmation = str(nison.get("confirmation") or "ABSENT").upper()
     nison_contradiction = bool(nison.get("contradiction", False))
 
