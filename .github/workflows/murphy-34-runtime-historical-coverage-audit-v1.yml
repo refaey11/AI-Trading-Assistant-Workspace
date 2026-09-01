@@ -1,0 +1,55 @@
+name: Murphy 34 Runtime Historical Coverage Audit V1
+
+on:
+  push:
+    branches:
+      - current-stack-dev-backtest-2016-2024-v3
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      DROPBOX_ACCESS_TOKEN: ${{ secrets.DROPBOX_ACCESS_TOKEN }}
+    steps:
+      - name: Checkout current development branch
+        uses: actions/checkout@v4
+        with:
+          ref: current-stack-dev-backtest-2016-2024-v3
+          fetch-depth: 1
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: python -m pip install --upgrade pip pandas
+
+      - name: Acquire governed Murphy bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          TOKEN="$(printf '%s' "$DROPBOX_ACCESS_TOKEN" | tr -d '\r\n' | sed -E 's/^Bearer[[:space:]]+//; s/^\"//; s/\"$//')"
+          test -n "$TOKEN"
+          mkdir -p artifacts/source/murphy
+          curl -L --fail --silent --show-error https://content.dropboxapi.com/2/files/download \
+            -H "Authorization: Bearer ${TOKEN}" \
+            -H 'Dropbox-API-Arg: {"path":"/New 8/MURPHY_HISTORICAL_34_RULE_FANIN_2016_2024.zip"}' \
+            -o artifacts/source/murphy.zip
+          unzip -q artifacts/source/murphy.zip -d artifacts/source/murphy
+
+      - name: Runtime versus historical evidence audit
+        run: python DEVELOPMENT_2016_2024/murphy_34_runtime_historical_coverage_audit_v1.py
+
+      - name: Upload audit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: murphy-34-runtime-historical-coverage-audit-v1
+          path: artifacts/source/MURPHY_34_RUNTIME_HISTORICAL_COVERAGE_AUDIT.json
+          if-no-files-found: ignore
