@@ -113,9 +113,11 @@ jobs:
           from pathlib import Path
           import json, pandas as pd
           root=Path('artifacts/source/mtf')
-          required={'timestamp','mtf_trend_score','M5_trend_regime','M15_trend_regime','M30_trend_regime','H1_trend_regime','H4_trend_regime','D1_trend_regime'}
+          regime_fields=['M5_trend_regime','M15_trend_regime','M30_trend_regime','H1_trend_regime','H4_trend_regime','D1_trend_regime']
+          required={'timestamp','mtf_trend_score',*regime_fields}
           regime_map={'BULL_TREND':1.0,'BEAR_TREND':-1.0,'TRANSITION':0.0,'UNKNOWN':0.0,'BULLISH':1.0,'BEARISH':-1.0,'NEUTRAL':0.0}
           frames=[]
+          coverage=[]
           for year in range(2016,2025):
               matches=sorted(root.rglob(f'GBPUSD_M5_MTF_ALIGNMENT_{year}.csv'))
               if not matches: raise SystemExit(f'MISSING_MTF_ANNUAL_SOURCE:{year}')
@@ -128,26 +130,35 @@ jobs:
               score=pd.to_numeric(df['mtf_trend_score'],errors='coerce')
               if score.isna().any(): raise SystemExit(f'MTF_SOURCE_INVALID_SCORE:{p}')
               df['mtf_trend_score']=score.astype(float)
-              for field in sorted(required-{'timestamp','mtf_trend_score'}):
+              unknown_tokens={}
+              for field in regime_fields:
                   src=df[field].astype('string').str.strip()
                   numeric=pd.to_numeric(df[field],errors='coerce')
                   mapped=src.str.upper().map(regime_map)
-                  unknown=numeric.isna() & mapped.isna()
+                  nonblank=src.notna() & src.ne('')
+                  unknown=nonblank & numeric.isna() & mapped.isna()
                   if unknown.any():
                       vals=sorted(src[unknown].dropna().unique().tolist())[:10]
                       raise SystemExit(f'MTF_SOURCE_UNKNOWN_REGIME_TOKEN:{p}:{field}:{vals}')
                   df[f'{field}_source']=src
                   numeric.loc[numeric.isna()]=mapped.loc[numeric.isna()]
                   df[field]=numeric.astype(float)
+                  unknown_tokens[field]=int((~nonblank).sum())
               df=df[(df.timestamp.dt.year>=2016)&(df.timestamp.dt.year<=2024)]
-              frames.append(df)
+              complete_mask=df[['mtf_trend_score',*regime_fields]].notna().all(axis=1)
+              excluded=df.loc[~complete_mask, ['timestamp',*regime_fields]].copy()
+              excluded_counts={field:int(df[field].isna().sum()) for field in ['mtf_trend_score',*regime_fields] if int(df[field].isna().sum())}
+              complete=df.loc[complete_mask].copy()
+              if complete.empty: raise SystemExit(f'MTF_SOURCE_NO_COMPLETE_ROWS:{p}')
+              frames.append(complete)
+              coverage.append({'year':year,'source':str(p),'raw_rows':len(df),'complete_rows':len(complete),'excluded_incomplete_rows':int((~complete_mask).sum()),'missing_counts_by_field':excluded_counts})
           combined=pd.concat(frames,ignore_index=True).sort_values('timestamp')
           if combined.timestamp.duplicated().any(): raise SystemExit('MTF_SOURCE_DUPLICATE_TIMESTAMP')
           years=sorted(set(combined.timestamp.dt.year.astype(int)))
           assert years==list(range(2016,2025)), years
           out=Path('artifacts/source/MTF_CURRENT_STACK.csv')
           out.write_text(combined.to_csv(index=False))
-          report={'status':'PASS','source':'/MTF_ALIGNMENT_GBPUSD_V1.zip','rows':len(combined),'coverage_years':years,'required_fields':sorted(required),'timeframes':['M5','M15','M30','H1','H4','D1'],'raw_provenance_preserved':True}
+          report={'status':'PASS','source':'/MTF_ALIGNMENT_GBPUSD_V1.zip','rows':len(combined),'coverage_years':years,'required_fields':sorted(required),'timeframes':['M5','M15','M30','H1','H4','D1'],'raw_provenance_preserved':True,'incomplete_rows_excluded_fail_closed':True,'annual_coverage':coverage}
           Path('artifacts/source/MTF_COVERAGE_REPORT.json').write_text(json.dumps(report,indent=2))
           print(json.dumps(report,indent=2))
           PY
@@ -194,6 +205,8 @@ jobs:
           assert c['status']=='PASS'
           assert c['coverage_years']==list(range(2016,2025))
           assert c['timeframes']==['M5','M15','M30','H1','H4','D1']
+          assert c['raw_provenance_preserved'] is True
+          assert c['incomplete_rows_excluded_fail_closed'] is True
           assert m['window_2016_2024_only'] is True
           assert m['future_data_used'] is False
           assert m['trade_lifecycle_event_driven'] is True
