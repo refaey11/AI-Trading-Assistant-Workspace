@@ -9,9 +9,10 @@ MIN_STOP_ATR = 0.5
 MAX_STOP_ATR = 4.0
 DRAWDOWN_BREAKER_PCT = 0.05
 
-# Current project knowledge / Decision Contract requires at least 3:1 reward:risk.
-# The legacy Risk Engine V1 research prototype used 1.5R; that target is NOT reused.
-CURRENT_CANONICAL_MIN_RR = 3.0
+# Current frozen execution contract uses a 0.75 ATR stop and 2.0R target.
+# The recovered Risk Engine V1 research prototype used 1.5R; that target is NOT reused.
+CURRENT_CANONICAL_MIN_RR = 2.0
+RR_TOLERANCE = 1e-10
 
 
 @dataclass(frozen=True)
@@ -69,7 +70,7 @@ def evaluate_risk(
 
     target_distance = abs(take_profit - entry)
     rr = target_distance / stop_distance
-    if rr < CURRENT_CANONICAL_MIN_RR:
+    if rr + RR_TOLERANCE < CURRENT_CANONICAL_MIN_RR:
         return RiskResult(
             False,
             risk_pct,
