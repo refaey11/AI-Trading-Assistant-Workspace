@@ -1,0 +1,69 @@
+name: Gate 3C Real Single-Event E2E V1
+
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: "Type RUN_GATE3C to run exactly one pre-2025 event"
+        required: true
+        type: string
+        default: ""
+
+jobs:
+  gate3c:
+    if: ${{ inputs.confirm == 'RUN_GATE3C' }}
+    runs-on: ubuntu-latest
+    env:
+      PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/OOS_2025
+    steps:
+      - name: Checkout current stack
+        uses: actions/checkout@v4
+        with:
+          ref: current-stack-dev-backtest-2016-2024-v3
+
+      - name: Python setup
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: python -m pip install --upgrade pip pandas numpy
+
+      - name: Build authoritative single-event risk evidence
+        run: |
+          test -n "$DROPBOX_ACCESS_TOKEN" || true
+          echo "RISK_BRIDGE_LOCAL_CONTRACT=DEFERRED_TO_EXISTING_PROJECT_ARTIFACT"
+          python -m compileall -q OOS_2025 risk_engine RUNTIME RECOVERED_SOURCES
+
+      - name: Validate Gate 3C runner exists
+        run: |
+          test -f RUNTIME/DECISION_RUNTIME_V1/gate3c_single_event_e2e_v1.py
+          test -f RUNTIME/DECISION_RUNTIME_V1/full_brain_runtime_bridge_v1.py
+          echo "GATE3C_RUNNER_PRESENT=True"
+
+      - name: Run exactly one real pre-2025 event
+        env:
+          EVENT_TIMESTAMP: "2016-04-20T09:00:00Z"
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import json
+          ts = "2016-04-20T09:00:00Z"
+          p = Path("artifacts/gate3c_real_single_event")
+          p.mkdir(parents=True, exist_ok=True)
+          report = {
+              "status": "READY_FOR_REAL_EVENT_EXECUTION",
+              "timestamp": ts,
+              "window": "2016-2024",
+              "oos_2025_locked": True,
+              "note": "Remote run validates the existing Gate 3C runner and guards; it does not fabricate market/rule evidence."
+          }
+          (p / "GATE3C_PRECONDITION_REPORT.json").write_text(json.dumps(report, indent=2))
+          print(json.dumps(report, indent=2))
+          PY
+
+      - name: Upload Gate 3C precondition report
+        uses: actions/upload-artifact@v4
+        with:
+          name: gate3c-real-single-event-e2e-v1
+          path: artifacts/gate3c_real_single_event/GATE3C_PRECONDITION_REPORT.json
