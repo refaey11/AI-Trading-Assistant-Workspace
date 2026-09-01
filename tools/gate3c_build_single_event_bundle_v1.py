@@ -81,6 +81,32 @@ def similarity_json_asof(root: Path, ts: pd.Timestamp) -> dict[str, Any]:
     }
 
 
+def retrieval_artifact(root: Path) -> dict[str, Any]:
+    """Load the retrieval artifact as static RAG context, not PIT market evidence.
+
+    The retrieval artifact is a knowledge-retrieval output and is not a timestamped
+    market-memory series. Treating it as an as-of CSV was an invalid schema assumption
+    that blocked otherwise valid historical events. It is kept non-authoritative and
+    must not generate direction.
+    """
+    json_files = sorted(root.rglob("CONTEXT_AWARE_READINGS.json")) if root.exists() else []
+    if not json_files:
+        raise ValueError(f"BLOCKED_RETRIEVAL_ARTIFACT_NOT_FOUND:{root}")
+    path = json_files[0]
+    data = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(data, list):
+        raise ValueError(f"BLOCKED_RETRIEVAL_SCHEMA:{path.name}")
+    return {
+        "status": "AVAILABLE",
+        "source": str(path),
+        "row": None,
+        "authoritative": False,
+        "point_in_time": False,
+        "direction_generation": False,
+        "artifact_rows": len(data),
+    }
+
+
 def build(event_ts: str, h1: Path, market_state: Path, nison: Path, murphy_root: Path,
           mtf_root: Path, historical_context_root: Path, historical_outcome_root: Path,
           similarity_root: Path, retrieval_root: Path) -> dict[str, Any]:
@@ -141,7 +167,7 @@ def build(event_ts: str, h1: Path, market_state: Path, nison: Path, murphy_root:
     historical_context = memory_asof(historical_context_root,("HISTORICAL","CONTEXT"))
     historical_outcome = memory_asof(historical_outcome_root,("HISTORICAL","OUTCOME"))
     similarity = similarity_json_asof(similarity_root, ts)
-    retrieval = memory_asof(retrieval_root,("RETRIEVAL","CONTEXT"))
+    retrieval = retrieval_artifact(retrieval_root)
 
     risk_csv = None
     for root in (murphy_root, historical_context_root, historical_outcome_root, similarity_root, retrieval_root):
@@ -186,7 +212,9 @@ def build(event_ts: str, h1: Path, market_state: Path, nison: Path, murphy_root:
         "provenance":{"builder":"gate3c_build_single_event_bundle_v1","source_backed_only":True,
                        "murphy_governed_registry_count":len(MURPHY_IDS),"murphy_event_rule_count":len(mids),
                        "nison_rule_count":len(nids),"mtf_fields":sorted(MTF_FIELDS),"oos_tuning":False,
-                       "similarity_future_context_excluded":True}
+                       "similarity_future_context_excluded":True,
+                       "retrieval_non_pit_static_context":True,
+                       "retrieval_direction_generation":False}
     }
 
 
