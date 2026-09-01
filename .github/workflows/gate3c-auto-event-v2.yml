@@ -57,8 +57,13 @@ jobs:
           cp /tmp/gate3c/source/nison.csv /tmp/gate3c/nison.csv; cp /tmp/gate3c/source/market_state.csv /tmp/gate3c/market_state.csv
       - name: Discover valid event
         run: |
+          set -euo pipefail
           python tools/gate3c_discover_event_v2.py /tmp/gate3c | tee /tmp/gate3c/discovery.log
-          cat /tmp/gate3c_event_ts >> "$GITHUB_ENV"
+          test -s /tmp/gate3c_event_ts
+          EVENT_TS="$(cat /tmp/gate3c_event_ts | tr -d '\r\n')"
+          test -n "$EVENT_TS"
+          printf 'EVENT_TS=%s\n' "$EVENT_TS" >> "$GITHUB_ENV"
+          echo "DISCOVERY_ENV_SET EVENT_TS=$EVENT_TS"
       - name: Extract event slices
         run: |
           python - <<'PY'
