@@ -14,8 +14,6 @@ V4 = ROOT / "DEVELOPMENT_2016_2024/current_stack_historical_replay_v4.py"
 def load_module_from_text(source: str, name: str):
     mod = importlib.util.module_from_spec(importlib.util.spec_from_loader(name, loader=None))
     sys.modules[name] = mod
-    # V4 derives ROOT from __file__. When exec() is used, Python does not inject
-    # __file__ automatically, so provide the real V4 path explicitly.
     mod.__dict__["__file__"] = str(V4)
     mod.__dict__["__package__"] = ""
     exec(compile(source, str(V4), "exec"), mod.__dict__)
@@ -93,14 +91,22 @@ source = source.replace(
     '            continue\n'
 )
 
+# V5.4 must use the frozen 0.75 ATR / 2R execution contract consistently.
+source = source.replace(
+    '            rr_target = 1.5 * atr\n',
+    '            stop_distance = SL_ATR * atr\n'
+    '            rr_target = TP_R * stop_distance\n',
+)
+source = source.replace(
+    '                stop_distance=0.75 * atr,\n',
+    '                stop_distance=stop_distance,\n',
+)
+
 mod = load_module_from_text(source, "current_stack_historical_replay_v5_4_impl")
 _original_load_module = mod.load_module
 
 
 def patched_load_module(path: Path, name: str):
-    # Preserve candidate 0.5% / 0.25% risk, 0.75 ATR stop and 2R target,
-    # but do not import the frozen profile's drawdown breaker as a hard gate
-    # into the development replay. Canonical risk remains authoritative later.
     if path.name == "frozen_candidate_risk_profile_v1.py":
 
         class FrozenModule:
