@@ -167,6 +167,9 @@ jobs:
           (Path('artifacts')/'V5_4_FUNNEL_AUDIT.json').write_text(json.dumps(report,indent=2))
           print(json.dumps(report,indent=2))
           PY
+      - name: Opportunity funnel shadow audit
+        run: |
+          python tools/opportunity_funnel_shadow_v1.py --root artifacts/current_stack_backtest_2016_2024 --output artifacts/OPPORTUNITY_FUNNEL_SHADOW_V1.json
       - name: Validate V5.4 manifest
         run: |
           python - <<'PY'
