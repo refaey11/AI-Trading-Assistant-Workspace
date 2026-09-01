@@ -1,0 +1,70 @@
+name: MTF Source Gate Smoke 2026-09-02
+
+on:
+  push:
+    branches:
+      - current-stack-dev-backtest-2016-2024-v3
+
+permissions:
+  contents: read
+
+jobs:
+  mtf-source-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      DROPBOX_ACCESS_TOKEN: ${{ secrets.DROPBOX_ACCESS_TOKEN }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: current-stack-dev-backtest-2016-2024-v3
+          fetch-depth: 1
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install pandas
+        run: python -m pip install --upgrade pip pandas
+      - name: Download exact MTF archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          TOKEN="$(printf '%s' "$DROPBOX_ACCESS_TOKEN" | tr -d '\r\n' | sed -E 's/^Bearer[[:space:]]+//; s/^\"//; s/\"$//')"
+          test -n "$TOKEN"
+          mkdir -p artifacts/source/mtf
+          curl -L --fail --silent --show-error \
+            https://content.dropboxapi.com/2/files/download \
+            -H "Authorization: Bearer ${TOKEN}" \
+            -H 'Dropbox-API-Arg: {"path":"/MTF_ALIGNMENT_GBPUSD_V1.zip"}' \
+            -o artifacts/mtf.zip
+          unzip -q artifacts/mtf.zip -d artifacts/source/mtf
+      - name: Verify 6-TF annual source files and canonical numeric fields
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import pandas as pd
+          root=Path('artifacts/source/mtf')
+          fields=['mtf_trend_score','M5_trend_regime','M15_trend_regime','M30_trend_regime','H1_trend_regime','H4_trend_regime','D1_trend_regime']
+          rows=[]
+          for year in range(2016,2025):
+              matches=sorted(root.rglob(f'GBPUSD_M5_MTF_ALIGNMENT_{year}.csv'))
+              if len(matches)!=1: raise SystemExit(f'MTF_FILE_COUNT_FAIL:{year}:{matches}')
+              p=matches[0]
+              df=pd.read_csv(p,low_memory=False)
+              missing=sorted(set(['timestamp',*fields])-set(df.columns))
+              if missing: raise SystemExit(f'MTF_REQUIRED_COLUMNS_FAIL:{year}:{missing}')
+              for f in fields:
+                  n=pd.to_numeric(df[f],errors='coerce')
+                  if n.isna().any():
+                      bad=df.loc[n.isna(),f].astype('string').dropna().unique().tolist()
+                      raise SystemExit(f'MTF_NON_NUMERIC_FAIL:{year}:{f}:{bad[:10]}')
+              ts=pd.to_datetime(df.timestamp,utc=True,errors='coerce')
+              if ts.isna().any() or ts.duplicated().any(): raise SystemExit(f'MTF_TIMESTAMP_FAIL:{year}')
+              rows.append((year,len(df),str(p)))
+          print('MTF_6TF_SOURCE_PASS')
+          for r in rows: print(r)
+          PY
+      - name: Run fail-closed contract gate
+        run: python BACKTEST/mtf_source_contract_gate_v1.py --mtf <(true)
