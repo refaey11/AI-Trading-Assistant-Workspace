@@ -47,7 +47,7 @@ jobs:
           import pandas as pd
           root=Path('artifacts/source/mtf')
           fields=['mtf_trend_score','M5_trend_regime','M15_trend_regime','M30_trend_regime','H1_trend_regime','H4_trend_regime','D1_trend_regime']
-          rows=[]
+          frames=[]
           for year in range(2016,2025):
               matches=sorted(root.rglob(f'GBPUSD_M5_MTF_ALIGNMENT_{year}.csv'))
               if len(matches)!=1: raise SystemExit(f'MTF_FILE_COUNT_FAIL:{year}:{matches}')
@@ -60,11 +60,16 @@ jobs:
                   if n.isna().any():
                       bad=df.loc[n.isna(),f].astype('string').dropna().unique().tolist()
                       raise SystemExit(f'MTF_NON_NUMERIC_FAIL:{year}:{f}:{bad[:10]}')
-              ts=pd.to_datetime(df.timestamp,utc=True,errors='coerce')
-              if ts.isna().any() or ts.duplicated().any(): raise SystemExit(f'MTF_TIMESTAMP_FAIL:{year}')
-              rows.append((year,len(df),str(p)))
+                  df[f]=n.astype(float)
+              df['timestamp']=pd.to_datetime(df['timestamp'],utc=True,errors='raise',format='mixed')
+              if df['timestamp'].duplicated().any(): raise SystemExit(f'MTF_TIMESTAMP_DUPLICATE_FAIL:{year}')
+              frames.append(df)
+          combined=pd.concat(frames,ignore_index=True).sort_values('timestamp').reset_index(drop=True)
+          if combined['timestamp'].duplicated().any(): raise SystemExit('MTF_GLOBAL_TIMESTAMP_DUPLICATE_FAIL')
+          combined.to_csv('artifacts/MTF_CURRENT_STACK.csv',index=False)
           print('MTF_6TF_SOURCE_PASS')
-          for r in rows: print(r)
+          print('ROWS',len(combined))
+          print('YEARS',sorted(combined.timestamp.dt.year.unique().tolist()))
           PY
       - name: Run fail-closed contract gate
-        run: python BACKTEST/mtf_source_contract_gate_v1.py --mtf <(true)
+        run: python BACKTEST/mtf_source_contract_gate_v1.py --mtf artifacts/MTF_CURRENT_STACK.csv
