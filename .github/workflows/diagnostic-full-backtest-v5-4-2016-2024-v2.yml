@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - diagnostic/mtf-gate-observable-2026-09-02
+  pull_request:
+    branches:
+      - current-stack-dev-backtest-2016-2024-v3
 
 permissions:
   contents: read
@@ -113,6 +116,19 @@ jobs:
           SCN=$(find artifacts/source/memory/scenario -type f -name 'MARKET_SCENARIOS.json' | head -1)
           test -n "$HC" && test -n "$HO" && test -n "$SIM" && test -n "$RET" && test -n "$SCN"
           printf 'HISTORICAL_CONTEXT=%s\nHISTORICAL_OUTCOME=%s\nSIMILARITY_ARTIFACT=%s\nRETRIEVAL_ARTIFACT=%s\nSCENARIO_ARTIFACT=%s\n' "$HC" "$HO" "$SIM" "$RET" "$SCN" > artifacts/source/memory/RESOLVED_MEMORY_PATHS.txt
+      - name: Replay patch self-check
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import ast
+          p=Path('DEVELOPMENT_2016_2024/current_stack_historical_replay_v5_4.py')
+          s=p.read_text(encoding='utf-8')
+          assert 'source = source.replace(\n    \'rr_target = 1.5 * atr\',' not in s
+          assert 'TP_R * stop_distance' in s
+          assert 'stop_distance=stop_distance' in s
+          ast.parse(s)
+          print('V5_4_PATCH_SELF_CHECK=PASS')
+          PY
       - name: Run V5.4 full-window replay
         run: |
           set -euo pipefail
