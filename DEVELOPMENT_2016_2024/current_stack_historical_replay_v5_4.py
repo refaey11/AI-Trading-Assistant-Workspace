@@ -99,8 +99,8 @@ if rr_replacements != 1:
     raise RuntimeError(f"V5_4_RR_PATCH_COUNT_FAIL:{rr_replacements}")
 
 source, stop_replacements = re.subn(
-    r"(?m)^(?P<indent>[ \t]+)stop_distance=0\.75 \* atr\s*$",
-    r"\g<indent>stop_distance=stop_distance",
+    r"(?m)^(?P<indent>[ \t]+)stop_distance=0\.75 \* atr,\s*$",
+    r"\g<indent>stop_distance=stop_distance,",
     source,
 )
 if stop_replacements != 1:
