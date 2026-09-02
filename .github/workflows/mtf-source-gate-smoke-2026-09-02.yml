@@ -65,7 +65,7 @@ jobs:
                       ts=pd.to_datetime(df.loc[invalid,'timestamp'],utc=True,errors='coerce',format='mixed')
                       print(f'  FIRST_BAD_TIMESTAMP={ts.min()} LAST_BAD_TIMESTAMP={ts.max()}')
           PY
-      - name: Verify 6-TF annual source files and canonical numeric fields
+      - name: Build event-ready MTF stack after warm-up
         shell: bash
         run: |
           python - <<'PY'
@@ -77,21 +77,25 @@ jobs:
           for year in range(2016,2025):
               matches=sorted(root.rglob(f'GBPUSD_M5_MTF_ALIGNMENT_{year}.csv'))
               if len(matches)!=1: raise SystemExit(f'MTF_FILE_COUNT_FAIL:{year}:{matches}')
-              p=matches[0]
-              df=pd.read_csv(p,low_memory=False)
+              df=pd.read_csv(matches[0],low_memory=False)
               missing=sorted(set(['timestamp',*fields])-set(df.columns))
               if missing: raise SystemExit(f'MTF_REQUIRED_COLUMNS_FAIL:{year}:{missing}')
               for f in fields:
-                  n=pd.to_numeric(df[f],errors='coerce')
-                  if n.isna().any(): raise SystemExit(f'MTF_NON_NUMERIC_OR_MISSING_FAIL:{year}:{f}:count={int(n.isna().sum())}')
-                  df[f]=n.astype(float)
+                  df[f]=pd.to_numeric(df[f],errors='coerce')
               df['timestamp']=pd.to_datetime(df['timestamp'],utc=True,errors='raise',format='mixed')
-              if df['timestamp'].duplicated().any(): raise SystemExit(f'MTF_TIMESTAMP_DUPLICATE_FAIL:{year}')
-              frames.append(df)
+              complete=df[fields].notna().all(axis=1)
+              if not complete.any(): raise SystemExit(f'MTF_NO_COMPLETE_ROW:{year}')
+              first_complete=complete.idxmax()
+              warmup_rows=int(first_complete)
+              post=df.loc[first_complete:]
+              if post[fields].isna().any().any():
+                  raise SystemExit(f'MTF_GAP_AFTER_WARMUP:{year}')
+              print(f'YEAR={year} WARMUP_ROWS={warmup_rows} FIRST_COMPLETE={df.loc[first_complete,"timestamp"]}')
+              frames.append(post)
           combined=pd.concat(frames,ignore_index=True).sort_values('timestamp').reset_index(drop=True)
           if combined['timestamp'].duplicated().any(): raise SystemExit('MTF_GLOBAL_TIMESTAMP_DUPLICATE_FAIL')
           combined.to_csv('artifacts/MTF_CURRENT_STACK.csv',index=False)
-          print('MTF_6TF_SOURCE_PASS')
+          print('MTF_6TF_EVENT_READY_PASS')
           print('ROWS',len(combined))
           print('YEARS',sorted(combined.timestamp.dt.year.unique().tolist()))
           PY
