@@ -48,7 +48,7 @@ for field in [
 # Brain boundary: recovered V1 remains untouched and auxiliary evidence is non-directional.
 require("RECOVERED_SOURCES" in brain and "DECISION_BRAIN_V1" in brain, "Recovered Brain V1 path missing")
 require("similarity=None" in adapter, "Similarity must not be passed as Brain direction input")
-require("predicted_return_used_as_direction": False" in adapter, "Memory predicted-return direction guard missing")
+require('"predicted_return_used_as_direction": False' in adapter, "Memory predicted-return direction guard missing")
 require("historical_memory_consumed_downstream" in adapter, "Historical memory governance metadata missing")
 require("nison_contradiction" in evaluator and "nison_confirmation" in evaluator, "Nison must remain confirmation/contradiction evidence")
 require('"tiz_execution_gate": "DISABLED"' in evaluator, "TIZ must remain audit/process-only in development evaluator")
@@ -62,8 +62,9 @@ require("2016-2024" in workflow, "workflow does not declare development window")
 require("2025_OOS_LOCKED" in workflow, "2025 OOS lock missing")
 require('"official_profitability_claim": False' in v4, "official profitability claim policy missing")
 
-# Syntax sanity for integration code.
+# Syntax sanity for integration code, including this checker itself.
 for path in [
+    Path(__file__),
     ROOT / "DEVELOPMENT_2016_2024" / "current_stack_historical_replay_v5_4.py",
     ROOT / "DEVELOPMENT_2016_2024" / "current_stack_historical_replay_v4.py",
     ROOT / "RUNTIME" / "DECISION_RUNTIME_V1" / "full_brain_runtime_bridge_v1.py",
