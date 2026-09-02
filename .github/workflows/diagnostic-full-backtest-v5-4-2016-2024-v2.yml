@@ -123,9 +123,13 @@ jobs:
           import ast
           p=Path('DEVELOPMENT_2016_2024/current_stack_historical_replay_v5_4.py')
           s=p.read_text(encoding='utf-8')
-          assert 'source = source.replace(\n    \'rr_target = 1.5 * atr\',' not in s
+          assert 'import re' in s
+          assert 're.subn(' in s
+          assert "rr_target = 1\\.5 \\* atr" in s
           assert 'TP_R * stop_distance' in s
           assert 'stop_distance=stop_distance' in s
+          assert 'V5_4_RR_PATCH_COUNT_FAIL' in s
+          assert 'V5_4_STOP_PATCH_COUNT_FAIL' in s
           ast.parse(s)
           print('V5_4_PATCH_SELF_CHECK=PASS')
           PY
