@@ -31,3 +31,5 @@ jobs:
 
       - name: Run pre-backtest governance gate
         run: python BACKTEST/pre_backtest_governance_gate_v1.py
+
+      # Intentional no-op comment: retrigger after checker syntax correction.
