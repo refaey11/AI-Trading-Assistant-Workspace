@@ -36,8 +36,8 @@ jobs:
       - name: Install dependencies
         run: python -m pip install --upgrade pip pandas pytest
 
-      - name: PRE-BACKTEST GOVERNANCE GATE
-        run: python BACKTEST/pre_backtest_governance_gate_v1.py
+      - name: PRE-BACKTEST GOVERNANCE GATE V2
+        run: python BACKTEST/pre_backtest_governance_gate_v2_diagnostic.py
 
       - name: Development window lock
         run: |
@@ -185,7 +185,7 @@ jobs:
           PY
 
       - name: Opportunity funnel shadow audit
-        if: always()
+        if: success()
         run: python tools/opportunity_funnel_shadow_v1.py --root artifacts/current_stack_backtest_2016_2024 --output artifacts/OPPORTUNITY_FUNNEL_SHADOW_V1.json
 
       - name: Upload diagnostic artifacts
@@ -195,5 +195,3 @@ jobs:
           name: diagnostic-full-backtest-v5-4-2016-2024
           path: artifacts
           if-no-files-found: ignore
-
-# Retrigger diagnostic runner after governance fixes.
