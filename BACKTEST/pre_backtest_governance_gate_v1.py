@@ -87,3 +87,4 @@ print(json.dumps({
 raise SystemExit(0 if not FAILS else 1)
 
 # Governance checker correction checkpoint.
+# Synchronization checkpoint: force a fresh push-triggered validation run.
