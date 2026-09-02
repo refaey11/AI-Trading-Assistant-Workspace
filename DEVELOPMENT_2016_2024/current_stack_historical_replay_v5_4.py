@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import importlib.util
+import re
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -88,15 +89,22 @@ source = source.replace(
 )
 
 # V5.4 must use the frozen 0.75 ATR / 2R execution contract consistently.
-# Replace the exact token rather than relying on whole-line indentation.
-source = source.replace(
-    'rr_target = 1.5 * atr',
-    'stop_distance = SL_ATR * atr\n            rr_target = TP_R * stop_distance',
+# Use regex so the compatibility transformation is insensitive to indentation.
+source, rr_replacements = re.subn(
+    r"(?m)^(?P<indent>[ \t]+)rr_target = 1\.5 \* atr\s*$",
+    r"\g<indent>stop_distance = SL_ATR * atr\n\g<indent>rr_target = TP_R * stop_distance",
+    source,
 )
-source = source.replace(
-    'stop_distance=0.75 * atr',
-    'stop_distance=stop_distance',
+if rr_replacements != 1:
+    raise RuntimeError(f"V5_4_RR_PATCH_COUNT_FAIL:{rr_replacements}")
+
+source, stop_replacements = re.subn(
+    r"(?m)^(?P<indent>[ \t]+)stop_distance=0\.75 \* atr\s*$",
+    r"\g<indent>stop_distance=stop_distance",
+    source,
 )
+if stop_replacements != 1:
+    raise RuntimeError(f"V5_4_STOP_PATCH_COUNT_FAIL:{stop_replacements}")
 
 mod = load_module_from_text(source, "current_stack_historical_replay_v5_4_impl")
 _original_load_module = mod.load_module
