@@ -11,17 +11,18 @@ on:
 permissions:
   contents: read
 
+env:
+  DROPBOX_ACCESS_TOKEN: ${{ secrets.DROPBOX_ACCESS_TOKEN }}
+
 jobs:
   mtf-source-gate:
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    env:
-      DROPBOX_ACCESS_TOKEN: ${{ secrets.DROPBOX_ACCESS_TOKEN }}
     steps:
-      - name: Checkout
+      - name: Checkout tested revision
         uses: actions/checkout@v4
         with:
-          ref: current-stack-dev-backtest-2016-2024-v3
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 1
       - name: Setup Python
         uses: actions/setup-python@v5
