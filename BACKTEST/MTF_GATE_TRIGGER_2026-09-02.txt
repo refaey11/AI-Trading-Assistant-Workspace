@@ -1,0 +1,1 @@
+Trigger-only marker for the MTF Source Gate Smoke workflow. No trading logic or source data changes.
