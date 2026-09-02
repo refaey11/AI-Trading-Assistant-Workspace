@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import importlib.util
+import re
 import sys
 from dataclasses import dataclass
 from pathlib import Path
@@ -83,26 +84,50 @@ source = V4.read_text(encoding="utf-8")
 # Development-only compatibility rule: Nison absence/failure is not a
 # contradiction. Only an opposite directional PASS may contradict Murphy.
 source = source.replace(
-    '        nids = {rid for ids in ng.expanded_ids for rid in ids}\n'
-    '        if nids != NISON_IDS:\n'
-    '            continue\n',
-    '        nids = {rid for ids in ng.expanded_ids for rid in ids}\n'
-    '        if not nids:\n'
-    '            continue\n'
+    'nids = {rid for ids in ng.expanded_ids for rid in ids}\n        if nids != NISON_IDS:\n            continue',
+    'nids = {rid for ids in ng.expanded_ids for rid in ids}\n        if not nids:\n            continue'
 )
 
 # V5.4 must use the frozen 0.75 ATR / 2R execution contract consistently.
-source = source.replace(
-    '            rr_target = 1.5 * atr\n',
-    '            stop_distance = SL_ATR * atr\n'
-    '            rr_target = TP_R * stop_distance\n',
+source, rr_replacements = re.subn(
+    r"(?m)^(?P<indent>[ \t]+)rr_target = 1\.5 \* atr\s*$",
+    r"\g<indent>stop_distance = SL_ATR * atr\n\g<indent>rr_target = TP_R * stop_distance",
+    source,
 )
-source = source.replace(
-    '                stop_distance=0.75 * atr,\n',
-    '                stop_distance=stop_distance,\n',
+if rr_replacements != 1:
+    raise RuntimeError(f"V5_4_RR_PATCH_COUNT_FAIL:{rr_replacements}")
+
+source, stop_replacements = re.subn(
+    r"(?m)^(?P<indent>[ \t]+)stop_distance=0\.75 \* atr,\s*$",
+    r"\g<indent>stop_distance=stop_distance,",
+    source,
 )
+if stop_replacements != 1:
+    raise RuntimeError(f"V5_4_STOP_PATCH_COUNT_FAIL:{stop_replacements}")
+
+# Strict as-of boundary: H1/market/MTF rows are timestamped at bar start.
+# A decision at timestamp T may only consume producer data strictly before T.
+source, asof_replacements = re.subn(
+    r"(?ms)def asof_row\(frame: pd\.DataFrame, ts: pd\.Timestamp\) -> pd\.Series \| None:\n    if frame\.empty:\n        return None\n    pos = frame\.index\.searchsorted\(ts, side=\"right\"\) - 1\n    return None if pos < 0 else frame\.iloc\[pos\]",
+    "def asof_row(frame: pd.DataFrame, ts: pd.Timestamp) -> pd.Series | None:\n    if frame.empty:\n        return None\n    pos = frame.index.searchsorted(ts, side=\"left\") - 1\n    return None if pos < 0 else frame.iloc[pos]",
+    source,
+)
+if asof_replacements != 1:
+    raise RuntimeError(f"V5_4_STRICT_ASOF_PATCH_COUNT_FAIL:{asof_replacements}")
+
+# Entry is the prior completed H1 close; therefore exit simulation begins
+# with the H1 bar that starts at the decision timestamp, not one bar later.
+source, exit_replacements = re.subn(
+    r"(?m)^def simulate_exit\(bars: pd\.DataFrame, entry_idx: int, direction: str, stop: float, target: float\) -> tuple\[str, float \| None, pd\.Timestamp \| None\]:\n    for j in range\(entry_idx \+ 1, len\(bars\)\):$",
+    "def simulate_exit(bars: pd.DataFrame, entry_idx: int, direction: str, stop: float, target: float) -> tuple[str, float | None, pd.Timestamp | None]:\n    for j in range(entry_idx, len(bars)):",
+    source,
+)
+if exit_replacements != 1:
+    raise RuntimeError(f"V5_4_EXIT_START_PATCH_COUNT_FAIL:{exit_replacements}")
 
 mod = load_module_from_text(source, "current_stack_historical_replay_v5_4_impl")
+mod.SL_ATR = SL_ATR
+mod.TP_R = TP_R
 _original_load_module = mod.load_module
 
 

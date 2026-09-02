@@ -1,0 +1,179 @@
+name: Gate 3C E2E Observe 2026-09-02
+
+on:
+  push:
+    branches:
+      - diagnostic/mtf-gate-observable-2026-09-02
+  pull_request:
+    branches:
+      - current-stack-dev-backtest-2016-2024-v3
+
+permissions:
+  contents: read
+
+env:
+  DROPBOX_ACCESS_TOKEN: ${{ secrets.DROPBOX_ACCESS_TOKEN }}
+  EQUITY: "10000"
+  PEAK_EQUITY: "10000"
+  PRIOR_LOSS_STREAK: "0"
+
+jobs:
+  gate3c-e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 35
+    steps:
+      - name: Checkout tested revision
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 1
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: python -m pip install --upgrade pip pandas
+
+      - name: Acquire governed source slices
+        run: |
+          set -euo pipefail
+          TOKEN="$(printf '%s' "$DROPBOX_ACCESS_TOKEN" | tr -d '\r\n' | sed -E 's/^Bearer[[:space:]]+//; s/^\"//; s/\"$//')"
+          test -n "$TOKEN"
+          mkdir -p /tmp/gate3c/source /tmp/gate3c/unpacked
+          download(){
+            curl -L --fail --silent --show-error https://content.dropboxapi.com/2/files/download \
+              -H "Authorization: Bearer ${TOKEN}" \
+              -H "Dropbox-API-Arg: {\"path\":\"$1\"}" \
+              -o "$2"
+          }
+          download "/New 8/GBPUSD_H1_2016_2025_MASTER.zip" /tmp/gate3c/source/h1.zip
+          download "/New 8/MURPHY_HISTORICAL_34_RULE_FANIN_2016_2024.zip" /tmp/gate3c/source/murphy.zip
+          download "/MTF_ALIGNMENT_GBPUSD_V1.zip" /tmp/gate3c/source/mtf.zip
+          download "/New 8/GBPUSD_MARKET_STATE 6.csv" /tmp/gate3c/source/market_state.csv
+          download "/New 8/NISON_2016_2024_FULL_EVIDENCE.csv" /tmp/gate3c/source/nison.csv
+          download "/AI_Trading_Assistant_FULL_PROJECT_V1/AI_Trading_Assistant_HISTORICAL_CONTEXT_MEMORY_V1.zip" /tmp/gate3c/source/hc.zip
+          download "/AI_Trading_Assistant_FULL_PROJECT_V1/AI_Trading_Assistant_HISTORICAL_OUTCOME_MEMORY_V1.zip" /tmp/gate3c/source/ho.zip
+          download "/AI_Trading_Assistant_FULL_PROJECT_V1/AI_Trading_Assistant_SIMILARITY_MEMORY_V2.zip" /tmp/gate3c/source/similarity.zip
+          download "/AI_Trading_Assistant_FULL_PROJECT_V1/AI_Trading_Assistant_CONTEXT_AWARE_RETRIEVAL_V2.zip" /tmp/gate3c/source/retrieval.zip
+          for z in h1 murphy mtf hc ho similarity retrieval; do unzip -q "/tmp/gate3c/source/${z}.zip" -d "/tmp/gate3c/unpacked/${z}"; done
+
+      - name: Locate canonical source files
+        run: |
+          set -euo pipefail
+          MURPHY="$(find /tmp/gate3c/unpacked/murphy -name 'MURPHY_2016_2024_FULL_EVIDENCE.csv' | sort | head -1)"
+          H1="$(find /tmp/gate3c/unpacked/h1 -name 'GBPUSD_H1_2016_2025_MASTER.csv' | sort | head -1)"
+          MTF="$(find /tmp/gate3c/unpacked/mtf -type f -name '*.csv' | grep -Ei 'GBPUSD|MTF' | sort | head -1)"
+          test -n "$MURPHY" -a -n "$H1" -a -n "$MTF"
+          printf 'MURPHY=%s\nH1=%s\nMTF=%s\n' "$MURPHY" "$H1" "$MTF" >> "$GITHUB_ENV"
+
+      - name: Discover first valid source-backed event
+        run: |
+          set -euo pipefail
+          python tools/gate3c_discover_valid_event_v2.py \
+            --murphy "$MURPHY" \
+            --nison /tmp/gate3c/source/nison.csv \
+            --h1 "$H1" \
+            --market /tmp/gate3c/source/market_state.csv \
+            --mtf "$MTF" \
+            --output /tmp/gate3c/event.env
+          cat /tmp/gate3c/event.env >> "$GITHUB_ENV"
+          cat /tmp/gate3c/event.env
+
+      - name: Validate event window
+        run: |
+          python - <<'PY'
+          import os
+          from datetime import datetime, timezone
+          ts=datetime.fromisoformat(os.environ['EVENT_TS']).astimezone(timezone.utc)
+          if not (datetime(2016,1,1,tzinfo=timezone.utc) <= ts < datetime(2025,1,1,tzinfo=timezone.utc)):
+              raise SystemExit('FAIL_CLOSED_EVENT_OUTSIDE_2016_2024')
+          print('EVENT_TS_OK',ts.isoformat())
+          print('MURPHY_DIRECTION',os.environ.get('MURPHY_DIRECTION'))
+          PY
+
+      - name: Build event slices and canonical bundle
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          import os,pandas as pd
+          ts=pd.Timestamp(os.environ['EVENT_TS'],tz='UTC'); root=Path('/tmp/gate3c')
+
+          def asof_one(src,dst):
+              df=pd.read_csv(src,low_memory=False)
+              if 'timestamp' not in df.columns: raise SystemExit(f'BLOCKED_TIMESTAMP_COLUMN_MISSING:{src}')
+              df['timestamp']=pd.to_datetime(df['timestamp'],utc=True,errors='coerce',format='mixed')
+              part=df.loc[df['timestamp'].le(ts)].dropna(subset=['timestamp']).sort_values('timestamp').tail(1)
+              if len(part)!=1: raise SystemExit(f'BLOCKED_ASOF_ROW:{src}')
+              part.to_csv(dst,index=False)
+
+          asof_one(root/'source'/'market_state.csv',root/'event_context.csv')
+          hp=next((root/'unpacked'/'h1').rglob('GBPUSD_H1_2016_2025_MASTER.csv'),None)
+          if hp is None: raise SystemExit('BLOCKED_H1_MASTER_CSV_NOT_FOUND')
+          asof_one(hp,root/'event_h1.csv')
+
+          ndf=pd.read_csv(root/'source'/'nison.csv',low_memory=False)
+          if 'source_rule_id' not in ndf.columns:
+              if 'rule_id' in ndf.columns: ndf=ndf.rename(columns={'rule_id':'source_rule_id'})
+              else: raise SystemExit('BLOCKED_NISON_SCHEMA')
+          ndf['timestamp']=pd.to_datetime(ndf['timestamp'],utc=True,errors='coerce',format='mixed')
+          part=ndf.loc[ndf['timestamp'].eq(ts)].copy()
+          ids={str(x).strip() for x in part['source_rule_id'].tolist()}
+          expected={f'NISON_{i:04d}' for i in range(1,45)}
+          if ids!=expected: raise SystemExit(f'BLOCKED_NISON_44_FANIN:{len(part)}:{len(ids)}')
+          part.to_csv(root/'event_nison.csv',index=False)
+          print('SOURCE_SLICES_READY',ts.isoformat())
+          PY
+          python OOS_2025/build_single_event_risk_evidence_v1.py \
+            --timestamp "$EVENT_TS" \
+            --h1 /tmp/gate3c/event_h1.csv \
+            --market-state /tmp/gate3c/event_context.csv \
+            --murphy-root /tmp/gate3c/unpacked/murphy \
+            --output /tmp/gate3c/unpacked/retrieval/gate3c_risk_evidence.csv \
+            --equity "$EQUITY" --peak-equity "$PEAK_EQUITY" --prior-loss-streak "$PRIOR_LOSS_STREAK"
+          python tools/gate3c_build_single_event_bundle_v1.py \
+            --timestamp "$EVENT_TS" \
+            --h1 /tmp/gate3c/event_h1.csv \
+            --market-state /tmp/gate3c/event_context.csv \
+            --nison /tmp/gate3c/event_nison.csv \
+            --murphy-root /tmp/gate3c/unpacked/murphy \
+            --mtf-root /tmp/gate3c/unpacked/mtf \
+            --historical-context-root /tmp/gate3c/unpacked/hc \
+            --historical-outcome-root /tmp/gate3c/unpacked/ho \
+            --similarity-root /tmp/gate3c/unpacked/similarity \
+            --retrieval-root /tmp/gate3c/unpacked/retrieval \
+            --output /tmp/gate3c/canonical_event.json
+
+      - name: Run real single-event E2E
+        run: |
+          set -euo pipefail
+          python RUNTIME/DECISION_RUNTIME_V1/gate3c_single_event_e2e_v1.py \
+            --event /tmp/gate3c/canonical_event.json \
+            --output /tmp/gate3c/gate3c_result.json
+          cat /tmp/gate3c/gate3c_result.json
+
+      - name: Contract audit
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          r=json.loads(Path('/tmp/gate3c/gate3c_result.json').read_text())
+          print('GATE3C_STATUS',r.get('gate3c'))
+          print('QUERY_AS_OF',r.get('query_as_of'))
+          print('BRAIN_STATUS',(r.get('brain_execution_result') or {}).get('status'))
+          print('MTF',r.get('mtf'))
+          print('RISK',r.get('risk'))
+          print('DECISION_TRACE',r.get('decision_trace'))
+          if str(r.get('query_as_of','')).startswith('2025'): raise SystemExit('OOS_2025_EVENT_FORBIDDEN')
+          if r.get('governance',{}).get('future_data_allowed') is not False: raise SystemExit('FUTURE_DATA_POLICY_VIOLATION')
+          PY
+
+      - name: Upload Gate 3C result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gate3c-e2e-observe-result
+          path: /tmp/gate3c/gate3c_result.json
+          if-no-files-found: ignore

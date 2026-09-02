@@ -41,24 +41,39 @@ def _find_murphy(root: Path) -> Path:
     return candidates[0][1]
 
 
-def _rows_at(path: Path, ts: pd.Timestamp) -> pd.DataFrame:
+def _rows_at(path: Path, ts: pd.Timestamp, *, exact: bool = True) -> pd.DataFrame:
     df = pd.read_csv(path)
     if "timestamp" not in df.columns:
         raise ValueError(f"{path}: missing timestamp")
     df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True, errors="raise", format="mixed")
-    return df.loc[df["timestamp"].eq(ts)].copy()
+    if exact:
+        return df.loc[df["timestamp"].eq(ts)].copy()
+    return df.loc[df["timestamp"].le(ts)].sort_values("timestamp", kind="stable").tail(1).copy()
 
 
-def _one_directional_murphy_row(path: Path, ts: pd.Timestamp) -> pd.Series:
-    part = _rows_at(path, ts)
+def _normalize_direction(value: object) -> str:
+    direction = str(value or "").upper().strip()
+    if direction == "BULLISH":
+        return "BUY"
+    if direction == "BEARISH":
+        return "SELL"
+    return direction
+
+
+def _murphy_fanin_direction(path: Path, ts: pd.Timestamp) -> tuple[str, int]:
+    """Use a Murphy fan-in event only when all directional PASS rows agree."""
+    part = _rows_at(path, ts, exact=True)
     if part.empty:
         raise ValueError(f"{path}: no Murphy evidence at {ts.isoformat()}")
     status = part.get("status", pd.Series(index=part.index, dtype=object)).astype(str).str.upper().str.strip()
-    direction = part.get("direction", pd.Series(index=part.index, dtype=object)).astype(str).str.upper().str.strip()
-    candidates = part.loc[status.eq("PASS") & direction.isin({"BUY", "SELL", "BULLISH", "BEARISH"})].copy()
-    if len(candidates) != 1:
-        raise ValueError(f"{path}: expected exactly one directional PASS row at {ts.isoformat()}, observed={len(candidates)}")
-    return candidates.iloc[0]
+    direction = part.get("direction", pd.Series(index=part.index, dtype=object)).map(_normalize_direction)
+    candidates = part.loc[status.eq("PASS") & direction.isin({"BUY", "SELL"})]
+    if candidates.empty:
+        raise ValueError(f"{path}: no directional PASS fan-in at {ts.isoformat()}")
+    dirs = {_normalize_direction(v) for v in candidates["direction"].tolist()}
+    if len(dirs) != 1:
+        raise ValueError(f"{path}: conflicting Murphy fan-in directions at {ts.isoformat()}: {sorted(dirs)}")
+    return next(iter(dirs)), len(candidates)
 
 
 def _scalar(row: pd.Series, names: tuple[str, ...], label: str) -> float:
@@ -77,24 +92,17 @@ def build(*, timestamp: str, h1: Path, market_state: Path, murphy_root: Path, ou
     if equity <= 0 or peak_equity <= 0 or prior_loss_streak < 0:
         raise ValueError("invalid evaluation account bootstrap")
 
-    h1_rows = _rows_at(h1, ts)
-    market_rows = _rows_at(market_state, ts)
+    h1_rows = _rows_at(h1, ts, exact=False)
+    market_rows = _rows_at(market_state, ts, exact=False)
     if len(h1_rows) != 1:
-        raise ValueError(f"{h1}: expected exactly one row at {ts.isoformat()}, observed={len(h1_rows)}")
+        raise ValueError(f"{h1}: expected one as-of row at {ts.isoformat()}, observed={len(h1_rows)}")
     if len(market_rows) != 1:
-        raise ValueError(f"{market_state}: expected exactly one row at {ts.isoformat()}, observed={len(market_rows)}")
+        raise ValueError(f"{market_state}: expected one as-of row at {ts.isoformat()}, observed={len(market_rows)}")
     h1_row = h1_rows.iloc[0]
     market_row = market_rows.iloc[0]
-    murphy_path = _find_murphy(murphy_root)
-    murphy_row = _one_directional_murphy_row(murphy_path, ts)
 
-    direction = str(murphy_row.get("direction") or "").upper()
-    if direction == "BULLISH":
-        direction = "BUY"
-    elif direction == "BEARISH":
-        direction = "SELL"
-    if direction not in {"BUY", "SELL"}:
-        raise ValueError(f"INVALID_DIRECTION:{direction}")
+    murphy_path = _find_murphy(murphy_root)
+    direction, murphy_directional_rows = _murphy_fanin_direction(murphy_path, ts)
 
     entry = _scalar(h1_row, ("entry_price", "close"), "entry_price")
     atr = _scalar(market_row, ("atr", "atr20", "H1_atr"), "atr")
@@ -130,6 +138,8 @@ def build(*, timestamp: str, h1: Path, market_state: Path, murphy_root: Path, ou
         "risk_profile_source": "OOS_2025/frozen_candidate_risk_profile_v1.py",
         "canonical_risk_engine_source": "risk_engine/risk_execution_runtime_v1.py",
         "frozen_candidate_contract": "0.75_ATR_stop_2R_target",
+        "murphy_fanin_direction_source": "canonical_fan_in_unique_direction",
+        "murphy_directional_row_count": murphy_directional_rows,
     }
     if abs(float(fields["stop_loss"]) - float(canonical_result.stop_loss)) > 1e-12:
         raise ValueError("FROZEN_VS_CANONICAL_STOP_MISMATCH")
@@ -143,7 +153,7 @@ def build(*, timestamp: str, h1: Path, market_state: Path, murphy_root: Path, ou
     return {"status": "PASS", "timestamp": ts.isoformat(), "direction": direction,
             "risk_percent": frozen_result.risk_percent, "stop_loss": frozen_result.stop_loss,
             "take_profit": frozen_result.take_profit, "position_size": frozen_result.position_size,
-            "authority_scope": "evaluation_single_event"}
+            "authority_scope": "evaluation_single_event", "murphy_directional_row_count": murphy_directional_rows}
 
 
 def main() -> int:
