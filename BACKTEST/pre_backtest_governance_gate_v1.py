@@ -22,9 +22,10 @@ v4 = text(ROOT / "DEVELOPMENT_2016_2024" / "current_stack_historical_replay_v4.p
 brain = text(ROOT / "RUNTIME" / "DECISION_RUNTIME_V1" / "full_brain_runtime_bridge_v1.py")
 e2e = text(ROOT / "RUNTIME" / "DECISION_RUNTIME_V1" / "gate3c_single_event_e2e_v1.py")
 adapter = text(ROOT / "compatibility" / "decision_brain_v1_handoff_adapter.py")
+evaluator = text(ROOT / "evaluation" / "three_book_decision_evaluator_v1.py")
 workflow = text(ROOT / ".github" / "workflows" / "current-stack-development-backtest-2016-2024-v5-4.yml")
 
-# V5.4 must be a versioned compatibility layer over V4, not a second strategy.
+# V5.4 is a versioned compatibility layer over V4, not a second strategy.
 require("source = V4.read_text" in v54, "V5.4 must derive from V4 source")
 require("source.replace(" in v54, "V5.4 source-rewrite compatibility layer missing")
 require("BASE_RISK_PCT = 0.005" in v54, "BASE risk contract changed")
@@ -37,25 +38,23 @@ require("if not nids:" in v54, "Nison absence compatibility rule missing")
 require('"costs_applied": False' in v4, "development cost policy not explicitly false")
 require('"tuning_applied": False' in v4, "development tuning policy not explicitly false")
 
-# Canonical six-TF MTF envelope must be present in the replay contract.
-expected_mtf = [
-    "mtf_trend_score",
-    "M5_trend_regime",
-    "M15_trend_regime",
-    "M30_trend_regime",
-    "H1_trend_regime",
-    "H4_trend_regime",
-    "D1_trend_regime",
-]
-for field in expected_mtf:
+# Canonical six-TF MTF envelope.
+for field in [
+    "mtf_trend_score", "M5_trend_regime", "M15_trend_regime", "M30_trend_regime",
+    "H1_trend_regime", "H4_trend_regime", "D1_trend_regime",
+]:
     require(field in v54, f"missing MTF field in V5.4: {field}")
 
-# Brain boundary: recovered V1 stays loaded; similarity remains evidence-only.
+# Brain boundary: recovered V1 remains untouched and auxiliary evidence is non-directional.
 require("RECOVERED_SOURCES" in brain and "DECISION_BRAIN_V1" in brain, "Recovered Brain V1 path missing")
 require("similarity=None" in adapter, "Similarity must not be passed as Brain direction input")
-require('"memory_direction_generation": False' in e2e, "Memory direction-generation governance missing")
-require('"nison_direction_generation": False' in e2e, "Nison direction-generation governance missing")
-require('"tiz_direction_generation": False' in e2e, "TIZ direction-generation governance missing")
+require("predicted_return_used_as_direction": False" in adapter, "Memory predicted-return direction guard missing")
+require("historical_memory_consumed_downstream" in adapter, "Historical memory governance metadata missing")
+require("nison_contradiction" in evaluator and "nison_confirmation" in evaluator, "Nison must remain confirmation/contradiction evidence")
+require('"tiz_execution_gate": "DISABLED"' in evaluator, "TIZ must remain audit/process-only in development evaluator")
+require("tiz_generated_direction" in e2e, "TIZ direction governance metadata missing from E2E")
+require("memory_direction_generation" in e2e, "Memory direction governance metadata missing from E2E")
+require("nison_direction_generation" in e2e, "Nison direction governance metadata missing from E2E")
 
 # Risk authority and OOS lock.
 require("risk_engine" in v4 or "risk_engine" in v54, "canonical risk engine not referenced")
@@ -70,6 +69,7 @@ for path in [
     ROOT / "RUNTIME" / "DECISION_RUNTIME_V1" / "full_brain_runtime_bridge_v1.py",
     ROOT / "RUNTIME" / "DECISION_RUNTIME_V1" / "gate3c_single_event_e2e_v1.py",
     ROOT / "compatibility" / "decision_brain_v1_handoff_adapter.py",
+    ROOT / "evaluation" / "three_book_decision_evaluator_v1.py",
 ]:
     try:
         ast.parse(text(path), filename=str(path))
@@ -83,5 +83,4 @@ print(json.dumps({
     "does_not_claim_profitability": True,
     "development_window": "2016-2024",
 }, indent=2))
-
 raise SystemExit(0 if not FAILS else 1)
