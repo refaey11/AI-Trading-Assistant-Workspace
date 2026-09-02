@@ -52,9 +52,9 @@ require('"predicted_return_used_as_direction": False' in adapter, "Memory predic
 require("historical_memory_consumed_downstream" in adapter, "Historical memory governance metadata missing")
 require("nison_contradiction" in evaluator and "nison_confirmation" in evaluator, "Nison must remain confirmation/contradiction evidence")
 require('"tiz_execution_gate": "DISABLED"' in evaluator, "TIZ must remain audit/process-only in development evaluator")
-require("tiz_generated_direction" in e2e, "TIZ direction governance metadata missing from E2E")
-require("memory_direction_generation" in e2e, "Memory direction governance metadata missing from E2E")
-require("nison_direction_generation" in e2e, "Nison direction governance metadata missing from E2E")
+require('"tiz_direction_generation": False' in e2e, "TIZ direction governance metadata missing from E2E")
+require('"memory_direction_generation": False' in e2e, "Memory direction governance metadata missing from E2E")
+require('"nison_direction_generation": False' in e2e, "Nison direction governance metadata missing from E2E")
 
 # Risk authority and OOS lock.
 require("risk_engine" in v4 or "risk_engine" in v54, "canonical risk engine not referenced")
