@@ -42,6 +42,29 @@ jobs:
             -H 'Dropbox-API-Arg: {"path":"/MTF_ALIGNMENT_GBPUSD_V1.zip"}' \
             -o artifacts/mtf.zip
           unzip -q artifacts/mtf.zip -d artifacts/source/mtf
+      - name: Diagnose 6-TF source completeness
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import pandas as pd
+          root=Path('artifacts/source/mtf')
+          fields=['mtf_trend_score','M5_trend_regime','M15_trend_regime','M30_trend_regime','H1_trend_regime','H4_trend_regime','D1_trend_regime']
+          for year in range(2016,2025):
+              matches=sorted(root.rglob(f'GBPUSD_M5_MTF_ALIGNMENT_{year}.csv'))
+              if len(matches)!=1: raise SystemExit(f'MTF_FILE_COUNT_FAIL:{year}:{matches}')
+              df=pd.read_csv(matches[0],low_memory=False)
+              missing=sorted(set(['timestamp',*fields])-set(df.columns))
+              if missing: raise SystemExit(f'MTF_REQUIRED_COLUMNS_FAIL:{year}:{missing}')
+              print(f'YEAR={year} ROWS={len(df)}')
+              for f in fields:
+                  n=pd.to_numeric(df[f],errors='coerce')
+                  invalid=n.isna()
+                  print(f'FIELD={f} MISSING_OR_NONNUM={int(invalid.sum())} VALID={int((~invalid).sum())}')
+                  if invalid.any():
+                      ts=pd.to_datetime(df.loc[invalid,'timestamp'],utc=True,errors='coerce',format='mixed')
+                      print(f'  FIRST_BAD_TIMESTAMP={ts.min()} LAST_BAD_TIMESTAMP={ts.max()}')
+          PY
       - name: Verify 6-TF annual source files and canonical numeric fields
         shell: bash
         run: |
@@ -60,9 +83,7 @@ jobs:
               if missing: raise SystemExit(f'MTF_REQUIRED_COLUMNS_FAIL:{year}:{missing}')
               for f in fields:
                   n=pd.to_numeric(df[f],errors='coerce')
-                  if n.isna().any():
-                      bad=df.loc[n.isna(),f].astype('string').dropna().unique().tolist()
-                      raise SystemExit(f'MTF_NON_NUMERIC_FAIL:{year}:{f}:{bad[:10]}')
+                  if n.isna().any(): raise SystemExit(f'MTF_NON_NUMERIC_OR_MISSING_FAIL:{year}:{f}:count={int(n.isna().sum())}')
                   df[f]=n.astype(float)
               df['timestamp']=pd.to_datetime(df['timestamp'],utc=True,errors='raise',format='mixed')
               if df['timestamp'].duplicated().any(): raise SystemExit(f'MTF_TIMESTAMP_DUPLICATE_FAIL:{year}')
