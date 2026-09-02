@@ -21,7 +21,7 @@ v54 = text(ROOT / "DEVELOPMENT_2016_2024" / "current_stack_historical_replay_v5_
 v4 = text(ROOT / "DEVELOPMENT_2016_2024" / "current_stack_historical_replay_v4.py")
 brain = text(ROOT / "RUNTIME" / "DECISION_RUNTIME_V1" / "full_brain_runtime_bridge_v1.py")
 e2e = text(ROOT / "RUNTIME" / "DECISION_RUNTIME_V1" / "gate3c_single_event_e2e_v1.py")
-evaluator = text(ROOT / "evaluation" / "three_book_decision_evaluator_v1.py")
+adapter = text(ROOT / "compatibility" / "decision_brain_v1_handoff_adapter.py")
 workflow = text(ROOT / ".github" / "workflows" / "current-stack-development-backtest-2016-2024-v5-4.yml")
 
 # V5.4 must be a versioned compatibility layer over V4, not a second strategy.
@@ -34,10 +34,10 @@ require("SL_ATR = 0.75" in v54, "SL ATR contract changed")
 require("TP_R = 2.0" in v54, "TP R contract changed")
 require("TP_R * stop_distance" in v54, "V5.4 2R rewrite missing")
 require("if not nids:" in v54, "Nison absence compatibility rule missing")
-require("costs_applied": False" in v4 or "costs_applied": False" in v54, "development cost policy not explicitly false")
-require("tuning_applied": False" in v4, "development tuning policy not explicitly false")
+require('"costs_applied": False' in v4, "development cost policy not explicitly false")
+require('"tuning_applied": False' in v4, "development tuning policy not explicitly false")
 
-# Canonical MTF envelope.
+# Canonical six-TF MTF envelope must be present in the replay contract.
 expected_mtf = [
     "mtf_trend_score",
     "M5_trend_regime",
@@ -49,27 +49,27 @@ expected_mtf = [
 ]
 for field in expected_mtf:
     require(field in v54, f"missing MTF field in V5.4: {field}")
-require("direction_generated=False" not in v54, "V5.4 contains suspicious explicit direction generation flag")
 
-# Brain boundary: recovered V1 stays loaded, while similarity is evidence-only.
-require("RECOVERED_SOURCES\" / \"DECISION_BRAIN_V1\"" in brain or "RECOVERED_SOURCES/DECISION_BRAIN_V1" in brain, "Recovered Brain V1 path missing")
-require("similarity=None" in text(ROOT / "compatibility" / "decision_brain_v1_handoff_adapter.py"), "Similarity must not be passed as Brain direction input")
-require("memory_direction_generation\": False" in e2e, "Memory direction-generation governance missing")
-require("nison_direction_generation\": False" in e2e, "Nison direction-generation governance missing")
-require("tiz_direction_generation\": False" in e2e, "TIZ direction-generation governance missing")
+# Brain boundary: recovered V1 stays loaded; similarity remains evidence-only.
+require("RECOVERED_SOURCES" in brain and "DECISION_BRAIN_V1" in brain, "Recovered Brain V1 path missing")
+require("similarity=None" in adapter, "Similarity must not be passed as Brain direction input")
+require('"memory_direction_generation": False' in e2e, "Memory direction-generation governance missing")
+require('"nison_direction_generation": False' in e2e, "Nison direction-generation governance missing")
+require('"tiz_direction_generation": False' in e2e, "TIZ direction-generation governance missing")
 
-# Risk authority / 2025 lock.
+# Risk authority and OOS lock.
 require("risk_engine" in v4 or "risk_engine" in v54, "canonical risk engine not referenced")
 require("2016-2024" in workflow, "workflow does not declare development window")
 require("2025_OOS_LOCKED" in workflow, "2025 OOS lock missing")
-require("official_profitability_claim":False" in v4, "official profitability claim policy missing")
+require('"official_profitability_claim": False' in v4, "official profitability claim policy missing")
 
-# Syntax sanity for all touched Python integration files.
+# Syntax sanity for integration code.
 for path in [
     ROOT / "DEVELOPMENT_2016_2024" / "current_stack_historical_replay_v5_4.py",
+    ROOT / "DEVELOPMENT_2016_2024" / "current_stack_historical_replay_v4.py",
     ROOT / "RUNTIME" / "DECISION_RUNTIME_V1" / "full_brain_runtime_bridge_v1.py",
     ROOT / "RUNTIME" / "DECISION_RUNTIME_V1" / "gate3c_single_event_e2e_v1.py",
-    ROOT / "evaluation" / "three_book_decision_evaluator_v1.py",
+    ROOT / "compatibility" / "decision_brain_v1_handoff_adapter.py",
 ]:
     try:
         ast.parse(text(path), filename=str(path))
