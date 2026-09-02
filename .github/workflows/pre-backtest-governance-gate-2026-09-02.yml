@@ -1,0 +1,33 @@
+name: Pre-Backtest Governance Gate 2026-09-02
+
+on:
+  push:
+    branches:
+      - diagnostic/mtf-gate-observable-2026-09-02
+  pull_request:
+    branches:
+      - current-stack-dev-backtest-2016-2024-v3
+
+permissions:
+  contents: read
+
+jobs:
+  pre-backtest-governance:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout tested revision
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 1
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: python -m pip install --upgrade pip
+
+      - name: Run pre-backtest governance gate
+        run: python BACKTEST/pre_backtest_governance_gate_v1.py
