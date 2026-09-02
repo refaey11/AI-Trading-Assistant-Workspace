@@ -1,0 +1,197 @@
+name: Diagnostic Full Backtest V5.4 2016-2024
+
+on:
+  push:
+    branches:
+      - diagnostic/mtf-gate-observable-2026-09-02
+
+permissions:
+  contents: read
+
+jobs:
+  diagnostic-full-replay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      DROPBOX_ACCESS_TOKEN: ${{ secrets.DROPBOX_ACCESS_TOKEN }}
+      PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/OOS_2025
+
+    steps:
+      - name: Checkout exact diagnostic revision
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 1
+
+      - name: Verify revision
+        run: |
+          test "$(git rev-parse HEAD)" = "$GITHUB_SHA"
+          git rev-parse HEAD
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: python -m pip install --upgrade pip pandas pytest
+
+      - name: PRE-BACKTEST GOVERNANCE GATE
+        run: python BACKTEST/pre_backtest_governance_gate_v1.py
+
+      - name: Development window lock
+        run: |
+          python - <<'PY'
+          from datetime import datetime, timezone
+          assert datetime(2016,1,1,tzinfo=timezone.utc) < datetime(2025,1,1,tzinfo=timezone.utc)
+          print('DEVELOPMENT_WINDOW=2016-2024')
+          print('2025_OOS_LOCKED=True')
+          PY
+
+      - name: Component completeness gate
+        run: python DEVELOPMENT_2016_2024/current_stack_component_completeness_gate_v1.py
+
+      - name: Runtime wiring gate
+        run: python DEVELOPMENT_2016_2024/current_stack_runtime_wiring_gate_v1.py
+
+      - name: Acquire governed source bundles
+        shell: bash
+        run: |
+          set -euo pipefail
+          TOKEN="$(printf '%s' "$DROPBOX_ACCESS_TOKEN" | tr -d '\r\n' | sed -E 's/^Bearer[[:space:]]+//; s/^\"//; s/\"$//')"
+          test -n "$TOKEN"
+          mkdir -p artifacts/source artifacts/source/memory artifacts/source/mtf
+          download(){ curl -L --fail --silent --show-error https://content.dropboxapi.com/2/files/download -H "Authorization: Bearer ${TOKEN}" -H "Dropbox-API-Arg: {\"path\":\"$1\"}" -o "$2"; }
+          download "/New 8/GBPUSD_H1_2016_2025_MASTER.zip" artifacts/source/h1.zip
+          download "/New 8/MURPHY_HISTORICAL_34_RULE_FANIN_2016_2024.zip" artifacts/source/murphy.zip
+          download "/New 8/NISON_2016_2024_FULL_EVIDENCE.csv" artifacts/source/nison.csv
+          download "/New 8/GBPUSD_MARKET_STATE 6.csv" artifacts/source/market_state.csv
+          download "/MTF_ALIGNMENT_GBPUSD_V1.zip" artifacts/source/mtf.zip
+          download "/ai_trading_assistant_full_project_v1/AI_Trading_Assistant_HISTORICAL_CONTEXT_MEMORY_V1.zip" artifacts/source/memory/historical_context.zip
+          download "/ai_trading_assistant_full_project_v1/AI_Trading_Assistant_HISTORICAL_OUTCOME_MEMORY_V1.zip" artifacts/source/memory/historical_outcome.zip
+          download "/ai_trading_assistant_full_project_v1/AI_Trading_Assistant_SIMILARITY_MEMORY_V2.zip" artifacts/source/memory/similarity.zip
+          download "/ai_trading_assistant_full_project_v1/AI_Trading_Assistant_CONTEXT_AWARE_RETRIEVAL_V2.zip" artifacts/source/memory/retrieval.zip
+          download "/AI_Trading_Assistant_FULL_PROJECT_V1/AI_Trading_Assistant_MARKET_SCENARIO_ENGINE_V1.zip" artifacts/source/memory/scenario.zip
+          unzip -q artifacts/source/h1.zip -d artifacts/source/h1
+          unzip -q artifacts/source/murphy.zip -d artifacts/source/murphy
+          unzip -q artifacts/source/mtf.zip -d artifacts/source/mtf
+          unzip -q artifacts/source/memory/historical_context.zip -d artifacts/source/memory/historical_context
+          unzip -q artifacts/source/memory/historical_outcome.zip -d artifacts/source/memory/historical_outcome
+          unzip -q artifacts/source/memory/similarity.zip -d artifacts/source/memory/similarity
+          unzip -q artifacts/source/memory/retrieval.zip -d artifacts/source/memory/retrieval
+          unzip -q artifacts/source/memory/scenario.zip -d artifacts/source/memory/scenario
+
+      - name: Resolve Murphy governed source
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import pandas as pd
+          root=Path('artifacts/source/murphy')
+          expected={f'MURPHY_{i:04d}' for i in [3,4,6,7,18,19,21,22,23,25,26,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,47,48,49,50,51]}
+          ranked=[]
+          for p in root.rglob('*.csv'):
+              try: df=pd.read_csv(p,usecols=['timestamp','source_rule_id'],low_memory=False)
+              except Exception: continue
+              ids={x.strip() for v in df.source_rule_id.dropna() for x in str(v).split('|') if x.strip() and x.strip().upper() not in {'NONE','NULL','NAN','NISON_NONE'}}
+              years=pd.to_datetime(df.timestamp,utc=True,errors='coerce',format='mixed').dt.year.dropna()
+              if not years.empty and int(years.min())>=2016 and int(years.max())<=2024 and ids and ids.issubset(expected): ranked.append((len(df),len(ids),p,ids))
+          if not ranked: raise SystemExit('BLOCKED_MURPHY_NO_VALID_2016_2024_SOURCE')
+          ranked.sort(reverse=True,key=lambda x:(x[0],x[1],str(x[2])))
+          _,_,chosen,ids=ranked[0]
+          Path('artifacts/source/MURPHY_CURRENT_STACK.csv').write_bytes(chosen.read_bytes())
+          print('MURPHY_SOURCE_PASS',chosen,'RULES_OBSERVED',len(ids))
+          PY
+
+      - name: Build canonical six-TF MTF source
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import json, pandas as pd
+          root=Path('artifacts/source/mtf')
+          fields=['M5_trend_regime','M15_trend_regime','M30_trend_regime','H1_trend_regime','H4_trend_regime','D1_trend_regime']
+          required={'timestamp','mtf_trend_score',*fields}
+          frames=[]; annual=[]
+          for year in range(2016,2025):
+              matches=sorted(root.rglob(f'GBPUSD_M5_MTF_ALIGNMENT_{year}.csv'))
+              if len(matches) != 1: raise SystemExit(f'MTF_ANNUAL_SOURCE_ERROR:{year}:{matches}')
+              p=matches[0]
+              df=pd.read_csv(p,low_memory=False)
+              missing=sorted(required-set(df.columns))
+              if missing: raise SystemExit(f'MTF_SOURCE_MISSING_REQUIRED_FIELDS:{p}:{missing}')
+              df['timestamp']=pd.to_datetime(df['timestamp'],utc=True,errors='raise',format='mixed')
+              for f in ['mtf_trend_score',*fields]:
+                  numeric=pd.to_numeric(df[f],errors='coerce')
+                  if numeric.isna().any(): raise SystemExit(f'MTF_SOURCE_NON_NUMERIC_OR_MISSING:{p}:{f}')
+                  df[f]=numeric.astype(float)
+              df=df[(df.timestamp.dt.year>=2016)&(df.timestamp.dt.year<=2024)]
+              frames.append(df.copy())
+              annual.append({'year':year,'rows':len(df),'source_file':str(p)})
+          combined=pd.concat(frames,ignore_index=True).sort_values('timestamp')
+          if combined.timestamp.duplicated().any(): raise SystemExit('MTF_SOURCE_DUPLICATE_TIMESTAMP')
+          years=sorted(combined.timestamp.dt.year.astype(int).unique().tolist())
+          assert years==list(range(2016,2025)), years
+          Path('artifacts/source/MTF_CURRENT_STACK.csv').write_text(combined.to_csv(index=False),encoding='utf-8')
+          Path('artifacts/source/MTF_COVERAGE_REPORT.json').write_text(json.dumps({'status':'PASS','rows':len(combined),'coverage_years':years,'timeframes':['M5','M15','M30','H1','H4','D1'],'producer_values_used_verbatim':True,'categorical_translation_applied':False,'imputation_applied':False,'scaling_applied':False,'annual_coverage':annual},indent=2),encoding='utf-8')
+          print('MTF_COVERAGE_PASS',len(combined),years)
+          PY
+
+      - name: Canonical six-TF source contract gate
+        run: python BACKTEST/mtf_source_contract_gate_v1.py --mtf artifacts/source/MTF_CURRENT_STACK.csv
+
+      - name: Resolve memory source files
+        run: |
+          set -euo pipefail
+          HC=$(find artifacts/source/memory/historical_context -type f -name 'HISTORICAL_CONTEXT_MEMORY.csv' | head -1)
+          HO=$(find artifacts/source/memory/historical_outcome -type f -name 'HISTORICAL_OUTCOMES.csv' | head -1)
+          SIM=$(find artifacts/source/memory/similarity -type f -name 'SIMILAR_CONTEXT_READS.json' | head -1)
+          RET=$(find artifacts/source/memory/retrieval -type f -name 'CONTEXT_AWARE_READINGS.json' | head -1)
+          SCN=$(find artifacts/source/memory/scenario -type f -name 'MARKET_SCENARIOS.json' | head -1)
+          test -n "$HC" && test -n "$HO" && test -n "$SIM" && test -n "$RET" && test -n "$SCN"
+          printf 'HISTORICAL_CONTEXT=%s\nHISTORICAL_OUTCOME=%s\nSIMILARITY_ARTIFACT=%s\nRETRIEVAL_ARTIFACT=%s\nSCENARIO_ARTIFACT=%s\n' "$HC" "$HO" "$SIM" "$RET" "$SCN" > artifacts/source/memory/RESOLVED_MEMORY_PATHS.txt
+
+      - name: Run V5.4 full-window replay
+        run: |
+          H1=$(find artifacts/source/h1 -type f -name 'GBPUSD_H1_2016_2025_MASTER.csv' | head -1)
+          test -n "$H1"
+          HC=$(grep '^HISTORICAL_CONTEXT=' artifacts/source/memory/RESOLVED_MEMORY_PATHS.txt | cut -d= -f2-)
+          HO=$(grep '^HISTORICAL_OUTCOME=' artifacts/source/memory/RESOLVED_MEMORY_PATHS.txt | cut -d= -f2-)
+          SIM=$(grep '^SIMILARITY_ARTIFACT=' artifacts/source/memory/RESOLVED_MEMORY_PATHS.txt | cut -d= -f2-)
+          RET=$(grep '^RETRIEVAL_ARTIFACT=' artifacts/source/memory/RESOLVED_MEMORY_PATHS.txt | cut -d= -f2-)
+          SCN=$(grep '^SCENARIO_ARTIFACT=' artifacts/source/memory/RESOLVED_MEMORY_PATHS.txt | cut -d= -f2-)
+          python DEVELOPMENT_2016_2024/current_stack_historical_replay_v5_4.py --h1 "$H1" --market-state artifacts/source/market_state.csv --murphy artifacts/source/MURPHY_CURRENT_STACK.csv --nison artifacts/source/nison.csv --mtf artifacts/source/MTF_CURRENT_STACK.csv --historical-context "$HC" --historical-outcome "$HO" --similarity-artifact "$SIM" --retrieval-artifact "$RET" --scenario-artifact "$SCN" --output-dir artifacts/current_stack_backtest_2016_2024
+
+      - name: Backtest provenance audit
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          import pandas as pd
+          root=Path('artifacts/current_stack_backtest_2016_2024')
+          metrics=json.loads((root/'current_stack_backtest_metrics_2016_2024.json').read_text())
+          manifest=json.loads((root/'current_stack_validation_manifest_2016_2024.json').read_text())
+          events=pd.read_csv(root/'current_stack_decision_events_2016_2024.csv',low_memory=False)
+          trades=pd.read_csv(root/'current_stack_executed_trades_2016_2024.csv',low_memory=False)
+          assert manifest['window_2016_2024_only'] is True
+          assert manifest['future_data_used'] is False
+          assert manifest['trade_lifecycle_event_driven'] is True
+          assert manifest['pnl_recorded_only_on_exit'] is True
+          assert manifest['risk_state_updates_only_on_realized_pnl'] is True
+          assert metrics['official_profitability_claim'] is False
+          assert pd.to_datetime(events['timestamp'],utc=True,format='mixed').dt.year.max() <= 2024 if len(events) else True
+          assert pd.to_datetime(trades['entry_timestamp'],utc=True,format='mixed').dt.year.max() <= 2024 if len(trades) else True
+          report={'status':'PASS','development_window':'2016-2024','2025_OOS_LOCKED':True,'events':len(events),'executed_trades':len(trades),'metrics':metrics,'official_profitability_claim':False}
+          Path('artifacts/BACKTEST_PROVENANCE_AUDIT_V5_4.json').write_text(json.dumps(report,indent=2,default=str))
+          print(json.dumps(report,indent=2,default=str))
+          PY
+
+      - name: Opportunity funnel shadow audit
+        if: always()
+        run: python tools/opportunity_funnel_shadow_v1.py --root artifacts/current_stack_backtest_2016_2024 --output artifacts/OPPORTUNITY_FUNNEL_SHADOW_V1.json
+
+      - name: Upload diagnostic artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: diagnostic-full-backtest-v5-4-2016-2024
+          path: artifacts
+          if-no-files-found: ignore
