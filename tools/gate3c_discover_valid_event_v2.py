@@ -1,14 +1,4 @@
-"""Discover a real Gate 3C source-backed event using the canonical as-of semantics.
-
-This tool does not generate evidence. It only finds a timestamp that already has:
-- a non-conflicting Murphy directional fan-in event,
-- all 44 Nison rule IDs at that timestamp,
-- H1 and Market State available as-of the event,
-- complete canonical six-TF MTF evidence as-of the event.
-
-It deliberately mirrors the builder's exact/as-of semantics instead of imposing
-an artificial exact timestamp requirement on H1 or Market State.
-"""
+"""Discover a real Gate 3C source-backed event using canonical as-of semantics."""
 from __future__ import annotations
 
 import argparse
@@ -58,9 +48,8 @@ def nison_candidates(nison: pd.DataFrame) -> pd.DataFrame:
         else:
             raise SystemExit("DISCOVERY_NISON_SCHEMA_NO_RULE_ID")
     n = n.dropna(subset=["timestamp"])
-    grouped = n.groupby("timestamp", sort=True)
     rows = []
-    for ts, grp in grouped:
+    for ts, grp in n.groupby("timestamp", sort=True):
         ids = {str(x).strip() for x in grp["source_rule_id"].tolist()}
         if ids == EXPECTED_NISON:
             rows.append((ts, len(grp), len(ids)))
@@ -74,14 +63,46 @@ def latest_asof(df: pd.DataFrame, ts: pd.Timestamp) -> pd.Series | None:
     return rows.iloc[-1]
 
 
+def load_mtf_source(source: Path) -> pd.DataFrame:
+    """Load only canonical annual MTF data for 2016-2024.
+
+    The workflow passes the extracted MTF directory. Never use FINAL_MANIFEST.csv
+    or any 2025+ file for the 2016-2024 Gate 3C diagnostic.
+    """
+    if source.is_file():
+        files = [source]
+    elif source.is_dir():
+        files = sorted(source.glob("GBPUSD_M5_MTF_ALIGNMENT_*.csv"))
+    else:
+        raise SystemExit(f"DISCOVERY_MTF_SOURCE_NOT_FOUND:{source}")
+
+    files = [p for p in files if p.stem.rsplit("_", 1)[-1].isdigit() and 2016 <= int(p.stem.rsplit("_", 1)[-1]) <= 2024]
+    if not files:
+        raise SystemExit(f"DISCOVERY_NO_CANONICAL_MTF_2016_2024_FILES:{source}")
+
+    frames: list[pd.DataFrame] = []
+    for p in files:
+        df = pd.read_csv(p, low_memory=False)
+        if "timestamp" not in df.columns:
+            raise SystemExit(f"DISCOVERY_MTF_MISSING_TIMESTAMP:{p}")
+        df["timestamp"] = parse_ts(df["timestamp"])
+        frames.append(df)
+
+    mtf = pd.concat(frames, ignore_index=True)
+    mtf = mtf.dropna(subset=["timestamp"]).sort_values("timestamp", kind="stable")
+    if mtf["timestamp"].duplicated().any():
+        raise SystemExit("DISCOVERY_MTF_DUPLICATE_TIMESTAMPS")
+    return mtf
+
+
 def discover(murphy_path: Path, nison_path: Path, h1_path: Path, market_path: Path, mtf_path: Path) -> tuple[pd.Timestamp, str, dict]:
     murphy = pd.read_csv(murphy_path, low_memory=False)
     nison = pd.read_csv(nison_path, low_memory=False)
     h1 = pd.read_csv(h1_path, low_memory=False)
     market = pd.read_csv(market_path, low_memory=False)
-    mtf = pd.read_csv(mtf_path, low_memory=False)
+    mtf = load_mtf_source(mtf_path)
 
-    for df, name in [(murphy, "murphy"), (nison, "nison"), (h1, "h1"), (market, "market"), (mtf, "mtf")]:
+    for df, name in [(murphy, "murphy"), (nison, "nison"), (h1, "h1"), (market, "market")]:
         if "timestamp" not in df.columns:
             raise SystemExit(f"DISCOVERY_MISSING_TIMESTAMP:{name}")
         df["timestamp"] = parse_ts(df["timestamp"])
@@ -98,7 +119,6 @@ def discover(murphy_path: Path, nison_path: Path, h1_path: Path, market_path: Pa
     if nc.empty:
         raise SystemExit("DISCOVERY_NO_NISON_COMPLETE_44_TIMESTAMPS")
 
-    # Merge the two exact-event clocks first; then validate all context sources as-of.
     candidates = mc.merge(nc, on="timestamp", how="inner").sort_values("timestamp")
     diagnostics = {
         "murphy_directional_timestamps": int(len(mc)),
@@ -139,10 +159,7 @@ def main() -> int:
     p.add_argument("--output", type=Path, required=True)
     args = p.parse_args()
     ts, direction, diagnostics = discover(args.murphy, args.nison, args.h1, args.market, args.mtf)
-    lines = [
-        f"EVENT_TS={ts.isoformat()}",
-        f"MURPHY_DIRECTION={direction}",
-    ]
+    lines = [f"EVENT_TS={ts.isoformat()}", f"MURPHY_DIRECTION={direction}"]
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text("\n".join(lines) + "\n", encoding="utf-8")
     print("DISCOVERED_EVENT_TS", ts.isoformat())
