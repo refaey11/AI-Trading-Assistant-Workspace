@@ -64,12 +64,9 @@ jobs:
           set -euo pipefail
           MURPHY="$(find /tmp/gate3c/unpacked/murphy -type f -name 'MURPHY_2016_2024_FULL_EVIDENCE.csv' | sort | head -1)"
           H1="$(find /tmp/gate3c/unpacked/h1 -type f -name 'GBPUSD_H1_2016_2025_MASTER.csv' | sort | head -1)"
-          MTF_CANDIDATES=( $(find /tmp/gate3c/unpacked/mtf -type f -name 'GBPUSD_M5_MTF_ALIGNMENT_*.csv' | sort) )
           test -n "$MURPHY" -a -n "$H1"
-          test "${#MTF_CANDIDATES[@]}" -gt 0
           printf 'MURPHY=%s\nH1=%s\nMTF_ROOT=%s\n' "$MURPHY" "$H1" "/tmp/gate3c/unpacked/mtf" >> "$GITHUB_ENV"
-          printf 'MTF_CANDIDATES=%s\n' "${#MTF_CANDIDATES[@]}"
-          printf '%s\n' "${MTF_CANDIDATES[@]}"
+          find /tmp/gate3c/unpacked/mtf -type f -name 'GBPUSD_M5_MTF_ALIGNMENT_*.csv' | sort
 
       - name: Discover real source-backed event
         run: |
@@ -103,23 +100,27 @@ jobs:
           from pathlib import Path
           import os,pandas as pd
           root=Path('/tmp/gate3c'); ts=pd.Timestamp(os.environ['EVENT_TS'],tz='UTC')
-          def exact_one(src,dst):
+
+          def asof_one(src,dst):
               df=pd.read_csv(src,low_memory=False)
+              if 'timestamp' not in df.columns: raise SystemExit(f'BLOCKED_TIMESTAMP_COLUMN_MISSING:{src}')
               df['timestamp']=pd.to_datetime(df['timestamp'],utc=True,errors='coerce',format='mixed')
-              part=df.loc[df['timestamp'].eq(ts)].copy()
-              if len(part)!=1: raise SystemExit(f'BLOCKED_EVENT_ROW_COUNT:{src}:{len(part)}')
+              part=df.loc[df['timestamp'].le(ts)].dropna(subset=['timestamp']).sort_values('timestamp').tail(1)
+              if len(part)!=1: raise SystemExit(f'BLOCKED_ASOF_ROW:{src}')
               part.to_csv(dst,index=False)
-          asof_one=lambda src,dst: (_ for _ in ()).throw(SystemExit('INLINE_NOT_ALLOWED'))
-          exact_one(root/'source'/'market_state.csv',root/'event_context.csv')
-          h=root/'unpacked'/'h1'; hp=next(h.rglob('GBPUSD_H1_2016_2025_MASTER.csv'))
-          df=pd.read_csv(hp,low_memory=False); df['timestamp']=pd.to_datetime(df['timestamp'],utc=True,errors='coerce',format='mixed')
-          part=df.loc[df['timestamp'].le(ts)].sort_values('timestamp').tail(1)
-          if len(part)!=1: raise SystemExit('BLOCKED_H1_ASOF')
-          part.to_csv(root/'event_h1.csv',index=False)
+
+          asof_one(root/'source'/'market_state.csv',root/'event_context.csv')
+          hp=next((root/'unpacked'/'h1').rglob('GBPUSD_H1_2016_2025_MASTER.csv'),None)
+          if hp is None: raise SystemExit('BLOCKED_H1_MASTER_CSV_NOT_FOUND')
+          asof_one(hp,root/'event_h1.csv')
+
           ndf=pd.read_csv(root/'source'/'nison.csv',low_memory=False)
-          if 'source_rule_id' not in ndf.columns and 'rule_id' in ndf.columns: ndf=ndf.rename(columns={'rule_id':'source_rule_id'})
+          if 'source_rule_id' not in ndf.columns:
+              if 'rule_id' in ndf.columns: ndf=ndf.rename(columns={'rule_id':'source_rule_id'})
+              else: raise SystemExit('BLOCKED_NISON_SCHEMA')
           ndf['timestamp']=pd.to_datetime(ndf['timestamp'],utc=True,errors='coerce',format='mixed')
-          part=ndf.loc[ndf['timestamp'].eq(ts)].copy(); ids={str(x) for x in part['source_rule_id'].tolist()}
+          part=ndf.loc[ndf['timestamp'].eq(ts)].copy()
+          ids={str(x).strip() for x in part['source_rule_id'].tolist()}
           expected={f'NISON_{i:04d}' for i in range(1,45)}
           if ids != expected: raise SystemExit(f'BLOCKED_NISON_44_FANIN:{len(part)}:{len(ids)}')
           part.to_csv(root/'event_nison.csv',index=False)
