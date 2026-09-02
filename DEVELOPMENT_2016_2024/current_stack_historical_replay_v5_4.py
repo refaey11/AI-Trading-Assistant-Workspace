@@ -107,6 +107,10 @@ if stop_replacements != 1:
     raise RuntimeError(f"V5_4_STOP_PATCH_COUNT_FAIL:{stop_replacements}")
 
 mod = load_module_from_text(source, "current_stack_historical_replay_v5_4_impl")
+# The transformed V4 run() executes in mod's globals, so expose the frozen
+# V5.4 constants there explicitly rather than relying on this wrapper's scope.
+mod.SL_ATR = SL_ATR
+mod.TP_R = TP_R
 _original_load_module = mod.load_module
 
 
