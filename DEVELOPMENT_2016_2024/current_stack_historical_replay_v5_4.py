@@ -83,23 +83,19 @@ source = V4.read_text(encoding="utf-8")
 # Development-only compatibility rule: Nison absence/failure is not a
 # contradiction. Only an opposite directional PASS may contradict Murphy.
 source = source.replace(
-    '        nids = {rid for ids in ng.expanded_ids for rid in ids}\n'
-    '        if nids != NISON_IDS:\n'
-    '            continue\n',
-    '        nids = {rid for ids in ng.expanded_ids for rid in ids}\n'
-    '        if not nids:\n'
-    '            continue\n'
+    'nids = {rid for ids in ng.expanded_ids for rid in ids}\n        if nids != NISON_IDS:\n            continue',
+    'nids = {rid for ids in ng.expanded_ids for rid in ids}\n        if not nids:\n            continue'
 )
 
 # V5.4 must use the frozen 0.75 ATR / 2R execution contract consistently.
+# Replace the exact token rather than relying on whole-line indentation.
 source = source.replace(
-    '            rr_target = 1.5 * atr\n',
-    '            stop_distance = SL_ATR * atr\n'
-    '            rr_target = TP_R * stop_distance\n',
+    'rr_target = 1.5 * atr',
+    'stop_distance = SL_ATR * atr\n            rr_target = TP_R * stop_distance',
 )
 source = source.replace(
-    '                stop_distance=0.75 * atr,\n',
-    '                stop_distance=stop_distance,\n',
+    'stop_distance=0.75 * atr',
+    'stop_distance=stop_distance',
 )
 
 mod = load_module_from_text(source, "current_stack_historical_replay_v5_4_impl")
