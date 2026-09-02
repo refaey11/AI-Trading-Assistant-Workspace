@@ -31,7 +31,11 @@ def _year(value: Any) -> int | None:
 
 def _normalize_gate(value: Any) -> str:
     text = str(value or "").strip().upper()
-    if text in {"PASS", "FAIL", "NOT_EVALUABLE"}:
+    # TIZ is audit/process context only. AVAILABLE is therefore a non-blocking
+    # audit state, not an execution-gate failure.
+    if text in {"PASS", "AVAILABLE"}:
+        return "PASS"
+    if text in {"FAIL", "NOT_EVALUABLE"}:
         return text
     return "NOT_EVALUABLE"
 
