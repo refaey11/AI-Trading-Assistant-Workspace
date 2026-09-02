@@ -125,6 +125,15 @@ jobs:
           assert len(df) == 2428448
           print('Nison scope PASS:', len(df), 'rows,', df['rule_id'].nunique(), 'rules')
           PY
+      - name: Audit Murphy 34 historical coverage
+        run: |
+          set -eu
+          mkdir -p artifacts/murphy_coverage
+          python BACKTEST/MURPHY_34_HISTORICAL_COVERAGE_AUDIT_V1.py \
+            --murphy artifacts/murphy/MURPHY_2016_2024_FULL_EVIDENCE.csv \
+            --output artifacts/murphy_coverage/murphy_34_coverage_2016_2024.csv
+          test -s artifacts/murphy_coverage/murphy_34_coverage_2016_2024.csv
+          test -s artifacts/murphy_coverage/murphy_34_coverage_2016_2024_SUMMARY.json
       - name: Run governed 78-rule development backtest
         run: |
           set -eu
@@ -139,4 +148,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: decision-brain-backtest-2016-2024
-          path: artifacts/decision_brain_backtest_2016_2024
+          path: |
+            artifacts/decision_brain_backtest_2016_2024
+            artifacts/murphy_coverage
