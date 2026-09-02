@@ -1,7 +1,7 @@
 # BACKTEST-ONLY / GOVERNED
-# Branch: backtest-only-2026-08-28
-# IMPORTANT: automatic VCS pushes run only the cheap build-and-test workflow.
-# Governed integration/backtest execution remains manual/parameter-gated to prevent accidental credit burn.
+# Branch: diagnostic/murphy-34-recovery-2026-09-02
+# IMPORTANT: automatic VCS pushes run only lightweight build-and-test plus the explicitly
+# gated Murphy archive audit on this recovery branch. The governed backtest remains manual.
 # 2025 remains locked/OOS.
 version: 2.1
 
@@ -10,6 +10,9 @@ parameters:
     type: boolean
     default: false
   run_governed_backtest:
+    type: boolean
+    default: false
+  run_murphy_archive_audit:
     type: boolean
     default: false
 
@@ -28,6 +31,22 @@ jobs:
       - run:
           name: Compile Python sources
           command: python -m compileall -q BACKTEST compatibility RUNTIME RECOVERED_SOURCES
+
+  murphy_archive_audit:
+    docker:
+      - image: cimg/python:3.12
+    steps:
+      - checkout
+      - run:
+          name: Install audit dependencies
+          command: python -m pip install --upgrade pip
+      - run:
+          name: Audit original Murphy workspace archive (3-part reconstruction)
+          command: python BACKTEST/MURPHY_ARCHIVE_PRODUCER_BINDING_AUDIT_V1.py
+          no_output_timeout: 30m
+      - store_artifacts:
+          path: artifacts/murphy_34_workspace_audit
+          destination: murphy_34_workspace_audit
 
   governed_backtest_only:
     docker:
@@ -80,6 +99,14 @@ workflows:
     when: pipeline.git.branch != "governed-gate-run-2026-08-29"
     jobs:
       - build_and_test
+
+  murphy_archive_recovery:
+    when:
+      or:
+        - << pipeline.parameters.run_murphy_archive_audit >>
+        - pipeline.git.branch == "diagnostic/murphy-34-recovery-2026-09-02"
+    jobs:
+      - murphy_archive_audit
 
   governed_execution:
     when:
