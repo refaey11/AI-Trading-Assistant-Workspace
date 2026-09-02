@@ -163,7 +163,11 @@ jobs:
           assert metrics['official_profitability_claim'] is False
           if len(events): assert pd.to_datetime(events['timestamp'],utc=True,format='mixed').dt.year.max() <= 2024
           if len(trades): assert pd.to_datetime(trades['entry_timestamp'],utc=True,format='mixed').dt.year.max() <= 2024
-          report={'status':'PASS','development_window':'2016-2024','2025_OOS_LOCKED':True,'events':len(events),'executed_trades':len(trades),'metrics':metrics,'official_profitability_claim':False}
+          closed=trades[trades['r_multiple'].notna()].copy() if 'r_multiple' in trades.columns else pd.DataFrame()
+          ambiguous=int((trades['outcome'].astype(str).str.upper()=='AMBIGUOUS').sum()) if 'outcome' in trades.columns else 0
+          assert len(closed)==int(metrics['executed_trades']), f"REALIZED_TRADE_COUNT_MISMATCH:{len(closed)}!={metrics['executed_trades']}"
+          assert len(closed)==int(metrics['wins'])+int(metrics['losses']), f"WIN_LOSS_COUNT_MISMATCH:{len(closed)}!={metrics['wins']}+{metrics['losses']}"
+          report={'status':'PASS','development_window':'2016-2024','2025_OOS_LOCKED':True,'events':len(events),'trade_rows':len(trades),'realized_executed_trades':len(closed),'ambiguous_trade_rows':ambiguous,'metrics':metrics,'official_profitability_claim':False}
           Path('artifacts/BACKTEST_PROVENANCE_AUDIT_V5_4.json').write_text(json.dumps(report,indent=2,default=str))
           print(json.dumps(report,indent=2,default=str))
           PY
