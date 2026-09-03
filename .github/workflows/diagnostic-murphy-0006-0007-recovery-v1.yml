@@ -66,12 +66,6 @@ jobs:
 
           candidates = []
           for p in sorted(root.rglob('*.csv')):
-              name = p.name.lower()
-              path_text = str(p).lower()
-              if '0006' not in path_text and '0007' not in path_text:
-                  continue
-              if 'evaluator' not in path_text and 'confirmation' not in path_text:
-                  continue
               try:
                   df = pd.read_csv(p, nrows=5, low_memory=False)
               except Exception:
@@ -84,7 +78,7 @@ jobs:
                   full = pd.read_csv(p, low_memory=False)
                   ids = set()
                   for v in full[id_field].dropna():
-                      ids.update(x.strip() for x in str(v).split('|') if x.strip())
+                      ids.update(x.strip().upper() for x in str(v).split('|') if x.strip())
                   hit = sorted(ids & rules)
                   if not hit:
                       continue
@@ -98,7 +92,7 @@ jobs:
                       if sf in full.columns:
                           vals = full[sf].astype('string').str.upper().fillna('')
                           statuses[sf] = sorted(set(vals[vals != ''].tolist()))[:20]
-                  per_rule = {rid: int(sum(full[id_field].astype('string').fillna('').str.contains(rid, regex=False))) for rid in hit}
+                  per_rule = {rid: int(full[id_field].astype('string').fillna('').map(lambda value: rid in {x.strip().upper() for x in str(value).split('|') if x.strip()}).sum()) for rid in hit}
                   candidates.append({
                       'path': str(p),
                       'rows': int(len(full)),
