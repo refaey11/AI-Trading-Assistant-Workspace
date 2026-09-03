@@ -134,8 +134,8 @@ jobs:
           from pathlib import Path
           import json, pandas as pd
           root=Path('artifacts/source/mtf')
-          fields=['M5_trend_regime','M15_trend_regime','M30_trend_regime','H1_trend_regime','H4_trend_regime','D1_trend_regime']
-          required={'timestamp','mtf_trend_score',*fields}
+          regime_fields=['M5_trend_regime','M15_trend_regime','M30_trend_regime','H1_trend_regime','H4_trend_regime','D1_trend_regime']
+          required={'timestamp','mtf_trend_score',*regime_fields}
           frames=[]; annual=[]
           for year in range(2016,2025):
               matches=sorted(root.rglob(f'GBPUSD_M5_MTF_ALIGNMENT_{year}.csv'))
@@ -143,10 +143,14 @@ jobs:
               df=pd.read_csv(matches[0],low_memory=False)
               if sorted(required-set(df.columns)): raise SystemExit(f'MTF_MISSING_FIELDS:{matches[0]}')
               df['timestamp']=pd.to_datetime(df['timestamp'],utc=True,errors='raise',format='mixed')
-              for f in ['mtf_trend_score',*fields]:
-                  n=pd.to_numeric(df[f],errors='coerce')
-                  if n.isna().any(): raise SystemExit(f'MTF_NON_NUMERIC_OR_MISSING:{matches[0]}:{f}')
-                  df[f]=n.astype(float)
+              score=pd.to_numeric(df['mtf_trend_score'],errors='coerce')
+              if score.isna().any(): raise SystemExit(f'MTF_NON_NUMERIC_OR_MISSING:{matches[0]}:mtf_trend_score')
+              df['mtf_trend_score']=score.astype(float)
+              for f in regime_fields:
+                  values=df[f].astype('string').str.strip()
+                  values=values.mask(values.eq(''))
+                  if values.isna().any(): raise SystemExit(f'MTF_MISSING_OR_EMPTY_REGIME:{matches[0]}:{f}')
+                  df[f]=values
               df=df[(df.timestamp.dt.year>=2016)&(df.timestamp.dt.year<=2024)]
               frames.append(df)
               annual.append({'year':year,'rows':len(df)})
