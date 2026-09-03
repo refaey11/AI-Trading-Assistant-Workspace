@@ -4,7 +4,9 @@ from __future__ import annotations
 
 This adapter does not create new trading evidence. It binds existing producer
 observations to the latest producer availability strictly before the decision
-timestamp. Rows without a verifiable producer binding remain NOT_EVALUABLE.
+timestamp. For Murphy 0006/0007, the input must already be evaluator evidence
+with an explicit availability timestamp; the adapter never evaluates or
+promotes candidates itself.
 """
 
 import argparse
@@ -22,6 +24,7 @@ RULE_FAMILIES = {
     "MURPHY_0028": ["rsi_divergence"],
     "MURPHY_0029": ["rsi_divergence"],
 }
+PRE_EVALUATED_RULES = {"MURPHY_0006", "MURPHY_0007"}
 
 
 def clean_ids(v) -> list[str]:
@@ -49,7 +52,6 @@ def load_availability(path: Path, time_col: str, availability_col: str | None = 
     pairs = sorted(zip(keys[keep].tolist(), vals[keep].tolist()), key=lambda x: x[1])
     if not pairs:
         return [], []
-    # Availability is the actual lookup key. Duplicate availability instants keep the latest source row.
     by_avail: dict[pd.Timestamp, pd.Timestamp] = {}
     for _, avail in pairs:
         by_avail[avail] = avail
@@ -67,7 +69,6 @@ def load_sources(root: Path) -> dict[str, tuple[list[pd.Timestamp], list[pd.Time
 
 
 def latest_strict(avails: list[pd.Timestamp], decision_ts: pd.Timestamp) -> pd.Timestamp | None:
-    # bisect_left enforces availability < decision_timestamp; equality is rejected.
     pos = bisect.bisect_left(avails, decision_ts) - 1
     return None if pos < 0 else avails[pos]
 
@@ -84,6 +85,8 @@ def main() -> None:
     missing = sorted(required - set(df.columns))
     if missing:
         raise SystemExit(f"BLOCKED_MURPHY_SCHEMA:{missing}")
+    if "availability_timestamp" not in df.columns and PRE_EVALUATED_RULES.intersection(set(df.source_rule_id.astype(str))):
+        raise SystemExit("BLOCKED_PRE_EVALUATED_RULES_REQUIRE_EXPLICIT_AVAILABILITY")
     df["timestamp"] = parse_ts(df["timestamp"])
     if df.timestamp.isna().any():
         raise SystemExit("BLOCKED_MURPHY_INVALID_TIMESTAMP")
@@ -102,6 +105,16 @@ def main() -> None:
         bindings: list[tuple[str, str, pd.Timestamp]] = []
         unresolved: list[str] = []
         for rid in ids:
+            if rid in PRE_EVALUATED_RULES:
+                available = pd.to_datetime(row.get("availability_timestamp"), utc=True, errors="coerce")
+                if pd.isna(available):
+                    unresolved.append(f"NO_EXPLICIT_EVALUATOR_AVAILABILITY:{rid}")
+                elif not (available < decision_ts):
+                    unresolved.append(f"NON_STRICT_EVALUATOR_AVAILABILITY:{rid}:{available.isoformat()}")
+                else:
+                    bindings.append((rid, "pre_evaluated", available))
+                continue
+
             families = RULE_FAMILIES.get(rid)
             if not families:
                 unresolved.append(f"NO_PRODUCER_MAPPING:{rid}")
@@ -147,6 +160,7 @@ def main() -> None:
         "strict_pass_rows": int(len(result)),
         "rejected_or_unresolved_rows": int(len(df) - len(result)),
         "rules_with_explicit_mapping": sorted(RULE_FAMILIES),
+        "pre_evaluated_rules_accepted_with_explicit_availability": sorted(PRE_EVALUATED_RULES),
         "operator": "availability_timestamp < decision_timestamp",
         "lookup_mode": "latest_available_strictly_before_decision",
         "synthetic_evidence_generated": False,
