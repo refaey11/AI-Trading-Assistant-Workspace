@@ -69,20 +69,13 @@ def evaluate_frozen_candidate_risk(
         take_profit = entry - reward_distance
 
     position_size = (equity * risk_pct) / stop_distance
-    return FrozenRiskResult(
-        True,
-        risk_pct,
-        stop_loss,
-        take_profit,
-        position_size,
-        "FROZEN_CANDIDATE_RISK_PASS_DEVELOPMENT",
-    )
+    return FrozenRiskResult(True, risk_pct, stop_loss, take_profit, position_size, "FROZEN_CANDIDATE_RISK_PASS_DEVELOPMENT")
 
 
 source = V4.read_text(encoding="utf-8")
 
-# Development-only compatibility rule: Nison absence/failure is not a
-# contradiction. Only an opposite directional PASS may contradict Murphy.
+# Development-only compatibility rule: Nison absence/failure is not a contradiction.
+# Only an opposite directional PASS may contradict Murphy.
 source = source.replace(
     'nids = {rid for ids in ng.expanded_ids for rid in ids}\n        if nids != NISON_IDS:\n            continue',
     'nids = {rid for ids in ng.expanded_ids for rid in ids}\n        if not nids:\n            continue'
@@ -105,8 +98,7 @@ source, stop_replacements = re.subn(
 if stop_replacements != 1:
     raise RuntimeError(f"V5_4_STOP_PATCH_COUNT_FAIL:{stop_replacements}")
 
-# Strict as-of boundary: H1/market/MTF rows are timestamped at bar start.
-# A decision at timestamp T may only consume producer data strictly before T.
+# Strict as-of boundary: evidence used at decision timestamp T must be strictly before T.
 source, asof_replacements = re.subn(
     r"(?ms)def asof_row\(frame: pd\.DataFrame, ts: pd\.Timestamp\) -> pd\.Series \| None:\n    if frame\.empty:\n        return None\n    pos = frame\.index\.searchsorted\(ts, side=\"right\"\) - 1\n    return None if pos < 0 else frame\.iloc\[pos\]",
     "def asof_row(frame: pd.DataFrame, ts: pd.Timestamp) -> pd.Series | None:\n    if frame.empty:\n        return None\n    pos = frame.index.searchsorted(ts, side=\"left\") - 1\n    return None if pos < 0 else frame.iloc[pos]",
@@ -115,15 +107,18 @@ source, asof_replacements = re.subn(
 if asof_replacements != 1:
     raise RuntimeError(f"V5_4_STRICT_ASOF_PATCH_COUNT_FAIL:{asof_replacements}")
 
-# Entry is the prior completed H1 close; therefore exit simulation begins
-# with the H1 bar that starts at the decision timestamp, not one bar later.
-source, exit_replacements = re.subn(
-    r"(?m)^def simulate_exit\(bars: pd\.DataFrame, entry_idx: int, direction: str, stop: float, target: float\) -> tuple\[str, float \| None, pd\.Timestamp \| None\]:\n    for j in range\(entry_idx \+ 1, len\(bars\)\):$",
-    "def simulate_exit(bars: pd.DataFrame, entry_idx: int, direction: str, stop: float, target: float) -> tuple[str, float | None, pd.Timestamp | None]:\n    for j in range(entry_idx, len(bars)):",
+# The existing V4 lifecycle realizes exits at the start of the next iteration.
+# Preserve that lifecycle here; do not apply a speculative helper/function patch.
+
+# V5.4 entry is the prior completed H1 close, while the decision timestamp is the
+# current H1 bar start. This avoids using the current bar's future close as entry.
+source, entry_replacements = re.subn(
+    r"(?m)^(?P<indent>[ \t]+)entry = float\(bar\.close\)\s*$",
+    r"\g<indent>if bar_idx == 0:\n\g<indent>    continue\n\g<indent>entry = float(bars.iloc[bar_idx - 1].close)",
     source,
 )
-if exit_replacements != 1:
-    raise RuntimeError(f"V5_4_EXIT_START_PATCH_COUNT_FAIL:{exit_replacements}")
+if entry_replacements != 1:
+    raise RuntimeError(f"V5_4_ENTRY_PATCH_COUNT_FAIL:{entry_replacements}")
 
 mod = load_module_from_text(source, "current_stack_historical_replay_v5_4_impl")
 mod.SL_ATR = SL_ATR
@@ -133,10 +128,8 @@ _original_load_module = mod.load_module
 
 def patched_load_module(path: Path, name: str):
     if path.name == "frozen_candidate_risk_profile_v1.py":
-
         class FrozenModule:
             evaluate_frozen_candidate_risk = staticmethod(evaluate_frozen_candidate_risk)
-
         return FrozenModule
     return _original_load_module(path, name)
 
@@ -157,20 +150,11 @@ run = mod.run
 if __name__ == "__main__":
     p = argparse.ArgumentParser()
     for name in (
-        "h1",
-        "market-state",
-        "murphy",
-        "nison",
-        "mtf",
-        "historical-context",
-        "historical-outcome",
-        "similarity-artifact",
-        "retrieval-artifact",
-        "scenario-artifact",
-        "output-dir",
+        "h1", "market-state", "murphy", "nison", "mtf",
+        "historical-context", "historical-outcome", "similarity-artifact",
+        "retrieval-artifact", "scenario-artifact", "output-dir",
     ):
         p.add_argument(f"--{name}", required=True, type=Path)
-
     a = p.parse_args()
     run(
         a.h1,
