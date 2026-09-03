@@ -1,0 +1,4 @@
+diagnostic trigger: investigate current Gate 3C valid-event discovery on Murphy recovery branch
+scope=2016-2024
+locked_oos=2025
+strategy_changes=false
