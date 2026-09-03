@@ -5,8 +5,9 @@ from __future__ import annotations
 The producer supplies six timeframe trend regimes as categorical state and
 mtf_trend_score as a numeric field. This gate deliberately performs no
 categorical-to-numeric translation, no imputation, no scaling, and no direction
-generation. Missing values after the first fully-complete six-TF row remain a
-hard failure.
+generation. Annual source files may restart with an expected producer warm-up
+prefix; missing values after the first fully-complete six-TF row within that
+calendar-year segment remain a hard failure.
 """
 
 import argparse
@@ -53,6 +54,7 @@ def inspect(path: Path) -> dict[str, object]:
         "scaling_applied": False,
         "direction_generated": False,
         "warmup_prefix_allowed": True,
+        "warmup_scope": "PER_CALENDAR_YEAR_SOURCE_SEGMENT",
     }
 
     numeric = pd.DataFrame(index=df.index)
@@ -69,22 +71,40 @@ def inspect(path: Path) -> dict[str, object]:
     if not complete.any():
         raise SystemExit("BLOCKED_MTF_NO_COMPLETE_SIX_TF_ROW")
 
-    first_complete_idx = int(complete.idxmax())
-    post_warmup_invalid = (~complete) & (df.index >= first_complete_idx)
-    if post_warmup_invalid.any():
-        bad = []
-        for field in NUMERIC_FIELDS:
-            bad_count = int(numeric.loc[first_complete_idx:, field].isna().sum())
-            if bad_count:
-                bad.append(f"{field}:{bad_count}")
-        for field in REGIME_FIELDS:
-            bad_count = int(categorical.loc[first_complete_idx:, field].isna().sum())
-            if bad_count:
-                bad.append(f"{field}:{bad_count}")
-        raise SystemExit("BLOCKED_MTF_MISSING_AFTER_WARMUP:" + ",".join(bad))
+    warmup_rows: dict[str, int] = {}
+    invalid_rows: list[int] = []
+    first_complete_timestamps: dict[str, str] = {}
+    years = timestamps.dt.year.astype(int)
 
-    report["first_complete_timestamp"] = timestamps.iloc[first_complete_idx].isoformat()
-    report["warmup_rows"] = first_complete_idx
+    for year in sorted(years.unique().tolist()):
+        idx = df.index[years.eq(year)]
+        year_complete = complete.loc[idx]
+        if not year_complete.any():
+            raise SystemExit(f"BLOCKED_MTF_NO_COMPLETE_SIX_TF_ROW:{year}")
+        first_complete_idx = int(year_complete[year_complete].index[0])
+        warmup_count = int((idx < first_complete_idx).sum())
+        warmup_rows[str(year)] = warmup_count
+        first_complete_timestamps[str(year)] = timestamps.loc[first_complete_idx].isoformat()
+        post_warmup = idx >= first_complete_idx
+        bad_idx = idx[post_warmup & ~complete.loc[idx]]
+        invalid_rows.extend(int(x) for x in bad_idx.tolist())
+
+    if invalid_rows:
+        bad_counts = []
+        bad_index = pd.Index(sorted(set(invalid_rows)))
+        for field in NUMERIC_FIELDS:
+            n = int(numeric.loc[bad_index, field].isna().sum())
+            if n:
+                bad_counts.append(f"{field}:{n}")
+        for field in REGIME_FIELDS:
+            n = int(categorical.loc[bad_index, field].isna().sum())
+            if n:
+                bad_counts.append(f"{field}:{n}")
+        raise SystemExit("BLOCKED_MTF_MISSING_AFTER_WARMUP:" + ",".join(bad_counts))
+
+    report["first_complete_timestamp_by_year"] = first_complete_timestamps
+    report["warmup_rows_by_year"] = warmup_rows
+    report["warmup_rows_total"] = int(sum(warmup_rows.values()))
     report["complete_rows"] = int(complete.sum())
     report["min_timestamp"] = timestamps.min().isoformat()
     report["max_timestamp"] = timestamps.max().isoformat()
