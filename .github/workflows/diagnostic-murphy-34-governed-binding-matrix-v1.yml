@@ -1,0 +1,97 @@
+name: Diagnostic Murphy 34 Governed Binding Matrix V1
+
+on:
+  push:
+    branches:
+      - diagnostic/murphy-34-recovery-2026-09-02
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  governed-binding-matrix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      DROPBOX_ACCESS_TOKEN: ${{ secrets.DROPBOX_ACCESS_TOKEN }}
+    steps:
+      - name: Checkout exact recovery revision
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 1
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: python -m pip install --upgrade pip
+
+      - name: Acquire governed Murphy workspace archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          TOKEN="$(printf '%s' "$DROPBOX_ACCESS_TOKEN" | tr -d '\r\n' | sed -E 's/^Bearer[[:space:]]+//; s/^\"//; s/\"$//')"
+          test -n "$TOKEN"
+          mkdir -p artifacts/murphy_workspace/parts artifacts/murphy_workspace/extracted
+          download(){ curl -L --fail --silent --show-error https://content.dropboxapi.com/2/files/download -H "Authorization: Bearer ${TOKEN}" -H "Dropbox-API-Arg: {\"path\":\"$1\"}" -o "$2"; }
+          download "/GBPUSD_RULE_EVALUATOR_V2_WORKSPACE_PART_01_OF_03.zip.part" artifacts/murphy_workspace/parts/part1.zip.part
+          download "/GBPUSD_RULE_EVALUATOR_V2_WORKSPACE_PART_02_OF_03.zip.part" artifacts/murphy_workspace/parts/part2.zip.part
+          download "/GBPUSD_RULE_EVALUATOR_V2_WORKSPACE_PART_03_OF_03.zip.part" artifacts/murphy_workspace/parts/part3.zip.part
+          cat artifacts/murphy_workspace/parts/part1.zip.part artifacts/murphy_workspace/parts/part2.zip.part artifacts/murphy_workspace/parts/part3.zip.part > artifacts/murphy_workspace/GBPUSD_RULE_EVALUATOR_V2_WORKSPACE_FULL.zip
+          unzip -q artifacts/murphy_workspace/GBPUSD_RULE_EVALUATOR_V2_WORKSPACE_FULL.zip -d artifacts/murphy_workspace/extracted
+          python - <<'PY'
+          from pathlib import Path
+          import hashlib, zipfile
+          p=Path('artifacts/murphy_workspace/GBPUSD_RULE_EVALUATOR_V2_WORKSPACE_FULL.zip')
+          with zipfile.ZipFile(p) as z: assert z.testzip() is None
+          assert p.stat().st_size == 597678846
+          assert hashlib.sha256(p.read_bytes()).hexdigest() == '4c8c844f3081f921a0d64ba066e9734fcd9c8eebdd4396b16e6fba2921dad73a'
+          print('ARCHIVE_INTEGRITY_PASS')
+          PY
+
+      - name: Run reference discovery
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts
+          python BACKTEST/MURPHY_34_ARCHIVE_BINDING_DISCOVERY_V1.py \
+            --root artifacts/murphy_workspace/extracted \
+            --csv artifacts/MURPHY_34_ARCHIVE_BINDING_DISCOVERY.csv \
+            --json artifacts/MURPHY_34_ARCHIVE_BINDING_DISCOVERY.json
+
+      - name: Build governed 34-rule binding matrix
+        run: |
+          set -euo pipefail
+          python BACKTEST/MURPHY_34_GOVERNED_BINDING_MATRIX_V1.py \
+            --root artifacts/murphy_workspace/extracted \
+            --out-csv artifacts/MURPHY_34_GOVERNED_BINDING_MATRIX_V1.csv \
+            --out-json artifacts/MURPHY_34_GOVERNED_BINDING_MATRIX_V1.json
+
+      - name: Enforce fail-closed governance status
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import json
+          p='artifacts/MURPHY_34_GOVERNED_BINDING_MATRIX_V1.json'
+          r=json.load(open(p,encoding='utf-8'))
+          assert r['rule_count'] == 34
+          assert r['rules_with_any_archive_reference'] == 34
+          assert r['decision_time_strict_asof_verified'] is False
+          assert r['current_fanin_eligibility_promoted'] is False
+          assert r['synthetic_evidence_generated'] is False
+          assert r['2025_used'] is False
+          print('GOVERNED_BINDING_MATRIX_FAIL_CLOSED=TRUE')
+          print('RULES_WITH_ARCHIVE_REFERENCE', r['rules_with_any_archive_reference'])
+          print('RULES_WITH_EVALUATOR_AVAILABILITY_CANDIDATES', r['rules_with_evaluator_availability_candidates'])
+          PY
+
+      - name: Upload governed binding artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: diagnostic-murphy-34-governed-binding-matrix-v1
+          path: artifacts/
+          if-no-files-found: ignore
