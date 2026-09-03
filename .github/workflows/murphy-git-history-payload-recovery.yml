@@ -12,7 +12,7 @@ permissions:
 jobs:
   recover:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     steps:
       - name: Checkout full Git history
         uses: actions/checkout@v4
@@ -25,10 +25,21 @@ jobs:
       - name: Run Murphy payload recovery audit
         run: python BACKTEST/MURPHY_GIT_HISTORY_PAYLOAD_RECOVERY_V1.py
 
+      - name: Run original workspace archive audit
+        env:
+          DROPBOX_ACCESS_TOKEN: ${{ secrets.DROPBOX_ACCESS_TOKEN }}
+        run: python BACKTEST/MURPHY_ARCHIVE_PRODUCER_BINDING_AUDIT_V1.py
+
+      - name: Reconcile all 34 Murphy producer payload candidates
+        run: python BACKTEST/MURPHY_34_PRODUCER_PAYLOAD_RECONCILIATION_V1.py
+
       - name: Upload recovered payload package
         uses: actions/upload-artifact@v4
         with:
-          name: murphy-git-history-payload-recovery-v1
-          path: murphy_git_history_recovery/
+          name: murphy-git-history-payload-recovery-v2
+          path: |
+            murphy_git_history_recovery/
+            artifacts/murphy_34_workspace_audit/
+            artifacts/murphy_34_workspace_reconciliation/
           if-no-files-found: error
           retention-days: 30
