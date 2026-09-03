@@ -115,7 +115,32 @@ jobs:
           _,_,chosen,ids=ranked[0]
           Path('artifacts/source/MURPHY_CURRENT_STACK_RAW.csv').write_bytes(chosen.read_bytes())
           print('MURPHY_SOURCE',chosen)
-          print('MURPHY_RULES_OBSERVED',sorted(ids))
+          print('MURPHY_RULES_OBSERVED_BEFORE_ARCHIVE_MERGE',sorted(ids))
+          PY
+
+      - name: Merge exact frozen 0006/0007 evaluator evidence into Murphy source
+        run: |
+          set -euo pipefail
+          python BACKTEST/MURPHY_ARCHIVE_STRICT_MERGE_0006_0007_V1.py \
+            --base artifacts/source/MURPHY_CURRENT_STACK_RAW.csv \
+            --archive-root artifacts/murphy_workspace/extracted \
+            --output artifacts/source/MURPHY_CURRENT_STACK_RAW_PLUS_0006_0007.csv
+          mv artifacts/source/MURPHY_CURRENT_STACK_RAW_PLUS_0006_0007.csv artifacts/source/MURPHY_CURRENT_STACK_RAW.csv
+          python - <<'PY'
+          import pandas as pd
+          p='artifacts/source/MURPHY_CURRENT_STACK_RAW.csv'
+          df=pd.read_csv(p,low_memory=False)
+          ids=sorted({x.strip() for v in df.source_rule_id.dropna() for x in str(v).split('|') if x.strip()})
+          print('MURPHY_RULES_OBSERVED_AFTER_ARCHIVE_MERGE',ids)
+          print('MURPHY_SOURCE_ROWS_AFTER_ARCHIVE_MERGE',len(df))
+          required={'MURPHY_0006','MURPHY_0007'}
+          if not required.issubset(ids): raise SystemExit('BLOCKED_0006_0007_NOT_PRESENT_AFTER_ARCHIVE_MERGE')
+          if 'availability_timestamp' not in df.columns: raise SystemExit('BLOCKED_MERGED_MURPHY_MISSING_AVAILABILITY_TIMESTAMP')
+          ts=pd.to_datetime(df['timestamp'],utc=True,errors='raise',format='mixed')
+          av=pd.to_datetime(df['availability_timestamp'],utc=True,errors='coerce',format='mixed')
+          mask=df.source_rule_id.astype(str).str.contains('MURPHY_0006|MURPHY_0007',regex=True,na=False)
+          if mask.any() and av[mask].isna().any(): raise SystemExit('BLOCKED_0006_0007_MISSING_AVAILABILITY')
+          if mask.any() and not (av[mask] < ts[mask]).all(): raise SystemExit('BLOCKED_0006_0007_NON_STRICT_AVAILABILITY')
           PY
 
       - name: Build and validate strict Murphy fan-in
@@ -150,8 +175,7 @@ jobs:
                   values=values.mask(values.eq(''))
                   df[f]=values
               complete=score.notna()
-              for f in regime_fields:
-                  complete &= df[f].notna()
+              for f in regime_fields: complete &= df[f].notna()
               first_complete=complete.idxmax() if complete.any() else None
               if first_complete is None: raise SystemExit(f'MTF_NO_COMPLETE_ROW:{year}')
               warmup_rows=int(first_complete)
@@ -160,9 +184,7 @@ jobs:
                   raise SystemExit(f'MTF_MISSING_AFTER_WARMUP:{year}:{bad}')
               df=df.iloc[first_complete:].copy()
               df=df[(df.timestamp.dt.year>=2016)&(df.timestamp.dt.year<=2024)]
-              frames.append(df)
-              annual.append({'year':year,'rows':len(df)})
-              warmup.append({'year':year,'warmup_rows_dropped':warmup_rows,'first_complete_timestamp':df.timestamp.iloc[0].isoformat()})
+              frames.append(df); annual.append({'year':year,'rows':len(df)}); warmup.append({'year':year,'warmup_rows_dropped':warmup_rows,'first_complete_timestamp':df.timestamp.iloc[0].isoformat()})
           out=pd.concat(frames,ignore_index=True).sort_values('timestamp')
           if out.timestamp.duplicated().any(): raise SystemExit('MTF_DUPLICATE_TIMESTAMP')
           out.to_csv('artifacts/source/MTF_CURRENT_STACK.csv',index=False)
@@ -229,4 +251,4 @@ jobs:
           path: artifacts/
           if-no-files-found: ignore
 
-# Retrigger marker: per-year MTF warmup is trimmed without imputation or categorical translation.
+# Diagnostic only: frozen 0006/0007 evidence is merged into the diagnostic source; no production eligibility promotion is performed.
