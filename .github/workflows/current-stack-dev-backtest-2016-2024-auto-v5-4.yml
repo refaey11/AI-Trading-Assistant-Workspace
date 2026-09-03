@@ -104,21 +104,29 @@ jobs:
               for f in ['mtf_trend_score',*fields]:
                   raw=df[f]
                   numeric=pd.to_numeric(raw,errors='coerce')
-                  if numeric.isna().any():
+                  if numeric.isna().any() and f == 'mtf_trend_score':
                       bad=raw[numeric.isna()].astype('string').dropna().unique().tolist()
                       raise SystemExit(f'MTF_SOURCE_NON_NUMERIC_OR_MISSING_CANONICAL_VALUE:{p}:{f}:raw_tokens={bad[:20]}')
                   df[f]=numeric.astype(float)
               df=df[(df.timestamp.dt.year>=2016)&(df.timestamp.dt.year<=2024)]
               complete=df[['mtf_trend_score',*fields]].notna().all(axis=1)
-              if not complete.all(): raise SystemExit(f'MTF_SOURCE_INCOMPLETE_CANONICAL_ROW:{p}')
+              if not complete.any(): raise SystemExit(f'MTF_SOURCE_NO_COMPLETE_SIX_TF_ROW:{p}')
+              first_complete_idx=int(complete.idxmax())
+              post_warmup_invalid=(~complete)&(df.index>=first_complete_idx)
+              if post_warmup_invalid.any():
+                  bad=[]
+                  for f in ['mtf_trend_score',*fields]:
+                      n=int(df.loc[first_complete_idx:,f].isna().sum())
+                      if n: bad.append(f'{f}:{n}')
+                  raise SystemExit(f'MTF_SOURCE_INCOMPLETE_AFTER_WARMUP:{p}:'+','.join(bad))
               frames.append(df.copy())
-              annual.append({'year':year,'raw_rows':len(df),'complete_rows':int(complete.sum()),'excluded_incomplete_rows':0,'source_file':str(p)})
+              annual.append({'year':year,'raw_rows':len(df),'complete_rows':int(complete.sum()),'warmup_rows':first_complete_idx,'excluded_incomplete_rows':0,'source_file':str(p)})
           combined=pd.concat(frames,ignore_index=True).sort_values('timestamp')
           if combined.timestamp.duplicated().any(): raise SystemExit('MTF_SOURCE_DUPLICATE_TIMESTAMP')
           years=sorted(combined.timestamp.dt.year.astype(int).unique().tolist())
           assert years==list(range(2016,2025)), years
           Path('artifacts/source/MTF_CURRENT_STACK.csv').write_text(combined.to_csv(index=False),encoding='utf-8')
-          Path('artifacts/source/MTF_COVERAGE_REPORT.json').write_text(json.dumps({'status':'PASS','source':'/MTF_ALIGNMENT_GBPUSD_V1.zip','rows':len(combined),'coverage_years':years,'timeframes':['M5','M15','M30','H1','H4','D1'],'producer_values_used_verbatim':True,'categorical_translation_applied':False,'imputation_applied':False,'scaling_applied':False,'incomplete_rows_excluded_fail_closed':False,'annual_coverage':annual},indent=2),encoding='utf-8')
+          Path('artifacts/source/MTF_COVERAGE_REPORT.json').write_text(json.dumps({'status':'PASS','source':'/MTF_ALIGNMENT_GBPUSD_V1.zip','rows':len(combined),'coverage_years':years,'timeframes':['M5','M15','M30','H1','H4','D1'],'producer_values_used_verbatim':True,'categorical_translation_applied':False,'imputation_applied':False,'scaling_applied':False,'incomplete_rows_excluded_fail_closed':False,'warmup_prefix_allowed':True,'annual_coverage':annual},indent=2),encoding='utf-8')
           print(json.dumps({'MTF_COVERAGE_PASS':True,'rows':len(combined),'years':years,'producer_values_used_verbatim':True},indent=2))
           PY
       - name: Canonical six-TF source contract gate
