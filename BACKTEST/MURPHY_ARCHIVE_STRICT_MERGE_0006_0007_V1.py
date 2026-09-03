@@ -3,14 +3,12 @@ from __future__ import annotations
 """Fail-closed merge of frozen Murphy 0006/0007 evaluator evidence into an existing Murphy fan-in.
 
 This utility does not evaluate Murphy semantics and does not create evidence. It only:
-1) finds exactly one evaluator/confirmation CSV per 0006/0007 in an already-extracted archive,
+1) finds candidate evaluator/confirmation CSVs by schema/content rather than filename,
 2) verifies explicit availability is strictly before the decision timestamp,
 3) normalizes schema-only fields, and
-4) appends those rows to an existing Murphy fan-in source.
+4) appends only the rows for each target rule to an existing Murphy fan-in source.
 
-The existing fan-in rows are preserved byte-for-byte at the pandas value level except for
-normal column alignment.  No rule logic, thresholds, direction generation, or tuning is
-performed here.
+No rule logic, thresholds, direction generation, or tuning is performed here.
 """
 
 import argparse
@@ -33,14 +31,19 @@ def parse_ts(s: pd.Series) -> pd.Series:
     return pd.to_datetime(s, utc=True, errors="coerce", format="mixed")
 
 
+def normalized_ids(series: pd.Series) -> set[str]:
+    out: set[str] = set()
+    for value in series.dropna():
+        for token in str(value).split("|"):
+            token = token.strip().upper()
+            if token in RULES:
+                out.add(token)
+    return out
+
+
 def find_candidates(root: Path) -> list[dict]:
     candidates: list[dict] = []
     for path in sorted(root.rglob("*.csv")):
-        text = str(path).lower()
-        if "0006" not in text and "0007" not in text:
-            continue
-        if "evaluator" not in text and "confirmation" not in text:
-            continue
         try:
             head = pd.read_csv(path, nrows=5, low_memory=False)
         except Exception:
@@ -51,10 +54,7 @@ def find_candidates(root: Path) -> list[dict]:
             continue
         try:
             df = pd.read_csv(path, low_memory=False)
-            ids = set()
-            for value in df[id_field].dropna():
-                ids.update(x.strip() for x in str(value).split("|") if x.strip())
-            hits = sorted(ids & RULES)
+            hits = sorted(normalized_ids(df[id_field]))
             if not hits:
                 continue
             ts = parse_ts(df["timestamp"])
@@ -81,7 +81,7 @@ def find_candidates(root: Path) -> list[dict]:
     return candidates
 
 
-def normalize_candidate(candidate: dict) -> pd.DataFrame:
+def normalize_candidate(candidate: dict, rule: str) -> pd.DataFrame:
     df = pd.read_csv(candidate["path"], low_memory=False)
     id_field = candidate["id_field"]
     avail_field = candidate["availability_field"]
@@ -89,7 +89,10 @@ def normalize_candidate(candidate: dict) -> pd.DataFrame:
     out["timestamp"] = parse_ts(out["timestamp"])
     out["availability_timestamp"] = parse_ts(out[avail_field])
     out["source_rule_id"] = out[id_field].astype("string")
-
+    rule_mask = out["source_rule_id"].astype("string").fillna("").map(
+        lambda value: rule in {x.strip().upper() for x in value.split("|") if x.strip()}
+    )
+    out = out.loc[rule_mask].copy()
     mask = (
         out["timestamp"].notna()
         & out["availability_timestamp"].notna()
@@ -121,7 +124,7 @@ def main() -> None:
         raise SystemExit("BLOCKED_BASE_MURPHY_INVALID_TIMESTAMP")
     base = base[(base["timestamp"] >= pd.Timestamp("2016-01-01", tz="UTC")) & (base["timestamp"] < pd.Timestamp("2025-01-01", tz="UTC"))].copy()
 
-    existing = {x.strip() for v in base["source_rule_id"].dropna() for x in str(v).split("|") if x.strip()}
+    existing = {x.strip().upper() for v in base["source_rule_id"].dropna() for x in str(v).split("|") if x.strip()}
     if RULES & existing:
         raise SystemExit(f"BLOCKED_0006_0007_ALREADY_PRESENT_IN_BASE:{sorted(RULES & existing)}")
 
@@ -139,8 +142,10 @@ def main() -> None:
     provenance = []
     for rule in sorted(RULES):
         c = by_rule[rule][0]
-        part = normalize_candidate(c)
-        ids = {x.strip() for v in part["source_rule_id"].dropna() for x in str(v).split("|") if x.strip()}
+        part = normalize_candidate(c, rule)
+        if part.empty:
+            raise SystemExit(f"BLOCKED_EMPTY_NORMALIZED_RULE:{rule}:{c['path']}")
+        ids = normalized_ids(part["source_rule_id"])
         if rule not in ids:
             raise SystemExit(f"BLOCKED_NORMALIZATION_LOST_RULE:{rule}:{c['path']}")
         if not ((part["availability_timestamp"] < part["timestamp"]).all()):
@@ -158,7 +163,7 @@ def main() -> None:
     columns = sorted(set().union(*(set(p.columns) for p in parts)))
     merged = pd.concat([p.reindex(columns=columns) for p in parts], ignore_index=True, sort=False)
     merged["timestamp"] = parse_ts(merged["timestamp"])
-    merged["availability_timestamp"] = parse_ts(merged["availability_timestamp"]) if "availability_timestamp" in merged.columns else pd.NaT
+    merged["availability_timestamp"] = parse_ts(merged["availability_timestamp"])
     merged = merged.sort_values(["timestamp", "source_rule_id"], kind="stable").reset_index(drop=True)
     merged.to_csv(args.output, index=False)
 
