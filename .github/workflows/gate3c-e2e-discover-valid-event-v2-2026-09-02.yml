@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - diagnostic/mtf-gate-observable-2026-09-02
+      - diagnostic/murphy-34-recovery-2026-09-02
   pull_request:
     branches:
       - current-stack-dev-backtest-2016-2024-v3
