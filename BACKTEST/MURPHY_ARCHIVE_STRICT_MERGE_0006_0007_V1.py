@@ -17,6 +17,7 @@ PASS/FAIL decisions, invent thresholds, or use 2025.
 import argparse
 from pathlib import Path
 import json
+import bisect
 import pandas as pd
 
 RULES = {"MURPHY_0006", "MURPHY_0007"}
@@ -55,10 +56,6 @@ def find_candidates(root: Path) -> list[dict]:
         avail_field = next((c for c in AVAIL_FIELDS if c in head.columns), None)
         if not id_field or not avail_field:
             continue
-        # Two supported source shapes:
-        # A) already normalized with a canonical `timestamp` decision column;
-        # B) frozen confirmation artifact with confirmation_available_timestamp
-        #    plus third_touch/reaction timestamps but no decision timestamp.
         has_timestamp = "timestamp" in head.columns
         has_confirmation_shape = {"third_touch_timestamp", "reaction_timestamp", "confirmation"}.issubset(head.columns)
         if not (has_timestamp or has_confirmation_shape):
@@ -68,12 +65,7 @@ def find_candidates(root: Path) -> list[dict]:
             hits = sorted(normalized_ids(df[id_field]))
             if not hits:
                 continue
-            if has_timestamp:
-                ts = parse_ts(df["timestamp"])
-            elif "reaction_timestamp" in df.columns:
-                ts = parse_ts(df["reaction_timestamp"])
-            else:
-                ts = parse_ts(df["third_touch_timestamp"])
+            ts = parse_ts(df["timestamp"] if has_timestamp else df["reaction_timestamp"])
             av = parse_ts(df[avail_field])
             in_window = (
                 ts.notna() & av.notna()
@@ -100,8 +92,7 @@ def find_candidates(root: Path) -> list[dict]:
 
 
 def first_h1_after(h1_timestamps: list[pd.Timestamp], availability: pd.Timestamp) -> pd.Timestamp | None:
-    # h1_timestamps is sorted and represents actual H1 decision timestamps.
-    pos = int(pd.Series(h1_timestamps).searchsorted(availability, side="right"))
+    pos = bisect.bisect_right(h1_timestamps, availability)
     return None if pos >= len(h1_timestamps) else h1_timestamps[pos]
 
 
@@ -116,7 +107,6 @@ def normalize_candidate(candidate: dict, rule: str, h1_timestamps: list[pd.Times
     )
     out = out.loc[rule_mask].copy()
 
-    # Only frozen confirmations are admitted. Candidates are never promoted here.
     if "confirmation" not in out.columns:
         raise SystemExit(f"BLOCKED_0006_0007_MISSING_CONFIRMATION_FIELD:{rule}:{candidate['path']}")
     confirmation = out["confirmation"].astype("string").str.strip().str.lower()
@@ -133,7 +123,6 @@ def normalize_candidate(candidate: dict, rule: str, h1_timestamps: list[pd.Times
     else:
         out["third_touch_timestamp"] = parse_ts(out["third_touch_timestamp"])
         out["reaction_timestamp"] = parse_ts(out["reaction_timestamp"])
-        # Timing bridge: first real H1 decision bar strictly after evidence availability.
         out["timestamp"] = out["availability_timestamp"].map(
             lambda ts: first_h1_after(h1_timestamps, ts) if pd.notna(ts) else pd.NaT
         )
@@ -158,7 +147,7 @@ def main() -> None:
     ap = argparse.ArgumentParser()
     ap.add_argument("--base", required=True, type=Path)
     ap.add_argument("--archive-root", required=True, type=Path)
-    ap.add_argument("--h1", required=True, type=Path)
+    ap.add_argument("--h1", required=False, type=Path, default=None)
     ap.add_argument("--output", required=True, type=Path)
     args = ap.parse_args()
 
@@ -172,11 +161,19 @@ def main() -> None:
         raise SystemExit("BLOCKED_BASE_MURPHY_INVALID_TIMESTAMP")
     base = base[(base["timestamp"] >= pd.Timestamp("2016-01-01", tz="UTC")) & (base["timestamp"] < pd.Timestamp("2025-01-01", tz="UTC"))].copy()
 
-    h1 = pd.read_csv(args.h1, low_memory=False)
+    h1_path = args.h1
+    if h1_path is None:
+        matches = sorted(Path("artifacts/source/h1").rglob("GBPUSD_H1_2016_2025_MASTER.csv"))
+        if len(matches) != 1:
+            raise SystemExit(f"BLOCKED_H1_AUTO_RESOLVE:{len(matches)}:{matches}")
+        h1_path = matches[0]
+    h1 = pd.read_csv(h1_path, low_memory=False)
     if "timestamp" not in h1.columns:
         raise SystemExit("BLOCKED_H1_MISSING_TIMESTAMP")
-    h1_ts = parse_ts(h1["timestamp"]).dropna()
-    h1_ts = sorted(set(h1_ts[(h1_ts >= pd.Timestamp("2016-01-01", tz="UTC")) & (h1_ts < pd.Timestamp("2025-01-01", tz="UTC"))].tolist()))
+    h1_series = parse_ts(h1["timestamp"])
+    if h1_series.isna().any():
+        raise SystemExit("BLOCKED_H1_INVALID_TIMESTAMP")
+    h1_ts = sorted(set(h1_series[(h1_series >= pd.Timestamp("2016-01-01", tz="UTC")) & (h1_series < pd.Timestamp("2025-01-01", tz="UTC"))].tolist()))
     if not h1_ts:
         raise SystemExit("BLOCKED_H1_EMPTY_2016_2024")
 
@@ -219,6 +216,7 @@ def main() -> None:
             "id_field": c["id_field"],
             "availability_field": c["availability_field"],
             "timing_bridge": "first_H1_decision_timestamp_strictly_after_confirmation_available_timestamp",
+            "h1_path": str(h1_path),
         })
 
     columns = sorted(set().union(*(set(p.columns) for p in parts)))
@@ -242,6 +240,7 @@ def main() -> None:
         "direction_generated": False,
         "tuning_applied": False,
         "2025_used": False,
+        "h1_path": str(h1_path),
         "output": str(args.output),
     }
     report_path = args.output.with_name(args.output.stem + "_REPORT.json")
