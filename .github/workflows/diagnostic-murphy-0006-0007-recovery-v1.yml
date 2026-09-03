@@ -1,0 +1,149 @@
+name: Diagnostic Murphy 0006 0007 Recovery V1
+
+on:
+  push:
+    branches:
+      - diagnostic/murphy-34-recovery-2026-09-02
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  recover-0006-0007:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      DROPBOX_ACCESS_TOKEN: ${{ secrets.DROPBOX_ACCESS_TOKEN }}
+    steps:
+      - name: Checkout exact recovery revision
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 1
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: python -m pip install --upgrade pip pandas
+
+      - name: Acquire and extract producer workspace archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          TOKEN="$(printf '%s' "$DROPBOX_ACCESS_TOKEN" | tr -d '\r\n' | sed -E 's/^Bearer[[:space:]]+//; s/^\"//; s/\"$//')"
+          test -n "$TOKEN"
+          mkdir -p artifacts/murphy_workspace/parts artifacts/murphy_workspace/extracted
+          download(){ curl -L --fail --silent --show-error https://content.dropboxapi.com/2/files/download -H "Authorization: Bearer ${TOKEN}" -H "Dropbox-API-Arg: {\"path\":\"$1\"}" -o "$2"; }
+          download "/GBPUSD_RULE_EVALUATOR_V2_WORKSPACE_PART_01_OF_03.zip.part" artifacts/murphy_workspace/parts/part1.zip.part
+          download "/GBPUSD_RULE_EVALUATOR_V2_WORKSPACE_PART_02_OF_03.zip.part" artifacts/murphy_workspace/parts/part2.zip.part
+          download "/GBPUSD_RULE_EVALUATOR_V2_WORKSPACE_PART_03_OF_03.zip.part" artifacts/murphy_workspace/parts/part3.zip.part
+          cat artifacts/murphy_workspace/parts/part1.zip.part artifacts/murphy_workspace/parts/part2.zip.part artifacts/murphy_workspace/parts/part3.zip.part > artifacts/murphy_workspace/GBPUSD_RULE_EVALUATOR_V2_WORKSPACE_FULL.zip
+          unzip -q artifacts/murphy_workspace/GBPUSD_RULE_EVALUATOR_V2_WORKSPACE_FULL.zip -d artifacts/murphy_workspace/extracted
+
+      - name: Locate exact frozen 0006/0007 evaluator outputs
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          import json
+          import pandas as pd
+
+          root = Path('artifacts/murphy_workspace/extracted')
+          rules = {'MURPHY_0006', 'MURPHY_0007'}
+          availability_fields = [
+              'confirmation_available_timestamp',
+              'confirmation_available_at',
+              'evidence_availability_timestamp',
+              'availability_timestamp',
+              'available_at',
+          ]
+          id_fields = ['source_rule_id', 'rule_id', 'murphy_rule_id']
+          status_fields = ['status', 'evidence_status', 'confirmation_status', 'result', 'decision']
+
+          candidates = []
+          for p in sorted(root.rglob('*.csv')):
+              name = p.name.lower()
+              path_text = str(p).lower()
+              if '0006' not in path_text and '0007' not in path_text:
+                  continue
+              if 'evaluator' not in path_text and 'confirmation' not in path_text:
+                  continue
+              try:
+                  df = pd.read_csv(p, nrows=5, low_memory=False)
+              except Exception:
+                  continue
+              id_field = next((c for c in id_fields if c in df.columns), None)
+              avail_field = next((c for c in availability_fields if c in df.columns), None)
+              if not id_field or not avail_field or 'timestamp' not in df.columns:
+                  continue
+              try:
+                  full = pd.read_csv(p, low_memory=False)
+                  ids = set()
+                  for v in full[id_field].dropna():
+                      ids.update(x.strip() for x in str(v).split('|') if x.strip())
+                  hit = sorted(ids & rules)
+                  if not hit:
+                      continue
+                  ts = pd.to_datetime(full['timestamp'], utc=True, errors='coerce', format='mixed')
+                  av = pd.to_datetime(full[avail_field], utc=True, errors='coerce', format='mixed')
+                  keep = ts.notna() & av.notna() & (ts.dt.year >= 2016) & (ts.dt.year <= 2024) & (av.dt.year >= 2016) & (av.dt.year <= 2024)
+                  strict = int(((av < ts) & keep).sum())
+                  bad = int((keep & ~(av < ts)).sum())
+                  statuses = {}
+                  for sf in status_fields:
+                      if sf in full.columns:
+                          vals = full[sf].astype('string').str.upper().fillna('')
+                          statuses[sf] = sorted(set(vals[vals != ''].tolist()))[:20]
+                  per_rule = {rid: int(sum(full[id_field].astype('string').fillna('').str.contains(rid, regex=False))) for rid in hit}
+                  candidates.append({
+                      'path': str(p),
+                      'rows': int(len(full)),
+                      'id_field': id_field,
+                      'availability_field': avail_field,
+                      'rules': hit,
+                      'rows_by_rule': per_rule,
+                      'strict_asof_rows_2016_2024': strict,
+                      'non_strict_rows_2016_2024': bad,
+                      'status_values': statuses,
+                  })
+              except Exception as e:
+                  print('SKIP_ERROR', p, repr(e))
+
+          report = {
+              'status': 'PASS',
+              'candidate_count': len(candidates),
+              'candidates': candidates,
+              'synthetic_evidence_generated': False,
+              'direction_generated': False,
+              '2025_used': False,
+          }
+          Path('artifacts/MURPHY_0006_0007_RECOVERY_DISCOVERY_REPORT_V1.json').write_text(json.dumps(report, indent=2), encoding='utf-8')
+          print(json.dumps(report, indent=2))
+          if not candidates:
+              raise SystemExit('BLOCKED_NO_0006_0007_EVALUATOR_OUTPUT_WITH_EXPLICIT_AVAILABILITY')
+
+          rules_found = set(r for c in candidates for r in c['rules'])
+          missing = sorted(rules - rules_found)
+          if missing:
+              raise SystemExit(f'BLOCKED_MISSING_RULE_EVALUATOR_OUTPUT:{missing}')
+          ambiguous = {r: [c['path'] for c in candidates if r in c['rules']] for r in rules if sum(r in c['rules'] for c in candidates) != 1}
+          if ambiguous:
+              raise SystemExit(f'BLOCKED_AMBIGUOUS_0006_0007_EVALUATOR_OUTPUTS:{ambiguous}')
+
+          for c in candidates:
+              if c['non_strict_rows_2016_2024']:
+                  raise SystemExit(f"BLOCKED_NON_STRICT_EVALUATOR_ROWS:{c['path']}:{c['non_strict_rows_2016_2024']}")
+          print('MURPHY_0006_0007_RECOVERY_CANDIDATE_BINDING=PASS')
+          PY
+
+      - name: Upload recovery discovery artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: diagnostic-murphy-0006-0007-recovery-v1
+          path: artifacts/
+          if-no-files-found: ignore
