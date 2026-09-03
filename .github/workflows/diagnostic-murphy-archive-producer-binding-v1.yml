@@ -39,6 +39,11 @@ jobs:
           test -n "$DROPBOX_ACCESS_TOKEN"
           python BACKTEST/MURPHY_ARCHIVE_PRODUCER_BINDING_AUDIT_V1.py
 
+      - name: Run strict-asof producer sanitizer
+        run: |
+          set -euo pipefail
+          python BACKTEST/MURPHY_STRICT_ASOF_PRODUCER_SANITIZER_V1.py
+
       - name: Preserve audit artifacts
         if: always()
         uses: actions/upload-artifact@v4
