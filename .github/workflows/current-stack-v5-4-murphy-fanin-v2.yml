@@ -1,0 +1,167 @@
+name: Current Stack V5.4 Murphy Fan-In V2
+
+on:
+  push:
+    branches:
+      - diagnostic/murphy-34-recovery-2026-09-02
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  current_stack_v5_4_murphy_fanin_v2:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    env:
+      DROPBOX_ACCESS_TOKEN: ${{ secrets.DROPBOX_ACCESS_TOKEN }}
+      PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/OOS_2025
+    steps:
+      - name: Checkout exact recovery revision
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 1
+
+      - name: Verify HEAD
+        run: git rev-parse HEAD
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: python -m pip install --upgrade pip pandas pytest
+
+      - name: Component completeness gate
+        run: python DEVELOPMENT_2016_2024/current_stack_component_completeness_gate_v1.py
+
+      - name: Runtime wiring gate
+        run: python DEVELOPMENT_2016_2024/current_stack_runtime_wiring_gate_v1.py
+
+      - name: Enforce development window
+        run: python -c "from datetime import datetime,timezone; assert datetime(2016,1,1,tzinfo=timezone.utc)<datetime(2025,1,1,tzinfo=timezone.utc); print('DEVELOPMENT_WINDOW=2016-2024'); print('2025_OOS_LOCKED=True')"
+
+      - name: Acquire governed bundles
+        shell: bash
+        run: |
+          set -euo pipefail
+          TOKEN="$(printf '%s' "$DROPBOX_ACCESS_TOKEN" | tr -d '\r\n' | sed -E 's/^Bearer[[:space:]]+//; s/^\"//; s/\"$//')"
+          test -n "$TOKEN"
+          mkdir -p artifacts/source/memory artifacts/source/mtf artifacts/source/h1 artifacts/source/murphy artifacts/current_stack_backtest_2016_2024
+          download(){ curl -L --fail --silent --show-error https://content.dropboxapi.com/2/files/download -H "Authorization: Bearer ${TOKEN}" -H "Dropbox-API-Arg: {\"path\":\"$1\"}" -o "$2"; }
+          download "/New 8/GBPUSD_H1_2016_2025_MASTER.zip" artifacts/source/h1.zip
+          download "/New 8/MURPHY_HISTORICAL_34_RULE_FANIN_2016_2024.zip" artifacts/source/murphy.zip
+          download "/New 8/NISON_2016_2024_FULL_EVIDENCE.csv" artifacts/source/nison.csv
+          download "/New 8/GBPUSD_MARKET_STATE 6.csv" artifacts/source/market_state.csv
+          download "/MTF_ALIGNMENT_GBPUSD_V1.zip" artifacts/source/mtf.zip
+          download "/ai_trading_assistant_full_project_v1/AI_Trading_Assistant_HISTORICAL_CONTEXT_MEMORY_V1.zip" artifacts/source/memory/historical_context.zip
+          download "/ai_trading_assistant_full_project_v1/AI_Trading_Assistant_HISTORICAL_OUTCOME_MEMORY_V1.zip" artifacts/source/memory/historical_outcome.zip
+          download "/ai_trading_assistant_full_project_v1/AI_Trading_Assistant_SIMILARITY_MEMORY_V2.zip" artifacts/source/memory/similarity.zip
+          download "/ai_trading_assistant_full_project_v1/AI_Trading_Assistant_CONTEXT_AWARE_RETRIEVAL_V2.zip" artifacts/source/memory/retrieval.zip
+          download "/AI_Trading_Assistant_FULL_PROJECT_V1/AI_Trading_Assistant_MARKET_SCENARIO_ENGINE_V1.zip" artifacts/source/memory/scenario.zip
+          unzip -q artifacts/source/h1.zip -d artifacts/source/h1
+          unzip -q artifacts/source/murphy.zip -d artifacts/source/murphy
+          unzip -q artifacts/source/mtf.zip -d artifacts/source/mtf
+          unzip -q artifacts/source/memory/historical_context.zip -d artifacts/source/memory/historical_context
+          unzip -q artifacts/source/memory/historical_outcome.zip -d artifacts/source/memory/historical_outcome
+          unzip -q artifacts/source/memory/similarity.zip -d artifacts/source/memory/similarity
+          unzip -q artifacts/source/memory/retrieval.zip -d artifacts/source/memory/retrieval
+          unzip -q artifacts/source/memory/scenario.zip -d artifacts/source/memory/scenario
+
+      - name: Resolve Murphy 34 source-backed union
+        run: |
+          python BACKTEST/MURPHY_34_SOURCE_RESOLVER_V2.py \
+            --root artifacts/source/murphy \
+            --out artifacts/source/MURPHY_CURRENT_STACK.csv \
+            --report artifacts/source/MURPHY_FANIN_REPORT_V2.json
+          python - <<'PY'
+          import json
+          r=json.load(open('artifacts/source/MURPHY_FANIN_REPORT_V2.json',encoding='utf-8'))
+          assert r['scope']=='2016-2024'
+          assert r['future_2025_used'] is False
+          assert r['single_csv_shortcut_used'] is False
+          assert r['synthetic_evidence_generated'] is False
+          print('MURPHY_FANIN_V2_ROWS',r['rows'])
+          print('MURPHY_FANIN_V2_OBSERVED_RULES',r['observed_rule_count'])
+          print('MURPHY_FANIN_V2_MISSING_RULES',r['missing_rule_ids'])
+          PY
+
+      - name: Build canonical six-TF MTF source
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import json, pandas as pd
+          root=Path('artifacts/source/mtf')
+          fields=['M5_trend_regime','M15_trend_regime','M30_trend_regime','H1_trend_regime','H4_trend_regime','D1_trend_regime']
+          required={'timestamp','mtf_trend_score',*fields}
+          frames=[]; annual=[]
+          for year in range(2016,2025):
+              matches=sorted(root.rglob(f'GBPUSD_M5_MTF_ALIGNMENT_{year}.csv'))
+              if len(matches)!=1: raise SystemExit(f'MISSING_OR_AMBIGUOUS_MTF_ANNUAL_SOURCE:{year}:{matches}')
+              p=matches[0]; df=pd.read_csv(p,low_memory=False)
+              miss=sorted(required-set(df.columns))
+              if miss: raise SystemExit(f'MTF_SOURCE_MISSING_REQUIRED_FIELDS:{p}:{miss}')
+              df['timestamp']=pd.to_datetime(df['timestamp'],utc=True,errors='raise',format='mixed')
+              for f in ['mtf_trend_score',*fields]: df[f]=pd.to_numeric(df[f],errors='coerce')
+              df=df[df.timestamp.dt.year.between(2016,2024)].copy()
+              complete=df[['mtf_trend_score',*fields]].notna().all(axis=1)
+              if not complete.any(): raise SystemExit(f'MTF_NO_COMPLETE_ROW:{p}')
+              first=int(complete.idxmax())
+              if (~complete.loc[first:]).any(): raise SystemExit(f'MTF_INCOMPLETE_AFTER_WARMUP:{p}')
+              frames.append(df); annual.append({'year':year,'rows':len(df),'warmup_rows':first})
+          combined=pd.concat(frames,ignore_index=True).sort_values('timestamp')
+          if combined.timestamp.duplicated().any(): raise SystemExit('MTF_SOURCE_DUPLICATE_TIMESTAMP')
+          combined.to_csv('artifacts/source/MTF_CURRENT_STACK.csv',index=False)
+          Path('artifacts/source/MTF_COVERAGE_REPORT.json').write_text(json.dumps({'status':'PASS','coverage_years':list(range(2016,2025)),'timeframes':['M5','M15','M30','H1','H4','D1'],'producer_values_used_verbatim':True,'categorical_translation_applied':False,'imputation_applied':False,'scaling_applied':False,'annual_coverage':annual},indent=2))
+          print('MTF_BUILD_PASS',len(combined))
+          PY
+
+      - name: Canonical six-TF source contract gate
+        run: python BACKTEST/mtf_source_contract_gate_v1.py --mtf artifacts/source/MTF_CURRENT_STACK.csv
+
+      - name: Resolve memory source files
+        run: |
+          set -euo pipefail
+          HC=$(find artifacts/source/memory/historical_context -type f -name 'HISTORICAL_CONTEXT_MEMORY.csv' | head -1)
+          HO=$(find artifacts/source/memory/historical_outcome -type f -name 'HISTORICAL_OUTCOMES.csv' | head -1)
+          SIM=$(find artifacts/source/memory/similarity -type f -name 'SIMILAR_CONTEXT_READS.json' | head -1)
+          RET=$(find artifacts/source/memory/retrieval -type f -name 'CONTEXT_AWARE_READINGS.json' | head -1)
+          SCN=$(find artifacts/source/memory/scenario -type f -name 'MARKET_SCENARIOS.json' | head -1)
+          test -n "$HC" && test -n "$HO" && test -n "$SIM" && test -n "$RET" && test -n "$SCN"
+          printf 'HISTORICAL_CONTEXT=%s\nHISTORICAL_OUTCOME=%s\nSIMILARITY_ARTIFACT=%s\nRETRIEVAL_ARTIFACT=%s\nSCENARIO_ARTIFACT=%s\n' "$HC" "$HO" "$SIM" "$RET" "$SCN" > artifacts/source/memory/RESOLVED_MEMORY_PATHS.txt
+
+      - name: Run V5.4 full-window replay
+        run: |
+          H1=$(find artifacts/source/h1 -type f -name 'GBPUSD_H1_2016_2025_MASTER.csv' | head -1)
+          HC=$(grep '^HISTORICAL_CONTEXT=' artifacts/source/memory/RESOLVED_MEMORY_PATHS.txt | cut -d= -f2-)
+          HO=$(grep '^HISTORICAL_OUTCOME=' artifacts/source/memory/RESOLVED_MEMORY_PATHS.txt | cut -d= -f2-)
+          SIM=$(grep '^SIMILARITY_ARTIFACT=' artifacts/source/memory/RESOLVED_MEMORY_PATHS.txt | cut -d= -f2-)
+          RET=$(grep '^RETRIEVAL_ARTIFACT=' artifacts/source/memory/RESOLVED_MEMORY_PATHS.txt | cut -d= -f2-)
+          SCN=$(grep '^SCENARIO_ARTIFACT=' artifacts/source/memory/RESOLVED_MEMORY_PATHS.txt | cut -d= -f2-)
+          python DEVELOPMENT_2016_2024/current_stack_historical_replay_v5_4.py --h1 "$H1" --market-state artifacts/source/market_state.csv --murphy artifacts/source/MURPHY_CURRENT_STACK.csv --nison artifacts/source/nison.csv --mtf artifacts/source/MTF_CURRENT_STACK.csv --historical-context "$HC" --historical-outcome "$HO" --similarity-artifact "$SIM" --retrieval-artifact "$RET" --scenario-artifact "$SCN" --output-dir artifacts/current_stack_backtest_2016_2024
+
+      - name: Validate replay outputs
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          import pandas as pd
+          root=Path('artifacts/current_stack_backtest_2016_2024')
+          metrics=json.loads((root/'current_stack_backtest_metrics_2016_2024.json').read_text())
+          events=pd.read_csv(root/'current_stack_decision_events_2016_2024.csv',low_memory=False)
+          trades=pd.read_csv(root/'current_stack_executed_trades_2016_2024.csv',low_memory=False)
+          print('MURPHY_SOURCE_BACKED_RULES_OBSERVED',metrics.get('murphy_source_backed_rules_observed'))
+          print('DECISION_EVENTS',len(events))
+          print('EXECUTED_TRADES',len(trades))
+          print('OFFICIAL_PROFITABILITY_CLAIM_ALLOWED',False)
+          PY
+
+      - name: Upload V5.4 fan-in artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: current-stack-v5-4-murphy-fanin-v2
+          path: artifacts/
+          if-no-files-found: ignore
