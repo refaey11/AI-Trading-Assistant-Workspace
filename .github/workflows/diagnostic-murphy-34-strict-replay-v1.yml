@@ -74,7 +74,6 @@ jobs:
           unzip -q artifacts/source/memory/similarity.zip -d artifacts/source/memory/similarity
           unzip -q artifacts/source/memory/retrieval.zip -d artifacts/source/memory/retrieval
           unzip -q artifacts/source/memory/scenario.zip -d artifacts/source/memory/scenario
-
           for i in 1 2 3; do
             case "$i" in
               1) p="/GBPUSD_RULE_EVALUATOR_V2_WORKSPACE_PART_01_OF_03.zip.part";;
@@ -219,3 +218,5 @@ jobs:
           name: diagnostic-murphy-34-strict-replay-v1
           path: artifacts/
           if-no-files-found: ignore
+
+# Retrigger marker: categorical MTF regimes remain producer values; no numeric translation.
