@@ -1,0 +1,85 @@
+name: Murphy 0028-0029 Canonical Binding V1
+
+on:
+  push:
+    branches:
+      - diagnostic/murphy-34-recovery-2026-09-02
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  bind-0028-0029:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      DROPBOX_ACCESS_TOKEN: ${{ secrets.DROPBOX_ACCESS_TOKEN }}
+    steps:
+      - name: Checkout exact revision
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 1
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Acquire governed Murphy workspace archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          TOKEN="$(printf '%s' "$DROPBOX_ACCESS_TOKEN" | tr -d '\r\n' | sed -E 's/^Bearer[[:space:]]+//; s/^\"//; s/\"$//')"
+          test -n "$TOKEN"
+          mkdir -p artifacts/murphy_workspace/parts artifacts/murphy_workspace/extracted artifacts/out
+          download(){ curl -L --fail --silent --show-error https://content.dropboxapi.com/2/files/download -H "Authorization: Bearer ${TOKEN}" -H "Dropbox-API-Arg: {\"path\":\"$1\"}" -o "$2"; }
+          download "/GBPUSD_RULE_EVALUATOR_V2_WORKSPACE_PART_01_OF_03.zip.part" artifacts/murphy_workspace/parts/part1.zip.part
+          download "/GBPUSD_RULE_EVALUATOR_V2_WORKSPACE_PART_02_OF_03.zip.part" artifacts/murphy_workspace/parts/part2.zip.part
+          download "/GBPUSD_RULE_EVALUATOR_V2_WORKSPACE_PART_03_OF_03.zip.part" artifacts/murphy_workspace/parts/part3.zip.part
+          cat artifacts/murphy_workspace/parts/part1.zip.part artifacts/murphy_workspace/parts/part2.zip.part artifacts/murphy_workspace/parts/part3.zip.part > artifacts/murphy_workspace/full.zip
+          python - <<'PY'
+          from pathlib import Path
+          import hashlib, zipfile
+          p=Path('artifacts/murphy_workspace/full.zip')
+          assert p.stat().st_size == 597678846
+          assert hashlib.sha256(p.read_bytes()).hexdigest() == '4c8c844f3081f921a0d64ba066e9734fcd9c8eebdd4396b16e6fba2921dad73a'
+          with zipfile.ZipFile(p) as z: assert z.testzip() is None
+          print('ARCHIVE_INTEGRITY_PASS')
+          PY
+          unzip -q artifacts/murphy_workspace/full.zip -d artifacts/murphy_workspace/extracted
+
+      - name: Build canonical 0028-0029 binding
+        run: |
+          python BACKTEST/MURPHY_0028_0029_CANONICAL_BINDING_V1.py \
+            --root artifacts/murphy_workspace/extracted \
+            --out artifacts/out/MURPHY_0028_0029_CANONICAL_EVENTS.csv \
+            --report artifacts/out/MURPHY_0028_0029_CANONICAL_BINDING_REPORT.json
+
+      - name: Enforce fail-closed checks
+        run: |
+          python - <<'PY'
+          import json, pandas as pd
+          r=json.load(open('artifacts/out/MURPHY_0028_0029_CANONICAL_BINDING_REPORT.json',encoding='utf-8'))
+          df=pd.read_csv('artifacts/out/MURPHY_0028_0029_CANONICAL_EVENTS.csv')
+          assert r['status']=='PASS'
+          assert r['rules']==['MURPHY_0028','MURPHY_0029']
+          assert r['2025_used'] is False
+          assert r['synthetic_evidence_generated'] is False
+          assert r['thresholds_invented'] is False
+          assert r['decision_brain_promotion'] is False
+          assert len(df)>0
+          assert set(df['source_rule_id']) == {'MURPHY_0028','MURPHY_0029'}
+          print('MURPHY_0028_0029_CANONICAL_BINDING_PASS')
+          print('ROWS',len(df))
+          print('TIMESTAMP_IS_AVAILABILITY',r['availability_is_event_timestamp'])
+          PY
+
+      - name: Upload binding artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: murphy-0028-0029-canonical-binding-v1
+          path: artifacts/out/
+          if-no-files-found: ignore
