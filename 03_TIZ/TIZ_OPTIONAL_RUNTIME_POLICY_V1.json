@@ -1,0 +1,33 @@
+{
+  "version": "1.0",
+  "status": "APPROVED_OPTIONAL_BOUNDARY",
+  "role": "process_only",
+  "direction": "NEUTRAL",
+  "market_derived": false,
+  "default_mode": "optional",
+  "modes": {
+    "optional": {
+      "missing_tiz_action": "ALLOW_WITH_UNVERIFIED_TIZ_FLAG",
+      "tiz_status_when_missing": "NOT_EVALUABLE",
+      "execution_allowed_when_other_hard_gates_pass": true,
+      "requires_flag": "tiz_unverified"
+    },
+    "strict": {
+      "missing_tiz_action": "BLOCK",
+      "tiz_status_when_missing": "NOT_EVALUABLE",
+      "execution_allowed_when_other_hard_gates_pass": false
+    }
+  },
+  "invariants": {
+    "no_direction_generation": true,
+    "no_direction_override": true,
+    "no_psychology_inference_from_price": true,
+    "no_new_numeric_psychology_thresholds": true,
+    "2025_read_only": true,
+    "no_tuning_from_tiz": true,
+    "risk_remains_hard_gate": true,
+    "murphy_direction_remains_required": true
+  },
+  "decision_rule": "TIZ is optional process evidence. In optional mode, missing TIZ does not block execution if Murphy direction, Brain alignment, Nison constraints, and authoritative Risk all pass; the event must be marked tiz_unverified. In strict mode, missing TIZ blocks execution.",
+  "official_profitability_claim_allowed": false
+}
