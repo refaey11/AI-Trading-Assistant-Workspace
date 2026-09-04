@@ -27,53 +27,61 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Acquire governed Murphy workspace archive
+      - name: Install dependencies
+        run: python -m pip install --upgrade pip pandas
+
+      - name: Acquire exact Murphy workspace archive
         shell: bash
         run: |
           set -euo pipefail
           TOKEN="$(printf '%s' "$DROPBOX_ACCESS_TOKEN" | tr -d '\r\n' | sed -E 's/^Bearer[[:space:]]+//; s/^\"//; s/\"$//')"
           test -n "$TOKEN"
-          mkdir -p artifacts/murphy_workspace/parts artifacts/murphy_workspace/extracted artifacts/out
+          mkdir -p artifacts/parts artifacts/extracted artifacts/out
           download(){ curl -L --fail --silent --show-error https://content.dropboxapi.com/2/files/download -H "Authorization: Bearer ${TOKEN}" -H "Dropbox-API-Arg: {\"path\":\"$1\"}" -o "$2"; }
-          download "/GBPUSD_RULE_EVALUATOR_V2_WORKSPACE_PART_01_OF_03.zip.part" artifacts/murphy_workspace/parts/part1.zip.part
-          download "/GBPUSD_RULE_EVALUATOR_V2_WORKSPACE_PART_02_OF_03.zip.part" artifacts/murphy_workspace/parts/part2.zip.part
-          download "/GBPUSD_RULE_EVALUATOR_V2_WORKSPACE_PART_03_OF_03.zip.part" artifacts/murphy_workspace/parts/part3.zip.part
-          cat artifacts/murphy_workspace/parts/part1.zip.part artifacts/murphy_workspace/parts/part2.zip.part artifacts/murphy_workspace/parts/part3.zip.part > artifacts/murphy_workspace/full.zip
+          download "/GBPUSD_RULE_EVALUATOR_V2_WORKSPACE_PART_01_OF_03.zip.part" artifacts/parts/part1
+          download "/GBPUSD_RULE_EVALUATOR_V2_WORKSPACE_PART_02_OF_03.zip.part" artifacts/parts/part2
+          download "/GBPUSD_RULE_EVALUATOR_V2_WORKSPACE_PART_03_OF_03.zip.part" artifacts/parts/part3
+          cat artifacts/parts/part1 artifacts/parts/part2 artifacts/parts/part3 > artifacts/workspace.zip
           python - <<'PY'
           from pathlib import Path
           import hashlib, zipfile
-          p=Path('artifacts/murphy_workspace/full.zip')
+          p=Path('artifacts/workspace.zip')
           assert p.stat().st_size == 597678846
           assert hashlib.sha256(p.read_bytes()).hexdigest() == '4c8c844f3081f921a0d64ba066e9734fcd9c8eebdd4396b16e6fba2921dad73a'
           with zipfile.ZipFile(p) as z: assert z.testzip() is None
           print('ARCHIVE_INTEGRITY_PASS')
           PY
-          unzip -q artifacts/murphy_workspace/full.zip -d artifacts/murphy_workspace/extracted
+          unzip -q artifacts/workspace.zip -d artifacts/extracted
 
-      - name: Build canonical 0028-0029 binding
+      - name: Run canonical 0028-0029 adapter
         run: |
-          python BACKTEST/MURPHY_0028_0029_CANONICAL_BINDING_V1.py \
-            --root artifacts/murphy_workspace/extracted \
-            --out artifacts/out/MURPHY_0028_0029_CANONICAL_EVENTS.csv \
+          set -euo pipefail
+          python BACKTEST/MURPHY_0028_0029_CANONICAL_ADAPTER_V1.py \
+            --input artifacts/extracted/OSCILLATOR_DIVERGENCE_V1_OUTPUT/GBPUSD_RSI_DIVERGENCE_2020_2024.csv \
+            --output artifacts/out/MURPHY_0028_0029_CANONICAL_EVENTS.csv \
             --report artifacts/out/MURPHY_0028_0029_CANONICAL_BINDING_REPORT.json
 
       - name: Enforce fail-closed checks
         run: |
+          set -euo pipefail
           python - <<'PY'
           import json, pandas as pd
           r=json.load(open('artifacts/out/MURPHY_0028_0029_CANONICAL_BINDING_REPORT.json',encoding='utf-8'))
           df=pd.read_csv('artifacts/out/MURPHY_0028_0029_CANONICAL_EVENTS.csv')
           assert r['status']=='PASS'
-          assert r['rules']==['MURPHY_0028','MURPHY_0029']
-          assert r['2025_used'] is False
+          assert r['strict_asof_verified'] is True
+          assert r['availability_at_or_after_both_pivots'] is True
           assert r['synthetic_evidence_generated'] is False
-          assert r['thresholds_invented'] is False
+          assert r['future_2025_used'] is False
           assert r['decision_brain_promotion'] is False
-          assert len(df)>0
+          assert r['fan_in_promotion'] is False
+          assert r['rule_row_counts'].get('MURPHY_0028') == 1592
+          assert r['rule_row_counts'].get('MURPHY_0029') == 1644
+          assert r['rows'] == 3236
           assert set(df['source_rule_id']) == {'MURPHY_0028','MURPHY_0029'}
+          assert not df.duplicated().any()
           print('MURPHY_0028_0029_CANONICAL_BINDING_PASS')
-          print('ROWS',len(df))
-          print('TIMESTAMP_IS_AVAILABILITY',r['availability_is_event_timestamp'])
+          print(json.dumps(r, indent=2))
           PY
 
       - name: Upload binding artifacts
@@ -82,4 +90,4 @@ jobs:
         with:
           name: murphy-0028-0029-canonical-binding-v1
           path: artifacts/out/
-          if-no-files-found: ignore
+          if-no-files-found: error
