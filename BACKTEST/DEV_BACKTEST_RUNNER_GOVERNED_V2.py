@@ -96,7 +96,9 @@ def brain_row(row: pd.Series) -> dict[str, Any]:
     return out
 
 
-def run(*, h1: Path, murphy: Path, context: Path, nison: Path | None, output_dir: Path) -> dict[str, Any]:
+def run(*, h1: Path, murphy: Path, context: Path, nison: Path | None, output_dir: Path, tiz_mode: str = "optional") -> dict[str, Any]:
+    if tiz_mode not in {"optional", "strict"}:
+        raise ValueError("tiz_mode must be optional or strict")
     bars = load_csv(h1, {"timestamp", "open", "high", "low", "close"})
     m = load_csv(murphy, {"timestamp", "status", "direction"}, duplicates=True)
     ctx = load_csv(context, {"timestamp"})
@@ -119,7 +121,13 @@ def run(*, h1: Path, murphy: Path, context: Path, nison: Path | None, output_dir
     events: list[dict[str, Any]] = []
     for _, row in merged.iterrows():
         query_as_of = row["timestamp"].isoformat()
-        tiz = {"process_gate": row.get("tiz_process_gate", "NOT_EVALUABLE")}
+        tiz_value = str(row.get("tiz_process_gate") or "").strip().upper()
+        tiz_unverified = not tiz_value
+        if tiz_unverified:
+            tiz_value = "NOT_EVALUABLE"
+        if tiz_mode == "strict" and tiz_value == "NOT_EVALUABLE":
+            tiz_value = "FAIL"
+        tiz = {"process_gate": tiz_value, "unverified": tiz_unverified, "mode": tiz_mode}
         risk = {"risk_status": row.get("risk_status", "NOT_EVALUABLE")}
         nison_evidence = {
             "confirmation": row.get("confirmation", "ABSENT"),
@@ -139,9 +147,14 @@ def run(*, h1: Path, murphy: Path, context: Path, nison: Path | None, output_dir
             nison_evidence=nison_evidence,
             tiz_evidence=tiz,
             risk_evidence=risk,
-            provenance={"runner": "DEV_BACKTEST_RUNNER_GOVERNED_V2"},
+            provenance={"runner": "DEV_BACKTEST_RUNNER_GOVERNED_V2", "tiz_mode": tiz_mode},
         )
         execution = result.get("execution", {})
+        final_decision = execution.get("final_trade_decision")
+        if tiz_mode == "optional" and tiz_unverified and final_decision == "EXECUTE":
+            execution = dict(execution)
+            execution["final_trade_decision"] = "EXECUTE_TIZ_UNVERIFIED"
+            execution["execution_eligible"] = True
         events.append({
             "timestamp": query_as_of,
             "brain_bias": result.get("assessment", {}).get("directional_bias"),
@@ -152,6 +165,8 @@ def run(*, h1: Path, murphy: Path, context: Path, nison: Path | None, output_dir
             "nison_confirmation": row.get("confirmation", "ABSENT"),
             "nison_contradiction": bool(row.get("contradiction", False)),
             "tiz_gate": tiz["process_gate"],
+            "tiz_unverified": tiz_unverified,
+            "tiz_mode": tiz_mode,
             "risk_gate": risk["risk_status"],
             "alignment": execution.get("alignment"),
             "final_trade_decision": execution.get("final_trade_decision"),
@@ -165,7 +180,7 @@ def run(*, h1: Path, murphy: Path, context: Path, nison: Path | None, output_dir
     output_dir.mkdir(parents=True, exist_ok=True)
     out.to_csv(output_dir / "unified_78_events_2016_2024.csv", index=False)
     out.to_csv(output_dir / "decision_events_2016_2024.csv", index=False)
-    executed = out[out["final_trade_decision"].eq("EXECUTE")].copy()
+    executed = out[out["final_trade_decision"].isin(["EXECUTE", "EXECUTE_TIZ_UNVERIFIED"])].copy()
     executed.to_csv(output_dir / "executed_trades_2016_2024.csv", index=False)
 
     def count(mask):
@@ -176,21 +191,26 @@ def run(*, h1: Path, murphy: Path, context: Path, nison: Path | None, output_dir
         "murphy_directional": count(out["murphy_direction"].isin(["BULLISH", "BEARISH"])),
         "brain_aligned": count(out["alignment"].eq("ALIGNED")),
         "tiz_pass": count(out["tiz_gate"].eq("PASS")),
+        "tiz_unverified": count(out["tiz_unverified"]),
         "risk_pass": count(out["risk_gate"].eq("PASS")),
         "needs_review": count(out["final_trade_decision"].eq("NEEDS_REVIEW")),
         "blocked": count(out["final_trade_decision"].eq("BLOCKED")),
-        "executed": count(out["final_trade_decision"].eq("EXECUTE")),
+        "executed": count(out["final_trade_decision"].isin(["EXECUTE", "EXECUTE_TIZ_UNVERIFIED"])),
     }
     manifest = {
         "runner": "DEV_BACKTEST_RUNNER_GOVERNED_V2",
         "window": "2016-2024",
+        "tiz_mode": tiz_mode,
+        "tiz_optional_default": True,
+        "tiz_missing_action_optional": "EXECUTE_TIZ_UNVERIFIED when all other gates pass",
+        "tiz_missing_action_strict": "BLOCKED",
         "2025_locked": True,
         "brain_modified": False,
         "direction_inference": False,
         "missing_direction_fail_closed": True,
         "risk_overridable": False,
         "official_profitability_claim_allowed": False,
-        "note": "Execution remains blocked when TIZ/Risk source gates are absent or NOT_EVALUABLE.",
+        "note": "Optional TIZ does not claim psychological/process evaluation; it records TIZ_UNVERIFIED.",
     }
     (output_dir / "execution_funnel_2016_2024.json").write_text(json.dumps(funnel, indent=2), encoding="utf-8")
     (output_dir / "validation_manifest_2016_2024.json").write_text(json.dumps(manifest, indent=2), encoding="utf-8")
@@ -204,8 +224,9 @@ def main() -> int:
     p.add_argument("--context", required=True, type=Path)
     p.add_argument("--nison", type=Path)
     p.add_argument("--output-dir", required=True, type=Path)
+    p.add_argument("--tiz-mode", choices=["optional", "strict"], default="optional")
     a = p.parse_args()
-    print(json.dumps(run(h1=a.h1, murphy=a.murphy, context=a.context, nison=a.nison, output_dir=a.output_dir), indent=2, default=str))
+    print(json.dumps(run(h1=a.h1, murphy=a.murphy, context=a.context, nison=a.nison, output_dir=a.output_dir, tiz_mode=a.tiz_mode), indent=2, default=str))
     return 0
 
 
