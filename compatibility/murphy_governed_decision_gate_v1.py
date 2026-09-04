@@ -12,6 +12,7 @@ from typing import Any, Mapping
 
 LOCKED_OOS_YEAR = 2025
 VALID_DIRECTIONS = {"BULLISH", "BEARISH"}
+VALID_TIZ_MODES = {"optional", "strict"}
 
 
 def _year(value: Any) -> int | None:
@@ -67,6 +68,8 @@ def _decision(
     murphy_direction: str | None,
     murphy_status: str,
     tiz_gate: str,
+    tiz_mode: str,
+    tiz_unverified: bool,
     risk_gate: str,
     nison_contradiction: bool,
 ) -> dict[str, Any]:
@@ -78,8 +81,16 @@ def _decision(
     if murphy_direction is None:
         hard_blocks.append("MURPHY_DIRECTION_NOT_EVALUABLE")
 
-    if tiz_gate != "PASS":
-        hard_blocks.append(f"TIZ_{tiz_gate}")
+    if tiz_gate == "FAIL":
+        hard_blocks.append("TIZ_FAIL")
+    elif tiz_mode == "strict" and tiz_gate != "PASS":
+        hard_blocks.append("TIZ_NOT_EVALUABLE")
+    elif tiz_mode == "optional" and tiz_unverified:
+        # Explicitly recorded, but not a block in optional mode.
+        pass
+    elif tiz_mode == "optional" and tiz_gate != "PASS":
+        needs_review.append("TIZ_NOT_EVALUABLE")
+
     if risk_gate != "PASS":
         hard_blocks.append(f"RISK_{risk_gate}")
 
@@ -94,7 +105,7 @@ def _decision(
 
     eligible = not hard_blocks and not needs_review and alignment == "ALIGNED"
     if eligible:
-        final = "EXECUTE"
+        final = "EXECUTE_TIZ_UNVERIFIED" if tiz_mode == "optional" and tiz_unverified else "EXECUTE"
     elif needs_review and not hard_blocks:
         final = "NEEDS_REVIEW"
     else:
@@ -105,6 +116,7 @@ def _decision(
         "execution_eligible": eligible,
         "hard_blocks": hard_blocks,
         "needs_review": needs_review,
+        "tiz_unverified": tiz_unverified,
         "final_trade_decision": final,
     }
 
@@ -121,9 +133,12 @@ def assess_with_murphy_gate(
     risk_evidence: Mapping[str, Any] | None = None,
     historical_evidence: Mapping[str, Any] | None = None,
     provenance: Mapping[str, Any] | None = None,
+    tiz_mode: str = "optional",
 ) -> dict[str, Any]:
     if mode not in {"development", "oos_evaluation"}:
         return {"status": "NOT_EVALUABLE", "reason": "INVALID_MODE"}
+    if tiz_mode not in VALID_TIZ_MODES:
+        return {"status": "NOT_EVALUABLE", "reason": "INVALID_TIZ_MODE"}
 
     year = _year(query_as_of)
     if year is None:
@@ -151,6 +166,9 @@ def assess_with_murphy_gate(
 
     murphy_status = _gate(murphy.get("status") or murphy.get("gate"))
     murphy_direction, murphy_direction_source = _explicit_murphy_direction(murphy)
+    tiz_gate = _gate(tiz.get("process_gate") or tiz.get("status"))
+    tiz_unverified = bool(tiz.get("unverified", False)) or tiz_gate == "NOT_EVALUABLE"
+    risk_gate = _gate(risk.get("risk_status") or risk.get("status"))
     nison_contradiction = bool(nison.get("contradiction", False)) or str(
         nison.get("confirmation") or ""
     ).strip().upper() in {"CONTRADICTED", "CONTRADICTION"}
@@ -159,8 +177,10 @@ def assess_with_murphy_gate(
         brain_direction=_brain_direction(assessment_dict),
         murphy_direction=murphy_direction,
         murphy_status=murphy_status,
-        tiz_gate=_gate(tiz.get("process_gate") or tiz.get("status")),
-        risk_gate=_gate(risk.get("risk_status") or risk.get("status")),
+        tiz_gate=tiz_gate,
+        tiz_mode=tiz_mode,
+        tiz_unverified=tiz_unverified,
+        risk_gate=risk_gate,
         nison_contradiction=nison_contradiction,
     )
 
@@ -188,6 +208,8 @@ def assess_with_murphy_gate(
             "future_data_allowed": False,
             "2025_used_for_tuning": False,
             "synthetic_direction": False,
+            "tiz_mode": tiz_mode,
+            "tiz_optional": tiz_mode == "optional",
         },
         "provenance": deepcopy(provenance or {}),
     }
