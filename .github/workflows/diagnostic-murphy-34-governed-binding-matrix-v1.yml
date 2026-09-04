@@ -28,7 +28,7 @@ jobs:
           python-version: '3.12'
 
       - name: Install dependencies
-        run: python -m pip install --upgrade pip
+        run: python -m pip install --upgrade pip pandas
 
       - name: Acquire governed Murphy workspace archive
         shell: bash
@@ -70,6 +70,13 @@ jobs:
             --out-csv artifacts/MURPHY_34_GOVERNED_BINDING_MATRIX_V1.csv \
             --out-json artifacts/MURPHY_34_GOVERNED_BINDING_MATRIX_V1.json
 
+      - name: Audit Murphy 0003/0004 event timestamp hygiene
+        run: |
+          set -euo pipefail
+          python BACKTEST/MURPHY_0003_0004_EVENT_BINDING_ASOF_AUDIT_V1.py \
+            --input artifacts/murphy_workspace/extracted/MURPHY_EVALUATORS_V1/MURPHY_0003_0004_HISTORICAL_EVALUATION_2016_2024.csv \
+            --out artifacts/MURPHY_0003_0004_EVENT_BINDING_ASOF_AUDIT_V1.json
+
       - name: Enforce fail-closed governance status
         run: |
           set -euo pipefail
@@ -83,9 +90,18 @@ jobs:
           assert r['current_fanin_eligibility_promoted'] is False
           assert r['synthetic_evidence_generated'] is False
           assert r['2025_used'] is False
+          q='artifacts/MURPHY_0003_0004_EVENT_BINDING_ASOF_AUDIT_V1.json'
+          a=json.load(open(q,encoding='utf-8'))
+          assert a['status'] == 'PASS'
+          assert a['failures']['2025_rows'] == 0
+          assert a['failures']['availability_before_pivot'] == 0
+          assert a['failures']['unexpected_rule_ids'] == []
+          assert a['strict_asof_join_verified'] is False
           print('GOVERNED_BINDING_MATRIX_FAIL_CLOSED=TRUE')
           print('RULES_WITH_ARCHIVE_REFERENCE', r['rules_with_any_archive_reference'])
           print('RULES_WITH_EVALUATOR_AVAILABILITY_CANDIDATES', r['rules_with_evaluator_availability_candidates'])
+          print('MURPHY_0003_0004_SOURCE_TIMESTAMP_HYGIENE_PASS=TRUE')
+          print('STRICT_ASOF_JOIN_VERIFIED=FALSE')
           PY
 
       - name: Upload governed binding artifacts
