@@ -1,0 +1,87 @@
+name: Murphy 34 Full Workspace Fan-In V3
+
+on:
+  push:
+    branches:
+      - diagnostic/murphy-34-recovery-2026-09-02
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  murphy_34_full_workspace_fanin:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    env:
+      DROPBOX_ACCESS_TOKEN: ${{ secrets.DROPBOX_ACCESS_TOKEN }}
+      PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/OOS_2025
+
+    steps:
+      - name: Checkout current branch
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: python -m pip install --upgrade pip pandas pytest
+
+      - name: Runtime and window gates
+        run: |
+          python DEVELOPMENT_2016_2024/current_stack_component_completeness_gate_v1.py
+          python DEVELOPMENT_2016_2024/current_stack_runtime_wiring_gate_v1.py
+          python -c "from datetime import datetime,timezone; assert datetime(2016,1,1,tzinfo=timezone.utc)<datetime(2025,1,1,tzinfo=timezone.utc); print('DEVELOPMENT_WINDOW=2016-2024'); print('2025_OOS_LOCKED=True')"
+
+      - name: Acquire full Murphy producer workspace
+        shell: bash
+        run: |
+          set -euo pipefail
+          TOKEN="$(printf '%s' "$DROPBOX_ACCESS_TOKEN" | tr -d '\r\n' | sed -E 's/^Bearer[[:space:]]+//; s/^\"//; s/\"$//')"
+          test -n "$TOKEN"
+          mkdir -p artifacts/murphy_workspace/raw artifacts/murphy_workspace/full
+          download(){ curl -L --fail --silent --show-error https://content.dropboxapi.com/2/files/download -H "Authorization: Bearer ${TOKEN}" -H "Dropbox-API-Arg: {\"path\":\"$1\"}" -o "$2"; }
+          download "/GBPUSD_RULE_EVALUATOR_V2_WORKSPACE_PART_01_OF_03.zip.part" artifacts/murphy_workspace/raw/part01.zip.part
+          download "/GBPUSD_RULE_EVALUATOR_V2_WORKSPACE_PART_02_OF_03.zip.part" artifacts/murphy_workspace/raw/part02.zip.part
+          download "/GBPUSD_RULE_EVALUATOR_V2_WORKSPACE_PART_03_OF_03.zip.part" artifacts/murphy_workspace/raw/part03.zip.part
+          cat artifacts/murphy_workspace/raw/part01.zip.part artifacts/murphy_workspace/raw/part02.zip.part artifacts/murphy_workspace/raw/part03.zip.part > artifacts/murphy_workspace/full/GBPUSD_RULE_EVALUATOR_V2_WORKSPACE_FULL.zip
+          python - <<'PY'
+          from pathlib import Path
+          p=Path('artifacts/murphy_workspace/full/GBPUSD_RULE_EVALUATOR_V2_WORKSPACE_FULL.zip')
+          expected=597678846
+          actual=p.stat().st_size
+          assert actual==expected, (actual,expected)
+          print('FULL_MURPHY_WORKSPACE_SIZE',actual)
+          PY
+          unzip -q artifacts/murphy_workspace/full/GBPUSD_RULE_EVALUATOR_V2_WORKSPACE_FULL.zip -d artifacts/murphy_workspace/full/extracted
+
+      - name: Inventory source-backed Murphy evidence across full workspace
+        run: |
+          python BACKTEST/MURPHY_34_SOURCE_RESOLVER_V2.py \
+            --root artifacts/murphy_workspace/full/extracted \
+            --out artifacts/MURPHY_CURRENT_STACK_FULL_WORKSPACE.csv \
+            --report artifacts/MURPHY_FANIN_REPORT_FULL_WORKSPACE_V3.json
+          python - <<'PY'
+          import json
+          r=json.load(open('artifacts/MURPHY_FANIN_REPORT_FULL_WORKSPACE_V3.json',encoding='utf-8'))
+          print('EXPECTED_RULES',r['expected_rule_count'])
+          print('OBSERVED_RULES',r['observed_rule_count'])
+          print('MISSING_RULES',r['missing_rule_ids'])
+          print('ROWS',r['rows'])
+          if r['observed_rule_count'] < 34:
+              print('MURPHY_FULL_WORKSPACE_DISCOVERY_REMAINS_INCOMPLETE=True')
+          else:
+              print('MURPHY_FULL_WORKSPACE_SOURCE_BACKED_34=True')
+          PY
+
+      - name: Upload Murphy workspace fan-in diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: murphy-34-full-workspace-fanin-v3
+          path: artifacts/
+          if-no-files-found: ignore
