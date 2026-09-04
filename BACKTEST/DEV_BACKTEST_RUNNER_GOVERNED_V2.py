@@ -148,13 +148,9 @@ def run(*, h1: Path, murphy: Path, context: Path, nison: Path | None, output_dir
             tiz_evidence=tiz,
             risk_evidence=risk,
             provenance={"runner": "DEV_BACKTEST_RUNNER_GOVERNED_V2", "tiz_mode": tiz_mode},
+            tiz_mode=tiz_mode,
         )
         execution = result.get("execution", {})
-        final_decision = execution.get("final_trade_decision")
-        if tiz_mode == "optional" and tiz_unverified and final_decision == "EXECUTE":
-            execution = dict(execution)
-            execution["final_trade_decision"] = "EXECUTE_TIZ_UNVERIFIED"
-            execution["execution_eligible"] = True
         events.append({
             "timestamp": query_as_of,
             "brain_bias": result.get("assessment", {}).get("directional_bias"),
