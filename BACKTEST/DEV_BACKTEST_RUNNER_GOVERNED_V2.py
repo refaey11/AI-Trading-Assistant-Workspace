@@ -99,7 +99,7 @@ def brain_row(row: pd.Series) -> dict[str, Any]:
 def run(*, h1: Path, murphy: Path, context: Path, nison: Path | None, output_dir: Path, tiz_mode: str = "optional") -> dict[str, Any]:
     if tiz_mode not in {"optional", "strict"}:
         raise ValueError("tiz_mode must be optional or strict")
-    bars = load_csv(h1, {"timestamp", "open", "high", "low", "close"})
+    load_csv(h1, {"timestamp", "open", "high", "low", "close"})
     m = load_csv(murphy, {"timestamp", "status", "direction"}, duplicates=True)
     ctx = load_csv(context, {"timestamp"})
     if "entry_price" not in ctx.columns and "close" in ctx.columns:
@@ -121,14 +121,13 @@ def run(*, h1: Path, murphy: Path, context: Path, nison: Path | None, output_dir
     events: list[dict[str, Any]] = []
     for _, row in merged.iterrows():
         query_as_of = row["timestamp"].isoformat()
-        tiz_value = str(row.get("tiz_process_gate") or "").strip().upper()
-        tiz_unverified = not tiz_value
-        if tiz_unverified:
-            tiz_value = "NOT_EVALUABLE"
-        if tiz_mode == "strict" and tiz_value == "NOT_EVALUABLE":
-            tiz_value = "FAIL"
+        tiz_raw = row.get("tiz_process_gate")
+        tiz_unverified = pd.isna(tiz_raw) or str(tiz_raw).strip() == ""
+        tiz_value = "NOT_EVALUABLE" if tiz_unverified else str(tiz_raw).strip().upper()
         tiz = {"process_gate": tiz_value, "unverified": tiz_unverified, "mode": tiz_mode}
-        risk = {"risk_status": row.get("risk_status", "NOT_EVALUABLE")}
+        risk_raw = row.get("risk_status")
+        risk_value = "NOT_EVALUABLE" if pd.isna(risk_raw) or str(risk_raw).strip() == "" else str(risk_raw).strip().upper()
+        risk = {"risk_status": risk_value}
         nison_evidence = {
             "confirmation": row.get("confirmation", "ABSENT"),
             "contradiction": bool(row.get("contradiction", False)),
