@@ -1,0 +1,87 @@
+name: Murphy 34 Full Workspace Recovery V2
+
+on:
+  push:
+    branches:
+      - diagnostic/murphy-34-recovery-2026-09-02
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  murphy_34_full_workspace_recovery:
+    runs-on: ubuntu-latest
+    timeout-minutes: 180
+    env:
+      DROPBOX_ACCESS_TOKEN: ${{ secrets.DROPBOX_ACCESS_TOKEN }}
+      PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/OOS_2025
+    steps:
+      - name: Checkout exact recovery revision
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 1
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: python -m pip install --upgrade pip pandas
+
+      - name: Download and reconstruct full Murphy workspace
+        shell: bash
+        run: |
+          set -euo pipefail
+          TOKEN="$(printf '%s' "$DROPBOX_ACCESS_TOKEN" | tr -d '\r\n' | sed -E 's/^Bearer[[:space:]]+//; s/^\"//; s/\"$//')"
+          test -n "$TOKEN"
+          mkdir -p artifacts/murphy_workspace/parts artifacts/murphy_workspace/unpacked
+          download(){ curl -L --fail --silent --show-error https://content.dropboxapi.com/2/files/download -H "Authorization: Bearer ${TOKEN}" -H "Dropbox-API-Arg: {\"path\":\"$1\"}" -o "$2"; }
+          download "/GBPUSD_RULE_EVALUATOR_V2_WORKSPACE_PART_01_OF_03.zip.part" artifacts/murphy_workspace/parts/part01
+          download "/GBPUSD_RULE_EVALUATOR_V2_WORKSPACE_PART_02_OF_03.zip.part" artifacts/murphy_workspace/parts/part02
+          download "/GBPUSD_RULE_EVALUATOR_V2_WORKSPACE_PART_03_OF_03.zip.part" artifacts/murphy_workspace/parts/part03
+          cat artifacts/murphy_workspace/parts/part01 artifacts/murphy_workspace/parts/part02 artifacts/murphy_workspace/parts/part03 > artifacts/murphy_workspace/GBPUSD_RULE_EVALUATOR_V2_WORKSPACE_FULL.zip
+          test "$(stat -c%s artifacts/murphy_workspace/GBPUSD_RULE_EVALUATOR_V2_WORKSPACE_FULL.zip)" -eq 597678846
+          echo '4c8c844f3081f921a0d64ba066e9734fcd9c8eebdd4396b16e6fba2921dad73  artifacts/murphy_workspace/GBPUSD_RULE_EVALUATOR_V2_WORKSPACE_FULL.zip' | sha256sum -c -
+          unzip -q artifacts/murphy_workspace/GBPUSD_RULE_EVALUATOR_V2_WORKSPACE_FULL.zip -d artifacts/murphy_workspace/unpacked
+          echo 'FULL_WORKSPACE_RECONSTRUCTION_PASS'
+
+      - name: Discover 34 rule archive bindings
+        run: |
+          python BACKTEST/MURPHY_34_ARCHIVE_BINDING_DISCOVERY_V1.py \
+            --root artifacts/murphy_workspace/unpacked \
+            --csv artifacts/MURPHY_34_BINDING_DISCOVERY.csv \
+            --json artifacts/MURPHY_34_BINDING_DISCOVERY.json
+
+      - name: Audit event-level CSV candidates
+        run: |
+          python BACKTEST/MURPHY_34_WORKSPACE_EVENT_CANDIDATE_AUDIT_V1.py \
+            --root artifacts/murphy_workspace/unpacked \
+            --csv artifacts/MURPHY_34_WORKSPACE_EVENT_CANDIDATES.csv \
+            --json artifacts/MURPHY_34_WORKSPACE_EVENT_CANDIDATES.json
+
+      - name: Hard report
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          discovery=json.loads(Path('artifacts/MURPHY_34_BINDING_DISCOVERY.json').read_text())
+          candidates=json.loads(Path('artifacts/MURPHY_34_WORKSPACE_EVENT_CANDIDATES.json').read_text())
+          print('ARCHIVE_RULES_WITH_REFERENCES', discovery['rules_with_archive_references'])
+          print('ARCHIVE_RULES_WITHOUT_REFERENCES', discovery['rules_without_archive_references'])
+          print('RULES_WITH_DIRECT_EVENT_CANDIDATES', candidates['rules_with_direct_event_csv_candidates'])
+          print('RULES_WITH_ANY_CSV_REFERENCE', candidates['rules_with_any_csv_reference'])
+          print('RULES_WITHOUT_CSV_REFERENCE', candidates['rules_without_csv_reference'])
+          print('NO_SYNTHETIC_EVIDENCE', candidates['no_synthetic_evidence'])
+          print('NO_ELIGIBILITY_PROMOTION', candidates['no_eligibility_promotion'])
+          PY
+
+      - name: Upload recovery audit
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: murphy-34-full-workspace-recovery-v2
+          path: artifacts/
+          if-no-files-found: ignore
