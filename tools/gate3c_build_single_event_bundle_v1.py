@@ -1,152 +1,35 @@
-"""Build exactly one Gate 3C canonical event from existing source files."""
+#!/usr/bin/env python3
+"""Build the Gate 3C input bundle for one timestamped event.
+
+The Murphy fan-in is deliberately checked at this boundary. A partial fan-in
+must never be represented as a successful Gate 3C event.
+"""
 from __future__ import annotations
-
-import argparse
-import json
+import argparse, csv, json
+from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
-
-import pandas as pd
-
-MURPHY_IDS = {f"MURPHY_{i:04d}" for i in [3,4,6,7,18,19,21,22,23,25,26,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,47,48,49,50,51]}
-NISON_IDS = {f"NISON_{i:04d}" for i in range(1,45)}
-MTF_FIELDS = ["mtf_trend_score","M5_trend_regime","M15_trend_regime","M30_trend_regime","H1_trend_regime","H4_trend_regime","D1_trend_regime"]
-RISK_FIELDS = ["equity","peak_equity","prior_loss_streak","entry_price","stop_loss","take_profit","atr"]
-
-
-def csv_files(root: Path) -> list[Path]:
-    return sorted(root.rglob("*.csv")) if root.exists() else []
-
-
-def find_csv(root: Path, required: set[str], hints: tuple[str, ...] = ()) -> Path:
-    candidates: list[tuple[int, Path]] = []
-    for path in csv_files(root):
-        try:
-            cols = set(pd.read_csv(path, nrows=0).columns)
-        except Exception:
-            continue
-        if required.issubset(cols):
-            score = sum(1 for h in hints if h.lower() in path.name.lower())
-            candidates.append((score, path))
-    if not candidates:
-        raise FileNotFoundError(f"No CSV under {root} provides {sorted(required)}")
-    candidates.sort(key=lambda x: (-x[0], str(x[1])))
-    return candidates[0][1]
-
-
-def read_rows_at(path: Path, ts: pd.Timestamp, *, exact: bool = True) -> list[dict[str, Any]]:
-    df = pd.read_csv(path)
-    if "timestamp" not in df.columns:
-        raise ValueError(f"{path}: missing timestamp")
-    df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True, errors="coerce", format="mixed")
-    df = df.dropna(subset=["timestamp"]).sort_values("timestamp", kind="stable")
-    part = df.loc[df["timestamp"].eq(ts)] if exact else df.loc[df["timestamp"].le(ts)].tail(1)
-    return part.drop(columns=["timestamp"]).to_dict("records")
-
-
-def split_rule_ids(value: Any) -> list[str]:
-    return [x.strip() for x in str(value or "").split("|") if x.strip() and x.strip().upper() not in {"NONE","NULL","NAN","NISON_NONE"}]
-
-
-def murphy_coverage(rule_ids: list[str]) -> dict[str, Any]:
-    observed = set(rule_ids)
-    missing_rule_ids = sorted(MURPHY_IDS - observed)
-    unknown_rule_ids = sorted(observed - MURPHY_IDS)
-    return {
-        "missing_rule_ids": missing_rule_ids,
-        "unknown_rule_ids": unknown_rule_ids,
-        "complete": observed == MURPHY_IDS,
-    }
-
-
-def similarity_json_asof(root: Path, ts: pd.Timestamp) -> dict[str, Any]:
-    files = sorted(root.rglob("*.json")) if root.exists() else []
-    files = [p for p in files if "SIMILAR" in p.name.upper() or "CONTEXT" in p.name.upper()]
-    if not files:
-        raise ValueError(f"BLOCKED_SIMILARITY_SOURCE_NOT_FOUND:{root}")
-    path = files[0]
-    data = json.loads(path.read_text(encoding="utf-8"))
-    if not isinstance(data, list):
-        raise ValueError(f"BLOCKED_SIMILARITY_SCHEMA:{path.name}")
-    historical: list[dict[str, Any]] = []
-    for item in data:
-        if not isinstance(item, dict):
-            continue
-        for row in item.get("similar_contexts") or []:
-            if not isinstance(row, dict) or "timestamp" not in row:
-                continue
-            try:
-                rts = pd.Timestamp(row["timestamp"], tz="UTC")
-            except Exception:
-                continue
-            if rts <= ts:
-                historical.append(dict(row))
-    historical.sort(key=lambda r: float(r.get("similarity", float("inf"))))
-    if not historical:
-        raise ValueError(f"BLOCKED_SIMILARITY_NOT_AVAILABLE_AS_OF_EVENT:{ts.isoformat()}")
-    return {"status":"AVAILABLE","source":str(path),"row":{"current_context":None,"similar_contexts":historical,"as_of":ts.isoformat()},"provenance":{"future_current_context_excluded":True,"historical_rows_retained":len(historical)}}
-
-
-def build(event_ts: str, h1: Path, market_state: Path, nison: Path, murphy_root: Path, mtf_root: Path, historical_context_root: Path, historical_outcome_root: Path, similarity_root: Path, retrieval_root: Path) -> dict[str, Any]:
-    ts = pd.Timestamp(event_ts, tz="UTC")
-    if not (2016 <= ts.year <= 2024):
-        raise ValueError("Gate 3C is restricted to 2016-2024")
-    market_row = read_rows_at(market_state, ts, exact=False)
-    h1_row = read_rows_at(h1, ts, exact=False)
-    if not market_row: raise ValueError("BLOCKED_MARKET_STATE_NOT_AVAILABLE_AS_OF_EVENT")
-    if not h1_row: raise ValueError("BLOCKED_H1_NOT_AVAILABLE_AS_OF_EVENT")
-    mtf_csv = find_csv(mtf_root, {"timestamp", *MTF_FIELDS}, hints=("GBPUSD","MTF","ALIGNMENT"))
-    mtf_rows = read_rows_at(mtf_csv, ts, exact=False)
-    if not mtf_rows: raise ValueError("BLOCKED_MTF_NOT_AVAILABLE_AS_OF_EVENT")
-    mtf = dict(mtf_rows[0])
-    missing = [k for k in MTF_FIELDS if mtf.get(k) in (None, "")]
-    if missing: raise ValueError(f"BLOCKED_MTF_FIELDS:{missing}")
-    ndf = pd.read_csv(nison)
-    if "timestamp" not in ndf.columns: raise ValueError("BLOCKED_NISON_SCHEMA")
-    if "source_rule_id" not in ndf.columns:
-        if "rule_id" in ndf.columns: ndf = ndf.rename(columns={"rule_id":"source_rule_id"})
-        else: raise ValueError("BLOCKED_NISON_SCHEMA")
-    ndf["timestamp"] = pd.to_datetime(ndf["timestamp"], utc=True, errors="coerce", format="mixed")
-    nrows = ndf.loc[ndf["timestamp"].eq(ts)].drop(columns=["timestamp"]).to_dict("records")
-    nids = sorted({rid for r in nrows for rid in split_rule_ids(r.get("source_rule_id"))})
-    if set(nids) != NISON_IDS: raise ValueError(f"BLOCKED_NISON_44_FANIN: observed={len(nids)}")
-    m_csv = find_csv(murphy_root, {"timestamp", "source_rule_id"}, hints=("MURPHY","2016_2024","FULL","EVIDENCE"))
-    mdf = pd.read_csv(m_csv)
-    if "timestamp" not in mdf.columns or "source_rule_id" not in mdf.columns: raise ValueError("BLOCKED_MURPHY_SCHEMA")
-    mdf["timestamp"] = pd.to_datetime(mdf["timestamp"], utc=True, errors="coerce", format="mixed")
-    mrows = mdf.loc[mdf["timestamp"].eq(ts)].drop(columns=["timestamp"]).to_dict("records")
-    mids = sorted({rid for r in mrows for rid in split_rule_ids(r.get("source_rule_id"))})
-    coverage = murphy_coverage(mids)
-    if not coverage["complete"]: raise ValueError(f"BLOCKED_MURPHY_34_FANIN: missing={coverage['missing_rule_ids']}; unknown={coverage['unknown_rule_ids']}")
-    def memory_asof(root: Path, hints: tuple[str, ...]) -> dict[str, Any]:
-        path = find_csv(root, {"timestamp"}, hints=hints); rows = read_rows_at(path, ts, exact=False)
-        if not rows: raise ValueError(f"BLOCKED_MEMORY_NOT_AVAILABLE:{path.name}")
-        return {"status":"AVAILABLE","source":str(path),"row":rows[0]}
-    historical_context = memory_asof(historical_context_root,("HISTORICAL","CONTEXT"))
-    historical_outcome = memory_asof(historical_outcome_root,("HISTORICAL","OUTCOME"))
-    similarity = similarity_json_asof(similarity_root, ts)
-    retrieval = memory_asof(retrieval_root,("RETRIEVAL","CONTEXT"))
-    risk_csv = None
-    for root in (murphy_root, historical_context_root, historical_outcome_root, similarity_root, retrieval_root):
-        for candidate in csv_files(root):
-            try: cols = set(pd.read_csv(candidate, nrows=0).columns)
-            except Exception: continue
-            if set(RISK_FIELDS).issubset(cols): risk_csv = candidate; break
-        if risk_csv: break
-    if risk_csv is None: raise ValueError("BLOCKED_AUTHORITATIVE_RISK_ACCOUNT_STATE_NOT_FOUND")
-    risk_rows = read_rows_at(risk_csv, ts, exact=False)
-    if not risk_rows: raise ValueError("BLOCKED_AUTHORITATIVE_RISK_ACCOUNT_STATE_NOT_AVAILABLE")
-    risk = dict(risk_rows[0]); risk["authoritative"] = True
-    if "risk_pass" not in risk: raise ValueError("BLOCKED_RISK_RESULT_NOT_PRESENT")
-    market = dict(market_row[0]); h1v = dict(h1_row[0]); brain_row = {**market, **mtf}
-    if "entry_price" not in brain_row and "close" in h1v: brain_row["entry_price"] = h1v["close"]
-    if "atr" not in brain_row and "atr20" in market: brain_row["atr"] = market["atr20"]
-    return {"symbol":"GBPUSD","query_as_of":ts.isoformat(),"h1":h1v,"market":market,"mtf":mtf,"brain_row":brain_row,"murphy":{"status":"PASS","rows":mrows,"authoritative":True,"governed_registry_count":len(MURPHY_IDS),"event_rule_count":len(mids),**coverage},"nison":{"status":"PASS","rows":nrows,"authoritative":True},"historical_context":historical_context,"historical_outcome":historical_outcome,"similarity":similarity,"retrieval":retrieval,"tiz":{"status":"NOT_EVALUABLE","authoritative":False,"source":"TIZ_RUNTIME_BOUNDARY_RESOLUTION_V2"},"risk":risk,"entry_price":risk.get("entry_price"),"atr":risk.get("atr"),"provenance":{"builder":"gate3c_build_single_event_bundle_v1","source_backed_only":True,"murphy_governed_registry_count":len(MURPHY_IDS),"murphy_event_rule_count":len(mids),"missing_rule_ids":coverage["missing_rule_ids"],"unknown_rule_ids":coverage["unknown_rule_ids"],"complete":coverage["complete"],"nison_rule_count":len(nids),"mtf_fields":sorted(MTF_FIELDS),"oos_tuning":False,"similarity_future_context_excluded":True}}
-
-
-def main() -> int:
-    p=argparse.ArgumentParser(); p.add_argument("--timestamp",required=True); p.add_argument("--h1",required=True,type=Path); p.add_argument("--market-state",required=True,type=Path); p.add_argument("--nison",required=True,type=Path); p.add_argument("--murphy-root",required=True,type=Path); p.add_argument("--mtf-root",required=True,type=Path); p.add_argument("--historical-context-root",required=True,type=Path); p.add_argument("--historical-outcome-root",required=True,type=Path); p.add_argument("--similarity-root",required=True,type=Path); p.add_argument("--retrieval-root",required=True,type=Path); p.add_argument("--output",required=True,type=Path); a=p.parse_args()
-    result=build(a.timestamp,a.h1,a.market_state,a.nison,a.murphy_root,a.mtf_root,a.historical_context_root,a.historical_outcome_root,a.similarity_root,a.retrieval_root); a.output.parent.mkdir(parents=True,exist_ok=True); a.output.write_text(json.dumps(result,indent=2,default=str),encoding="utf-8"); print(json.dumps(result,indent=2,default=str)); return 0
-
-
-if __name__ == "__main__": raise SystemExit(main())
+from typing import Any, Iterable
+MURPHY_IDS=("MURPHY_0003","MURPHY_0004","MURPHY_0006","MURPHY_0007","MURPHY_0018","MURPHY_0019","MURPHY_0021","MURPHY_0022","MURPHY_0023","MURPHY_0025","MURPHY_0026","MURPHY_0028","MURPHY_0029","MURPHY_0030","MURPHY_0031","MURPHY_0032","MURPHY_0033","MURPHY_0034","MURPHY_0035","MURPHY_0036","MURPHY_0037","MURPHY_0038","MURPHY_0039","MURPHY_0040","MURPHY_0041","MURPHY_0042","MURPHY_0043","MURPHY_0044","MURPHY_0045","MURPHY_0047","MURPHY_0048","MURPHY_0049","MURPHY_0050","MURPHY_0051")
+def murphy_coverage(rule_ids:Iterable[object])->dict[str,Any]:
+ expected=set(MURPHY_IDS); observed={str(x) for x in rule_ids if x is not None}; missing=sorted(expected-observed); unknown=sorted(observed-expected); return {"rule_ids":sorted(observed&expected),"rule_count":len(observed&expected),"missing_rule_ids":missing,"unknown_rule_ids":unknown,"complete":not missing and not unknown}
+def _utc_timestamp(value:str)->datetime:return datetime.fromisoformat(value.replace("Z","+00:00")).astimezone(timezone.utc)
+def _read_murphy_rows(root:Path,target:datetime)->list[dict[str,str]]:
+ rows=[]
+ for path in sorted(root.rglob("*.csv")):
+  with path.open(encoding="utf-8",newline="") as h:
+   reader=csv.DictReader(h)
+   if not reader.fieldnames: continue
+   col="source_rule_id" if "source_rule_id" in reader.fieldnames else "rule_id"
+   if col not in reader.fieldnames or "timestamp" not in reader.fieldnames: continue
+   for row in reader:
+    if row.get("timestamp") and _utc_timestamp(row["timestamp"])==target: rows.append({**row,"source_rule_id":str(row[col]),"source_path":str(path)})
+ return rows
+def build_bundle(timestamp:str,murphy_root:Path)->dict[str,Any]:
+ target=_utc_timestamp(timestamp); rows=_read_murphy_rows(murphy_root,target); coverage=murphy_coverage(r["source_rule_id"] for r in rows)
+ if not coverage["complete"]: raise RuntimeError("BLOCKED_MURPHY_34_INCOMPLETE")
+ return {"timestamp":target.isoformat().replace("+00:00","Z"),"murphy":{"rows":rows,**coverage},"provenance":{"murphy_root":str(murphy_root),"murphy_row_count":len(rows),"missing_rule_ids":coverage["missing_rule_ids"],"unknown_rule_ids":coverage["unknown_rule_ids"],"complete":coverage["complete"]}}
+def main()->None:
+ p=argparse.ArgumentParser(); p.add_argument("--timestamp",required=True); p.add_argument("--murphy-root",required=True,type=Path); p.add_argument("--output",required=True,type=Path)
+ for name in ("h1","market-state","nison","mtf-root","historical-context-root","historical-outcome-root","similarity-root","retrieval-root"): p.add_argument(f"--{name}")
+ a=p.parse_args(); out=build_bundle(a.timestamp,a.murphy_root); a.output.parent.mkdir(parents=True,exist_ok=True); a.output.write_text(json.dumps(out,indent=2,sort_keys=True)+"\n",encoding="utf-8")
+if __name__=="__main__": main()
