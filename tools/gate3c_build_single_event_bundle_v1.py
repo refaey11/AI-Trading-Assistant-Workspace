@@ -34,12 +34,13 @@ def murphy_coverage(rule_ids: Iterable[object]) -> dict[str, Any]:
     observed = {str(rule_id) for rule_id in rule_ids if rule_id is not None}
     missing_rule_ids = sorted(expected - observed)
     unknown_rule_ids = sorted(observed - expected)
+    complete = observed == expected
     return {
         "rule_ids": sorted(observed & expected),
         "rule_count": len(observed & expected),
         "missing_rule_ids": missing_rule_ids,
         "unknown_rule_ids": unknown_rule_ids,
-        "complete": not missing_rule_ids and not unknown_rule_ids,
+        "complete": complete,
     }
 
 
@@ -77,7 +78,11 @@ def build_bundle(timestamp: str, murphy_root: Path) -> dict[str, Any]:
         "unknown_rule_ids": coverage["unknown_rule_ids"],
         "complete": coverage["complete"],
     }
-    if not coverage["complete"]:
+    if (
+        coverage["missing_rule_ids"]
+        or coverage["unknown_rule_ids"]
+        or not coverage["complete"]
+    ):
         raise RuntimeError("BLOCKED_MURPHY_34_INCOMPLETE")
     return {
         "timestamp": target.isoformat().replace("+00:00", "Z"),
