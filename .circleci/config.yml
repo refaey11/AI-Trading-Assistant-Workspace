@@ -13,7 +13,7 @@ jobs:
             set -eu
             test -n "${DROPBOX_ACCESS_TOKEN:-}"
             mkdir -p artifacts/nison artifacts/source/unpacked
-            python - <<'PY'
+            python - <<PY
             import json, os
             from pathlib import Path
             from urllib.request import Request, urlopen
@@ -39,7 +39,7 @@ jobs:
       - run:
           name: Validate existing Nison scope
           command: |
-            python - <<'PY'
+            python - <<PY
             import pandas as pd
             p='artifacts/nison/NISON_2016_2024_FULL_EVIDENCE.csv'
             df=pd.read_csv(p, usecols=['timestamp','rule_id'])
@@ -55,7 +55,7 @@ jobs:
             set -eu
             unzip -q BACKTEST/DEV_BACKTEST_R1_MURPHY_SOURCE.zip.b64.txt -d /tmp/murphy_recovery 2>/dev/null || true
             if [ ! -s /tmp/murphy_recovery/MURPHY_2016_2024_FULL_34_RULE_COVERAGE.csv ]; then
-              python - <<'PY'
+              python - <<PY
               import base64
               from pathlib import Path
               src=Path('BACKTEST/DEV_BACKTEST_R1_MURPHY_SOURCE.zip.b64.txt')
