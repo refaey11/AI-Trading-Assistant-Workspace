@@ -13,23 +13,18 @@ jobs:
             set -eu
             test -n "${DROPBOX_ACCESS_TOKEN:-}"
             mkdir -p artifacts/nison artifacts/source/unpacked
-            python - <<'PY'
-            import json, os
-            from pathlib import Path
-            from urllib.request import Request, urlopen
-            token=os.environ['DROPBOX_ACCESS_TOKEN']
-            def download(path, out, timeout=900):
-                req=Request('https://content.dropboxapi.com/2/files/download', data=b'', method='POST', headers={'Authorization':f'Bearer {token}','Dropbox-API-Arg':json.dumps({'path':path})})
-                with urlopen(req, timeout=timeout) as r:
-                    with open(out,'wb') as f:
-                        while True:
-                            chunk=r.read(1024*1024)
-                            if not chunk: break
-                            f.write(chunk)
-            download('/New 8/NISON_2016_2024_FULL_EVIDENCE.csv','artifacts/nison/NISON_2016_2024_FULL_EVIDENCE.csv')
-            download('/New 8/GBPUSD_H1_2016_2025_MASTER.zip','artifacts/source/GBPUSD_H1_2016_2025_MASTER.zip',300)
-            download('/New 8/GBPUSD_MARKET_STATE 6.csv','artifacts/GBPUSD_MARKET_STATE.csv',300)
-            PY
+            curl --fail --silent --show-error -X POST https://content.dropboxapi.com/2/files/download \
+              -H "Authorization: Bearer ${DROPBOX_ACCESS_TOKEN}" \
+              -H 'Dropbox-API-Arg: {"path":"/New 8/NISON_2016_2024_FULL_EVIDENCE.csv"}' \
+              -o artifacts/nison/NISON_2016_2024_FULL_EVIDENCE.csv
+            curl --fail --silent --show-error -X POST https://content.dropboxapi.com/2/files/download \
+              -H "Authorization: Bearer ${DROPBOX_ACCESS_TOKEN}" \
+              -H 'Dropbox-API-Arg: {"path":"/New 8/GBPUSD_H1_2016_2025_MASTER.zip"}' \
+              -o artifacts/source/GBPUSD_H1_2016_2025_MASTER.zip
+            curl --fail --silent --show-error -X POST https://content.dropboxapi.com/2/files/download \
+              -H "Authorization: Bearer ${DROPBOX_ACCESS_TOKEN}" \
+              -H 'Dropbox-API-Arg: {"path":"/New 8/GBPUSD_MARKET_STATE 6.csv"}' \
+              -o artifacts/GBPUSD_MARKET_STATE.csv
             unzip -q artifacts/source/GBPUSD_H1_2016_2025_MASTER.zip -d artifacts/source/unpacked
             SOURCE_CSV=$(find artifacts/source/unpacked -type f -name 'GBPUSD_H1_2016_2025_MASTER.csv' | head -1)
             test -n "$SOURCE_CSV"
@@ -39,30 +34,16 @@ jobs:
       - run:
           name: Validate existing Nison scope
           command: |
-            python - <<'PY'
-            import pandas as pd
-            p='artifacts/nison/NISON_2016_2024_FULL_EVIDENCE.csv'
-            df=pd.read_csv(p, usecols=['timestamp','rule_id'])
-            ts=pd.to_datetime(df['timestamp'], utc=True)
-            assert ts.dt.year.min()==2016 and ts.dt.year.max()==2024
-            assert df['rule_id'].nunique()==44
-            assert len(df)==2428448
-            print('NISON_EXISTING_PASS rows=',len(df),'rules=',df['rule_id'].nunique())
-            PY
+            python -c "import pandas as pd; p='artifacts/nison/NISON_2016_2024_FULL_EVIDENCE.csv'; df=pd.read_csv(p,usecols=['timestamp','rule_id']); ts=pd.to_datetime(df['timestamp'],utc=True); assert ts.dt.year.min()==2016 and ts.dt.year.max()==2024; assert df['rule_id'].nunique()==44; assert len(df)==2428448; print('NISON_EXISTING_PASS rows=',len(df),'rules=',df['rule_id'].nunique())"
       - run:
           name: Unpack Murphy source bundle
           command: |
             set -eu
+            mkdir -p /tmp/murphy_recovery
             unzip -q BACKTEST/DEV_BACKTEST_R1_MURPHY_SOURCE.zip.b64.txt -d /tmp/murphy_recovery 2>/dev/null || true
             if [ ! -s /tmp/murphy_recovery/MURPHY_2016_2024_FULL_34_RULE_COVERAGE.csv ]; then
-              python - <<'PY'
-              import base64
-              from pathlib import Path
-              src=Path('BACKTEST/DEV_BACKTEST_R1_MURPHY_SOURCE.zip.b64.txt')
-              data=base64.b64decode(src.read_text())
-              out=Path('/tmp/murphy_recovery.zip'); out.write_bytes(data)
-              PY
-              mkdir -p /tmp/murphy_recovery && unzip -q /tmp/murphy_recovery.zip -d /tmp/murphy_recovery
+              python -c "import base64; from pathlib import Path; src=Path('BACKTEST/DEV_BACKTEST_R1_MURPHY_SOURCE.zip.b64.txt'); Path('/tmp/murphy_recovery.zip').write_bytes(base64.b64decode(src.read_text()))"
+              unzip -q /tmp/murphy_recovery.zip -d /tmp/murphy_recovery
             fi
             MURPHY_CSV=$(find /tmp/murphy_recovery -type f -iname '*.csv' | head -1)
             test -n "$MURPHY_CSV"
