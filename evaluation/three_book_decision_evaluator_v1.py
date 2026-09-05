@@ -27,6 +27,57 @@ def _rule_ids_allowed(rule_ids: Sequence[str]) -> bool:
     return bool(rule_ids) and all(str(rule_id) in allowed for rule_id in rule_ids)
 
 
+def _nison_integrity(evidence: Mapping[str, Any]) -> tuple[dict[str, Any], str, str | None]:
+    """Derive Nison status from actual rule rows; never trust a stale summary status."""
+    rows = evidence.get("rows")
+    if not isinstance(rows, Sequence) or isinstance(rows, (str, bytes)):
+        # Preserve legacy contract when no rule rows are supplied, but do not
+        # upgrade a missing/ambiguous confirmation into a PASS.
+        confirmation = _norm(evidence.get("confirmation"))
+        contradiction = bool(evidence.get("contradiction", False))
+        if contradiction or confirmation in {"CONTRADICTED", "CONTRADICTION"}:
+            status = "CONTRADICTED"
+        elif confirmation == "CONFIRMED":
+            status = "CONFIRMED"
+        else:
+            status = "INSUFFICIENT"
+        return dict(evidence), status, None
+
+    counts = {"PASS": 0, "FAIL": 0, "NOT_EVALUABLE": 0, "OTHER": 0}
+    for row in rows:
+        if not isinstance(row, Mapping):
+            counts["OTHER"] += 1
+            continue
+        status = _norm(row.get("status"))
+        if status in counts:
+            counts[status] += 1
+        else:
+            counts["OTHER"] += 1
+
+    contradiction = bool(evidence.get("contradiction", False)) or any(
+        _norm(row.get("conflict")) in {"CONTRADICTED", "CONTRADICTION"}
+        for row in rows if isinstance(row, Mapping)
+    )
+
+    if contradiction:
+        status = "CONTRADICTED"
+    elif counts["PASS"] > 0 and counts["FAIL"] == 0 and counts["OTHER"] == 0:
+        status = "CONFIRMED"
+    elif counts["PASS"] > 0 and (counts["FAIL"] > 0 or counts["NOT_EVALUABLE"] > 0 or counts["OTHER"] > 0):
+        status = "MIXED"
+    elif counts["FAIL"] > 0:
+        status = "FAILED"
+    else:
+        status = "INSUFFICIENT"
+
+    out = dict(evidence)
+    out["status"] = status
+    out["confirmation"] = "CONFIRMED" if status == "CONFIRMED" else status
+    out["rule_summary"] = counts
+    out["integrity_source"] = "derived_from_rows"
+    return out, status, None
+
+
 def evaluate_three_book_decision(
     *,
     brain_assessment: Mapping[str, Any],
@@ -57,16 +108,17 @@ def evaluate_three_book_decision(
     if not str(risk_evidence.get("stop_loss") or "").strip():
         return _no_trade("STOP_LOSS_UNDEFINED", timestamp, source_rule_ids, tiz_evidence, murphy_evidence, nison_evidence, risk_evidence)
 
-    nison_confirmation = _norm(nison_evidence.get("confirmation"))
-    nison_contradiction = bool(nison_evidence.get("contradiction", False)) or nison_confirmation in {"CONTRADICTED", "CONTRADICTION"}
+    normalized_nison, nison_status, _ = _nison_integrity(nison_evidence)
+    nison_contradiction = nison_status == "CONTRADICTED"
     if nison_contradiction:
-        return _no_trade("NISON_CONTRADICTION", timestamp, source_rule_ids, tiz_evidence, murphy_evidence, nison_evidence, risk_evidence)
+        return _no_trade("NISON_CONTRADICTION", timestamp, source_rule_ids, tiz_evidence, murphy_evidence, normalized_nison, risk_evidence)
+    if nison_status != "CONFIRMED":
+        return _no_trade("NISON_CONFIRMATION_INSUFFICIENT", timestamp, source_rule_ids, tiz_evidence, murphy_evidence, normalized_nison, risk_evidence)
 
     if bias not in {"BULLISH", "BEARISH"}:
-        return _no_trade("BRAIN_DIRECTION_NOT_EXECUTABLE", timestamp, source_rule_ids, tiz_evidence, murphy_evidence, nison_evidence, risk_evidence)
+        return _no_trade("BRAIN_DIRECTION_NOT_EXECUTABLE", timestamp, source_rule_ids, tiz_evidence, murphy_evidence, normalized_nison, risk_evidence)
 
     final = "BUY" if bias == "BULLISH" else "SELL"
-    strength = "strong" if nison_confirmation == "CONFIRMED" else "medium"
     confidence = float(brain_assessment.get("confidence", 0.0) or 0.0)
 
     return {
@@ -76,12 +128,12 @@ def evaluate_three_book_decision(
             "status": "EXECUTABLE",
         },
         "murphy": dict(murphy_evidence),
-        "nison": dict(nison_evidence),
+        "nison": normalized_nison,
         "trading_zone": dict(tiz_evidence),
         "risk_engine": dict(risk_evidence),
         "decision": {
-            "logic": strength,
-            "reasons_for": ["Murphy context passed", "Risk hard gate passed"],
+            "logic": "strong",
+            "reasons_for": ["Murphy context passed", "Nison confirmation passed", "Risk hard gate passed"],
             "reasons_against": [],
             "final": final,
         },
@@ -91,6 +143,7 @@ def evaluate_three_book_decision(
             "backtest_status": "UNTESTED",
             "tiz_execution_gate": "DISABLED",
             "tiz_audit_state": dict(tiz_evidence),
+            "nison_integrity": "derived_from_rows",
         },
     }
 
@@ -118,5 +171,6 @@ def _no_trade(
             "backtest_status": "UNTESTED",
             "tiz_execution_gate": "DISABLED",
             "tiz_audit_state": dict(tiz_evidence),
+            "nison_integrity": "derived_from_rows" if nison_evidence.get("rows") is not None else "summary_only",
         },
     }
