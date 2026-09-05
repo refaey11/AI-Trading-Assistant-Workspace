@@ -19,5 +19,5 @@ jobs:
           python-version: '3.11'
       - name: Install dependencies
         run: python -m pip install --upgrade pip pytest pandas
-      - name: Run Gate 3C regression tests
-        run: python -m pytest -vv tests/test_gate3c_build_single_event_bundle_v1.py
+      - name: Run full Decision Brain test suite
+        run: python -m pytest -vv tests
