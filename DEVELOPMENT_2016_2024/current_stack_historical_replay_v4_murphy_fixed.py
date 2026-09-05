@@ -1,4 +1,54 @@
-fr __future__ import 
+from __future__ import annotations
+
+import argparse
+import importlib.util
+import json
+import sys
+from pathlib import Path
+from typing import Any
+
+import pandas as pd
+
+from current_stack_historical_memory_provider_v1 import HistoricalMemoryProvider
+
+ROOT = Path(__file__).resolve().parents[1]
+MURPHY_IDS = {f"MURPHY_{i:04d}" for i in [3,4,6,7,18,19,21,22,23,25,26,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,47,48,49,50,51]}
+NISON_IDS = {f"NISON_{i:04d}" for i in range(1,45)}
+MTF_FIELDS = ["mtf_trend_score","M5_trend_regime","M15_trend_regime","M30_trend_regime","H1_trend_regime","H4_trend_regime","D1_trend_regime"]
+
+
+def load_module(path: Path, name: str):
+    spec = importlib.util.spec_from_file_location(name, path)
+    if not spec or not spec.loader:
+        raise RuntimeError(f"cannot load {path}")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+def load_csv(path: Path) -> pd.DataFrame:
+    df = pd.read_csv(path)
+    if "timestamp" not in df.columns:
+        raise ValueError(f"{path}: missing timestamp")
+    df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True, errors="raise", format="mixed")
+    return df.sort_values("timestamp", kind="stable").reset_index(drop=True)
+
+
+def split_ids(value: Any) -> list[str]:
+    return [x.strip() for x in str(value or "").split("|") if x.strip() and x.strip().upper() not in {"NONE","NULL","NAN","NISON_NONE"}]
+
+
+def asof_frame(df: pd.DataFrame) -> pd.DataFrame:
+    return df.drop_duplicates("timestamp", keep="last").set_index("timestamp").sort_index()
+
+
+def asof_row(frame: pd.DataFrame, ts: pd.Timestamp) -> pd.Series | None:
+    if frame.empty:
+        return None
+    pos = frame.index.searchsorted(ts, side="right") - 1
+    return None if pos < 0 else frame.iloc[pos]
+
 
 def scalar(row: pd.Series, names: tuple[str, ...]) -> float:
     for name in names:
@@ -367,6 +417,7 @@ if __name__ == "__main__":
     p.add_argument("--historical-outcome", required=True, type=Path)
     p.add_argument("--similarity-artifact", required=True, type=Path)
     p.add_argument("--retrieval-artifact", required=True, type=Path)
-    p.add_argument("--
+    p.add_argument("--scenario-artifact", required=True, type=Path)
+    p.add_argument("--output-dir", required=True, type=Path)
     a = p.parse_args()
     run(a.h1, a.market_state, a.murphy, a.nison, a.mtf, a.historical_context, a.historical_outcome, a.similarity_artifact, a.retrieval_artifact, a.scenario_artifact, a.output_dir)
