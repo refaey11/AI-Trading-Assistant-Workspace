@@ -1,0 +1,90 @@
+version: 2.1
+
+jobs:
+  decision_brain_backtest_2016_2024_only:
+    docker:
+      - image: cimg/python:3.12
+    steps:
+      - checkout
+      - run: python -m pip install --upgrade pip pandas pytest
+      - run:
+          name: Download existing Nison 2016-2024 evidence from Dropbox
+          command: |
+            set -eu
+            test -n "${DROPBOX_ACCESS_TOKEN:-}"
+            mkdir -p artifacts/nison artifacts/source/unpacked
+            python - <<'PY'
+            import json, os
+            from pathlib import Path
+            from urllib.request import Request, urlopen
+            token=os.environ['DROPBOX_ACCESS_TOKEN']
+            def download(path, out, timeout=900):
+                req=Request('https://content.dropboxapi.com/2/files/download', data=b'', method='POST', headers={'Authorization':f'Bearer {token}','Dropbox-API-Arg':json.dumps({'path':path})})
+                with urlopen(req, timeout=timeout) as r:
+                    with open(out,'wb') as f:
+                        while True:
+                            chunk=r.read(1024*1024)
+                            if not chunk: break
+                            f.write(chunk)
+            download('/New 8/NISON_2016_2024_FULL_EVIDENCE.csv','artifacts/nison/NISON_2016_2024_FULL_EVIDENCE.csv')
+            download('/New 8/GBPUSD_H1_2016_2025_MASTER.zip','artifacts/source/GBPUSD_H1_2016_2025_MASTER.zip',300)
+            download('/New 8/GBPUSD_MARKET_STATE 6.csv','artifacts/GBPUSD_MARKET_STATE.csv',300)
+            PY
+            unzip -q artifacts/source/GBPUSD_H1_2016_2025_MASTER.zip -d artifacts/source/unpacked
+            SOURCE_CSV=$(find artifacts/source/unpacked -type f -name 'GBPUSD_H1_2016_2025_MASTER.csv' | head -1)
+            test -n "$SOURCE_CSV"
+            test -s artifacts/nison/NISON_2016_2024_FULL_EVIDENCE.csv
+            test -s artifacts/GBPUSD_MARKET_STATE.csv
+            echo "SOURCE_CSV=$SOURCE_CSV" >> "$BASH_ENV"
+      - run:
+          name: Validate existing Nison scope
+          command: |
+            python - <<'PY'
+            import pandas as pd
+            p='artifacts/nison/NISON_2016_2024_FULL_EVIDENCE.csv'
+            df=pd.read_csv(p, usecols=['timestamp','rule_id'])
+            ts=pd.to_datetime(df['timestamp'], utc=True)
+            assert ts.dt.year.min()==2016 and ts.dt.year.max()==2024
+            assert df['rule_id'].nunique()==44
+            assert len(df)==2428448
+            print('NISON_EXISTING_PASS rows=',len(df),'rules=',df['rule_id'].nunique())
+            PY
+      - run:
+          name: Unpack Murphy source bundle
+          command: |
+            set -eu
+            unzip -q BACKTEST/DEV_BACKTEST_R1_MURPHY_SOURCE.zip.b64.txt -d /tmp/murphy_recovery 2>/dev/null || true
+            if [ ! -s /tmp/murphy_recovery/MURPHY_2016_2024_FULL_34_RULE_COVERAGE.csv ]; then
+              python - <<'PY'
+              import base64
+              from pathlib import Path
+              src=Path('BACKTEST/DEV_BACKTEST_R1_MURPHY_SOURCE.zip.b64.txt')
+              data=base64.b64decode(src.read_text())
+              out=Path('/tmp/murphy_recovery.zip'); out.write_bytes(data)
+              PY
+              mkdir -p /tmp/murphy_recovery && unzip -q /tmp/murphy_recovery.zip -d /tmp/murphy_recovery
+            fi
+            MURPHY_CSV=$(find /tmp/murphy_recovery -type f -iname '*.csv' | head -1)
+            test -n "$MURPHY_CSV"
+            mkdir -p artifacts/murphy
+            cp "$MURPHY_CSV" artifacts/murphy/MURPHY_2016_2024_FULL_EVIDENCE.csv
+            test -s artifacts/murphy/MURPHY_2016_2024_FULL_EVIDENCE.csv
+      - run:
+          name: Run frozen Decision Brain backtest 2016-2024 only
+          command: |
+            set -eu
+            mkdir -p artifacts/decision_brain_backtest_2016_2024
+            python BACKTEST/DEV_BACKTEST_RUNNER_V1.py \
+              --h1 "$SOURCE_CSV" \
+              --murphy artifacts/murphy/MURPHY_2016_2024_FULL_EVIDENCE.csv \
+              --nison artifacts/nison/NISON_2016_2024_FULL_EVIDENCE.csv \
+              --context artifacts/GBPUSD_MARKET_STATE.csv \
+              --output-dir artifacts/decision_brain_backtest_2016_2024
+      - store_artifacts:
+          path: artifacts/decision_brain_backtest_2016_2024
+          destination: decision_brain_backtest_2016_2024
+
+workflows:
+  backtest_only_2016_2024:
+    jobs:
+      - decision_brain_backtest_2016_2024_only
