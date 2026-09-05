@@ -1,0 +1,23 @@
+name: Gate 3C Tests
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  gate3c:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: python -m pip install --upgrade pip pytest pandas
+      - name: Run focused Gate 3C tests
+        run: python -m pytest -vv tests/murphy_0030_0032/test_pnf_3box_log_reference.py tests/test_gate3c_build_single_event_bundle_v1.py

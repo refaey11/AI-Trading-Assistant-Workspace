@@ -91,8 +91,6 @@ def main() -> None:
     parser.add_argument("--timestamp", required=True)
     parser.add_argument("--murphy-root", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
-    # These are accepted by the existing Gate 3C invocation.  They remain
-    # opaque here because the canonical event assembly is owned by callers.
     for name in ("h1", "market-state", "nison", "mtf-root", "historical-context-root",
                  "historical-outcome-root", "similarity-root", "retrieval-root"):
         parser.add_argument(f"--{name}")
