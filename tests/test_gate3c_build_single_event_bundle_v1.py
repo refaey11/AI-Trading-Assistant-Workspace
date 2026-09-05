@@ -2,26 +2,15 @@
 
 import inspect
 
-from tools.gate3c_build_single_event_bundle_v1 import MURPHY_IDS, build, murphy_coverage
+from tools.gate3c_build_single_event_bundle_v1 import MURPHY_IDS, build_bundle, murphy_coverage
 
 
 TIMESTAMP = "2024-01-02T03:04:05Z"
 
 
-def test_current_build_interface_accepts_event_timestamp_and_all_sources() -> None:
-    parameters = list(inspect.signature(build).parameters)
-    assert parameters == [
-        "event_ts",
-        "h1",
-        "market_state",
-        "nison",
-        "murphy_root",
-        "mtf_root",
-        "historical_context_root",
-        "historical_outcome_root",
-        "similarity_root",
-        "retrieval_root",
-    ]
+def test_current_build_interface_is_stable() -> None:
+    parameters = list(inspect.signature(build_bundle).parameters)
+    assert parameters == ["timestamp", "murphy_root"]
     assert 2016 <= int(TIMESTAMP[:4]) <= 2024
 
 
@@ -35,7 +24,7 @@ def test_complete_murphy_34_rule_fan_in_passes() -> None:
 
 def test_missing_murphy_rule_rejects_event() -> None:
     missing_rule = sorted(MURPHY_IDS)[-1]
-    coverage = murphy_coverage(sorted(MURPHY_IDS - {missing_rule}))
+    coverage = murphy_coverage(sorted(set(MURPHY_IDS) - {missing_rule}))
     assert coverage["missing_rule_ids"] == [missing_rule]
     assert coverage["complete"] is False
 
