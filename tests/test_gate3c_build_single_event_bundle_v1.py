@@ -2,6 +2,8 @@
 
 import inspect
 
+import pytest
+
 from tools.gate3c_build_single_event_bundle_v1 import MURPHY_IDS, build_bundle, murphy_coverage
 
 
@@ -19,6 +21,7 @@ def test_complete_murphy_34_rule_fan_in_passes() -> None:
     assert len(MURPHY_IDS) == 34
     assert coverage["missing_rule_ids"] == []
     assert coverage["unknown_rule_ids"] == []
+    assert coverage["duplicate_rule_ids"] == []
     assert coverage["complete"] is True
 
 
@@ -37,8 +40,14 @@ def test_unknown_murphy_id_rejects_event() -> None:
     assert coverage["complete"] is False
 
 
+def test_duplicate_murphy_rows_reject_event() -> None:
+    duplicate_rule = sorted(MURPHY_IDS)[0]
+    coverage = murphy_coverage([*sorted(MURPHY_IDS), duplicate_rule])
+    assert coverage["duplicate_rule_ids"] == [duplicate_rule]
+    assert coverage["complete"] is False
+
+
 def test_duplicate_murphy_rows_do_not_inflate_rule_count() -> None:
     coverage = murphy_coverage([*sorted(MURPHY_IDS), sorted(MURPHY_IDS)[0], sorted(MURPHY_IDS)[0]])
-    assert coverage["missing_rule_ids"] == []
-    assert coverage["unknown_rule_ids"] == []
-    assert coverage["complete"] is True
+    assert coverage["rule_count"] == 34
+    assert coverage["complete"] is False
