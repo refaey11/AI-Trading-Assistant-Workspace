@@ -10,6 +10,7 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Iterable
@@ -29,17 +30,20 @@ MURPHY_IDS = (
 
 
 def murphy_coverage(rule_ids: Iterable[object]) -> dict[str, Any]:
-    """Return the complete, fail-closed coverage result for the Murphy fan-in."""
+    """Return complete, fail-closed coverage for the Murphy fan-in."""
     expected = set(MURPHY_IDS)
-    observed = {str(rule_id) for rule_id in rule_ids if rule_id is not None}
-    missing_rule_ids = sorted(expected - observed)
-    unknown_rule_ids = sorted(observed - expected)
+    observed = [str(rule_id) for rule_id in rule_ids if rule_id is not None]
+    observed_set = set(observed)
+    missing_rule_ids = sorted(expected - observed_set)
+    unknown_rule_ids = sorted(observed_set - expected)
+    duplicate_rule_ids = sorted(rule_id for rule_id, count in Counter(observed).items() if count > 1)
     return {
-        "rule_ids": sorted(observed & expected),
-        "rule_count": len(observed & expected),
+        "rule_ids": sorted(observed_set & expected),
+        "rule_count": len(observed_set & expected),
         "missing_rule_ids": missing_rule_ids,
         "unknown_rule_ids": unknown_rule_ids,
-        "complete": not missing_rule_ids and not unknown_rule_ids,
+        "duplicate_rule_ids": duplicate_rule_ids,
+        "complete": not missing_rule_ids and not unknown_rule_ids and not duplicate_rule_ids,
     }
 
 
@@ -75,6 +79,7 @@ def build_bundle(timestamp: str, murphy_root: Path) -> dict[str, Any]:
         "murphy_row_count": len(rows),
         "missing_rule_ids": coverage["missing_rule_ids"],
         "unknown_rule_ids": coverage["unknown_rule_ids"],
+        "duplicate_rule_ids": coverage["duplicate_rule_ids"],
         "complete": coverage["complete"],
     }
     if not coverage["complete"]:
