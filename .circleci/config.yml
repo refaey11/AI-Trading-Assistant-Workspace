@@ -16,7 +16,7 @@ jobs:
           name: Reconcile Murphy evidence
           command: >-
             python tools/reconcile_murphy_evidence_v1.py
-            --github-source BACKTEST/DEV_BACKTEST_R1_MURPHY_SOURCE.zip.b64.txt
+            --github-source artifacts/murphy/MURPHY_GITHUB_FULL_EVIDENCE.csv
             --dropbox-source artifacts/murphy/MURPHY_DROPBOX_FULL_EVIDENCE.csv
             --allowlist governance/DECISION_BRAIN_RULE_ALLOWLIST_V1.json
             --output artifacts/murphy/reconciliation.json
