@@ -1,10 +1,5 @@
 #!/usr/bin/env python3
-"""Reconcile two Murphy evidence CSVs against the canonical 34-rule allowlist.
-
-The gate is intentionally source-agnostic: it compares normalized rule coverage,
-unknown IDs, duplicate timestamp/rule pairs, and date bounds without assuming
-that row ordering or producer-specific metadata is identical.
-"""
+"""Reconcile two Murphy evidence CSVs against the canonical 34-rule allowlist."""
 from __future__ import annotations
 
 import argparse
@@ -16,12 +11,19 @@ from pathlib import Path
 
 def load_allowlist(path: Path) -> set[str]:
     data = json.loads(path.read_text(encoding="utf-8"))
-    ids = data.get("murphy_rule_ids") or data.get("murphy_rules")
-    if isinstance(ids, dict):
-        ids = ids.keys()
-    if not ids:
-        ids = [x["id"] for x in data.get("rules", []) if str(x.get("id", "")).startswith("MURPHY_")]
-    return {str(x) for x in ids}
+    candidates = (
+        data.get("murphy_rule_ids")
+        or data.get("murphy_rules")
+        or data.get("verified_runtime", {}).get("MURPHY")
+    )
+    if isinstance(candidates, dict):
+        candidates = candidates.keys()
+    if not candidates:
+        candidates = [
+            x["id"] for x in data.get("rules", [])
+            if str(x.get("id", "")).startswith("MURPHY_")
+        ]
+    return {str(x) for x in candidates}
 
 
 def inspect_csv(path: Path, expected: set[str]) -> dict:
@@ -51,10 +53,8 @@ def inspect_csv(path: Path, expected: set[str]) -> dict:
     duplicate_pairs = sorted([f"{ts}|{rid}" for (ts, rid), n in Counter(pairs).items() if n > 1])
     missing = sorted(expected - observed)
     return {
-        "path": str(path),
-        "row_count": rows,
-        "observed_rule_count": len(observed),
-        "missing_rule_ids": missing,
+        "path": str(path), "row_count": rows,
+        "observed_rule_count": len(observed), "missing_rule_ids": missing,
         "unknown_rule_ids": sorted(unknown),
         "duplicate_timestamp_rule_pairs": duplicate_pairs,
         "first_timestamp": min(timestamps) if timestamps else None,
@@ -75,13 +75,9 @@ def main() -> int:
         raise SystemExit(f"canonical Murphy allowlist must contain 34 IDs, got {len(expected)}")
     github = inspect_csv(args.github_source, expected)
     dropbox = inspect_csv(args.dropbox_source, expected)
-    result = {
-        "expected_rule_count": 34,
-        "github": github,
-        "dropbox": dropbox,
-        "coverage_match": set(github["missing_rule_ids"]) == set(dropbox["missing_rule_ids"]) and set(github["unknown_rule_ids"]) == set(dropbox["unknown_rule_ids"]),
-        "complete": github["complete"] and dropbox["complete"],
-    }
+    result = {"expected_rule_count": 34, "github": github, "dropbox": dropbox,
+              "coverage_match": set(github["missing_rule_ids"]) == set(dropbox["missing_rule_ids"]) and set(github["unknown_rule_ids"]) == set(dropbox["unknown_rule_ids"]),
+              "complete": github["complete"] and dropbox["complete"]}
     text = json.dumps(result, indent=2, ensure_ascii=False) + "\n"
     if args.output:
         args.output.write_text(text, encoding="utf-8")
