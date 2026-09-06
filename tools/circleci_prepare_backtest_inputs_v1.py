@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import json
 import os
 import shutil
@@ -31,6 +32,13 @@ def download(dropbox_path: str, output: Path) -> None:
         shutil.copyfileobj(response, handle)
 
 
+def first_csv(directory: Path) -> Path:
+    files = sorted(directory.rglob("*.csv"))
+    if not files:
+        raise SystemExit(f"No CSV found under {directory}")
+    return files[0]
+
+
 download("/New 8/NISON_2016_2024_FULL_EVIDENCE.csv", ROOT / "nison" / "NISON_2016_2024_FULL_EVIDENCE.csv")
 download("/New 8/MURPHY_HISTORICAL_34_RULE_FANIN_2016_2024.zip", Path("/tmp/murphy.zip"))
 download("/New 8/GBPUSD_H1_2016_2025_MASTER.zip", ROOT / "source" / "GBPUSD_H1_2016_2025_MASTER.zip")
@@ -38,17 +46,16 @@ download("/New 8/GBPUSD_MARKET_STATE 6.csv", ROOT / "GBPUSD_MARKET_STATE.csv")
 
 with zipfile.ZipFile("/tmp/murphy.zip") as archive:
     archive.extractall(ROOT / "murphy")
+shutil.copy2(first_csv(ROOT / "murphy"), ROOT / "murphy" / "MURPHY_DROPBOX_FULL_EVIDENCE.csv")
 
-murphy_csvs = sorted((ROOT / "murphy").rglob("*.csv"))
-if not murphy_csvs:
-    raise SystemExit("No Murphy CSV found in Dropbox archive")
-shutil.copy2(murphy_csvs[0], ROOT / "murphy" / "MURPHY_DROPBOX_FULL_EVIDENCE.csv")
+embedded_zip = Path("/tmp/murphy_embedded.zip")
+embedded_zip.write_bytes(base64.b64decode(Path("BACKTEST/DEV_BACKTEST_R1_MURPHY_SOURCE.zip.b64.txt").read_text(encoding="utf-8")))
+with zipfile.ZipFile(embedded_zip) as archive:
+    archive.extractall(Path("/tmp/murphy_embedded"))
+shutil.copy2(first_csv(Path("/tmp/murphy_embedded")), ROOT / "murphy" / "MURPHY_GITHUB_FULL_EVIDENCE.csv")
 
 with zipfile.ZipFile(ROOT / "source" / "GBPUSD_H1_2016_2025_MASTER.zip") as archive:
     archive.extractall(ROOT / "source" / "unpacked")
-
-source_csvs = sorted((ROOT / "source" / "unpacked").rglob("GBPUSD_H1_2016_2025_MASTER.csv"))
-if not source_csvs:
-    raise SystemExit("No GBPUSD H1 CSV found in source archive")
-Path("/tmp/source_csv_path").write_text(str(source_csvs[0]), encoding="utf-8")
-print(f"Prepared source: {source_csvs[0]}")
+source_csv = first_csv(ROOT / "source" / "unpacked")
+Path("/tmp/source_csv_path").write_text(str(source_csv), encoding="utf-8")
+print(f"Prepared source: {source_csv}")
