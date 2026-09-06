@@ -32,11 +32,24 @@ def download(dropbox_path: str, output: Path) -> None:
         shutil.copyfileobj(response, handle)
 
 
-def first_csv(directory: Path) -> Path:
-    files = sorted(directory.rglob("*.csv"))
-    if not files:
-        raise SystemExit(f"No CSV found under {directory}")
-    return files[0]
+def csv_rule_ids(path: Path) -> set[str]:
+    import csv
+    with path.open("r", encoding="utf-8-sig", newline="") as handle:
+        reader = csv.DictReader(handle)
+        fields = reader.fieldnames or []
+        field = next((f for f in fields if f.lower() in {"rule_id", "ruleid", "id"}), None)
+        if field is None:
+            return set()
+        return {str(row.get(field, "")).strip() for row in reader if str(row.get(field, "")).strip()}
+
+
+def select_murphy_csv(directory: Path, minimum: int = 34) -> Path:
+    candidates = sorted(directory.rglob("*.csv"))
+    scored = sorted(((len(csv_rule_ids(path)), path) for path in candidates), reverse=True)
+    if not scored or scored[0][0] < minimum:
+        summary = ", ".join(f"{count}:{path.name}" for count, path in scored[:10]) or "none"
+        raise SystemExit(f"No complete Murphy evidence CSV found; need at least {minimum} rule IDs. Candidates: {summary}")
+    return scored[0][1]
 
 
 download("/New 8/NISON_2016_2024_FULL_EVIDENCE.csv", ROOT / "nison" / "NISON_2016_2024_FULL_EVIDENCE.csv")
@@ -46,28 +59,27 @@ download("/New 8/GBPUSD_MARKET_STATE 6.csv", ROOT / "GBPUSD_MARKET_STATE.csv")
 
 with zipfile.ZipFile("/tmp/murphy.zip") as archive:
     archive.extractall(ROOT / "murphy")
-shutil.copy2(first_csv(ROOT / "murphy"), ROOT / "murphy" / "MURPHY_DROPBOX_FULL_EVIDENCE.csv")
+dropbox_csv = select_murphy_csv(ROOT / "murphy")
+shutil.copy2(dropbox_csv, ROOT / "murphy" / "MURPHY_DROPBOX_FULL_EVIDENCE.csv")
+print(f"Selected complete Dropbox Murphy evidence: {dropbox_csv}")
 
-# The committed embedded artifact is currently truncated (base64 length is invalid).
-# Keep the pipeline executable and explicit: use the verified Dropbox Murphy evidence
-# as the GitHub-side source until a complete independent GitHub artifact is committed.
-try:
-    encoded = Path("BACKTEST/DEV_BACKTEST_R1_MURPHY_SOURCE.zip.b64.txt").read_text(encoding="utf-8")
-    encoded = "".join(encoded.split())
-    if len(encoded) % 4 == 1:
-        raise ValueError("embedded base64 payload is truncated")
-    embedded_bytes = base64.b64decode(encoded, validate=True)
-    embedded_zip = Path("/tmp/murphy_embedded.zip")
-    embedded_zip.write_bytes(embedded_bytes)
-    with zipfile.ZipFile(embedded_zip) as archive:
-        archive.extractall(Path("/tmp/murphy_embedded"))
-    shutil.copy2(first_csv(Path("/tmp/murphy_embedded")), ROOT / "murphy" / "MURPHY_GITHUB_FULL_EVIDENCE.csv")
-except (OSError, ValueError, base64.binascii.Error, zipfile.BadZipFile) as exc:
-    shutil.copy2(ROOT / "murphy" / "MURPHY_DROPBOX_FULL_EVIDENCE.csv", ROOT / "murphy" / "MURPHY_GITHUB_FULL_EVIDENCE.csv")
-    print(f"Warning: embedded Murphy source unavailable; using verified Dropbox source for GitHub-side input: {exc}")
+# The committed embedded artifact must be independent and complete. Never substitute
+# Dropbox data for the GitHub-side source, because that would make reconciliation meaningless.
+encoded = Path("BACKTEST/DEV_BACKTEST_R1_MURPHY_SOURCE.zip.b64.txt").read_text(encoding="utf-8")
+encoded = "".join(encoded.split())
+if len(encoded) % 4 == 1:
+    raise SystemExit("Embedded GitHub Murphy artifact is truncated: invalid base64 length")
+embedded_bytes = base64.b64decode(encoded, validate=True)
+embedded_zip = Path("/tmp/murphy_embedded.zip")
+embedded_zip.write_bytes(embedded_bytes)
+with zipfile.ZipFile(embedded_zip) as archive:
+    archive.extractall(Path("/tmp/murphy_embedded"))
+github_csv = select_murphy_csv(Path("/tmp/murphy_embedded"))
+shutil.copy2(github_csv, ROOT / "murphy" / "MURPHY_GITHUB_FULL_EVIDENCE.csv")
+print(f"Selected complete embedded GitHub Murphy evidence: {github_csv}")
 
 with zipfile.ZipFile(ROOT / "source" / "GBPUSD_H1_2016_2025_MASTER.zip") as archive:
     archive.extractall(ROOT / "source" / "unpacked")
-source_csv = first_csv(ROOT / "source" / "unpacked")
+source_csv = sorted((ROOT / "source" / "unpacked").rglob("*.csv"))[0]
 Path("/tmp/source_csv_path").write_text(str(source_csv), encoding="utf-8")
 print(f"Prepared source: {source_csv}")
