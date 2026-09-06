@@ -48,8 +48,15 @@ with zipfile.ZipFile("/tmp/murphy.zip") as archive:
     archive.extractall(ROOT / "murphy")
 shutil.copy2(first_csv(ROOT / "murphy"), ROOT / "murphy" / "MURPHY_DROPBOX_FULL_EVIDENCE.csv")
 
+encoded = Path("BACKTEST/DEV_BACKTEST_R1_MURPHY_SOURCE.zip.b64.txt").read_text(encoding="utf-8")
+encoded = "".join(encoded.split())
+encoded += "=" * ((-len(encoded)) % 4)
+try:
+    embedded_bytes = base64.b64decode(encoded, validate=True)
+except Exception as exc:
+    raise SystemExit(f"Invalid embedded Murphy base64 source: {exc}") from exc
 embedded_zip = Path("/tmp/murphy_embedded.zip")
-embedded_zip.write_bytes(base64.b64decode(Path("BACKTEST/DEV_BACKTEST_R1_MURPHY_SOURCE.zip.b64.txt").read_text(encoding="utf-8")))
+embedded_zip.write_bytes(embedded_bytes)
 with zipfile.ZipFile(embedded_zip) as archive:
     archive.extractall(Path("/tmp/murphy_embedded"))
 shutil.copy2(first_csv(Path("/tmp/murphy_embedded")), ROOT / "murphy" / "MURPHY_GITHUB_FULL_EVIDENCE.csv")
