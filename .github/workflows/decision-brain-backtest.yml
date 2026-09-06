@@ -1,0 +1,51 @@
+name: Decision Brain Backtest
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+jobs:
+  backtest-2016-2024:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: python -m pip install --upgrade pip pandas pytest
+
+      - name: Prepare Dropbox evidence and market inputs
+        env:
+          DROPBOX_ACCESS_TOKEN: ${{ secrets.DROPBOX_ACCESS_TOKEN }}
+        run: python tools/circleci_prepare_backtest_inputs_v1.py
+
+      - name: Reconcile Murphy evidence
+        run: >-
+          python tools/reconcile_murphy_evidence_v1.py
+          --github-source artifacts/murphy/MURPHY_GITHUB_FULL_EVIDENCE.csv
+          --dropbox-source artifacts/murphy/MURPHY_DROPBOX_FULL_EVIDENCE.csv
+          --allowlist governance/DECISION_BRAIN_RULE_ALLOWLIST_V1.json
+          --output artifacts/murphy/reconciliation.json
+
+      - name: Run frozen Decision Brain backtest
+        run: >-
+          python BACKTEST/DEV_BACKTEST_RUNNER_V1.py
+          --h1 "$(cat /tmp/source_csv_path)"
+          --murphy artifacts/murphy/MURPHY_DROPBOX_FULL_EVIDENCE.csv
+          --nison artifacts/nison/NISON_2016_2024_FULL_EVIDENCE.csv
+          --context artifacts/GBPUSD_MARKET_STATE.csv
+          --output-dir artifacts/decision_brain_backtest_2016_2024
+
+      - name: Upload evidence and results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: decision-brain-backtest-2016-2024
+          path: artifacts/
