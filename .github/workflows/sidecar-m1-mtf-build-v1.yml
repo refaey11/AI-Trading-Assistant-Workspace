@@ -1,0 +1,56 @@
+name: Sidecar Raw M1 Canonical MTF Build V1
+
+on:
+  push:
+    branches:
+      - research/high-precision-sidecar-v1
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      DROPBOX_ACCESS_TOKEN: ${{ secrets.DROPBOX_ACCESS_TOKEN }}
+    steps:
+      - name: Checkout sidecar branch
+        uses: actions/checkout@v4
+        with:
+          ref: research/high-precision-sidecar-v1
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: python -m pip install --upgrade pip pandas pytest
+      - name: Download raw M1 source
+        shell: bash
+        run: |
+          set -euo pipefail
+          TOKEN="$(printf '%s' "$DROPBOX_ACCESS_TOKEN" | tr -d '\r\n' | sed -E 's/^Bearer[[:space:]]+//; s/^\"//; s/\"$//')"
+          test -n "$TOKEN"
+          mkdir -p artifacts/source
+          curl -L --fail --silent --show-error https://content.dropboxapi.com/2/files/download \
+            -H "Authorization: Bearer ${TOKEN}" \
+            -H 'Dropbox-API-Arg: {"path":"/GBPUSD_M1_MASTER_2016_2026_V1.zip"}' \
+            -o artifacts/source/gbpusd_m1.zip
+      - name: Build canonical six-TF MTF source from raw M1
+        run: |
+          mkdir -p artifacts/source/mtf
+          python DEVELOPMENT_2016_2024/build_canonical_mtf_from_m1_v1.py \
+            --input artifacts/source/gbpusd_m1.zip \
+            --output artifacts/source/MTF_CURRENT_STACK.csv \
+            --report artifacts/source/MTF_COVERAGE_REPORT.json
+      - name: Validate canonical MTF contract
+        run: |
+          python BACKTEST/mtf_source_contract_gate_v1.py \
+            --mtf artifacts/source/MTF_CURRENT_STACK.csv
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sidecar-raw-m1-canonical-mtf-v1
+          path: artifacts
+          if-no-files-found: ignore
