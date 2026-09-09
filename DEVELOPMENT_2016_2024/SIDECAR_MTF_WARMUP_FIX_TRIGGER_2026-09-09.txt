@@ -1,0 +1,2 @@
+Sidecar workflow trigger marker.
+The MTF canonical-source gate now concatenates 2016-2024 yearly producer files globally, drops only leading incomplete rows before the first complete 2016 row, and rejects every missing value after that point. No imputation, scaling, or categorical translation is permitted.
