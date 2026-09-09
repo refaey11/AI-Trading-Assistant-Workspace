@@ -84,21 +84,37 @@ jobs:
           python - <<'PY'
           from pathlib import Path
           import json,pandas as pd
-          root=Path('artifacts/source/mtf'); fields=['M5_trend_regime','M15_trend_regime','M30_trend_regime','H1_trend_regime','H4_trend_regime','D1_trend_regime']; required={'timestamp','mtf_trend_score',*fields}; frames=[]
+          root=Path('artifacts/source/mtf'); fields=['M5_trend_regime','M15_trend_regime','M30_trend_regime','H1_trend_regime','H4_trend_regime','D1_trend_regime']; required={'timestamp','mtf_trend_score',*fields}; frames=[]; warmup_dropped=0
           for year in range(2016,2025):
               matches=sorted(root.rglob(f'GBPUSD_M5_MTF_ALIGNMENT_{year}.csv'))
               if len(matches)!=1: raise SystemExit(f'MTF_SOURCE_EXPECTED_ONE_FILE:{year}:{matches}')
               df=pd.read_csv(matches[0],low_memory=False); missing=sorted(required-set(df.columns))
               if missing: raise SystemExit(f'MTF_SOURCE_MISSING_REQUIRED_FIELDS:{year}:{missing}')
               df['timestamp']=pd.to_datetime(df.timestamp,utc=True,errors='raise',format='mixed')
-              for f in ['mtf_trend_score',*fields]: df[f]=pd.to_numeric(df[f],errors='raise').astype(float)
-              if df[['mtf_trend_score',*fields]].isna().any().any(): raise SystemExit(f'MTF_SOURCE_INCOMPLETE:{year}')
+              for f in ['mtf_trend_score',*fields]: df[f]=pd.to_numeric(df[f],errors='coerce').astype(float)
+              value_fields=['mtf_trend_score',*fields]
+              complete=df[value_fields].notna().all(axis=1)
+              if year == 2016:
+                  first_complete=complete.idxmax() if complete.any() else None
+                  if first_complete is None: raise SystemExit('MTF_SOURCE_NO_COMPLETE_ROW_2016')
+                  if not bool(complete.loc[first_complete]): raise SystemExit('MTF_SOURCE_INTERNAL_WARMUP_INDEX_ERROR')
+                  leading=df.index[df.index < first_complete]
+                  if len(leading):
+                      warmup_dropped += len(leading)
+                      df=df.loc[first_complete:].copy()
+                      complete=complete.loc[first_complete:]
+                  if df[value_fields].isna().any().any():
+                      bad_rows=df.index[~complete]
+                      raise SystemExit(f'MTF_SOURCE_MISSING_AFTER_FIRST_COMPLETE:2016:rows={bad_rows[:20].tolist()}')
+              elif not complete.all():
+                  bad_rows=df.index[~complete]
+                  raise SystemExit(f'MTF_SOURCE_INCOMPLETE_AFTER_WARMUP:{year}:rows={bad_rows[:20].tolist()}')
               frames.append(df)
           combined=pd.concat(frames,ignore_index=True).sort_values('timestamp')
           if combined.timestamp.duplicated().any(): raise SystemExit('MTF_SOURCE_DUPLICATE_TIMESTAMP')
           Path('artifacts/source/MTF_CURRENT_STACK.csv').write_text(combined.to_csv(index=False),encoding='utf-8')
-          Path('artifacts/source/MTF_COVERAGE_REPORT.json').write_text(json.dumps({'status':'PASS','coverage_years':list(range(2016,2025)),'timeframes':['M5','M15','M30','H1','H4','D1'],'producer_values_used_verbatim':True,'categorical_translation_applied':False,'imputation_applied':False,'scaling_applied':False},indent=2))
-          print('MTF_COVERAGE_PASS',len(combined))
+          Path('artifacts/source/MTF_COVERAGE_REPORT.json').write_text(json.dumps({'status':'PASS','coverage_years':list(range(2016,2025)),'timeframes':['M5','M15','M30','H1','H4','D1'],'producer_values_used_verbatim':True,'categorical_translation_applied':False,'imputation_applied':False,'scaling_applied':False,'warmup_policy':'drop_leading_incomplete_rows_2016_only','warmup_rows_dropped_2016':warmup_dropped,'missing_after_first_complete_rejected':True},indent=2))
+          print('MTF_COVERAGE_PASS',len(combined),'WARMUP_ROWS_DROPPED_2016',warmup_dropped)
           PY
       - name: Canonical six-TF source contract gate
         run: python BACKTEST/mtf_source_contract_gate_v1.py --mtf artifacts/source/MTF_CURRENT_STACK.csv
@@ -132,6 +148,7 @@ jobs:
           c=json.loads(Path('artifacts/source/MTF_COVERAGE_REPORT.json').read_text()); m=json.loads(Path('artifacts/current_stack_backtest_2016_2024/current_stack_validation_manifest_2016_2024.json').read_text())
           assert c['status']=='PASS' and c['coverage_years']==list(range(2016,2025)) and c['timeframes']==['M5','M15','M30','H1','H4','D1']
           assert c['producer_values_used_verbatim'] and not c['categorical_translation_applied'] and not c['imputation_applied'] and not c['scaling_applied']
+          assert c['warmup_policy']=='drop_leading_incomplete_rows_2016_only' and c['missing_after_first_complete_rejected']
           assert m['window_2016_2024_only'] and not m['future_data_used'] and m['trade_lifecycle_event_driven'] and m['pnl_recorded_only_on_exit'] and m['risk_state_updates_only_on_realized_pnl']
           print('AUTO_V5_4_MANIFEST_PASS')
           PY
