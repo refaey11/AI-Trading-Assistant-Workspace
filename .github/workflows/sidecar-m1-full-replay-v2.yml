@@ -52,20 +52,34 @@ jobs:
       - name: Build canonical MTF from continuous raw M1
         run: |
           python DEVELOPMENT_2016_2024/build_canonical_mtf_from_m1_v1.py --input artifacts/source/m1.zip --output artifacts/source/MTF_CURRENT_STACK.csv --report artifacts/source/MTF_COVERAGE_REPORT.json
-      - name: Resolve Murphy source
+      - name: Resolve and fan-in all Murphy source evidence
         run: |
           python - <<'PY'
           from pathlib import Path
           import pandas as pd
-          root=Path('artifacts/source/murphy'); expected={f'MURPHY_{i:04d}' for i in [3,4,6,7,18,19,21,22,23,25,26,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,47,48,49,50,51]}; ranked=[]
-          for p in root.rglob('*.csv'):
-            try: df=pd.read_csv(p,usecols=['timestamp','source_rule_id'],low_memory=False)
-            except Exception: continue
-            ids={x.strip() for v in df.source_rule_id.dropna() for x in str(v).split('|') if x.strip() and x.strip().upper() not in {'NONE','NULL','NAN','NISON_NONE'}}
-            y=pd.to_datetime(df.timestamp,utc=True,errors='coerce',format='mixed').dt.year.dropna()
-            if not y.empty and int(y.min())>=2016 and int(y.max())<=2024 and ids and ids.issubset(expected): ranked.append((len(df),p))
-          if not ranked: raise SystemExit('BLOCKED_MURPHY_NO_VALID_2016_2024_SOURCE')
-          chosen=max(ranked,key=lambda x:x[0])[1]; Path('artifacts/source/MURPHY_CURRENT_STACK.csv').write_bytes(chosen.read_bytes()); print(chosen)
+          root=Path('artifacts/source/murphy')
+          expected={f'MURPHY_{i:04d}' for i in [3,4,6,7,18,19,21,22,23,25,26,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,47,48,49,50,51]}
+          frames=[]
+          for p in sorted(root.rglob('*.csv')):
+            try: df=pd.read_csv(p,low_memory=False)
+            except Exception as exc: print(f'SKIP {p}: {exc}'); continue
+            req={'timestamp','source_rule_id','status','direction'}
+            if not req.issubset(df.columns): continue
+            ts=pd.to_datetime(df['timestamp'],utc=True,errors='coerce',format='mixed')
+            valid=ts.notna() & ts.dt.year.between(2016,2024)
+            if not valid.any(): continue
+            x=df.loc[valid].copy(); x['timestamp']=ts.loc[valid]
+            ids={rid.strip() for v in x.source_rule_id.dropna() for rid in str(v).split('|') if rid.strip() and rid.strip().upper() not in {'NONE','NULL','NAN','NISON_NONE'}}
+            if ids and ids.issubset(expected):
+              x['_source_file']=str(p); frames.append(x)
+          if not frames: raise SystemExit('BLOCKED_MURPHY_NO_VALID_2016_2024_SOURCE')
+          merged=pd.concat(frames,ignore_index=True).drop_duplicates()
+          observed={rid.strip() for v in merged.source_rule_id.dropna() for rid in str(v).split('|') if rid.strip() and rid.strip().upper() not in {'NONE','NULL','NAN','NISON_NONE'}}
+          missing=sorted(expected-observed); unknown=sorted(observed-expected)
+          print(f'FANIN files={len(frames)} rows={len(merged)} observed={len(observed)} missing={missing} unknown={unknown}')
+          if unknown: raise SystemExit(f'BLOCKED_MURPHY_UNKNOWN_IDS:{unknown}')
+          if missing: raise SystemExit(f'BLOCKED_MURPHY_INCOMPLETE_34:{missing}')
+          merged.sort_values(['timestamp','source_rule_id']).to_csv('artifacts/source/MURPHY_CURRENT_STACK.csv',index=False)
           PY
       - name: Resolve memory paths
         run: |
