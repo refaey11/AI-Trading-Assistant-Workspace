@@ -103,6 +103,11 @@ source = source.replace(
 )
 
 mod = load_module_from_text(source, "current_stack_historical_replay_v5_4_impl")
+# The implementation is executed from the V4 source namespace. Explicitly
+# inject the frozen execution constants into that namespace so the wrapper's
+# V5.4 replacement cannot reference undefined names at runtime.
+mod.SL_ATR = SL_ATR
+mod.TP_R = TP_R
 _original_load_module = mod.load_module
 
 
