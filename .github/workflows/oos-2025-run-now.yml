@@ -59,6 +59,28 @@ jobs:
               assert t.notna().all() and int(t.dt.year.min())<=2025<=int(t.dt.year.max())
           print('OOS_SOURCE_BOUNDARY_PASS')
           PY
+      - name: Diagnose 2025 source compatibility
+        run: |
+          python - <<'PY'
+          import pandas as pd
+          from pathlib import Path
+          p=dict(x.split('=',1) for x in Path('artifacts/source/paths.env').read_text().splitlines())
+          mur=pd.read_csv('artifacts/source/murphy_2025.csv',low_memory=False)
+          ms=pd.read_csv('artifacts/source/market_state.csv',low_memory=False)
+          mtf=pd.read_csv(p['MTF'],low_memory=False)
+          h1=pd.read_csv(p['H1'],low_memory=False)
+          print('MURPHY_SHAPE',mur.shape)
+          print('MURPHY_COLUMNS',list(mur.columns))
+          print('MURPHY_STATUS_COUNTS',mur.get('status',pd.Series(dtype=str)).astype(str).str.upper().value_counts(dropna=False).to_dict())
+          if 'directional_confirmation' in mur: print('MURPHY_DIRECTIONAL_CONFIRMATION',mur.directional_confirmation.astype(str).str.upper().value_counts(dropna=False).head(10).to_dict())
+          print('MARKET_STATE_SHAPE',ms.shape)
+          print('MARKET_STATE_COLUMNS',list(ms.columns))
+          if 'volatility_state' in ms: print('MARKET_STATE_VOLATILITY',ms.volatility_state.astype(str).str.upper().value_counts(dropna=False).to_dict())
+          print('MTF_SHAPE',mtf.shape)
+          print('MTF_REQUIRED_NULLS',mtf[['mtf_context','H4_trend_regime']].isna().sum().to_dict() if {'mtf_context','H4_trend_regime'}<=set(mtf.columns) else 'MISSING_REQUIRED')
+          print('H1_SHAPE',h1.shape)
+          print('H1_COLUMNS',list(h1.columns))
+          PY
       - name: Build frozen candidate outcomes
         run: |
           set -euo pipefail
