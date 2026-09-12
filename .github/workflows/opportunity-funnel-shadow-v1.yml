@@ -1,0 +1,54 @@
+name: Opportunity Funnel Shadow V1
+on:
+  workflow_dispatch:
+    inputs:
+      confirm:
+        description: Type RUN_FUNNEL_SHADOW
+        required: true
+        type: string
+        default: RUN_FUNNEL_SHADOW
+permissions:
+  contents: read
+jobs:
+  funnel:
+    if: ${{ inputs.confirm == 'RUN_FUNNEL_SHADOW' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      DROPBOX_ACCESS_TOKEN: ${{ secrets.DROPBOX_ACCESS_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with: {fetch-depth: 1}
+      - uses: actions/setup-python@v5
+        with: {python-version: '3.12'}
+      - run: python -m pip install --upgrade pip pandas
+      - name: Acquire sources
+        shell: bash
+        run: |
+          set -euo pipefail
+          T="$(printf '%s' "$DROPBOX_ACCESS_TOKEN" | tr -d '\r\n' | sed -E 's/^Bearer[[:space:]]+//')"
+          test -n "$T"
+          mkdir -p /tmp/funnel/unpacked
+          d(){ curl -L --fail --silent --show-error https://content.dropboxapi.com/2/files/download -H "Authorization: Bearer $T" -H "Dropbox-API-Arg: {\"path\":\"$1\"}" -o "$2"; }
+          mkdir -p /tmp/funnel/source
+          d "/New 8/GBPUSD_H1_2016_2025_MASTER.zip" /tmp/funnel/source/h1.zip
+          d "/New 8/MURPHY_HISTORICAL_34_RULE_FANIN_2016_2024.zip" /tmp/funnel/source/murphy.zip
+          d "/MTF_ALIGNMENT_GBPUSD_V1.zip" /tmp/funnel/source/mtf.zip
+          d "/New 8/GBPUSD_MARKET_STATE 6.csv" /tmp/funnel/source/market_state.csv
+          d "/New 8/NISON_2016_2024_FULL_EVIDENCE.csv" /tmp/funnel/source/nison.csv
+          for z in h1 murphy mtf; do unzip -q "/tmp/funnel/source/$z.zip" -d "/tmp/funnel/unpacked/$z"; done
+      - name: Run shadow funnel attribution
+        run: |
+          python tools/opportunity_funnel_shadow_v1.py \
+            --root /tmp/funnel \
+            --output /tmp/funnel/OPPORTUNITY_FUNNEL_SHADOW_V1.json
+      - name: Show report
+        if: always()
+        run: cat /tmp/funnel/OPPORTUNITY_FUNNEL_SHADOW_V1.json 2>/dev/null || true
+      - name: Upload funnel report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: opportunity-funnel-shadow-v1
+          path: /tmp/funnel/OPPORTUNITY_FUNNEL_SHADOW_V1.*
+          if-no-files-found: ignore
