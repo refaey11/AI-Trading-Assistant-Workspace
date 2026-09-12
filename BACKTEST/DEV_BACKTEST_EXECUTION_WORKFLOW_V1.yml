@@ -1,0 +1,62 @@
+name: Independent Murphy Nison Backtest
+
+on:
+  push:
+    branches:
+      - prototype/independent-murphy-nison-indicator-v1
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  backtest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      DROPBOX_ACCESS_TOKEN: ${{ secrets.DROPBOX_ACCESS_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: prototype/independent-murphy-nison-indicator-v1
+          fetch-depth: 1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: python -m pip install --upgrade pip pandas
+      - name: Acquire governed inputs
+        run: |
+          set -euo pipefail
+          test -n "$DROPBOX_ACCESS_TOKEN"
+          mkdir -p artifacts/source/h1 artifacts/source/murphy
+          TOKEN="$(printf '%s' "$DROPBOX_ACCESS_TOKEN" | tr -d '\r\n' | sed -E 's/^Bearer[[:space:]]+//; s/^\"//; s/\"$//')"
+          dl(){ curl -L --fail --silent --show-error https://content.dropboxapi.com/2/files/download -H "Authorization: Bearer ${TOKEN}" -H "Dropbox-API-Arg: {\"path\":\"$1\"}" -o "$2"; }
+          dl "/New 8/GBPUSD_H1_2016_2025_MASTER.zip" artifacts/h1.zip
+          dl "/New 8/MURPHY_HISTORICAL_34_RULE_FANIN_2016_2024.zip" artifacts/murphy.zip
+          dl "/New 8/NISON_2016_2024_FULL_EVIDENCE.csv" artifacts/nison.csv
+          dl "/New 8/GBPUSD_MARKET_STATE 6.csv" artifacts/context.csv
+          unzip -q artifacts/h1.zip -d artifacts/source/h1
+          unzip -q artifacts/murphy.zip -d artifacts/source/murphy
+      - name: Resolve sources
+        run: |
+          set -euo pipefail
+          H1=$(find artifacts/source/h1 -type f -name '*.csv' | head -1)
+          M=$(find artifacts/source/murphy -type f -name '*.csv' | head -1)
+          test -n "$H1" && test -n "$M"
+          echo "H1=$H1" >> "$GITHUB_ENV"
+          echo "MURPHY=$M" >> "$GITHUB_ENV"
+          echo 'H1:'; head -1 "$H1"
+          echo 'MURPHY:'; head -1 "$M"
+          echo 'NISON:'; head -1 artifacts/nison.csv
+          echo 'CONTEXT:'; head -1 artifacts/context.csv
+      - name: Run existing independent runner
+        run: |
+          python BACKTEST/DEV_BACKTEST_RUNNER_V1.py --h1 "$H1" --murphy "$MURPHY" --nison artifacts/nison.csv --context artifacts/context.csv --output-dir artifacts/result
+      - name: Upload result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: independent-murphy-nison-backtest-${{ github.sha }}
+          path: artifacts
+          if-no-files-found: ignore
