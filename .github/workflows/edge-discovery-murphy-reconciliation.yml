@@ -15,27 +15,27 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: Run reconciliation
+      - name: Run strict source scan
         run: |
-          python3 EDGE_DISCOVERY/murphy_34_historical_reconciliation_v1.py \
+          python3 EDGE_DISCOVERY/murphy_34_source_scan_v2.py \
             --root . \
             --allowlist governance/DECISION_BRAIN_RULE_ALLOWLIST_V1.json \
-            --out EDGE_DISCOVERY/murphy_34_reconciliation_v1.json
+            --out EDGE_DISCOVERY/murphy_34_source_scan_v2.json
       - name: Validate report
         run: |
           python3 - <<'PY'
           import json
-          p='EDGE_DISCOVERY/murphy_34_reconciliation_v1.json'
+          p='EDGE_DISCOVERY/murphy_34_source_scan_v2.json'
           d=json.load(open(p,encoding='utf-8'))
           assert d['expected_count']==34
           assert len(d['rows'])==34
           assert d['governance']['oos_locked']=='2025'
-          print(json.dumps(d['summary'],sort_keys=True))
+          print('SUMMARY',d['historical_referenced_count'],d['not_evaluable_candidate_count'])
           for r in d['rows']:
-              print(r['rule_id'], r['status'], len(r['historical_refs']), len(r['runtime_refs']))
+              print(r['rule_id'],r['status'],r['historical_ref_count'])
           PY
       - name: Upload reconciliation report
         uses: actions/upload-artifact@v4
         with:
-          name: murphy-34-reconciliation
-          path: EDGE_DISCOVERY/murphy_34_reconciliation_v1.json
+          name: murphy-34-source-scan
+          path: EDGE_DISCOVERY/murphy_34_source_scan_v2.json
