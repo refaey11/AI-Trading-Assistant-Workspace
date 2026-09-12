@@ -79,6 +79,9 @@ def evaluate_frozen_candidate_risk(
 
 
 source = V4.read_text(encoding="utf-8")
+# The V4 implementation references these execution constants as module globals.
+# Inject the frozen V5.4 values into the dynamically executed implementation.
+source = "SL_ATR = 0.75\nTP_R = 2.0\n" + source
 
 # Development-only compatibility rule: Nison absence/failure is not a
 # contradiction. Only an opposite directional PASS may contradict Murphy.
