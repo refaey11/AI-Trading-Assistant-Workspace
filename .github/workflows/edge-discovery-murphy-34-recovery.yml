@@ -1,0 +1,98 @@
+name: Edge Discovery Murphy 34 Recovery
+
+on:
+  push:
+    branches:
+      - feature/edge-discovery-ledger-v1
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  recover-murphy-34:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      DROPBOX_ACCESS_TOKEN: ${{ secrets.DROPBOX_ACCESS_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: python -m pip install --upgrade pip pandas
+      - name: Acquire governed Murphy bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          TOKEN="$(printf '%s' "$DROPBOX_ACCESS_TOKEN" | tr -d '\r\n' | sed -E 's/^Bearer[[:space:]]+//; s/^\"//; s/\"$//')"
+          test -n "$TOKEN"
+          mkdir -p artifacts/source/murphy
+          curl -L --fail --silent --show-error https://content.dropboxapi.com/2/files/download \
+            -H "Authorization: Bearer ${TOKEN}" \
+            -H 'Dropbox-API-Arg: {"path":"/New 8/MURPHY_HISTORICAL_34_RULE_FANIN_2016_2024.zip"}' \
+            -o artifacts/murphy.zip
+          unzip -q artifacts/murphy.zip -d artifacts/source/murphy
+      - name: Merge every governed Murphy CSV and require all 34
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          import json
+          import pandas as pd
+          root=Path('artifacts/source/murphy')
+          expected=[3,4,6,7,18,19,21,22,23,25,26,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,47,48,49,50,51]
+          expected_ids={f'MURPHY_{i:04d}' for i in expected}
+          frames=[]
+          source_report=[]
+          for p in sorted(root.rglob('*.csv')):
+              try:
+                  df=pd.read_csv(p,low_memory=False)
+              except Exception as e:
+                  source_report.append({'file':str(p),'status':'SKIP_READ_ERROR','error':str(e)})
+                  continue
+              if 'timestamp' not in df.columns or 'source_rule_id' not in df.columns:
+                  source_report.append({'file':str(p),'status':'SKIP_REQUIRED_COLUMNS_MISSING'})
+                  continue
+              ts=pd.to_datetime(df['timestamp'],utc=True,errors='coerce',format='mixed')
+              if ts.isna().all():
+                  source_report.append({'file':str(p),'status':'SKIP_INVALID_TIMESTAMPS'})
+                  continue
+              df=df.loc[ts.notna()].copy(); df['timestamp']=ts.loc[df.index]
+              years=df['timestamp'].dt.year
+              if years.min()<2016 or years.max()>2024:
+                  source_report.append({'file':str(p),'status':'SKIP_OUTSIDE_2016_2024','min_year':int(years.min()),'max_year':int(years.max())})
+                  continue
+              ids=set()
+              for v in df['source_rule_id'].dropna():
+                  for x in str(v).split('|'):
+                      x=x.strip().upper()
+                      if x in expected_ids: ids.add(x)
+              if not ids:
+                  source_report.append({'file':str(p),'status':'SKIP_NO_EXPECTED_MURPHY_IDS'})
+                  continue
+              frames.append(df); source_report.append({'file':str(p),'status':'INCLUDED','rows':len(df),'rule_ids':sorted(ids)})
+          if not frames: raise SystemExit('BLOCKED_NO_GOVERNED_MURPHY_CSVS')
+          merged=pd.concat(frames,ignore_index=True,sort=False)
+          # Preserve source provenance while removing exact duplicate records only.
+          merged=merged.drop_duplicates().sort_values(['timestamp','source_rule_id']).reset_index(drop=True)
+          observed=set()
+          for v in merged['source_rule_id'].dropna():
+              for x in str(v).split('|'):
+                  x=x.strip().upper()
+                  if x in expected_ids: observed.add(x)
+          missing=sorted(expected_ids-observed); unknown=sorted(observed-expected_ids)
+          report={'status':'PASS' if not missing and not unknown else 'BLOCKED','expected_rule_count':34,'observed_rule_count':len(observed),'missing_rule_ids':missing,'unknown_rule_ids':unknown,'merged_rows':len(merged),'duplicate_rows_removed':int(sum(len(pd.read_csv(p,low_memory=False)) for p in [])),'sources':source_report,'development_window':'2016-2024','oos_2025_locked':True,'synthetic_evidence_created':False,'semantic_rule_changes':False}
+          Path('artifacts/MURPHY_34_RECOVERY_REPORT.json').write_text(json.dumps(report,indent=2))
+          merged.to_csv('artifacts/MURPHY_2016_2024_ALL_GOVERNED_SOURCES.csv',index=False)
+          print(json.dumps(report,indent=2))
+          if missing or unknown: raise SystemExit(2)
+          PY
+      - name: Upload recovery artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: murphy-34-recovery
+          path: artifacts
