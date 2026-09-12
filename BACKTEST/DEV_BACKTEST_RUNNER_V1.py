@@ -15,7 +15,7 @@ def load_csv(path: Path, required: set[str], *, allow_duplicate_timestamps: bool
     df = pd.read_csv(path)
     missing = sorted(required - set(df.columns))
     if missing: raise ValueError(f"{path}: missing columns {missing}")
-    df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True, errors="coerce")
+    df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True, errors="coerce", format="mixed")
     if df["timestamp"].isna().any(): raise ValueError(f"{path}: invalid timestamps")
     if not allow_duplicate_timestamps and df["timestamp"].duplicated().any(): raise ValueError(f"{path}: duplicate timestamps")
     return df.sort_values("timestamp").reset_index(drop=True)
