@@ -91,13 +91,7 @@ jobs:
             --output-dir artifacts/current_stack_backtest_2016_2024
 
       - name: Print result
-        run: |
-          python - <<'PY'
-          import json
-          from pathlib import Path
-          p=Path('artifacts/current_stack_backtest_2016_2024/current_stack_backtest_metrics_2016_2024.json')
-          print(p.read_text())
-          PY
+        run: cat artifacts/current_stack_backtest_2016_2024/current_stack_backtest_metrics_2016_2024.json
 
       - name: Upload replay result
         if: always()
@@ -106,3 +100,5 @@ jobs:
           name: v5-4-artifact-recovery-result
           path: artifacts/current_stack_backtest_2016_2024
           if-no-files-found: ignore
+
+# Triggered intentionally from the development branch to produce the governed result.
