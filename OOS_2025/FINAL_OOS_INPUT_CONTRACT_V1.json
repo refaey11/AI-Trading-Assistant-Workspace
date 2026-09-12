@@ -1,0 +1,34 @@
+{
+  "version": "1.0",
+  "status": "INPUT_CONTRACT",
+  "purpose": "Define the exact event-level evidence stream required by the final uniform OOS walk-forward and leakage gate.",
+  "folds": {
+    "2024": "2016-2023 calibration -> 2024 OOS",
+    "2025": "2016-2024 calibration -> 2025 OOS"
+  },
+  "required_columns": [
+    "event_id",
+    "timestamp",
+    "direction",
+    "gross_r",
+    "cost_r",
+    "net_r",
+    "outcome",
+    "ambiguous",
+    "signal_contract_id",
+    "execution_protocol_id",
+    "cost_model_id",
+    "ambiguity_policy_id"
+  ],
+  "optional_leakage_audit_columns": [
+    "feature_available_at",
+    "memory_built_through",
+    "decision_available_at"
+  ],
+  "governance": {
+    "same_protocol_across_folds": true,
+    "2025_tuning": false,
+    "2025_oos": true,
+    "missing_inputs_must_block_run": true
+  }
+}
