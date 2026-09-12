@@ -1,0 +1,160 @@
+name: Edge Discovery Murphy Historical Recovery
+
+on:
+  push:
+    branches:
+      - feature/edge-discovery-ledger-v1
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  recover-murphy-historical:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      DROPBOX_ACCESS_TOKEN: ${{ secrets.DROPBOX_ACCESS_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: python -m pip install --upgrade pip pandas
+      - name: Acquire governed Murphy bundle
+        shell: bash
+        run: |
+          set -euo pipefail
+          TOKEN="$(printf '%s' "$DROPBOX_ACCESS_TOKEN" | tr -d '\r\n' | sed -E 's/^Bearer[[:space:]]+//; s/^\"//; s/\"$//')"
+          test -n "$TOKEN"
+          mkdir -p artifacts/source/murphy
+          curl -L --fail --silent --show-error https://content.dropboxapi.com/2/files/download \
+            -H "Authorization: Bearer ${TOKEN}" \
+            -H 'Dropbox-API-Arg: {"path":"/New 8/MURPHY_HISTORICAL_34_RULE_FANIN_2016_2024.zip"}' \
+            -o artifacts/murphy.zip
+          unzip -q artifacts/murphy.zip -d artifacts/source/murphy
+      - name: Merge governed Murphy sources and record evaluability
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          from pathlib import Path
+          import json
+          import pandas as pd
+          root=Path('artifacts/source/murphy')
+          expected_ids={f'MURPHY_{i:04d}' for i in [3,4,6,7,18,19,21,22,23,25,26,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,47,48,49,50,51]}
+          frames=[]; source_report=[]
+          for p in sorted(root.rglob('*.csv')):
+              try: df=pd.read_csv(p,low_memory=False)
+              except Exception as e:
+                  source_report.append({'file':str(p),'status':'SKIP_READ_ERROR','error':str(e)}); continue
+              if 'timestamp' not in df.columns or 'source_rule_id' not in df.columns:
+                  source_report.append({'file':str(p),'status':'SKIP_REQUIRED_COLUMNS_MISSING'}); continue
+              ts=pd.to_datetime(df['timestamp'],utc=True,errors='coerce',format='mixed')
+              if ts.isna().all():
+                  source_report.append({'file':str(p),'status':'SKIP_INVALID_TIMESTAMPS'}); continue
+              df=df.loc[ts.notna()].copy(); df['timestamp']=ts.loc[df.index]
+              years=df['timestamp'].dt.year
+              if years.min()<2016 or years.max()>2024:
+                  source_report.append({'file':str(p),'status':'SKIP_OUTSIDE_2016_2024'}); continue
+              ids=set()
+              for v in df['source_rule_id'].dropna():
+                  for x in str(v).split('|'):
+                      x=x.strip().upper()
+                      if x in expected_ids: ids.add(x)
+              if ids:
+                  frames.append(df); source_report.append({'file':str(p),'status':'INCLUDED','rows':len(df),'rule_ids':sorted(ids)})
+          if not frames: raise SystemExit('BLOCKED_NO_GOVERNED_MURPHY_CSVS')
+          merged=pd.concat(frames,ignore_index=True,sort=False)
+          before=len(merged); merged=merged.drop_duplicates().sort_values(['timestamp','source_rule_id']).reset_index(drop=True)
+          observed=set()
+          for v in merged['source_rule_id'].dropna():
+              for x in str(v).split('|'):
+                  x=x.strip().upper()
+                  if x in expected_ids: observed.add(x)
+          missing=sorted(expected_ids-observed)
+          unknown=sorted(observed-expected_ids)
+          report={'status':'EXPERIMENT_READY' if observed and not unknown else 'BLOCKED','expected_runtime_rule_count':34,'observed_source_backed_rule_count':len(observed),'observed_source_backed_rule_ids':sorted(observed),'missing_historical_rule_ids':missing,'unknown_rule_ids':unknown,'merged_rows':len(merged),'duplicate_rows_removed':before-len(merged),'sources':source_report,'development_window':'2016-2024','oos_2025_locked':True,'synthetic_evidence_created':False,'semantic_rule_changes':False,'historical_evaluability_is_distinct_from_runtime_allowlist':True}
+          Path('artifacts/MURPHY_HISTORICAL_EVALUABILITY_REPORT.json').write_text(json.dumps(report,indent=2))
+          merged.to_csv('artifacts/MURPHY_2016_2024_SOURCE_BACKED_EVENTS.csv',index=False)
+          print(json.dumps(report,indent=2))
+          if unknown: raise SystemExit(2)
+          PY
+      - name: Upload recovery artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: murphy-historical-evaluability
+          path: artifacts
+
+  v5-4-result:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feature/edge-discovery-ledger-v1
+          fetch-depth: 1
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: python -m pip install --upgrade pip pandas pytest
+      - name: Recover known-good governed source artifact
+        uses: actions/download-artifact@v5
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 34672341981
+          artifact-ids: 10291411438
+          path: artifacts
+      - name: Verify recovered source set
+        run: |
+          set -euo pipefail
+          test -f artifacts/source/h1/GBPUSD_H1_2016_2025_MASTER.csv
+          test -f artifacts/source/MURPHY_CURRENT_STACK.csv
+          test -f artifacts/source/nison.csv
+          test -f artifacts/source/market_state.csv
+          test -f artifacts/source/MTF_CURRENT_STACK.csv
+          test -f artifacts/source/memory/historical_context/HISTORICAL_CONTEXT_MEMORY.csv
+          test -f artifacts/source/memory/historical_outcome/HISTORICAL_OUTCOMES.csv
+          test -f artifacts/source/memory/similarity/SIMILAR_CONTEXT_READS.json
+          test -f artifacts/source/memory/retrieval/CONTEXT_AWARE_READINGS.json
+          test -f artifacts/source/memory/scenario/MARKET_SCENARIOS.json
+          echo RECOVERED_SOURCE_SET_PASS
+      - name: Enforce 2025 OOS lock
+        run: |
+          python - <<'PY'
+          from datetime import datetime, timezone
+          assert datetime(2016,1,1,tzinfo=timezone.utc) < datetime(2025,1,1,tzinfo=timezone.utc)
+          print('DEVELOPMENT_WINDOW=2016-2024')
+          print('2025_OOS_LOCKED=True')
+          PY
+      - name: Run V5.4 full-window replay
+        run: |
+          set -euo pipefail
+          H1=artifacts/source/h1/GBPUSD_H1_2016_2025_MASTER.csv
+          HC=artifacts/source/memory/historical_context/HISTORICAL_CONTEXT_MEMORY.csv
+          HO=artifacts/source/memory/historical_outcome/HISTORICAL_OUTCOMES.csv
+          SIM=artifacts/source/memory/similarity/SIMILAR_CONTEXT_READS.json
+          RET=artifacts/source/memory/retrieval/CONTEXT_AWARE_READINGS.json
+          SCN=artifacts/source/memory/scenario/MARKET_SCENARIOS.json
+          mkdir -p artifacts/current_stack_backtest_2016_2024
+          python DEVELOPMENT_2016_2024/current_stack_historical_replay_v5_4.py \
+            --h1 "$H1" --market-state artifacts/source/market_state.csv \
+            --murphy artifacts/source/MURPHY_CURRENT_STACK.csv --nison artifacts/source/nison.csv \
+            --mtf artifacts/source/MTF_CURRENT_STACK.csv --historical-context "$HC" \
+            --historical-outcome "$HO" --similarity-artifact "$SIM" \
+            --retrieval-artifact "$RET" --scenario-artifact "$SCN" \
+            --output-dir artifacts/current_stack_backtest_2016_2024
+      - name: Print V5.4 metrics
+        run: cat artifacts/current_stack_backtest_2016_2024/current_stack_backtest_metrics_2016_2024.json
+      - name: Upload V5.4 result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v5-4-final-result
+          path: artifacts/current_stack_backtest_2016_2024
+          if-no-files-found: ignore

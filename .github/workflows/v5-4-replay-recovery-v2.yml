@@ -1,0 +1,100 @@
+name: V5.4 Replay Recovery V2
+
+on:
+  push:
+    branches:
+      - feature/edge-discovery-ledger-v1
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  replay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/OOS_2025
+    steps:
+      - name: Checkout canonical backtest branch
+        uses: actions/checkout@v4
+        with:
+          ref: current-stack-dev-backtest-2016-2024-v3
+          fetch-depth: 1
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: python -m pip install --upgrade pip pandas pytest
+      - name: Recover governed source artifact by GitHub API
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          repo="refaey11/AI-Trading-Assistant-Workspace"
+          run_id=34672341981
+          api="https://api.github.com/repos/${repo}/actions/runs/${run_id}/artifacts?per_page=100"
+          curl --fail --silent --show-error --location \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            "${api}" -o /tmp/artifacts.json
+          artifact_id=$(jq -r '.artifacts[] | select(.name=="current-stack-development-backtest-2016-2024-v5-4" and (.expired|not) and .size_in_bytes > 100000000) | [.created_at,.id] | @tsv' /tmp/artifacts.json | sort | tail -n1 | cut -f2)
+          test -n "${artifact_id}" && test "${artifact_id}" != "null"
+          archive_url=$(jq -r --argjson id "${artifact_id}" '.artifacts[] | select(.id==$id) | .archive_download_url' /tmp/artifacts.json)
+          size=$(jq -r --argjson id "${artifact_id}" '.artifacts[] | select(.id==$id) | .size_in_bytes' /tmp/artifacts.json)
+          echo "ARTIFACT_ID=${artifact_id} SIZE=${size}"
+          curl --fail --silent --show-error --location \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            "${archive_url}" -o /tmp/source.zip
+          test -s /tmp/source.zip
+          echo "DOWNLOAD_OK"
+          mkdir -p artifacts
+          unzip -q /tmp/source.zip -d artifacts
+          test -f artifacts/source/h1/GBPUSD_H1_2016_2025_MASTER.csv
+          test -f artifacts/source/MURPHY_CURRENT_STACK.csv
+          test -f artifacts/source/nison.csv
+          test -f artifacts/source/market_state.csv
+          test -f artifacts/source/MTF_CURRENT_STACK.csv
+      - name: Build development-only H1 source and lock 2025
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import pandas as pd
+          p='artifacts/source/h1/GBPUSD_H1_2016_2025_MASTER.csv'
+          d=pd.read_csv(p)
+          d['timestamp']=pd.to_datetime(d['timestamp'],utc=True)
+          d=d[(d.timestamp >= '2016-01-01') & (d.timestamp < '2025-01-01')]
+          assert not d.empty
+          d.to_csv('artifacts/H1_DEVELOPMENT_2016_2024.csv',index=False)
+          print('H1_DEVELOPMENT_ROWS',len(d))
+          print('2025_OOS_LOCKED=True')
+          PY
+      - name: Run V5.4 full-window replay
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/current_stack_backtest_2016_2024
+          python DEVELOPMENT_2016_2024/current_stack_historical_replay_v5_4.py \
+            --h1 artifacts/H1_DEVELOPMENT_2016_2024.csv \
+            --market-state artifacts/source/market_state.csv \
+            --murphy artifacts/source/MURPHY_CURRENT_STACK.csv \
+            --nison artifacts/source/nison.csv \
+            --mtf artifacts/source/MTF_CURRENT_STACK.csv \
+            --historical-context artifacts/source/memory/historical_context/HISTORICAL_CONTEXT_MEMORY.csv \
+            --historical-outcome artifacts/source/memory/historical_outcome/HISTORICAL_OUTCOMES.csv \
+            --similarity-artifact artifacts/source/memory/similarity/SIMILAR_CONTEXT_READS.json \
+            --retrieval-artifact artifacts/source/memory/retrieval/CONTEXT_AWARE_READINGS.json \
+            --scenario-artifact artifacts/source/memory/scenario/MARKET_SCENARIOS.json \
+            --output-dir artifacts/current_stack_backtest_2016_2024
+      - name: Print V5.4 metrics
+        run: cat artifacts/current_stack_backtest_2016_2024/current_stack_backtest_metrics_2016_2024.json
+      - name: Upload V5.4 result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v5-4-final-result-v2
+          path: artifacts/current_stack_backtest_2016_2024
+          if-no-files-found: ignore
