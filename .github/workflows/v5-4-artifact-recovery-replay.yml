@@ -28,13 +28,13 @@ jobs:
           python-version: "3.12"
       - name: Install dependencies
         run: python -m pip install --upgrade pip pandas pytest
-      - name: Recover governed source artifact by exact name
+      - name: Recover exact known-good governed source artifact
         uses: actions/download-artifact@v5
         with:
           github-token: ${{ github.token }}
           repository: ${{ github.repository }}
           run-id: 34672341981
-          name: current-stack-development-backtest-2016-2024-v5-4
+          artifact-ids: 10291720491
           path: artifacts
           merge-multiple: false
       - name: Verify recovered source set
@@ -49,22 +49,8 @@ jobs:
           test -f artifacts/source/memory/retrieval/CONTEXT_AWARE_READINGS.json
           test -f artifacts/source/memory/scenario/MARKET_SCENARIOS.json
           test -f artifacts/source/MTF_COVERAGE_REPORT.json || true
-          if test -f artifacts/source/MURPHY_CURRENT_STACK.csv; then
-            cp artifacts/source/MURPHY_CURRENT_STACK.csv artifacts/source/MURPHY_CURRENT_STACK.csv
-          elif test -f artifacts/source/murphy/MURPHY_2016_2024_FULL_EVIDENCE.csv; then
-            cp artifacts/source/murphy/MURPHY_2016_2024_FULL_EVIDENCE.csv artifacts/source/MURPHY_CURRENT_STACK.csv
-          else
-            echo 'MISSING_MURPHY_SOURCE'
-            exit 1
-          fi
-          if test -f artifacts/source/MTF_CURRENT_STACK.csv; then
-            cp artifacts/source/MTF_CURRENT_STACK.csv artifacts/source/MTF_CURRENT_STACK.csv
-          elif find artifacts/source -type f -name '*MTF*csv' | grep -q .; then
-            find artifacts/source -type f -name '*MTF*csv' | head -1 | xargs -I{} cp {} artifacts/source/MTF_CURRENT_STACK.csv
-          else
-            echo 'MISSING_MTF_SOURCE'
-            exit 1
-          fi
+          test -f artifacts/source/MURPHY_CURRENT_STACK.csv
+          test -f artifacts/source/MTF_CURRENT_STACK.csv
           echo RECOVERED_SOURCE_SET_PASS
       - name: Enforce development window
         run: |
@@ -101,5 +87,4 @@ jobs:
           path: artifacts/current_stack_backtest_2016_2024
           if-no-files-found: ignore
 
-# Recovery path uses the already-acquired governed source artifact; 2025 remains locked.
-# Trigger refresh commit forces the replay workflow to execute against the governed source.
+# Recovery path uses the exact already-acquired governed source artifact; 2025 remains locked.
