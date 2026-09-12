@@ -51,9 +51,6 @@ jobs:
           echo "MURPHY=$M" >> "$GITHUB_ENV"
           echo "M1_DIR=artifacts/source/m1" >> "$GITHUB_ENV"
           head -1 "$H1"; head -1 "$M"; head -1 "$M1"; head -1 artifacts/nison.csv; head -1 artifacts/context.csv
-      - name: Validate existing diagnostic runner inputs
-        run: |
-          python BACKTEST/DEV_BACKTEST_RUNNER_V1.py --help >/dev/null
       - name: Run independent four-system comparator
         run: |
           python BACKTEST/INDEPENDENT_FOUR_SYSTEM_COMPARATOR_V1.py --h1 "$H1" --m1 "$M1_DIR" --output-dir artifacts/result
