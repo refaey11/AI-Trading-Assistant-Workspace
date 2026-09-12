@@ -45,7 +45,7 @@ For every governed event/rule, measure the conditional distribution of future ou
 3. Regime stability using already-governed market-state fields; no new regime thresholds are invented here.
 4. Cost sensitivity: frozen baseline plus deterministic higher-cost stress cases.
 5. Execution perturbation: only if supported by existing frozen execution contract; never tune to the best result.
-6. OOS lock report proving no 2025 rows were used in calibration.
+6. OOS lock report proving no 2025 rows were used for calibration.
 7. Provenance manifest linking every result to source artifacts.
 
 ## Edge qualification
@@ -70,3 +70,4 @@ Complete source-backed Murphy historical fan-in for the remaining governed rules
 
 <!-- trigger replay recovery after V2 workflow fix -->
 <!-- trigger replay recovery 2026-09-12-v2 -->
+<!-- trigger replay recovery 2026-09-12-v3 -->
