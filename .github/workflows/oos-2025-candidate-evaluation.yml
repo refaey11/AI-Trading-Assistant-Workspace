@@ -1,5 +1,7 @@
 name: OOS 2025 Frozen Candidate Evaluation
 
+# Triggered by feature-branch pushes so the frozen 2025 evaluation always runs on the exact pushed commit.
+
 on:
   push:
     branches: [feature/edge-discovery-ledger-v1]
