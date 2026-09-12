@@ -20,50 +20,130 @@ on:
         required: true
         default: '2025'
 
+permissions:
+  contents: read
+
 jobs:
   backtest:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 120
+    env:
+      DROPBOX_ACCESS_TOKEN: ${{ secrets.DROPBOX_ACCESS_TOKEN }}
+      PYTHONPATH: ${{ github.workspace }}
     steps:
       - name: Checkout prototype branch
         uses: actions/checkout@v4
         with:
           ref: prototype/independent-murphy-nison-indicator-v1
+          fetch-depth: 1
 
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
           python-version: '3.12'
 
-      - name: Inspect runner contract
-        run: |
-          set -euo pipefail
-          test -f BACKTEST/DEV_BACKTEST_RUNNER_V1.py
-          test -f BACKTEST/MTF_SIX_TF_SOURCE_ADAPTER_V1.py
-          python BACKTEST/DEV_BACKTEST_RUNNER_V1.py --help || true
+      - name: Install dependencies
+        run: python -m pip install --upgrade pip pandas numpy
 
-      - name: Verify governed inputs
-        run: |
-          set -euo pipefail
-          mkdir -p backtest_output
-          printf 'symbol=%s\nstart_year=%s\nend_year=%s\noos_year=%s\n' \
-            '${{ inputs.symbol }}' '${{ inputs.start_year }}' '${{ inputs.end_year }}' '${{ inputs.oos_year }}' \
-            > backtest_output/run_contract.txt
-          find . -maxdepth 4 -type f | sort | grep -Ei 'HISTDATA|GBPUSD|backtest|murphy|nison' | head -n 300 > backtest_output/repository_inventory.txt
-
-      - name: Run existing backtest runner when inputs are available
+      - name: Verify Dropbox connection contract
         shell: bash
         run: |
           set -euo pipefail
-          if python BACKTEST/DEV_BACKTEST_RUNNER_V1.py --help 2>&1 | grep -q -- '--input\|--data\|--source'; then
-            echo 'Runner exposes a data/input interface; repository-native execution requires its governed source adapter.'
-          else
-            echo 'Runner does not expose a documented CLI input interface; no fabricated execution.'
-          fi
-          echo 'EXECUTION_STATUS=BLOCKED_UNTIL_GOVERNED_MARKET_INPUT_IS_MOUNTED' > backtest_output/execution_status.txt
+          test -n "$DROPBOX_ACCESS_TOKEN"
+          echo 'DROPBOX_ACCESS_TOKEN_PRESENT=true' > backtest_connection_status.txt
 
-      - name: Upload execution contract
+      - name: Acquire canonical GBPUSD market data from Dropbox
+        shell: bash
+        run: |
+          set -euo pipefail
+          TOKEN="$(printf '%s' "$DROPBOX_ACCESS_TOKEN" | tr -d '\r\n' | sed -E 's/^Bearer[[:space:]]+//; s/^\"//; s/\"$//')"
+          mkdir -p artifacts/market/m1
+          curl -L --fail --silent --show-error \
+            https://content.dropboxapi.com/2/files/download \
+            -H "Authorization: Bearer ${TOKEN}" \
+            -H 'Dropbox-API-Arg: {"path":"/GBPUSD_M1_MASTER_2016_2026_V1.zip"}' \
+            -o artifacts/market/GBPUSD_M1_MASTER_2016_2026_V1.zip
+          unzip -q artifacts/market/GBPUSD_M1_MASTER_2016_2026_V1.zip -d artifacts/market/m1
+          find artifacts/market/m1 -type f -maxdepth 4 | sort | head -n 50
+
+      - name: Acquire governed six-timeframe context sources
+        shell: bash
+        run: |
+          set -euo pipefail
+          TOKEN="$(printf '%s' "$DROPBOX_ACCESS_TOKEN" | tr -d '\r\n' | sed -E 's/^Bearer[[:space:]]+//; s/^\"//; s/\"$//')"
+          mkdir -p artifacts/source
+          download(){
+            local path="$1"; local out="$2"
+            curl -L --fail --silent --show-error https://content.dropboxapi.com/2/files/download \
+              -H "Authorization: Bearer ${TOKEN}" \
+              -H "Dropbox-API-Arg: {\"path\":\"${path}\"}" \
+              -o "$out"
+          }
+          download "/New 8/GBPUSD_H1_2016_2025_MASTER.zip" artifacts/source/h1.zip
+          download "/New 8/MURPHY_HISTORICAL_34_RULE_FANIN_2016_2024.zip" artifacts/source/murphy.zip
+          download "/New 8/NISON_2016_2024_FULL_EVIDENCE.csv" artifacts/source/nison.csv
+          download "/New 8/GBPUSD_MARKET_STATE 6.csv" artifacts/source/market_state.csv
+          download "/MTF_ALIGNMENT_GBPUSD_V1.zip" artifacts/source/mtf.zip
+          unzip -q artifacts/source/h1.zip -d artifacts/source/h1
+          unzip -q artifacts/source/murphy.zip -d artifacts/source/murphy
+          unzip -q artifacts/source/mtf.zip -d artifacts/source/mtf
+
+      - name: Validate six-timeframe source package
+        run: |
+          python BACKTEST/MTF_SIX_TF_SOURCE_ADAPTER_V1.py \
+            --root artifacts/source/mtf \
+            --report backtest_output/mtf_source_report.json \
+            --symbol GBPUSD
+
+      - name: Validate M1 market source provenance
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -d artifacts/market/m1
+          find artifacts/market/m1 -type f -name '*.csv' | grep . > backtest_output/m1_files.txt
+          python - <<'PY'
+          from pathlib import Path
+          import pandas as pd
+          files=list(Path('artifacts/market/m1').rglob('*.csv'))
+          if not files: raise SystemExit('M1_SOURCE_NOT_FOUND')
+          years=set()
+          for p in files:
+              try:
+                  df=pd.read_csv(p,nrows=200,low_memory=False)
+                  cols={str(c).lower():c for c in df.columns}
+                  col=cols.get('timestamp') or cols.get('datetime') or cols.get('date')
+                  if col is not None:
+                      ts=pd.to_datetime(df[col],utc=True,errors='coerce',format='mixed').dropna()
+                      years.update(ts.dt.year.astype(int).unique().tolist())
+              except Exception:
+                  continue
+          required=set(range(2016,2026))
+          print('M1_SAMPLE_YEARS=',sorted(years))
+          missing=required-years
+          if missing: raise SystemExit(f'M1_SAMPLE_YEARS_INCOMPLETE missing={sorted(missing)}')
+          PY
+
+      - name: Record execution contract
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p backtest_output
+          cat > backtest_output/run_contract.txt <<EOF
+          symbol=${{ inputs.symbol }}
+          development_window=${{ inputs.start_year }}-${{ inputs.end_year }}
+          oos_year=${{ inputs.oos_year }}
+          data_source=/GBPUSD_M1_MASTER_2016_2026_V1.zip
+          data_connection=Dropbox_API
+          lookahead_policy=closed_bar_only
+          mtf_policy=lookahead_off
+          volume_unavailable_is_not_zero=true
+          2025_tuning=false
+          EOF
+
+      - name: Upload acquired-source contract
         uses: actions/upload-artifact@v4
         with:
-          name: independent-indicator-backtest-contract-${{ github.run_number }}
-          path: backtest_output/
+          name: independent-indicator-source-contract-${{ github.run_number }}
+          path: |
+            backtest_output/
+            backtest_connection_status.txt
