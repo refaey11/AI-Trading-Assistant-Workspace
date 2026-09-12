@@ -1,0 +1,69 @@
+name: Independent Indicator Backtest
+
+on:
+  workflow_dispatch:
+    inputs:
+      symbol:
+        description: 'Symbol'
+        required: true
+        default: 'GBPUSD'
+      start_year:
+        description: 'Development start year'
+        required: true
+        default: '2016'
+      end_year:
+        description: 'Development end year'
+        required: true
+        default: '2024'
+      oos_year:
+        description: 'Reserved OOS year'
+        required: true
+        default: '2025'
+
+jobs:
+  backtest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout prototype branch
+        uses: actions/checkout@v4
+        with:
+          ref: prototype/independent-murphy-nison-indicator-v1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Inspect runner contract
+        run: |
+          set -euo pipefail
+          test -f BACKTEST/DEV_BACKTEST_RUNNER_V1.py
+          test -f BACKTEST/MTF_SIX_TF_SOURCE_ADAPTER_V1.py
+          python BACKTEST/DEV_BACKTEST_RUNNER_V1.py --help || true
+
+      - name: Verify governed inputs
+        run: |
+          set -euo pipefail
+          mkdir -p backtest_output
+          printf 'symbol=%s\nstart_year=%s\nend_year=%s\noos_year=%s\n' \
+            '${{ inputs.symbol }}' '${{ inputs.start_year }}' '${{ inputs.end_year }}' '${{ inputs.oos_year }}' \
+            > backtest_output/run_contract.txt
+          find . -maxdepth 4 -type f | sort | grep -Ei 'HISTDATA|GBPUSD|backtest|murphy|nison' | head -n 300 > backtest_output/repository_inventory.txt
+
+      - name: Run existing backtest runner when inputs are available
+        shell: bash
+        run: |
+          set -euo pipefail
+          if python BACKTEST/DEV_BACKTEST_RUNNER_V1.py --help 2>&1 | grep -q -- '--input\|--data\|--source'; then
+            echo 'Runner exposes a data/input interface; repository-native execution requires its governed source adapter.'
+          else
+            echo 'Runner does not expose a documented CLI input interface; no fabricated execution.'
+          fi
+          echo 'EXECUTION_STATUS=BLOCKED_UNTIL_GOVERNED_MARKET_INPUT_IS_MOUNTED' > backtest_output/execution_status.txt
+
+      - name: Upload execution contract
+        uses: actions/upload-artifact@v4
+        with:
+          name: independent-indicator-backtest-contract-${{ github.run_number }}
+          path: backtest_output/
