@@ -1,0 +1,86 @@
+name: OOS 2025 Frozen Candidate Evaluation
+
+on:
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+env:
+  DROPBOX_ACCESS_TOKEN: ${{ secrets.DROPBOX_ACCESS_TOKEN }}
+
+jobs:
+  oos-2025:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: python -m pip install --upgrade pip pandas
+      - name: Acquire untouched 2025 source set
+        shell: bash
+        run: |
+          set -euo pipefail
+          TOKEN="$(printf '%s' "$DROPBOX_ACCESS_TOKEN" | tr -d '\r\n' | sed -E 's/^Bearer[[:space:]]+//; s/^\"//; s/\"$//')"
+          test -n "$TOKEN"
+          mkdir -p artifacts/source/h1 artifacts/source/mtf
+          dl(){ curl -L --fail --silent --show-error https://content.dropboxapi.com/2/files/download -H "Authorization: Bearer ${TOKEN}" -H "Dropbox-API-Arg: {\"path\":\"$1\"}" -o "$2"; }
+          dl "/New/MURPHY_2025_FULL_EVIDENCE.csv" artifacts/source/murphy_2025.csv
+          dl "/New 8/GBPUSD_H1_2016_2025_MASTER.zip" artifacts/source/h1.zip
+          dl "/AI_Trading_Assistant_FULL_PROJECT_V1/AI_Trading_Assistant_MARKET_STATE_READER_V1/GBPUSD_MARKET_STATE.csv" artifacts/source/market_state.csv
+          dl "/MTF_ALIGNMENT_GBPUSD_V1.zip" artifacts/source/mtf.zip
+          unzip -q artifacts/source/h1.zip -d artifacts/source/h1
+          unzip -q artifacts/source/mtf.zip -d artifacts/source/mtf
+      - name: Resolve 2025 H1 and MTF
+        shell: bash
+        run: |
+          set -euo pipefail
+          H1=$(find artifacts/source/h1 -type f -name 'GBPUSD_H1_2016_2025_MASTER.csv' | head -1)
+          test -n "$H1"
+          MTF=$(find artifacts/source/mtf -type f -name 'GBPUSD_M5_MTF_ALIGNMENT_2025.csv' | head -1)
+          test -n "$MTF"
+          printf 'H1=%s\nMTF=%s\n' "$H1" "$MTF" > artifacts/source/paths.env
+      - name: Validate 2025 source boundaries
+        run: |
+          python - <<'PY'
+          import pandas as pd
+          from pathlib import Path
+          mur=pd.read_csv('artifacts/source/murphy_2025.csv',low_memory=False)
+          ts=pd.to_datetime(mur.timestamp,utc=True,errors='coerce',format='mixed')
+          assert ts.notna().all() and set(ts.dt.year)=={2025}
+          p=dict(x.split('=',1) for x in Path('artifacts/source/paths.env').read_text().splitlines())
+          for k in ['H1','MTF']:
+              d=pd.read_csv(p[k],usecols=['timestamp'],low_memory=False)
+              t=pd.to_datetime(d.timestamp,utc=True,errors='coerce',format='mixed')
+              assert t.notna().all() and int(t.dt.year.min())<=2025<=int(t.dt.year.max())
+          print('OOS_SOURCE_BOUNDARY_PASS')
+          PY
+      - name: Build frozen candidate outcomes
+        run: |
+          set -euo pipefail
+          source artifacts/source/paths.env
+          python OOS_2025/oos_2025_candidate_event_builder_v1.py --murphy artifacts/source/murphy_2025.csv --h1 "$H1" --market-state artifacts/source/market_state.csv --mtf "$MTF" --out-dir artifacts/oos_2025
+      - name: Enforce OOS governance
+        run: |
+          python - <<'PY'
+          import json,pandas as pd
+          from pathlib import Path
+          m=json.loads(Path('artifacts/oos_2025/oos_2025_candidate_manifest.json').read_text())
+          r=pd.read_csv('artifacts/oos_2025/oos_2025_candidate_results.csv')
+          assert m['window']=='2025-only' and m['candidate_set_frozen'] and not m['tuning_applied'] and not m['threshold_sweep'] and not m['future_data_used'] and m['strict_asof_context'] and m['entry_next_h1_open'] and m['stop_atr']==0.75 and m['target_R']==2.0 and not m['official_profitability_claim_allowed']
+          assert set(r.candidate_id)=={'C1_HIGH_STRONG_BEARISH_MTF','C2_HIGH_H4_BEARISH','C3_SELL_HIGH'}
+          print('OOS_2025_GOVERNANCE_PASS')
+          print(r.to_string(index=False))
+          PY
+      - name: Upload OOS result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: oos-2025-frozen-candidate-evaluation
+          path: artifacts/oos_2025
+          if-no-files-found: ignore
