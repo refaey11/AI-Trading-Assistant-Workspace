@@ -46,8 +46,7 @@ jobs:
           if not candidates: raise SystemExit("NO_VALID_GOVERNED_ARTIFACT")
           a=sorted(candidates,key=lambda x:x["created_at"])[-1]
           print("ARTIFACT_ID",a["id"],"SIZE",a["size_in_bytes"])
-          zip_url=a["archive_download_url"]
-          req=urllib.request.Request(zip_url, headers={"Authorization": f"Bearer {token}", "Accept":"application/vnd.github+json"})
+          req=urllib.request.Request(a["archive_download_url"], headers={"Authorization": f"Bearer {token}", "Accept":"application/vnd.github+json"})
           os.makedirs("artifacts",exist_ok=True)
           with urllib.request.urlopen(req) as r, open("/tmp/source.zip","wb") as f:
               while True:
@@ -101,3 +100,5 @@ jobs:
           name: v5-4-final-result-v2
           path: artifacts/current_stack_backtest_2016_2024
           if-no-files-found: ignore
+
+# Trigger recovery execution after workflow trigger fix.
