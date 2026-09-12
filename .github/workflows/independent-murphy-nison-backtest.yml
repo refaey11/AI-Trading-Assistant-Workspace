@@ -24,35 +24,39 @@ jobs:
         with:
           python-version: '3.12'
       - name: Install dependencies
-        run: python -m pip install --upgrade pip pandas
+        run: python -m pip install --upgrade pip pandas numpy
       - name: Acquire governed inputs
         run: |
           set -euo pipefail
           test -n "$DROPBOX_ACCESS_TOKEN"
-          mkdir -p artifacts/source/h1 artifacts/source/murphy
+          mkdir -p artifacts/source/h1 artifacts/source/murphy artifacts/source/m1
           TOKEN="$(printf '%s' "$DROPBOX_ACCESS_TOKEN" | tr -d '\r\n' | sed -E 's/^Bearer[[:space:]]+//; s/^\"//; s/\"$//')"
           dl(){ curl -L --fail --silent --show-error https://content.dropboxapi.com/2/files/download -H "Authorization: Bearer ${TOKEN}" -H "Dropbox-API-Arg: {\"path\":\"$1\"}" -o "$2"; }
           dl "/New 8/GBPUSD_H1_2016_2025_MASTER.zip" artifacts/h1.zip
           dl "/New 8/MURPHY_HISTORICAL_34_RULE_FANIN_2016_2024.zip" artifacts/murphy.zip
+          dl "/GBPUSD_M1_MASTER_2016_2026_V1.zip" artifacts/m1.zip
           dl "/New 8/NISON_2016_2024_FULL_EVIDENCE.csv" artifacts/nison.csv
           dl "/New 8/GBPUSD_MARKET_STATE 6.csv" artifacts/context.csv
           unzip -q artifacts/h1.zip -d artifacts/source/h1
           unzip -q artifacts/murphy.zip -d artifacts/source/murphy
+          unzip -q artifacts/m1.zip -d artifacts/source/m1
       - name: Resolve sources
         run: |
           set -euo pipefail
           H1=$(find artifacts/source/h1 -type f -name '*.csv' | head -1)
           M=$(find artifacts/source/murphy -type f -name '*.csv' | head -1)
-          test -n "$H1" && test -n "$M"
+          M1=$(find artifacts/source/m1 -type f -name '*.csv' | head -1)
+          test -n "$H1" && test -n "$M" && test -n "$M1"
           echo "H1=$H1" >> "$GITHUB_ENV"
           echo "MURPHY=$M" >> "$GITHUB_ENV"
-          head -1 "$H1"; head -1 "$M"; head -1 artifacts/nison.csv; head -1 artifacts/context.csv
+          echo "M1_DIR=artifacts/source/m1" >> "$GITHUB_ENV"
+          head -1 "$H1"; head -1 "$M"; head -1 "$M1"; head -1 artifacts/nison.csv; head -1 artifacts/context.csv
       - name: Validate existing diagnostic runner inputs
         run: |
           python BACKTEST/DEV_BACKTEST_RUNNER_V1.py --help >/dev/null
       - name: Run independent four-system comparator
         run: |
-          python BACKTEST/INDEPENDENT_FOUR_SYSTEM_COMPARATOR_V1.py --h1 "$H1" --output-dir artifacts/result
+          python BACKTEST/INDEPENDENT_FOUR_SYSTEM_COMPARATOR_V1.py --h1 "$H1" --m1 "$M1_DIR" --output-dir artifacts/result
       - name: Upload result
         if: always()
         uses: actions/upload-artifact@v4
