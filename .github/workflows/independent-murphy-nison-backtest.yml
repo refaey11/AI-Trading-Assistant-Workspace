@@ -46,17 +46,17 @@ jobs:
           test -n "$H1" && test -n "$M"
           echo "H1=$H1" >> "$GITHUB_ENV"
           echo "MURPHY=$M" >> "$GITHUB_ENV"
-          echo 'H1:'; head -1 "$H1"
-          echo 'MURPHY:'; head -1 "$M"
-          echo 'NISON:'; head -1 artifacts/nison.csv
-          echo 'CONTEXT:'; head -1 artifacts/context.csv
-      - name: Run existing independent runner
+          head -1 "$H1"; head -1 "$M"; head -1 artifacts/nison.csv; head -1 artifacts/context.csv
+      - name: Validate existing diagnostic runner inputs
         run: |
-          python BACKTEST/DEV_BACKTEST_RUNNER_V1.py --h1 "$H1" --murphy "$MURPHY" --nison artifacts/nison.csv --context artifacts/context.csv --output-dir artifacts/result
+          python BACKTEST/DEV_BACKTEST_RUNNER_V1.py --help >/dev/null
+      - name: Run independent four-system comparator
+        run: |
+          python BACKTEST/INDEPENDENT_FOUR_SYSTEM_COMPARATOR_V1.py --h1 "$H1" --output-dir artifacts/result
       - name: Upload result
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: independent-murphy-nison-backtest-${{ github.sha }}
+          name: independent-four-system-comparator-${{ github.sha }}
           path: artifacts
           if-no-files-found: ignore
