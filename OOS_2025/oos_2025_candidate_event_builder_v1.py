@@ -31,12 +31,12 @@ def main():
     mur["source_rule_id"] = first_nonblank(mur["source_rule_id"] if "source_rule_id" in mur.columns else None, mur["rule_id"] if "rule_id" in mur.columns else None, mur.index).fillna("")
     mur = mur[(mur.status == "PASS") & mur.direction.isin(["BUY","SELL","BULLISH","BEARISH"])].copy()
     mur["direction"] = mur.direction.replace({"BULLISH":"BUY","BEARISH":"SELL"})
-    h1 = h1.sort_values("timestamp").reset_index(drop=True)
+    h1 = h1.sort_values("timestamp").drop_duplicates("timestamp", keep="last").reset_index(drop=True)
     if {"open","high","low","close"} - set(h1.columns): raise SystemExit("FAIL_CLOSED_H1_MISSING_OHLC")
     for c in ["open","high","low","close"]: h1[c] = pd.to_numeric(h1[c], errors="coerce")
     prev_close=h1.close.shift(1); tr=pd.concat([(h1.high-h1.low),(h1.high-prev_close).abs(),(h1.low-prev_close).abs()],axis=1).max(axis=1)
     h1["ATR20"] = tr.rolling(20,min_periods=20).mean().shift(1)
-    ms=ms.sort_values("timestamp"); mtf=mtf.sort_values("timestamp"); mur=mur.sort_values("timestamp")
+    ms=ms.sort_values("timestamp").drop_duplicates("timestamp", keep="last"); mtf=mtf.sort_values("timestamp").drop_duplicates("timestamp", keep="last"); mur=mur.sort_values("timestamp")
     if "volatility_state" not in ms.columns: raise SystemExit("FAIL_CLOSED_MARKET_STATE_MISSING_VOLATILITY_STATE")
     x=pd.merge_asof(mur,ms[[c for c in ["timestamp","volatility_state","trend","location"] if c in ms.columns]],on="timestamp",direction="backward",allow_exact_matches=False)
     if {"mtf_context","H4_trend_regime"}-set(mtf.columns): raise SystemExit("FAIL_CLOSED_MTF_REQUIRED_FIELDS")
@@ -46,10 +46,13 @@ def main():
     x["volatility_state"]=x.volatility_state.astype("string").str.upper().str.strip(); x["mtf_context"]=x.mtf_context.astype("string").str.lower().str.strip()
     base=x.dropna(subset=["ATR20","volatility_state"]).copy()
     if base.empty: raise SystemExit("FAIL_CLOSED_NO_2025_EVENTS_AFTER_ATR_VOLATILITY_GATES")
-    ts=h1.timestamp.astype("int64").to_numpy(); rows=[]; skipped_end=0; skipped_missing_h4=0
+    # Compare Timestamp objects directly. This avoids pandas 3 datetime-resolution
+    # mismatches (us vs ns) that can make every event appear after the H1 window.
+    h1_index = pd.DatetimeIndex(h1["timestamp"])
+    rows=[]; skipped_end=0; skipped_missing_h4=0
     for r in base.itertuples(index=False):
         if pd.isna(r.H4_trend_regime) and (r.direction=="SELL" or r.mtf_context=="strong_bearish"): skipped_missing_h4+=1; continue
-        j=int(np.searchsorted(ts,r.timestamp.value,side="right"))
+        j=int(h1_index.searchsorted(r.timestamp, side="right"))
         if j>=len(h1): skipped_end+=1; continue
         entry=float(h1.iloc[j].open); atr=float(r.ATR20)
         if not np.isfinite(entry) or atr<=0: continue
@@ -63,8 +66,7 @@ def main():
         rows.append({"event_time":r.timestamp,"direction":r.direction,"source_rule_id":getattr(r,"source_rule_id",""),"volatility_state":r.volatility_state,"mtf_context":r.mtf_context,"H4_trend_regime":r.H4_trend_regime,"entry_time":h1.iloc[j].timestamp,"entry_price":entry,"ATR20_asof":atr,"exit_time":exit_time,"outcome":outcome,"net_R":net})
     ev=pd.DataFrame(rows)
     if ev.empty:
-        print(json.dumps({"base_rows":len(base),"skipped_end":skipped_end,"skipped_missing_h4":skipped_missing_h4},indent=2))
-        raise SystemExit("FAIL_CLOSED_NO_2025_EVENTS_AFTER_ASOF_EXECUTION_GATES")
+        print(json.dumps({"base_rows":len(base),"skipped_end":skipped_end,"skipped_missing_h4":skipped_missing_h4},indent=2)); raise SystemExit("FAIL_CLOSED_NO_2025_EVENTS_AFTER_ASOF_EXECUTION_GATES")
     ev.to_csv(out/"oos_2025_candidate_events.csv",index=False)
     stats=[]
     for cid,fn in CANDIDATES.items():
