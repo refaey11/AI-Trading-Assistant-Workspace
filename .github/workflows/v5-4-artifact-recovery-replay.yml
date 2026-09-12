@@ -88,3 +88,4 @@ jobs:
 
 # Recovery path intentionally uses the already-acquired governed source artifact; 2025 remains locked.
 # Triggered replay uses artifact 10291720491; no 2025 tuning is permitted.
+# Trigger refresh: execute the recovered V5.4 replay from the governed source artifact.
