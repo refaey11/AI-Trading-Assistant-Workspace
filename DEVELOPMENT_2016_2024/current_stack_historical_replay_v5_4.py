@@ -68,23 +68,22 @@ def evaluate_frozen_candidate_risk(
         take_profit = entry - reward_distance
 
     position_size = (equity * risk_pct) / stop_distance
-    return FrozenRiskResult(
-        True,
-        risk_pct,
-        stop_loss,
-        take_profit,
-        position_size,
-        "FROZEN_CANDIDATE_RISK_PASS_DEVELOPMENT",
-    )
+    return FrozenRiskResult(True, risk_pct, stop_loss, take_profit, position_size, "FROZEN_CANDIDATE_RISK_PASS_DEVELOPMENT")
 
 
 source = V4.read_text(encoding="utf-8")
-# The V4 implementation references these execution constants as module globals.
-# Inject the frozen V5.4 values into the dynamically executed implementation.
-source = "SL_ATR = 0.75\nTP_R = 2.0\n" + source
+# Keep the V4 future import at the beginning; then inject frozen execution globals.
+if source.startswith("from __future__ import annotations\n"):
+    source = source.replace(
+        "from __future__ import annotations\n",
+        "from __future__ import annotations\n\nSL_ATR = 0.75\nTP_R = 2.0\n",
+        1,
+    )
+else:
+    source = "SL_ATR = 0.75\nTP_R = 2.0\n" + source
 
-# Development-only compatibility rule: Nison absence/failure is not a
-# contradiction. Only an opposite directional PASS may contradict Murphy.
+# Development-only compatibility rule: Nison absence/failure is not a contradiction.
+# Only an opposite directional PASS may contradict Murphy.
 source = source.replace(
     '        nids = {rid for ids in ng.expanded_ids for rid in ids}\n'
     '        if nids != NISON_IDS:\n'
@@ -111,23 +110,16 @@ _original_load_module = mod.load_module
 
 def patched_load_module(path: Path, name: str):
     if path.name == "frozen_candidate_risk_profile_v1.py":
-
         class FrozenModule:
             evaluate_frozen_candidate_risk = staticmethod(evaluate_frozen_candidate_risk)
-
         return FrozenModule
     return _original_load_module(path, name)
 
 
 mod.load_module = patched_load_module
 mod.MTF_FIELDS = [
-    "mtf_trend_score",
-    "M5_trend_regime",
-    "M15_trend_regime",
-    "M30_trend_regime",
-    "H1_trend_regime",
-    "H4_trend_regime",
-    "D1_trend_regime",
+    "mtf_trend_score", "M5_trend_regime", "M15_trend_regime", "M30_trend_regime",
+    "H1_trend_regime", "H4_trend_regime", "D1_trend_regime",
 ]
 run = mod.run
 
@@ -135,31 +127,12 @@ run = mod.run
 if __name__ == "__main__":
     p = argparse.ArgumentParser()
     for name in (
-        "h1",
-        "market-state",
-        "murphy",
-        "nison",
-        "mtf",
-        "historical-context",
-        "historical-outcome",
-        "similarity-artifact",
-        "retrieval-artifact",
-        "scenario-artifact",
-        "output-dir",
+        "h1", "market-state", "murphy", "nison", "mtf", "historical-context",
+        "historical-outcome", "similarity-artifact", "retrieval-artifact",
+        "scenario-artifact", "output-dir",
     ):
         p.add_argument(f"--{name}", required=True, type=Path)
-
     a = p.parse_args()
-    run(
-        a.h1,
-        a.market_state,
-        a.murphy,
-        a.nison,
-        a.mtf,
-        a.historical_context,
-        a.historical_outcome,
-        a.similarity_artifact,
-        a.retrieval_artifact,
-        a.scenario_artifact,
-        a.output_dir,
-    )
+    run(a.h1, a.market_state, a.murphy, a.nison, a.mtf, a.historical_context,
+        a.historical_outcome, a.similarity_artifact, a.retrieval_artifact,
+        a.scenario_artifact, a.output_dir)
