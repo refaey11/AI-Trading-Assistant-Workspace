@@ -49,14 +49,25 @@ def split_rule_ids(value: Any) -> list[str]:
 
 
 def similarity_json_asof(root: Path, ts: pd.Timestamp) -> dict[str, Any]:
+    """Expose Similarity V2 as optional historical evidence, never as a hard gate."""
     files = sorted(root.rglob("*.json")) if root.exists() else []
     files = [p for p in files if "SIMILAR" in p.name.upper() or "CONTEXT" in p.name.upper()]
     if not files:
-        raise ValueError(f"BLOCKED_SIMILARITY_SOURCE_NOT_FOUND:{root}")
+        return {
+            "status": "NOT_AVAILABLE",
+            "source": None,
+            "row": None,
+            "provenance": {"future_current_context_excluded": True, "reason": "source_not_found"},
+        }
     path = files[0]
     data = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(data, list):
-        raise ValueError(f"BLOCKED_SIMILARITY_SCHEMA:{path.name}")
+        return {
+            "status": "NOT_AVAILABLE",
+            "source": str(path),
+            "row": None,
+            "provenance": {"future_current_context_excluded": True, "reason": "schema_not_event_list"},
+        }
     historical: list[dict[str, Any]] = []
     for item in data:
         if not isinstance(item, dict):
@@ -72,7 +83,17 @@ def similarity_json_asof(root: Path, ts: pd.Timestamp) -> dict[str, Any]:
                 historical.append(dict(row))
     historical.sort(key=lambda r: float(r.get("similarity", float("inf"))))
     if not historical:
-        raise ValueError(f"BLOCKED_SIMILARITY_NOT_AVAILABLE_AS_OF_EVENT:{ts.isoformat()}")
+        return {
+            "status": "NOT_AVAILABLE",
+            "source": str(path),
+            "row": None,
+            "provenance": {
+                "future_current_context_excluded": True,
+                "historical_rows_retained": 0,
+                "as_of": ts.isoformat(),
+                "reason": "no_historical_context_as_of_event",
+            },
+        }
     return {
         "status": "AVAILABLE",
         "source": str(path),
