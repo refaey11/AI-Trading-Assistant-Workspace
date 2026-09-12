@@ -1,0 +1,88 @@
+name: V5.4 Replay Recovery V2
+
+on:
+  push:
+    branches:
+      - feature/edge-discovery-ledger-v1
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  replay:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/OOS_2025
+    steps:
+      - name: Checkout canonical backtest branch
+        uses: actions/checkout@v4
+        with:
+          ref: current-stack-dev-backtest-2016-2024-v3
+          fetch-depth: 1
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: python -m pip install --upgrade pip pandas pytest
+      - name: Recover governed source artifact
+        uses: actions/download-artifact@v5
+        with:
+          github-token: ${{ github.token }}
+          repository: ${{ github.repository }}
+          run-id: 34672341981
+          name: current-stack-development-backtest-2016-2024-v5-4
+          path: artifacts
+          merge-multiple: false
+      - name: Verify source and 2025 lock
+        run: |
+          set -euo pipefail
+          test -f artifacts/source/h1/GBPUSD_H1_2016_2025_MASTER.csv
+          test -f artifacts/source/MURPHY_CURRENT_STACK.csv
+          test -f artifacts/source/nison.csv
+          test -f artifacts/source/market_state.csv
+          test -f artifacts/source/MTF_CURRENT_STACK.csv
+          test -f artifacts/source/memory/historical_context/HISTORICAL_CONTEXT_MEMORY.csv
+          test -f artifacts/source/memory/historical_outcome/HISTORICAL_OUTCOMES.csv
+          test -f artifacts/source/memory/similarity/SIMILAR_CONTEXT_READS.json
+          test -f artifacts/source/memory/retrieval/CONTEXT_AWARE_READINGS.json
+          test -f artifacts/source/memory/scenario/MARKET_SCENARIOS.json
+          python - <<'PY'
+          import pandas as pd
+          p='artifacts/source/h1/GBPUSD_H1_2016_2025_MASTER.csv'
+          d=pd.read_csv(p)
+          d['timestamp']=pd.to_datetime(d['timestamp'],utc=True)
+          d=d[(d.timestamp >= '2016-01-01') & (d.timestamp < '2025-01-01')]
+          assert not d.empty
+          d.to_csv('artifacts/H1_DEVELOPMENT_2016_2024.csv',index=False)
+          print('H1_DEVELOPMENT_ROWS',len(d))
+          print('2025_OOS_LOCKED=True')
+          PY
+      - name: Run V5.4 full-window replay
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/current_stack_backtest_2016_2024
+          python DEVELOPMENT_2016_2024/current_stack_historical_replay_v5_4.py \
+            --h1 artifacts/H1_DEVELOPMENT_2016_2024.csv \
+            --market-state artifacts/source/market_state.csv \
+            --murphy artifacts/source/MURPHY_CURRENT_STACK.csv \
+            --nison artifacts/source/nison.csv \
+            --mtf artifacts/source/MTF_CURRENT_STACK.csv \
+            --historical-context artifacts/source/memory/historical_context/HISTORICAL_CONTEXT_MEMORY.csv \
+            --historical-outcome artifacts/source/memory/historical_outcome/HISTORICAL_OUTCOMES.csv \
+            --similarity-artifact artifacts/source/memory/similarity/SIMILAR_CONTEXT_READS.json \
+            --retrieval-artifact artifacts/source/memory/retrieval/CONTEXT_AWARE_READINGS.json \
+            --scenario-artifact artifacts/source/memory/scenario/MARKET_SCENARIOS.json \
+            --output-dir artifacts/current_stack_backtest_2016_2024
+      - name: Print V5.4 metrics
+        run: cat artifacts/current_stack_backtest_2016_2024/current_stack_backtest_metrics_2016_2024.json
+      - name: Upload V5.4 result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: v5-4-final-result-v2
+          path: artifacts/current_stack_backtest_2016_2024
+          if-no-files-found: ignore
