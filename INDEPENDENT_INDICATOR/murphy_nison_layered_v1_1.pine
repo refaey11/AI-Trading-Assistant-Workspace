@@ -81,7 +81,7 @@ barRange = math.max(high - low, syminfo.mintick)
 upperWick = high - math.max(open, close)
 lowerWick = math.min(open, close) - low
 bullEngulf = close > open and close[1] < open[1] and close >= open[1] and open <= close[1]
-bearEngulf = close < open and close[1] > open[1] and open >= open[1] and close <= close[1]
+bearEngulf = close < open and close[1] > open[1] and open >= close[1] and close <= open[1]
 bullPin = close > open and lowerWick >= body * 1.5 and lowerWick >= upperWick * 1.2 and close >= low + barRange * 0.55
 bearPin = close < open and upperWick >= body * 1.5 and upperWick >= lowerWick * 1.2 and close <= high - barRange * 0.55
 inside = high[1] < high[2] and low[1] > low[2]
