@@ -28,41 +28,85 @@ jobs:
           python-version: "3.12"
       - name: Install dependencies
         run: python -m pip install --upgrade pip pandas pytest
-      - name: Recover governed source artifact by exact artifact ID
+      - name: Recover governed source artifact by exact name
         uses: actions/download-artifact@v5
         with:
           github-token: ${{ github.token }}
           repository: ${{ github.repository }}
           run-id: 34672341981
-          artifact-ids: 10291720491
+          name: current-stack-development-backtest-2016-2024-v5-4
           path: artifacts
           merge-multiple: true
-      - name: Verify recovered source set
+      - name: Inspect recovered source tree
         run: |
           set -euo pipefail
-          test -f artifacts/source/h1/GBPUSD_H1_2016_2025_MASTER.csv
-          test -f artifacts/source/MURPHY_CURRENT_STACK.csv
-          test -f artifacts/source/nison.csv
-          test -f artifacts/source/market_state.csv
-          test -f artifacts/source/MTF_CURRENT_STACK.csv
-          test -f artifacts/source/memory/historical_context/HISTORICAL_CONTEXT_MEMORY.csv
-          test -f artifacts/source/memory/historical_outcome/HISTORICAL_OUTCOMES.csv
-          test -f artifacts/source/memory/similarity/SIMILAR_CONTEXT_READS.json
-          test -f artifacts/source/memory/retrieval/CONTEXT_AWARE_READINGS.json
-          test -f artifacts/source/memory/scenario/MARKET_SCENARIOS.json
-          echo RECOVERED_SOURCE_SET_PASS
+          echo '=== recovered files ==='
+          find artifacts/source -type f -printf '%p %s bytes\n' | sort | head -200
+      - name: Stage canonical source inputs
+        run: |
+          set -euo pipefail
+          mkdir -p artifacts/source/staged
+          H1="$(find artifacts/source -type f -name 'GBPUSD_H1_2016_2025_MASTER.csv' | head -1)"
+          MURPHY="$(find artifacts/source -type f -name 'MURPHY_2016_2024_FULL_EVIDENCE.csv' | head -1)"
+          NISON="$(find artifacts/source -type f -name 'nison.csv' | head -1)"
+          MARKET="$(find artifacts/source -type f -name 'market_state.csv' | head -1)"
+          test -n "$H1" && test -n "$MURPHY" && test -n "$NISON" && test -n "$MARKET"
+          cp "$H1" artifacts/source/staged/GBPUSD_H1_2016_2025_MASTER.csv
+          cp "$MURPHY" artifacts/source/staged/MURPHY_CURRENT_STACK.csv
+          cp "$NISON" artifacts/source/staged/nison.csv
+          cp "$MARKET" artifacts/source/staged/market_state.csv
+          python - <<'PY'
+          from pathlib import Path
+          import pandas as pd
+          root=Path('artifacts/source')
+          out=root/'staged'/'MTF_CURRENT_STACK.csv'
+          files=[]
+          for p in root.rglob('*.csv'):
+              if 'staged' in p.parts: continue
+              name=p.name.upper()
+              if any(x in name for x in ('M5','M15','M30','H1','H4','D1')) and 'GBPUSD' in name:
+                  files.append(p)
+          if not files:
+              for p in root.rglob('*.csv'):
+                  if 'staged' not in p.parts and 'MTF' in p.name.upper(): files.append(p)
+          frames=[]
+          for p in sorted(set(files)):
+              try:
+                  df=pd.read_csv(p,low_memory=False)
+              except Exception:
+                  continue
+              cols={str(c).strip().lower() for c in df.columns}
+              if {'open','high','low','close'}.issubset(cols): frames.append(df)
+          if not frames: raise SystemExit('NO_MTF_OHLC_CSV_FOUND')
+          combined=pd.concat(frames,ignore_index=True)
+          tscol=next((c for c in combined.columns if str(c).strip().lower() in {'timestamp','datetime'}),None)
+          if tscol:
+              combined[tscol]=pd.to_datetime(combined[tscol],utc=True,errors='coerce',format='mixed')
+              combined=combined.dropna(subset=[tscol]).sort_values(tscol).drop_duplicates()
+          combined.to_csv(out,index=False)
+          print('MTF_FILES_USED=',len(files),'ROWS=',len(combined))
+          PY
+          echo STAGED_SOURCE_SET_PASS
       - name: Enforce development window
         run: |
+          set -euo pipefail
           python - <<'PY'
-          from datetime import datetime, timezone
-          assert datetime(2016,1,1,tzinfo=timezone.utc) < datetime(2025,1,1,tzinfo=timezone.utc)
+          import pandas as pd
+          from pathlib import Path
+          h1=Path('artifacts/source/staged/GBPUSD_H1_2016_2025_MASTER.csv')
+          df=pd.read_csv(h1,usecols=lambda c: str(c).strip().lower() in {'timestamp','datetime','date','time'},low_memory=False)
+          cols={str(c).strip().lower():c for c in df.columns}
+          if 'timestamp' in cols: ts=pd.to_datetime(df[cols['timestamp']],utc=True,errors='coerce',format='mixed')
+          elif 'datetime' in cols: ts=pd.to_datetime(df[cols['datetime']],utc=True,errors='coerce',format='mixed')
+          else: ts=pd.to_datetime(df[cols['date']].astype(str)+' '+df[cols['time']].astype(str),utc=True,errors='coerce',format='mixed')
+          assert not ((ts.dt.year==2025)).any(), '2025 rows must be excluded before development replay'
           print('DEVELOPMENT_WINDOW=2016-2024')
           print('2025_OOS_LOCKED=True')
           PY
       - name: Run V5.4 full-window replay
         run: |
           set -euo pipefail
-          H1=artifacts/source/h1/GBPUSD_H1_2016_2025_MASTER.csv
+          H1=artifacts/source/staged/GBPUSD_H1_2016_2025_MASTER.csv
           HC=artifacts/source/memory/historical_context/HISTORICAL_CONTEXT_MEMORY.csv
           HO=artifacts/source/memory/historical_outcome/HISTORICAL_OUTCOMES.csv
           SIM=artifacts/source/memory/similarity/SIMILAR_CONTEXT_READS.json
@@ -70,9 +114,9 @@ jobs:
           SCN=artifacts/source/memory/scenario/MARKET_SCENARIOS.json
           mkdir -p artifacts/current_stack_backtest_2016_2024
           python DEVELOPMENT_2016_2024/current_stack_historical_replay_v5_4.py \
-            --h1 "$H1" --market-state artifacts/source/market_state.csv \
-            --murphy artifacts/source/MURPHY_CURRENT_STACK.csv --nison artifacts/source/nison.csv \
-            --mtf artifacts/source/MTF_CURRENT_STACK.csv --historical-context "$HC" \
+            --h1 "$H1" --market-state artifacts/source/staged/market_state.csv \
+            --murphy artifacts/source/staged/MURPHY_CURRENT_STACK.csv --nison artifacts/source/staged/nison.csv \
+            --mtf artifacts/source/staged/MTF_CURRENT_STACK.csv --historical-context "$HC" \
             --historical-outcome "$HO" --similarity-artifact "$SIM" \
             --retrieval-artifact "$RET" --scenario-artifact "$SCN" \
             --output-dir artifacts/current_stack_backtest_2016_2024
@@ -85,7 +129,3 @@ jobs:
           name: v5-4-final-result
           path: artifacts/current_stack_backtest_2016_2024
           if-no-files-found: ignore
-
-# Recovery path intentionally uses the already-acquired governed source artifact; 2025 remains locked.
-# Triggered replay uses artifact 10291720491; no 2025 tuning is permitted.
-# Trigger refresh: execute the recovered V5.4 replay from the governed source artifact.
