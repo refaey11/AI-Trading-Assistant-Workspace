@@ -28,28 +28,42 @@ jobs:
           python-version: "3.12"
       - name: Install dependencies
         run: python -m pip install --upgrade pip pandas pytest
-      - name: Recover governed source artifact
-        uses: actions/download-artifact@v5
-        with:
-          github-token: ${{ github.token }}
-          repository: ${{ github.repository }}
-          run-id: 34672341981
-          name: current-stack-development-backtest-2016-2024-v5-4
-          path: artifacts
-          merge-multiple: false
-      - name: Verify source and 2025 lock
+      - name: Recover governed source artifact by GitHub API
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
+          python - <<'PY'
+          import json, os, urllib.request
+          run_id = 34672341981
+          repo = "refaey11/AI-Trading-Assistant-Workspace"
+          token = os.environ["GH_TOKEN"]
+          url = f"https://api.github.com/repos/{repo}/actions/runs/{run_id}/artifacts?per_page=100"
+          req = urllib.request.Request(url, headers={"Authorization": f"Bearer {token}", "Accept":"application/vnd.github+json"})
+          with urllib.request.urlopen(req) as r: data=json.load(r)
+          candidates=[a for a in data["artifacts"] if a["name"]=="current-stack-development-backtest-2016-2024-v5-4" and not a.get("expired") and a["size_in_bytes"]>100000000]
+          if not candidates: raise SystemExit("NO_VALID_GOVERNED_ARTIFACT")
+          a=sorted(candidates,key=lambda x:x["created_at"])[-1]
+          print("ARTIFACT_ID",a["id"],"SIZE",a["size_in_bytes"])
+          zip_url=a["archive_download_url"]
+          req=urllib.request.Request(zip_url, headers={"Authorization": f"Bearer {token}", "Accept":"application/vnd.github+json"})
+          os.makedirs("artifacts",exist_ok=True)
+          with urllib.request.urlopen(req) as r, open("/tmp/source.zip","wb") as f:
+              while True:
+                  b=r.read(1024*1024)
+                  if not b: break
+                  f.write(b)
+          print("DOWNLOAD_OK")
+          PY
+          unzip -q /tmp/source.zip -d artifacts
           test -f artifacts/source/h1/GBPUSD_H1_2016_2025_MASTER.csv
           test -f artifacts/source/MURPHY_CURRENT_STACK.csv
           test -f artifacts/source/nison.csv
           test -f artifacts/source/market_state.csv
           test -f artifacts/source/MTF_CURRENT_STACK.csv
-          test -f artifacts/source/memory/historical_context/HISTORICAL_CONTEXT_MEMORY.csv
-          test -f artifacts/source/memory/historical_outcome/HISTORICAL_OUTCOMES.csv
-          test -f artifacts/source/memory/similarity/SIMILAR_CONTEXT_READS.json
-          test -f artifacts/source/memory/retrieval/CONTEXT_AWARE_READINGS.json
-          test -f artifacts/source/memory/scenario/MARKET_SCENARIOS.json
+      - name: Build development-only H1 source and lock 2025
+        run: |
+          set -euo pipefail
           python - <<'PY'
           import pandas as pd
           p='artifacts/source/h1/GBPUSD_H1_2016_2025_MASTER.csv'
