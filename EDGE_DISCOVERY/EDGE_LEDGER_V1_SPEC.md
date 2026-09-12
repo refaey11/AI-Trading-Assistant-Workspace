@@ -69,3 +69,4 @@ The repository checkpoint states that the recovered historical Murphy evidence c
 Complete source-backed Murphy historical fan-in for the remaining governed rules, then run this ledger against the resulting unified event stream and frozen execution outputs.
 
 <!-- trigger replay recovery after V2 workflow fix -->
+<!-- trigger replay recovery 2026-09-12-v2 -->
