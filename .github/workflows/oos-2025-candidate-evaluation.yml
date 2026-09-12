@@ -3,6 +3,8 @@ name: OOS 2025 Frozen Candidate Evaluation
 on:
   push:
     branches: [feature/edge-discovery-ledger-v1]
+  pull_request:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -48,14 +50,16 @@ jobs:
       - name: Validate 2025 source boundaries
         run: |
           python - <<'PY'
-          import os,pandas as pd
+          import pandas as pd
           from pathlib import Path
           mur=pd.read_csv('artifacts/source/murphy_2025.csv',low_memory=False)
           ts=pd.to_datetime(mur.timestamp,utc=True,errors='coerce',format='mixed')
           assert ts.notna().all() and set(ts.dt.year)=={2025}
           p=dict(x.split('=',1) for x in Path('artifacts/source/paths.env').read_text().splitlines())
           for k in ['H1','MTF']:
-              d=pd.read_csv(p[k],usecols=['timestamp'],low_memory=False); t=pd.to_datetime(d.timestamp,utc=True,errors='coerce',format='mixed'); assert t.notna().all(); assert int(t.dt.year.min())<=2025<=int(t.dt.year.max())
+              d=pd.read_csv(p[k],usecols=['timestamp'],low_memory=False)
+              t=pd.to_datetime(d.timestamp,utc=True,errors='coerce',format='mixed')
+              assert t.notna().all() and int(t.dt.year.min())<=2025<=int(t.dt.year.max())
           print('OOS_SOURCE_BOUNDARY_PASS')
           PY
       - name: Build frozen candidate outcomes
