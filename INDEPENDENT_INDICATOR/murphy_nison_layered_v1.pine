@@ -1,0 +1,203 @@
+//@version=6
+indicator("Independent Murphy + Nison Layered Signal V1", overlay=true, max_labels_count=500)
+
+// -----------------------------------------------------------------------------
+// ISOLATED RESEARCH PROTOTYPE
+// - Not the production Decision Brain.
+// - Murphy-style layer supplies direction.
+// - Nison-style layer supplies confirmation only.
+// - Conflicts / incomplete evidence => NO TRADE.
+// - All MTF requests use lookahead_off.
+// -----------------------------------------------------------------------------
+
+// === Inputs ===
+groupTrend = "1. Regime + Murphy Direction"
+fastLen = input.int(21, "Fast EMA", minval=2, group=groupTrend)
+slowLen = input.int(50, "Slow EMA", minval=5, group=groupTrend)
+swingLen = input.int(3, "Swing strength", minval=1, maxval=10, group=groupTrend)
+adxLen = input.int(14, "ADX length", minval=2, group=groupTrend)
+adxMin = input.float(18.0, "Trend ADX minimum", minval=5, step=0.5, group=groupTrend)
+atrLen = input.int(14, "ATR length", minval=2, group=groupTrend)
+minAtrPct = input.float(0.05, "Minimum ATR %", minval=0.0, step=0.01, group=groupTrend)
+
+groupLocation = "2. Structure / Location"
+locationLookback = input.int(20, "Location lookback", minval=5, group=groupLocation)
+nearAtr = input.float(1.25, "Near S/R within ATR", minval=0.1, step=0.05, group=groupLocation)
+
+ groupConfirm = "3. Nison-style Confirmation"
+confirmWindow = input.int(3, "Confirmation window", minval=1, maxval=5, group=groupConfirm)
+useEngulfing = input.bool(true, "Engulfing", group=groupConfirm)
+usePin = input.bool(true, "Pin / rejection candle", group=groupConfirm)
+useInsideBreak = input.bool(true, "Inside-bar breakout", group=groupConfirm)
+
+groupQuality = "4. Quality Filters"
+useVolume = input.bool(true, "Use volume confirmation", group=groupQuality)
+volumeLen = input.int(20, "Volume average", minval=2, group=groupQuality)
+volumeMult = input.float(1.0, "Volume / average minimum", minval=0.1, step=0.05, group=groupQuality)
+rsiLen = input.int(14, "RSI length", minval=2, group=groupQuality)
+rsiBull = input.float(52.0, "Bull RSI threshold", minval=50, maxval=80, step=0.5, group=groupQuality)
+rsiBear = input.float(48.0, "Bear RSI threshold", minval=20, maxval=50, step=0.5, group=groupQuality)
+
+groupMTF = "5. Multi-Timeframe"
+tf2 = input.timeframe("15", "TF2", group=groupMTF)
+tf3 = input.timeframe("30", "TF3", group=groupMTF)
+tf4 = input.timeframe("60", "TF4", group=groupMTF)
+tf5 = input.timeframe("240", "TF5", group=groupMTF)
+tf6 = input.timeframe("D", "TF6", group=groupMTF)
+mtfMin = input.int(3, "Minimum aligned higher TFs", minval=1, maxval=5, group=groupMTF)
+
+ groupRisk = "6. Risk Gate"
+rrMin = input.float(1.5, "Minimum R:R", minval=0.5, step=0.1, group=groupRisk)
+rrTarget = input.float(2.0, "Target R:R", minval=0.5, step=0.1, group=groupRisk)
+slAtr = input.float(1.2, "ATR stop multiplier", minval=0.2, step=0.1, group=groupRisk)
+scoreMin = input.int(7, "Minimum quality score / 10", minval=1, maxval=10, group=groupRisk)
+
+// === Core calculations ===
+emaFast = ta.ema(close, fastLen)
+emaSlow = ta.ema(close, slowLen)
+atr = ta.atr(atrLen)
+atrPct = close != 0 ? atr / close * 100.0 : 0.0
+[diPlus, diMinus, adx] = ta.dmi(adxLen, adxLen)
+rsi = ta.rsi(close, rsiLen)
+
+trendRegime = adx >= adxMin and atrPct >= minAtrPct
+transitionRegime = not trendRegime
+
+swingHigh = ta.pivothigh(high, swingLen, swingLen)
+swingLow = ta.pivotlow(low, swingLen, swingLen)
+lastHigh = ta.valuewhen(not na(swingHigh), swingHigh, 0)
+lastLow = ta.valuewhen(not na(swingLow), swingLow, 0)
+
+// Murphy-style directional context: structure + trend alignment.
+hhhl = not na(lastHigh) and not na(lastLow) and close > lastLow and high >= high[1] and low >= low[1]
+lhlh = not na(lastHigh) and not na(lastLow) and close < lastHigh and high <= high[1] and low <= low[1]
+
+bullDir = (emaFast > emaSlow ? 1 : 0) + (emaFast > emaFast[1] ? 1 : 0) + (close > emaSlow ? 1 : 0) + (hhhl ? 1 : 0) + (diPlus > diMinus ? 1 : 0)
+bearDir = (emaFast < emaSlow ? 1 : 0) + (emaFast < emaFast[1] ? 1 : 0) + (close < emaSlow ? 1 : 0) + (lhlh ? 1 : 0) + (diMinus > diPlus ? 1 : 0)
+
+murphyBull = bullDir >= 3 and bullDir > bearDir
+murphyBear = bearDir >= 3 and bearDir > bullDir
+
+// === Structure / location ===
+recentResistance = ta.highest(high[1], locationLookback)
+recentSupport = ta.lowest(low[1], locationLookback)
+nearSupport = not na(recentSupport) and math.abs(close - recentSupport) <= atr * nearAtr
+nearResistance = not na(recentResistance) and math.abs(close - recentResistance) <= atr * nearAtr
+bullBreak = not na(recentResistance) and close > recentResistance
+bearBreak = not na(recentSupport) and close < recentSupport
+
+locationBull = nearSupport or bullBreak
+locationBear = nearResistance or bearBreak
+
+// === Nison-style price-action confirmation ===
+body = math.abs(close - open)
+range = math.max(high - low, syminfo.mintick)
+upperWick = high - math.max(open, close)
+lowerWick = math.min(open, close) - low
+
+bullEngulf = close > open and close[1] < open[1] and close >= open[1] and open <= close[1]
+bearEngulf = close < open and close[1] > open[1] and open >= close[1] and close <= open[1]
+
+bullPin = close > open and lowerWick >= body * 1.5 and lowerWick >= upperWick * 1.2 and close >= low + range * 0.55
+bearPin = close < open and upperWick >= body * 1.5 and upperWick >= lowerWick * 1.2 and close <= high - range * 0.55
+
+inside = high[1] < high[2] and low[1] > low[2]
+insideBullBreak = inside and close > high[1]
+insideBearBreak = inside and close < low[1]
+
+bullConfirmNow = (useEngulfing and bullEngulf) or (usePin and bullPin) or (useInsideBreak and insideBullBreak)
+bearConfirmNow = (useEngulfing and bearEngulf) or (usePin and bearPin) or (useInsideBreak and insideBearBreak)
+
+bullBars = ta.barssince(bullConfirmNow)
+bearBars = ta.barssince(bearConfirmNow)
+bullNison = not na(bullBars) and bullBars <= confirmWindow
+bearNison = not na(bearBars) and bearBars <= confirmWindow
+
+// === Quality ===
+volMA = ta.sma(volume, volumeLen)
+volumeKnown = not na(volume) and not na(volMA)
+volumeBull = not useVolume or (volumeKnown and close > open and volume >= volMA * volumeMult)
+volumeBear = not useVolume or (volumeKnown and close < open and volume >= volMA * volumeMult)
+
+momentumBull = rsi >= rsiBull and rsi > rsi[1]
+momentumBear = rsi <= rsiBear and rsi < rsi[1]
+
+// === MTF trend context ===
+mtfTrend(tf) =>
+    request.security(syminfo.tickerid, tf, close > ta.ema(close, 50) ? 1 : close < ta.ema(close, 50) ? -1 : 0, lookahead=barmerge.lookahead_off)
+
+t2 = mtfTrend(tf2)
+t3 = mtfTrend(tf3)
+t4 = mtfTrend(tf4)
+t5 = mtfTrend(tf5)
+t6 = mtfTrend(tf6)
+
+bullMtfCount = (t2 == 1 ? 1 : 0) + (t3 == 1 ? 1 : 0) + (t4 == 1 ? 1 : 0) + (t5 == 1 ? 1 : 0) + (t6 == 1 ? 1 : 0)
+bearMtfCount = (t2 == -1 ? 1 : 0) + (t3 == -1 ? 1 : 0) + (t4 == -1 ? 1 : 0) + (t5 == -1 ? 1 : 0) + (t6 == -1 ? 1 : 0)
+
+mtfBull = bullMtfCount >= mtfMin
+mtfBear = bearMtfCount >= mtfMin
+
+// === Score / gates ===
+bullScore = (murphyBull ? 3 : 0) + (locationBull ? 1 : 0) + (bullNison ? 2 : 0) + (volumeBull ? 1 : 0) + (momentumBull ? 1 : 0) + (mtfBull ? 2 : 0)
+bearScore = (murphyBear ? 3 : 0) + (locationBear ? 1 : 0) + (bearNison ? 2 : 0) + (volumeBear ? 1 : 0) + (momentumBear ? 1 : 0) + (mtfBear ? 2 : 0)
+
+// Risk/reward is a final hard gate. The target is derived from the ATR stop.
+bullSL = close - atr * slAtr
+bullRisk = close - bullSL
+bullTP = close + bullRisk * rrTarget
+bullRR = bullRisk > 0 ? (bullTP - close) / bullRisk : 0.0
+
+bearSL = close + atr * slAtr
+bearRisk = bearSL - close
+bearTP = close - bearRisk * rrTarget
+bearRR = bearRisk > 0 ? (close - bearTP) / bearRisk : 0.0
+
+riskBull = bullRR >= rrMin
+riskBear = bearRR >= rrMin
+
+buySignal = trendRegime and murphyBull and bullNison and mtfBull and bullScore >= scoreMin and riskBull and not murphyBear
+sellSignal = trendRegime and murphyBear and bearNison and mtfBear and bearScore >= scoreMin and riskBear and not murphyBull
+
+noTrade = not buySignal and not sellSignal
+
+// === Visuals ===
+plot(emaFast, "Fast EMA", linewidth=1)
+plot(emaSlow, "Slow EMA", linewidth=2)
+plot(lastHigh, "Swing Resistance", style=plot.style_linebr)
+plot(lastLow, "Swing Support", style=plot.style_linebr)
+
+plotshape(buySignal, title="BUY", style=shape.labelup, location=location.belowbar, text="BUY", size=size.tiny)
+plotshape(sellSignal, title="SELL", style=shape.labeldown, location=location.abovebar, text="SELL", size=size.tiny)
+
+plot(buySignal ? bullSL : na, "BUY SL", style=plot.style_linebr)
+plot(buySignal ? bullTP : na, "BUY TP", style=plot.style_linebr)
+plot(sellSignal ? bearSL : na, "SELL SL", style=plot.style_linebr)
+plot(sellSignal ? bearTP : na, "SELL TP", style=plot.style_linebr)
+
+// === Dashboard ===
+var table dash = table.new(position.top_right, 2, 9, border_width=1)
+if barstate.islast
+    table.cell(dash, 0, 0, "Layer")
+    table.cell(dash, 1, 0, "State")
+    table.cell(dash, 0, 1, "Regime")
+    table.cell(dash, 1, 1, trendRegime ? "TREND" : "TRANSITION/RANGE")
+    table.cell(dash, 0, 2, "Murphy")
+    table.cell(dash, 1, 2, murphyBull ? "BULL" : murphyBear ? "BEAR" : "NEUTRAL")
+    table.cell(dash, 0, 3, "Nison")
+    table.cell(dash, 1, 3, bullNison ? "BULL CONF" : bearNison ? "BEAR CONF" : "NONE")
+    table.cell(dash, 0, 4, "MTF")
+    table.cell(dash, 1, 4, str.tostring(bullMtfCount) + " / " + str.tostring(bearMtfCount))
+    table.cell(dash, 0, 5, "Volume")
+    table.cell(dash, 1, 5, useVolume ? (volumeKnown ? "AVAILABLE" : "UNAVAILABLE") : "OFF")
+    table.cell(dash, 0, 6, "Score")
+    table.cell(dash, 1, 6, str.tostring(math.max(bullScore, bearScore)) + "/10")
+    table.cell(dash, 0, 7, "Output")
+    table.cell(dash, 1, 7, buySignal ? "BUY" : sellSignal ? "SELL" : "NO TRADE")
+    table.cell(dash, 0, 8, "RR")
+    table.cell(dash, 1, 8, buySignal ? str.tostring(bullRR, "#.##") : sellSignal ? str.tostring(bearRR, "#.##") : "-")
+
+// Alerts are confirmation alerts, not automated execution.
+alertcondition(buySignal, title="Independent BUY", message="Independent Murphy+Nison prototype: BUY confirmed. Check chart, SL and TP before manual decision.")
+alertcondition(sellSignal, title="Independent SELL", message="Independent Murphy+Nison prototype: SELL confirmed. Check chart, SL and TP before manual decision.")
+alertcondition(noTrade, title="Independent NO TRADE", message="Independent Murphy+Nison prototype: NO TRADE / insufficient confluence.")
