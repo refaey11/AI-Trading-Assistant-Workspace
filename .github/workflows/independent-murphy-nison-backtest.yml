@@ -51,9 +51,13 @@ jobs:
           echo "MURPHY=$M" >> "$GITHUB_ENV"
           echo "M1_DIR=artifacts/source/m1" >> "$GITHUB_ENV"
           head -1 "$H1"; head -1 "$M"; head -1 "$M1"; head -1 artifacts/nison.csv; head -1 artifacts/context.csv
-      - name: Run independent four-system comparator
+      - name: Run independent four-system comparator V1.1
         run: |
-          python BACKTEST/INDEPENDENT_FOUR_SYSTEM_COMPARATOR_V1.py --h1 "$H1" --m1 "$M1_DIR" --output-dir artifacts/result
+          python BACKTEST/INDEPENDENT_FOUR_SYSTEM_COMPARATOR_V1.py --h1 "$H1" --m1 "$M1_DIR" --output-dir artifacts/result_v11
+      - name: Run independent setup-mode comparator V1.2
+        run: |
+          cd BACKTEST
+          python INDEPENDENT_FOUR_SYSTEM_COMPARATOR_V1_2.py --h1 "../$H1" --m1 "../$M1_DIR" --output-dir "../artifacts/result_v12"
       - name: Upload result
         if: always()
         uses: actions/upload-artifact@v4
