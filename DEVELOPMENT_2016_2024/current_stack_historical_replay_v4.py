@@ -46,7 +46,8 @@ def asof_frame(df: pd.DataFrame) -> pd.DataFrame:
 def asof_row(frame: pd.DataFrame, ts: pd.Timestamp) -> pd.Series | None:
     if frame.empty:
         return None
-    pos = frame.index.searchsorted(ts, side="right") - 1
+    # Strict as-of: only information strictly earlier than the execution bar is eligible.
+    pos = frame.index.searchsorted(ts, side="left") - 1
     return None if pos < 0 else frame.iloc[pos]
 
 
@@ -136,7 +137,6 @@ def run(
     for bar_idx, bar in bars.iterrows():
         ts = bar.timestamp
 
-        # 1) Realize exits BEFORE evaluating new entries at this timestamp.
         still_open: list[dict[str, Any]] = []
         for pos in open_positions:
             outcome, r_mult = hit_exit(bar, pos["direction"], pos["stop_loss"], pos["take_profit"])
@@ -155,7 +155,6 @@ def run(
             trades.append(trade)
         open_positions = still_open
 
-        # 2) Generate/score new decisions only from evidence available at this timestamp.
         groups = candidates_by_ts.get(ts)
         if groups is None:
             continue
@@ -186,205 +185,26 @@ def run(
 
             entry = float(bar.close)
             atr = scalar(market_row, ("atr","atr20","H1_atr"))
-            frozen_result = frozen.evaluate_frozen_candidate_risk(
-                direction=murphy_direction,
-                equity=equity,
-                peak_equity=peak_equity,
-                entry=entry,
-                atr=atr,
-                prior_loss_streak=loss_streak,
-            )
-            rr_target = 1.5 * atr
-            rr_request = canonical.RiskRequest(
-                equity=equity,
-                risk_percent=frozen_result.risk_percent,
-                entry_price=entry,
-                stop_distance=0.75 * atr,
-                take_profit_distance=rr_target,
-                stop_mode="structure",
-                risk_budget_locked=True,
-            )
+            frozen_result = frozen.evaluate_frozen_candidate_risk(direction=murphy_direction,equity=equity,peak_equity=peak_equity,entry=entry,atr=atr,prior_loss_streak=loss_streak)
+            stop_distance = 0.75 * atr
+            rr_target = 2.0 * stop_distance
+            rr_request = canonical.RiskRequest(equity=equity,risk_percent=frozen_result.risk_percent,entry_price=entry,stop_distance=stop_distance,take_profit_distance=rr_target,stop_mode="structure",risk_budget_locked=True)
             cr = canonical.evaluate_risk(rr_request, murphy_direction, atr)
-            risk = {
-                "authoritative": True,
-                "risk_pass": bool(frozen_result.risk_pass and cr.risk_pass),
-                "equity": equity,
-                "peak_equity": peak_equity,
-                "prior_loss_streak": loss_streak,
-                "entry_price": entry,
-                "atr": atr,
-                "risk_percent": float(frozen_result.risk_percent),
-                "stop_loss": float(cr.stop_loss),
-                "take_profit": float(cr.take_profit),
-                "position_size": float(cr.position_size),
-                "rr": 2.0,
-                "risk_budget_locked": True,
-            }
-            brain_row = {**market_row.to_dict(), **mtf_row.to_dict(), "entry_price": entry, "atr": atr}
-            memory = provider.evidence(ts.isoformat(), brain_row)
-            brain_result = bridge.run_full_brain_cycle(
-                row=brain_row,
-                query_as_of=ts.isoformat(),
-                murphy_evidence={"status":"PASS","rows":[mr.drop(labels=["expanded_ids","direction_norm"]).to_dict()],"authoritative":True},
-                nison_evidence={"status":"PASS","rows":ng.drop(columns=["expanded_ids"], errors="ignore").to_dict("records"),"authoritative":True,"confirmation":confirmation,"contradiction":contradiction},
-                risk_evidence=risk,
-                tiz_evidence={"status":"NOT_EVALUABLE","authoritative":False,"source":"TIZ_RUNTIME_BOUNDARY_RESOLUTION_V2"},
-                historical_evidence={"status": memory["status"], "memory_role": memory["memory_role"], "sources": memory["sources"], "governance": memory["governance"], "query_as_of": memory["query_as_of"]},
-                source_rule_ids=sorted(set(mr.expanded_ids).union(nids)),
-                entry_price=entry,
-                atr=atr,
-                mode="development",
-            )
-            decision = (brain_result.get("decision") or {}).get("decision") or {}
-            final = decision.get("final")
-            should_open = brain_result.get("status") == "EXECUTABLE" and final in {"BUY","SELL"} and risk["risk_pass"] and not contradiction
+            risk = {"authoritative":True,"risk_pass":bool(frozen_result.risk_pass and cr.risk_pass),"equity":equity,"peak_equity":peak_equity,"prior_loss_streak":loss_streak,"entry_price":entry,"atr":atr,"risk_percent":float(frozen_result.risk_percent),"stop_loss":float(cr.stop_loss),"take_profit":float(cr.take_profit),"position_size":float(cr.position_size),"rr":2.0}
 
-            event = {
-                "timestamp": ts.isoformat(),
-                "murphy_direction": murphy_direction,
-                "murphy_rule_count": len(set(mr.expanded_ids)),
-                "nison_rule_count": len(nids),
-                "nison_confirmation": confirmation,
-                "nison_contradiction": contradiction,
-                "nison_pass_direction_count": len(normalized_ndirs),
-                "nison_fail_count": int(nstatus.eq("FAIL").sum()),
-                "nison_not_evaluable_count": int(nstatus.eq("NOT_EVALUABLE").sum()),
-                "risk_pass": risk["risk_pass"],
-                "brain_status": brain_result.get("status"),
-                "brain_final": final,
-                "equity_before": equity,
-                "loss_streak_before": loss_streak,
-                "equity_after": equity,
-                "peak_equity_after": peak_equity,
-                "loss_streak_after": loss_streak,
-                "open_positions_before": len(open_positions),
-                "memory_status": memory["status"],
-                "memory_full_stack_wired": True,
-                "historical_context_wired": True,
-                "historical_outcome_wired": True,
-                "similarity_evidence_only": True,
-                "retrieval_evidence_only": True,
-                "scenario_evidence_only": True,
-                "entry_price": entry,
-                "atr": atr,
-                "stop_loss": risk["stop_loss"],
-                "take_profit": risk["take_profit"],
-                "source_rule_ids": sorted(set(mr.expanded_ids).union(nids)),
-                "future_data_used": False,
-            }
-
-            if should_open:
-                position = {
-                    **event,
-                    "trade": True,
-                    "direction": final,
-                    "entry_timestamp": ts.isoformat(),
-                    "entry_bar_index": int(bar_idx),
-                    "stop_loss": risk["stop_loss"],
-                    "take_profit": risk["take_profit"],
-                    "risk_percent": risk["risk_percent"],
-                    "equity_at_entry": equity,
-                    "loss_streak_at_entry": loss_streak,
-                }
-                open_positions.append(position)
-                max_concurrent_positions = max(max_concurrent_positions, len(open_positions))
-                event["trade_opened"] = True
-            else:
-                event["trade_opened"] = False
-            event["open_positions_after"] = len(open_positions)
+            memory = provider.get_context(ts=ts, direction=murphy_direction, symbol=str(mr.get("symbol","GBPUSD")), timeframe="H1")
+            decision = bridge.build_decision(murphy_direction, confirmation, contradiction, risk, memory)
+            event = {"event_time":ts.isoformat(),"rule_id":str(mr.source_rule_id),"direction":murphy_direction,"nison_confirmation":confirmation,"contradiction":contradiction,"risk_pass":risk["risk_pass"],"decision_status":str(decision.get("status")),"final_direction":str(decision.get("final_direction")),"available_time":ts.isoformat()}
             events.append(event)
-
-    # 3) End-of-window audit. Unclosed positions are not counted as realized P&L.
-    closed = pd.DataFrame(trades)
-    if not closed.empty:
-        closed_realized = closed[closed["r_multiple"].notna()].copy()
-    else:
-        closed_realized = closed
+            if decision.get("status") == "EXECUTABLE" and decision.get("final_direction") in {"BUY","SELL"} and risk["risk_pass"] and not contradiction:
+                open_positions.append({"entry_timestamp":ts.isoformat(),"entry_bar_index":int(bar_idx),"entry_price":entry,"direction":murphy_direction,"stop_loss":risk["stop_loss"],"take_profit":risk["take_profit"],"risk_percent":risk["risk_percent"],"rule_id":str(mr.source_rule_id)})
+                max_concurrent_positions=max(max_concurrent_positions,len(open_positions))
 
     output_dir.mkdir(parents=True, exist_ok=True)
-    pd.DataFrame(events).to_csv(output_dir / "current_stack_decision_events_2016_2024.csv", index=False)
-    pd.DataFrame(trades).to_csv(output_dir / "current_stack_executed_trades_2016_2024.csv", index=False)
-    metrics: dict[str, Any] = {
-        "status": "CURRENT_STACK_DEVELOPMENT_RESULT",
-        "window": "2016-2024",
-        "candidate_events": int(len(candidates)),
-        "evaluated_events": int(len(events)),
-        "executed_trades": int(len(closed_realized)),
-        "open_positions_at_window_end": int(len(open_positions)),
-        "max_concurrent_positions": int(max_concurrent_positions),
-        "costs_applied": False,
-        "tuning_applied": False,
-        "official_profitability_claim": False,
-        "murphy_registry_rules": len(MURPHY_IDS),
-        "murphy_source_backed_rules_observed": len(observed_m),
-        "realized_pnl_update_policy": "EXIT_ONLY",
-        "risk_state_update_policy": "REALIZED_EQUITY_ONLY",
-    }
-    if not closed_realized.empty:
-        wins = int((closed_realized.r_multiple > 0).sum())
-        losses = int((closed_realized.r_multiple < 0).sum())
-        gross_win = float(closed_realized.loc[closed_realized.r_multiple > 0, "r_multiple"].sum())
-        gross_loss = float(-closed_realized.loc[closed_realized.r_multiple < 0, "r_multiple"].sum())
-        eq_r = closed_realized.r_multiple.cumsum()
-        metrics.update({
-            "wins": wins,
-            "losses": losses,
-            "win_rate": wins / len(closed_realized),
-            "profit_factor": gross_win / gross_loss if gross_loss else None,
-            "expectancy_R": float(closed_realized.r_multiple.mean()),
-            "total_R": float(closed_realized.r_multiple.sum()),
-            "max_drawdown_R": float((eq_r - eq_r.cummax()).min()),
-        })
-
-    yearly = {}
-    if not closed_realized.empty:
-        tmp = closed_realized.copy()
-        tmp["year"] = pd.to_datetime(tmp["exit_timestamp"], utc=True).dt.year
-        for year, g in tmp.groupby("year"):
-            yearly[str(int(year))] = {
-                "trades": int(len(g)),
-                "wins": int((g.r_multiple > 0).sum()),
-                "losses": int((g.r_multiple < 0).sum()),
-                "total_R": float(g.r_multiple.sum()),
-            }
-    metrics["yearly_realized_results"] = yearly
-
-    validation = {
-        "window_2016_2024_only": True,
-        "future_data_used": False,
-        "murphy_governed_rules": 34,
-        "murphy_source_backed_rules_observed": len(observed_m),
-        "nison_governed_rules": 44,
-        "nison_generates_direction": False,
-        "tiz_generates_direction": False,
-        "memory_generates_direction": False,
-        "risk_authoritative": True,
-        "brain_semantics_changed": False,
-        "official_profitability_claim_allowed": False,
-        "nison_fail_is_not_contradiction": True,
-        "nison_contradiction_requires_opposite_directional_pass": True,
-        "trade_lifecycle_event_driven": True,
-        "pnl_recorded_only_on_exit": True,
-        "risk_state_updates_only_on_realized_pnl": True,
-        "unclosed_positions_excluded_from_realized_profitability": True,
-    }
-    (output_dir / "current_stack_backtest_metrics_2016_2024.json").write_text(json.dumps(metrics, indent=2), encoding="utf-8")
-    (output_dir / "current_stack_validation_manifest_2016_2024.json").write_text(json.dumps(validation, indent=2), encoding="utf-8")
-    print(json.dumps({"metrics": metrics, "validation": validation}, indent=2))
-
-
-if __name__ == "__main__":
-    p = argparse.ArgumentParser()
-    p.add_argument("--h1", required=True, type=Path)
-    p.add_argument("--market-state", required=True, type=Path)
-    p.add_argument("--murphy", required=True, type=Path)
-    p.add_argument("--nison", required=True, type=Path)
-    p.add_argument("--mtf", required=True, type=Path)
-    p.add_argument("--historical-context", required=True, type=Path)
-    p.add_argument("--historical-outcome", required=True, type=Path)
-    p.add_argument("--similarity-artifact", required=True, type=Path)
-    p.add_argument("--retrieval-artifact", required=True, type=Path)
-    p.add_argument("--scenario-artifact", required=True, type=Path)
-    p.add_argument("--output-dir", required=True, type=Path)
-    a = p.parse_args()
-    run(a.h1, a.market_state, a.murphy, a.nison, a.mtf, a.historical_context, a.historical_outcome, a.similarity_artifact, a.retrieval_artifact, a.scenario_artifact, a.output_dir)
+    pd.DataFrame(events).to_csv(output_dir/"current_stack_decision_events_2016_2024.csv",index=False)
+    pd.DataFrame(trades).to_csv(output_dir/"current_stack_executed_trades_2016_2024.csv",index=False)
+    realized=[t for t in trades if t.get("r_multiple") is not None]
+    wins=sum(float(t["r_multiple"])>0 for t in realized); losses=sum(float(t["r_multiple"])<0 for t in realized)
+    gross_win=sum(float(t["r_multiple"]) for t in realized if float(t["r_multiple"])>0); gross_loss=-sum(float(t["r_multiple"]) for t in realized if float(t["r_multiple"])<0)
+    metrics={"development_window":"2016-2024","oos_2025_locked":True,"strict_asof":True,"trades":len(realized),"wins":wins,"losses":losses,"win_rate":wins/len(realized) if realized else None,"profit_factor":gross_win/gross_loss if gross_loss else None,"expectancy_R":sum(float(t["r_multiple"]) for t in realized)/len(realized) if realized else None,"net_R":sum(float(t["r_multiple"]) for t in realized),"max_concurrent_positions":max_concurrent_positions,"official_profitability_claim":False,"costs_applied":False,"tuning_applied":False}
+    (output_dir/"current_stack_backtest_metrics_2016_2024.json").write_text(json.dumps(metrics,indent=2),encoding="utf-8")
