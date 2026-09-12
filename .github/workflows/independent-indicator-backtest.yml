@@ -1,6 +1,9 @@
 name: Independent Indicator Backtest
 
 on:
+  push:
+    branches:
+      - prototype/independent-murphy-nison-indicator-v1
   workflow_dispatch:
     inputs:
       symbol:
@@ -90,6 +93,7 @@ jobs:
 
       - name: Validate six-timeframe source package
         run: |
+          mkdir -p backtest_output
           python BACKTEST/MTF_SIX_TF_SOURCE_ADAPTER_V1.py \
             --root artifacts/source/mtf \
             --report backtest_output/mtf_source_report.json \
@@ -129,9 +133,9 @@ jobs:
           set -euo pipefail
           mkdir -p backtest_output
           cat > backtest_output/run_contract.txt <<EOF
-          symbol=${{ inputs.symbol }}
-          development_window=${{ inputs.start_year }}-${{ inputs.end_year }}
-          oos_year=${{ inputs.oos_year }}
+          symbol=${{ inputs.symbol || 'GBPUSD' }}
+          development_window=${{ inputs.start_year || '2016' }}-${{ inputs.end_year || '2024' }}
+          oos_year=${{ inputs.oos_year || '2025' }}
           data_source=/GBPUSD_M1_MASTER_2016_2026_V1.zip
           data_connection=Dropbox_API
           lookahead_policy=closed_bar_only
