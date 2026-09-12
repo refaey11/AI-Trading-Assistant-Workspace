@@ -100,5 +100,3 @@ jobs:
           name: v5-4-final-result-v2
           path: artifacts/current_stack_backtest_2016_2024
           if-no-files-found: ignore
-
-# Trigger recovery execution after workflow trigger fix.
