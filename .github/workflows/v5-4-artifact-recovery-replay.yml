@@ -87,3 +87,4 @@ jobs:
           if-no-files-found: ignore
 
 # Recovery path intentionally uses the already-acquired governed source artifact; 2025 remains locked.
+# Triggered replay uses artifact 10291720491; no 2025 tuning is permitted.
