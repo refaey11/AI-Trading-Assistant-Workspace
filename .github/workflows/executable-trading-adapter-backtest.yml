@@ -44,7 +44,6 @@ jobs:
           import json
           from pathlib import Path
           p=Path('artifacts/dev_2016_2024/metrics.json'); d=json.loads(p.read_text())
-          # The same frozen parameters are used for OOS; no tuning occurs here.
           print(json.dumps(d,indent=2))
           PY
       - name: Locked OOS 2025
@@ -55,7 +54,7 @@ jobs:
           df=pd.read_csv(src)
           t=next(c for c in df.columns if str(c).lower() in {'timestamp','datetime','date','time'})
           dt=pd.to_datetime(df[t],utc=True,errors='coerce')
-          df= df.loc[dt.dt.year.eq(2025)].copy()
+          df=df.loc[dt.dt.year.eq(2025)].copy()
           if df.empty: raise SystemExit('NO_2025_DATA')
           out='artifacts/source/GBPUSD_H1_2025_OOS.csv'; df.to_csv(out,index=False)
           print('2025 rows:',len(df))
@@ -66,17 +65,7 @@ jobs:
           python - <<'PY'
           import json
           from pathlib import Path
-          d={
-            'model':'ATB_V1_EXECUTION_ADAPTER',
-            'development_window':'2016-2024',
-            'oos_window':'2025',
-            'oos_locked':True,
-            'parameter_tuning_on_2025':False,
-            'entry_protocol':'next_bar_open',
-            'costs_applied':False,
-            'official_profitability_claim_allowed':False,
-            'note':'Independent executable adapter; not a claim that the full 78-rule Decision Brain is production-complete.'
-          }
+          d={'model':'ATB_V1_EXECUTION_ADAPTER','development_window':'2016-2024','oos_window':'2025','oos_locked':True,'parameter_tuning_on_2025':False,'entry_protocol':'next_bar_open','costs_applied':False,'official_profitability_claim_allowed':False}
           Path('artifacts/oos_lock_manifest.json').write_text(json.dumps(d,indent=2),encoding='utf-8')
           PY
       - name: Upload results
@@ -85,3 +74,5 @@ jobs:
         with:
           name: executable-trading-adapter-backtest
           path: artifacts/
+
+# trigger run on main push
