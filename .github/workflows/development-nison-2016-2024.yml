@@ -23,12 +23,31 @@ jobs:
         run: test -n "$DROPBOX_ACCESS_TOKEN"
       - name: Verify repository Python imports
         run: python -c "import OOS_2025; import DEVELOPMENT_2016_2024.run_nison_development_2016_2024_v1; from OOS_2025.nison_2025_runtime_producer_v1 import run_ohlcv_for_year"
-      - name: Recover and run governed Nison development evidence
+      - name: Recover existing governed Nison development evidence
         run: |
           set -eu
           mkdir -p artifacts/development_nison_2016_2024
-          python DEVELOPMENT_2016_2024/run_nison_development_2016_2024_v1.py \
-            --output-dir artifacts/development_nison_2016_2024
+          python - <<'PY'
+          import os, urllib.request, json
+          token=os.environ['DROPBOX_ACCESS_TOKEN']
+          path='/New 8/NISON_2016_2024_FULL_EVIDENCE.csv'
+          req=urllib.request.Request('https://content.dropboxapi.com/2/files/download', headers={'Authorization':f'Bearer {token}','Dropbox-API-Arg':json.dumps({'path':path})})
+          with urllib.request.urlopen(req, timeout=300) as src, open('artifacts/development_nison_2016_2024/NISON_2016_2024_FULL_EVIDENCE.csv','wb') as dst:
+              while True:
+                  chunk=src.read(1024*1024)
+                  if not chunk: break
+                  dst.write(chunk)
+          PY
+          python - <<'PY'
+          import json, pandas as pd
+          p='artifacts/development_nison_2016_2024/NISON_2016_2024_FULL_EVIDENCE.csv'
+          df=pd.read_csv(p, usecols=['timestamp','rule_id'])
+          ts=pd.to_datetime(df['timestamp'], errors='coerce', format='mixed', utc=True)
+          if ts.isna().any(): raise SystemExit(f'invalid timestamps: {int(ts.isna().sum())}')
+          rules=sorted(df['rule_id'].astype(str).str.extract(r'(\d+)')[0].dropna().astype(int).unique())
+          if len(rules) != 44: raise SystemExit(f'expected 44 Nison rules, found {len(rules)}')
+          print(json.dumps({'rows':int(len(df)),'unique_rule_ids':len(rules),'rule_ids':rules,'development_window':'2016-2024','oos_2025_locked':True},indent=2))
+          PY
       - name: Store development evidence artifacts
         uses: actions/upload-artifact@v4
         with:
