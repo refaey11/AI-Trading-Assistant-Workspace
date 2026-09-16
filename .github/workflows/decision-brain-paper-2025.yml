@@ -31,7 +31,6 @@ jobs:
           test -n "$TOKEN"
           mkdir -p artifacts/source/h1
           dl(){ curl -L --fail --silent --show-error https://content.dropboxapi.com/2/files/download -H "Authorization: Bearer ${TOKEN}" -H "Dropbox-API-Arg: {\"path\":\"$1\"}" -o "$2"; }
-          # These are the same source paths proven by the successful V2 OOS run.
           dl "/New/MURPHY_2025_FULL_EVIDENCE.csv" artifacts/source/murphy_2025.csv
           dl "/New/NISON_2025_FULL_EVIDENCE 3.csv" artifacts/source/nison_2025.csv
           dl "/AI_Trading_Assistant_FULL_PROJECT_V1/AI_Trading_Assistant_MARKET_STATE_READER_V1/GBPUSD_MARKET_STATE.csv" artifacts/source/market_state.csv
@@ -55,10 +54,7 @@ jobs:
               with open(p,newline='',encoding='utf-8-sig') as f:
                   print(p, next(csv.reader(f)))
           PY
-      - name: Diagnose Decision Brain wiring
-        run: |
-          python OOS_2025/DIAGNOSTIC_MARKET_STATE_SCHEMA_V1.py --context artifacts/source/market_state.csv
-      - name: Validate OOS boundary
+      - name: Validate raw OOS boundary
         run: |
           python - <<'PY'
           import pandas as pd
@@ -69,9 +65,25 @@ jobs:
               assert set(t.dt.year).issubset({2025})
           print('OOS_2025_SOURCE_BOUNDARY_PASS')
           PY
+      - name: Build H1 Brain-compatible context adapter
+        run: |
+          python OOS_2025/H1_MARKET_STATE_BRAIN_ADAPTER_V1.py --src artifacts/source/market_state.csv --dst artifacts/source/brain_context_2025.csv
+      - name: Diagnose adapted Decision Brain wiring
+        run: |
+          python OOS_2025/DIAGNOSTIC_MARKET_STATE_SCHEMA_V1.py --context artifacts/source/brain_context_2025.csv
+      - name: Validate adapted context boundary
+        run: |
+          python - <<'PY'
+          import pandas as pd
+          p='artifacts/source/brain_context_2025.csv'
+          d=pd.read_csv(p,usecols=['timestamp'],low_memory=False)
+          t=pd.to_datetime(d.timestamp,utc=True,errors='coerce',format='mixed')
+          assert t.notna().all() and set(t.dt.year).issubset({2025})
+          print('ADAPTED_CONTEXT_2025_BOUNDARY_PASS')
+          PY
       - name: Run Decision Brain paper evaluation
         run: |
-          python OOS_2025/DECISION_BRAIN_PAPER_RUNNER_2025_V1.py --h1 "$H1" --murphy artifacts/source/murphy_2025.csv --nison artifacts/source/nison_2025.csv --context artifacts/source/market_state.csv --out artifacts/decision_brain_paper_2025
+          python OOS_2025/DECISION_BRAIN_PAPER_RUNNER_2025_V1.py --h1 "$H1" --murphy artifacts/source/murphy_2025.csv --nison artifacts/source/nison_2025.csv --context artifacts/source/brain_context_2025.csv --out artifacts/decision_brain_paper_2025
       - name: Print execution funnel
         run: |
           python - <<'PY'
