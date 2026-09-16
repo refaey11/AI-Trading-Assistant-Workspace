@@ -8,13 +8,16 @@ on:
         required: true
         type: string
         default: ""
+  push:
+    branches:
+      - current-stack-dev-backtest-2016-2024-v3
 
 permissions:
   contents: read
 
 jobs:
   current_stack_v5_4:
-    if: ${{ inputs.confirm == 'RUN_CURRENT_STACK_BACKTEST' }}
+    if: ${{ github.event_name == 'push' || inputs.confirm == 'RUN_CURRENT_STACK_BACKTEST' }}
     runs-on: ubuntu-latest
     timeout-minutes: 120
     env:
@@ -129,8 +132,7 @@ jobs:
           print(json.dumps({'MTF_COVERAGE_PASS':True,'rows':len(combined),'years':years,'producer_values_used_verbatim':True},indent=2))
           PY
       - name: Canonical six-TF source contract gate
-        run: |
-          python BACKTEST/mtf_source_contract_gate_v1.py --mtf artifacts/source/MTF_CURRENT_STACK.csv
+        run: python BACKTEST/mtf_source_contract_gate_v1.py --mtf artifacts/source/MTF_CURRENT_STACK.csv
       - name: Resolve memory source files
         run: |
           set -euo pipefail
@@ -176,8 +178,7 @@ jobs:
           print(json.dumps(report,indent=2))
           PY
       - name: Opportunity funnel shadow audit
-        run: |
-          python tools/opportunity_funnel_shadow_v1.py --root artifacts/current_stack_backtest_2016_2024 --output artifacts/OPPORTUNITY_FUNNEL_SHADOW_V1.json
+        run: python tools/opportunity_funnel_shadow_v1.py --root artifacts/current_stack_backtest_2016_2024 --output artifacts/OPPORTUNITY_FUNNEL_SHADOW_V1.json
       - name: Validate V5.4 manifest
         run: |
           python - <<'PY'
