@@ -54,6 +54,9 @@ jobs:
               with open(p,newline='',encoding='utf-8-sig') as f:
                   print(p, next(csv.reader(f)))
           PY
+      - name: Diagnose Decision Brain wiring
+        run: |
+          python OOS_2025/DIAGNOSTIC_MARKET_STATE_SCHEMA_V1.py --context artifacts/source/market_state.csv
       - name: Validate OOS boundary
         run: |
           python - <<'PY'
