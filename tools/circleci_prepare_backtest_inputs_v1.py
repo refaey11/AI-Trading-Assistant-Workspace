@@ -3,6 +3,7 @@ from __future__ import annotations
 import csv
 import json
 import os
+import re
 import shutil
 import urllib.request
 import zipfile
@@ -18,6 +19,7 @@ ROOT = Path("artifacts")
 (ROOT / "source" / "unpacked").mkdir(parents=True, exist_ok=True)
 
 EXPECTED_MURPHY_IDS = {f"MURPHY_{n:04d}" for n in (3, 4, 6, 7, 18, 19, 21, 22, 23, 25, 26, 28, 29, 30, 31, 32, 33, 34, 35, 36, 37, 38, 39, 40, 41, 42, 43, 44, 45, 47, 48, 49, 50, 51)}
+SUPPORTED_TEXT_SUFFIXES = {".csv", ".json", ".jsonl", ".txt", ".md", ".sql", ".yaml", ".yml"}
 
 
 def download(dropbox_path: str, output: Path) -> None:
@@ -31,22 +33,34 @@ def download(dropbox_path: str, output: Path) -> None:
         shutil.copyfileobj(response, handle)
 
 
+def _ids(text: str) -> set[str]:
+    return {x.upper() for x in re.findall(r"\bMURPHY_\d{4}\b", text, re.IGNORECASE)}
+
+
 def extract_records(path: Path) -> list[dict[str, str]]:
     try:
         raw = path.read_text(encoding="utf-8-sig", errors="replace")
     except OSError:
         return []
+
     records: list[dict[str, str]] = []
     if path.suffix.lower() == ".csv":
         try:
             reader = csv.DictReader(raw.splitlines())
             for row in reader:
                 text = " | ".join(f"{k}: {v}" for k, v in row.items() if v not in (None, ""))
-                ids = {x.upper() for x in __import__("re").findall(r"\bMURPHY_\d{4}\b", text, __import__("re").IGNORECASE)}
-                for rid in ids:
+                for rid in sorted(_ids(text)):
                     records.append({"rule_id": rid, "source_file": str(path), "evidence_text": text})
         except (csv.Error, UnicodeError):
             pass
+        return records
+
+    # The governed Murphy archive contains evidence in JSON/Markdown/text packs as
+    # well as CSVs.  The previous implementation listed these suffixes but never
+    # extracted their rule IDs, causing a false 7/34 coverage failure.
+    if path.suffix.lower() in SUPPORTED_TEXT_SUFFIXES:
+        for rid in sorted(_ids(raw)):
+            records.append({"rule_id": rid, "source_file": str(path), "evidence_text": raw})
     return records
 
 
@@ -54,7 +68,7 @@ def merge_murphy_evidence(directory: Path, output: Path) -> tuple[Path, set[str]
     merged: dict[str, dict[str, str]] = {}
     diagnostics: list[dict[str, object]] = []
     for path in sorted(directory.rglob("*")):
-        if not path.is_file() or path.resolve() == output.resolve() or path.suffix.lower() not in {".csv", ".json", ".jsonl", ".txt", ".md", ".sql", ".yaml", ".yml"}:
+        if not path.is_file() or path.resolve() == output.resolve() or path.suffix.lower() not in SUPPORTED_TEXT_SUFFIXES:
             continue
         records = extract_records(path)
         diagnostics.append({"file": str(path), "records": len(records), "ids": sorted({r["rule_id"] for r in records})})
@@ -63,8 +77,12 @@ def merge_murphy_evidence(directory: Path, output: Path) -> tuple[Path, set[str]
     ids = set(merged)
     (directory / "murphy_extraction_diagnostics.json").write_text(json.dumps(diagnostics, ensure_ascii=False, indent=2), encoding="utf-8")
     missing = sorted(EXPECTED_MURPHY_IDS - ids)
-    if missing:
-        raise SystemExit(f"Murphy evidence incomplete after recursive extraction: found {len(ids)}/{len(EXPECTED_MURPHY_IDS)}; missing: {', '.join(missing)}")
+    unknown = sorted(ids - EXPECTED_MURPHY_IDS)
+    if missing or unknown:
+        raise SystemExit(
+            f"Murphy evidence incomplete after recursive text extraction: found {len(ids)}/{len(EXPECTED_MURPHY_IDS)}; "
+            f"missing: {', '.join(missing) or 'none'}; unknown: {', '.join(unknown) or 'none'}"
+        )
     with output.open("w", encoding="utf-8", newline="") as handle:
         writer = csv.DictWriter(handle, fieldnames=["rule_id", "source_file", "evidence_text"])
         writer.writeheader()
