@@ -38,34 +38,15 @@ jobs:
           echo "SOURCE_CSV=$SOURCE_CSV" >> "$GITHUB_ENV"
           git rev-parse HEAD > artifacts/revision.txt
       - name: Development 2016-2024
-        run: |
-          python BACKTEST/EXECUTABLE_TRADING_ADAPTER_V1.py "$SOURCE_CSV" artifacts/dev_2016_2024
-          python - <<'PY'
-          import json
-          from pathlib import Path
-          p=Path('artifacts/dev_2016_2024/metrics.json'); d=json.loads(p.read_text())
-          print(json.dumps(d,indent=2))
-          PY
+        run: python BACKTEST/EXECUTABLE_TRADING_ADAPTER_V1.py "$SOURCE_CSV" artifacts/dev_2016_2024 --start-date 2016-01-01 --end-date 2024-12-31
       - name: Locked OOS 2025
-        run: |
-          python - <<'PY'
-          import pandas as pd, os
-          src=os.environ['SOURCE_CSV']
-          df=pd.read_csv(src)
-          t=next(c for c in df.columns if str(c).lower() in {'timestamp','datetime','date','time'})
-          dt=pd.to_datetime(df[t],utc=True,errors='coerce')
-          df=df.loc[dt.dt.year.eq(2025)].copy()
-          if df.empty: raise SystemExit('NO_2025_DATA')
-          out='artifacts/source/GBPUSD_H1_2025_OOS.csv'; df.to_csv(out,index=False)
-          print('2025 rows:',len(df))
-          PY
-          python BACKTEST/EXECUTABLE_TRADING_ADAPTER_V1.py artifacts/source/GBPUSD_H1_2025_OOS.csv artifacts/oos_2025
+        run: python BACKTEST/EXECUTABLE_TRADING_ADAPTER_V1.py "$SOURCE_CSV" artifacts/oos_2025 --start-date 2025-01-01 --end-date 2025-12-31
       - name: OOS lock manifest
         run: |
           python - <<'PY'
           import json
           from pathlib import Path
-          d={'model':'ATB_V1_EXECUTION_ADAPTER','development_window':'2016-2024','oos_window':'2025','oos_locked':True,'parameter_tuning_on_2025':False,'entry_protocol':'next_bar_open','costs_applied':False,'official_profitability_claim_allowed':False}
+          d={'model':'ATB_V1_EXECUTION_ADAPTER','development_window':'2016-2024','oos_window':'2025','oos_locked':True,'parameter_tuning_on_2025':False,'feature_warmup_uses_pre_2025_history':True,'entry_protocol':'next_bar_open','costs_applied':False,'official_profitability_claim_allowed':False}
           Path('artifacts/oos_lock_manifest.json').write_text(json.dumps(d,indent=2),encoding='utf-8')
           PY
       - name: Upload results
@@ -75,4 +56,4 @@ jobs:
           name: executable-trading-adapter-backtest
           path: artifacts/
 
-# trigger run on main push
+# isolated development/OOS windows; no parameter fitting on 2025
