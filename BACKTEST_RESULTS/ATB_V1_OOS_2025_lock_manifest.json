@@ -1,0 +1,11 @@
+{
+  "model": "ATB_V1_EXECUTION_ADAPTER",
+  "development_window": "2016-2024",
+  "oos_window": "2025",
+  "oos_locked": true,
+  "parameter_tuning_on_2025": false,
+  "feature_warmup_uses_pre_2025_history": true,
+  "entry_protocol": "next_bar_open",
+  "costs_applied": false,
+  "official_profitability_claim_allowed": false
+}

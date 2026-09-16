@@ -1,0 +1,32 @@
+{
+  "model_version": "ATB_V1_EXECUTION_ADAPTER",
+  "input": "artifacts/source/GBPUSD_H1_2016_2025_MASTER.csv",
+  "evaluation_start": "2016-01-03 17:00:00+00:00",
+  "evaluation_end": "2024-12-31 16:00:00+00:00",
+  "parameters": {
+    "N": 20,
+    "ATR_PERIOD": 14,
+    "RSI_PERIOD": 14,
+    "EMA_FAST": 50,
+    "EMA_SLOW": 200,
+    "ATR_MIN_PERCENTILE": 30.0,
+    "SL_ATR": 1.0,
+    "TP_R": 2.0
+  },
+  "rows": 61417,
+  "trades": 1072,
+  "resolved_trades": 1064,
+  "wins": 362,
+  "losses": 702,
+  "win_rate": 0.34022556390977443,
+  "profit_factor": 1.0313390313390314,
+  "expectancy_R": 0.020676691729323307,
+  "total_R": 22.0,
+  "max_drawdown_R": -53.0,
+  "ambiguous": 8,
+  "timeouts": 0,
+  "entry_protocol": "next_bar_open",
+  "lookahead_safe": true,
+  "costs_applied": false,
+  "official_profitability_claim_allowed": false
+}
