@@ -13,6 +13,11 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
+      - name: Record checked-out revision
+        run: |
+          git rev-parse HEAD
+          git log -1 --oneline
+
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
