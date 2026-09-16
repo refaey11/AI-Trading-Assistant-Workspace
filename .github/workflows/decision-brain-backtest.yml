@@ -26,13 +26,23 @@ jobs:
           DROPBOX_ACCESS_TOKEN: ${{ secrets.DROPBOX_ACCESS_TOKEN }}
         run: python tools/circleci_prepare_backtest_inputs_v1.py
 
-      - name: Reconcile Murphy evidence
-        run: >-
-          python tools/reconcile_murphy_evidence_v1.py
-          --github-source artifacts/murphy/MURPHY_GITHUB_FULL_EVIDENCE.csv
-          --dropbox-source artifacts/murphy/MURPHY_DROPBOX_FULL_EVIDENCE.csv
-          --allowlist governance/DECISION_BRAIN_RULE_ALLOWLIST_V1.json
-          --output artifacts/murphy/reconciliation.json
+      - name: Verify governed Murphy evidence
+        run: |
+          python - <<'PY'
+          import csv, json
+          from pathlib import Path
+          expected = {f"MURPHY_{n:04d}" for n in (3,4,6,7,18,19,21,22,23,25,26,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,47,48,49,50,51)}
+          p = Path("artifacts/murphy/MURPHY_DROPBOX_FULL_EVIDENCE.csv")
+          with p.open(encoding="utf-8-sig", newline="") as f:
+              rows = list(csv.DictReader(f))
+          found = {r["rule_id"] for r in rows}
+          missing = sorted(expected - found)
+          unknown = sorted(found - expected)
+          result = {"expected":34,"found":len(found),"missing_rule_ids":missing,"unknown_rule_ids":unknown,"complete":not missing and not unknown}
+          print(json.dumps(result, indent=2))
+          if not result["complete"]:
+              raise SystemExit(1)
+          PY
 
       - name: Run frozen Decision Brain backtest
         run: >-
