@@ -48,9 +48,28 @@ jobs:
               assert t.notna().all() and set(t.dt.year)=={2025}
           print('OOS_2025_SOURCE_BOUNDARY_PASS')
           PY
+      - name: Diagnose Decision Brain wiring
+        run: |
+          python OOS_2025/DIAGNOSTIC_MARKET_STATE_SCHEMA_V1.py --context artifacts/source/market_state.csv
       - name: Run governed paper evaluation
         run: |
           python OOS_2025/DECISION_BRAIN_PAPER_RUNNER_2025_V1.py --h1 "$H1" --murphy artifacts/source/murphy_2025.csv --nison artifacts/source/nison_2025.csv --context artifacts/source/market_state.csv --out artifacts/decision_brain_paper_2025
+      - name: Print execution funnel
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          import pandas as pd
+          m=json.loads(Path('artifacts/decision_brain_paper_2025/metrics_2025.json').read_text())
+          d=pd.read_csv('artifacts/decision_brain_paper_2025/decision_events_2025.csv')
+          print(json.dumps(m,indent=2))
+          print('EVENTS',len(d))
+          print('MURPHY_DIRECTIONAL',int(d.murphy_direction.isin(['BULLISH','BEARISH']).sum()))
+          print('BRAIN_DIRECTIONAL',int(d.brain_bias.isin(['BULLISH','BEARISH']).sum()))
+          print('BRAIN_ALIGNED',int(((d.murphy_direction==d.brain_bias)&d.murphy_direction.isin(['BULLISH','BEARISH'])).sum()))
+          print('NISON_CONTRADICTION',int(d.nison_contradiction.sum()))
+          print('EXECUTE',int(d.decision.eq('EXECUTE').sum()))
+          PY
       - name: Enforce frozen evaluation policy
         run: |
           python - <<'PY'
