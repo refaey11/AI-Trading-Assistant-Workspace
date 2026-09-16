@@ -1,0 +1,87 @@
+name: Decision Brain Development Diagnostic
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+jobs:
+  diagnostic-2016-2024:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Record revision
+        run: |
+          git rev-parse HEAD
+          git log -1 --oneline
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install dependencies
+        run: python -m pip install --upgrade pip pandas pytest
+      - name: Download existing governed inputs
+        env:
+          DROPBOX_ACCESS_TOKEN: ${{ secrets.DROPBOX_ACCESS_TOKEN }}
+        run: |
+          set -eu
+          test -n "$DROPBOX_ACCESS_TOKEN"
+          mkdir -p artifacts/nison artifacts/murphy/unpacked artifacts/source/unpacked
+          python - <<'PY'
+          import json, os, shutil, urllib.request
+          from pathlib import Path
+          token=os.environ['DROPBOX_ACCESS_TOKEN']
+          def dl(path,out):
+              req=urllib.request.Request('https://content.dropboxapi.com/2/files/download',data=b'',method='POST',headers={'Authorization':f'Bearer {token}','Dropbox-API-Arg':json.dumps({'path':path})})
+              with urllib.request.urlopen(req,timeout=900) as r, open(out,'wb') as f: shutil.copyfileobj(r,f)
+          dl('/New 8/NISON_2016_2024_FULL_EVIDENCE.csv','artifacts/nison/NISON_2016_2024_FULL_EVIDENCE.csv')
+          dl('/New 8/GBPUSD_H1_2016_2025_MASTER.zip','artifacts/source/GBPUSD_H1_2016_2025_MASTER.zip')
+          dl('/New 8/GBPUSD_MARKET_STATE 6.csv','artifacts/GBPUSD_MARKET_STATE.csv')
+          dl('/New 8/MURPHY_HISTORICAL_34_RULE_FANIN_2016_2024.zip','/tmp/murphy.zip')
+          PY
+          unzip -q /tmp/murphy.zip -d artifacts/murphy/unpacked
+          unzip -q artifacts/source/GBPUSD_H1_2016_2025_MASTER.zip -d artifacts/source/unpacked
+          SOURCE_CSV=$(find artifacts/source/unpacked -type f -name 'GBPUSD_H1_2016_2025_MASTER.csv' | head -1)
+          test -n "$SOURCE_CSV"
+          echo "SOURCE_CSV=$SOURCE_CSV" >> "$GITHUB_ENV"
+      - name: Select actual Murphy fan-in CSV without manufacturing coverage
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import pandas as pd
+          root=Path('artifacts/murphy/unpacked')
+          candidates=[]
+          for p in root.rglob('*.csv'):
+              try: df=pd.read_csv(p)
+              except Exception: continue
+              if 'timestamp' not in df.columns or not ({'rule_id','source_rule_id'} & set(df.columns)): continue
+              key='source_rule_id' if 'source_rule_id' in df.columns else 'rule_id'
+              vals=set()
+              for v in df[key].dropna(): vals.update(x.strip() for x in str(v).split('|') if x.strip())
+              years=pd.to_datetime(df['timestamp'],utc=True,errors='coerce').dt.year.dropna()
+              candidates.append((len(df),len(vals),int(years.min()) if len(years) else 0,int(years.max()) if len(years) else 0,p,vals))
+          if not candidates: raise SystemExit('NO_MURPHY_CSV')
+          candidates.sort(reverse=True,key=lambda x:(x[1],x[0]))
+          rows,rules,y0,y1,p,vals=candidates[0]
+          if y0>2016 or y1<2024: raise SystemExit(f'BAD_WINDOW:{y0}-{y1}')
+          out=Path('artifacts/murphy/MURPHY_DROPBOX_PARTIAL_FANIN.csv'); out.write_bytes(p.read_bytes())
+          manifest={'artifact':str(p),'rows':rows,'observed_rule_count':rules,'observed_rule_ids':sorted(vals),'governed_murphy_runtime_total':34,'coverage_status':'PARTIAL_DIAGNOSTIC_ONLY','official_profitability_claim_allowed':False}
+          Path('artifacts/murphy/partial_coverage_manifest.json').write_text(__import__('json').dumps(manifest,indent=2),encoding='utf-8')
+          print(__import__('json').dumps(manifest,indent=2))
+          PY
+      - name: Run existing Decision Brain diagnostic runner
+        run: >-
+          python BACKTEST/DEV_BACKTEST_RUNNER_V1.py
+          --h1 "$SOURCE_CSV"
+          --murphy artifacts/murphy/MURPHY_DROPBOX_PARTIAL_FANIN.csv
+          --nison artifacts/nison/NISON_2016_2024_FULL_EVIDENCE.csv
+          --context artifacts/GBPUSD_MARKET_STATE.csv
+          --output-dir artifacts/decision_brain_partial_diagnostic_2016_2024
+      - name: Upload diagnostic artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: decision-brain-partial-diagnostic-2016-2024
+          path: artifacts/
