@@ -107,6 +107,10 @@ source = source.replace(
     '                stop_distance=0.75 * atr,\n',
     '                stop_distance=stop_distance,\n',
 )
+source = source.replace(
+    '                nison_evidence={"status":"PASS","rows":ng.drop(columns=["expanded_ids"], errors="ignore").to_dict("records"),"authoritative":True,"confirmation":confirmation,"contradiction":contradiction},\n',
+    '                nison_evidence={"status":"AVAILABLE" if nids else "ABSENT","rows":ng.drop(columns=["expanded_ids"], errors="ignore").to_dict("records"),"authoritative":True,"confirmation":confirmation,"contradiction":contradiction},\n',
+)
 
 mod = load_module_from_text(source, "current_stack_historical_replay_v5_4_impl")
 _original_load_module = mod.load_module
