@@ -1,0 +1,52 @@
+name: Murphy Paper Bot 2025
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [feat/paper-trading-bot-v1]
+
+permissions:
+  contents: read
+
+jobs:
+  paper-bot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install
+        run: python -m pip install --upgrade pip pandas
+      - name: Download real 2025 inputs from Dropbox
+        env:
+          DROPBOX_ACCESS_TOKEN: ${{ secrets.DROPBOX_ACCESS_TOKEN }}
+        run: |
+          set -euo pipefail
+          test -n "$DROPBOX_ACCESS_TOKEN"
+          mkdir -p data results/h1
+          python - <<'PY'
+          import json, os, urllib.request
+          from pathlib import Path
+          token=os.environ['DROPBOX_ACCESS_TOKEN']
+          def dl(path,out):
+              req=urllib.request.Request('https://content.dropboxapi.com/2/files/download',data=b'',method='POST',headers={'Authorization':f'Bearer {token}','Dropbox-API-Arg':json.dumps({'path':path})})
+              with urllib.request.urlopen(req,timeout=900) as r, open(out,'wb') as f: f.write(r.read())
+          dl('/New/MURPHY_2025_CANDIDATE_STREAM 2.csv','data/murphy_2025.csv')
+          dl('/New 8/GBPUSD_H1_2016_2025_MASTER.zip','data/gbpusd_h1.zip')
+          PY
+          unzip -q data/gbpusd_h1.zip -d results/h1
+          H1=$(find results/h1 -type f -name 'GBPUSD_H1_2016_2025_MASTER.csv' | head -1)
+          test -n "$H1"
+          echo "H1=$H1" >> "$GITHUB_ENV"
+      - name: Run paper bot
+        run: python BOT/MURPHY_PAPER_BOT_V1.py --bars "$H1" --signals data/murphy_2025.csv --out-dir results/paper_bot_2025 --pair GBPUSD
+      - name: Print result
+        run: cat results/paper_bot_2025/metrics.json
+      - name: Upload result
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: murphy-paper-bot-2025
+          path: results/paper_bot_2025/
