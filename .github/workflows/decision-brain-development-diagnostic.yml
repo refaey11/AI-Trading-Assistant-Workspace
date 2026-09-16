@@ -85,3 +85,5 @@ jobs:
         with:
           name: decision-brain-partial-diagnostic-2016-2024
           path: artifacts/
+
+# Diagnostic rerun trigger: execute the existing runner against the real partial fan-in; no rule coverage is fabricated.
