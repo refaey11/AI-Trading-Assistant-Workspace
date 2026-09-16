@@ -31,9 +31,10 @@ jobs:
           test -n "$TOKEN"
           mkdir -p artifacts/source/h1
           dl(){ curl -L --fail --silent --show-error https://content.dropboxapi.com/2/files/download -H "Authorization: Bearer ${TOKEN}" -H "Dropbox-API-Arg: {\"path\":\"$1\"}" -o "$2"; }
-          dl "/New2/MURPHY_2025_FULL_EVIDENCE 2.csv" artifacts/source/murphy_2025.csv
-          dl "/New2/NISON_2025_FULL_EVIDENCE 2.csv" artifacts/source/nison_2025.csv
-          dl "/New2/GBPUSD_MARKET_STATE 4.csv" artifacts/source/market_state.csv
+          # These are the same source paths proven by the successful V2 OOS run.
+          dl "/New/MURPHY_2025_FULL_EVIDENCE.csv" artifacts/source/murphy_2025.csv
+          dl "/New/NISON_2025_FULL_EVIDENCE 3.csv" artifacts/source/nison_2025.csv
+          dl "/AI_Trading_Assistant_FULL_PROJECT_V1/AI_Trading_Assistant_MARKET_STATE_READER_V1/GBPUSD_MARKET_STATE.csv" artifacts/source/market_state.csv
           dl "/New 8/GBPUSD_H1_2016_2025_MASTER.zip" artifacts/source/h1.zip
           unzip -q artifacts/source/h1.zip -d artifacts/source/h1
       - name: Resolve source files
@@ -82,6 +83,7 @@ jobs:
           print(json.dumps(m,indent=2))
           print('EVENTS',len(d))
           print('MURPHY_DIRECTIONAL',int(d.murphy_direction.isin(['BULLISH','BEARISH']).sum()))
+          print('BRAIN_DIRECTIONAL',int(d.brain_bias.isin(['BULLISH','BEARISH']).sum()))
           print('BRAIN_ALIGNED',int(((d.murphy_direction==d.brain_bias)&d.murphy_direction.isin(['BULLISH','BEARISH'])).sum()))
           print('NISON_CONTRADICTION',int(d.nison_contradiction.sum()))
           print('EXECUTE',int(d.decision.eq('EXECUTE').sum()))
