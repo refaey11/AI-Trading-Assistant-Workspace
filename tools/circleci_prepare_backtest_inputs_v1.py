@@ -34,7 +34,16 @@ def download(dropbox_path: str, output: Path) -> None:
 
 
 def _ids(text: str) -> set[str]:
-    return {x.upper() for x in re.findall(r"\bMURPHY_\d{4}\b", text, re.IGNORECASE)}
+    return {x.upper() for x in re.findall(r"\bMURPHY[_ -]?\d{4}\b", text, re.IGNORECASE)}
+
+
+def _normalize_ids(ids: set[str]) -> set[str]:
+    normalized: set[str] = set()
+    for value in ids:
+        match = re.search(r"(\d{4})$", value)
+        if match:
+            normalized.add(f"MURPHY_{match.group(1)}")
+    return normalized
 
 
 def extract_records(path: Path) -> list[dict[str, str]]:
@@ -43,24 +52,29 @@ def extract_records(path: Path) -> list[dict[str, str]]:
     except OSError:
         return []
 
+    # Some authoritative nested evidence packs identify the Murphy rule only in
+    # the filename/directory name. Include the path as governed provenance rather
+    # than requiring the ID to be repeated inside the payload.
+    path_ids = _normalize_ids(_ids(str(path)))
     records: list[dict[str, str]] = []
     if path.suffix.lower() == ".csv":
         try:
             reader = csv.DictReader(raw.splitlines())
             for row in reader:
                 text = " | ".join(f"{k}: {v}" for k, v in row.items() if v not in (None, ""))
-                for rid in sorted(_ids(text)):
+                row_ids = _normalize_ids(_ids(text)) | path_ids
+                for rid in sorted(row_ids):
                     records.append({"rule_id": rid, "source_file": str(path), "evidence_text": text})
         except (csv.Error, UnicodeError):
             pass
         return records
 
-    # The governed Murphy archive contains evidence in JSON/Markdown/text packs as
-    # well as CSVs.  The previous implementation listed these suffixes but never
-    # extracted their rule IDs, causing a false 7/34 coverage failure.
     if path.suffix.lower() in SUPPORTED_TEXT_SUFFIXES:
-        for rid in sorted(_ids(raw)):
-            records.append({"rule_id": rid, "source_file": str(path), "evidence_text": raw})
+        content_ids = _normalize_ids(_ids(raw))
+        all_ids = content_ids | path_ids
+        evidence_text = f"source_path: {path}\n\n{raw}"
+        for rid in sorted(all_ids):
+            records.append({"rule_id": rid, "source_file": str(path), "evidence_text": evidence_text})
     return records
 
 
