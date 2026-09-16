@@ -1,0 +1,87 @@
+name: Executable Trading Adapter Backtest
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  backtest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Dependencies
+        run: python -m pip install --upgrade pip pandas
+      - name: Download untouched market source
+        env:
+          DROPBOX_ACCESS_TOKEN: ${{ secrets.DROPBOX_ACCESS_TOKEN }}
+        run: |
+          set -eu
+          test -n "$DROPBOX_ACCESS_TOKEN"
+          mkdir -p artifacts/source
+          python - <<'PY'
+          import json, os, shutil, urllib.request
+          token=os.environ['DROPBOX_ACCESS_TOKEN']
+          path='/New 8/GBPUSD_H1_2016_2025_MASTER.zip'
+          req=urllib.request.Request('https://content.dropboxapi.com/2/files/download',data=b'',method='POST',headers={'Authorization':f'Bearer {token}','Dropbox-API-Arg':json.dumps({'path':path})})
+          with urllib.request.urlopen(req,timeout=900) as r, open('/tmp/source.zip','wb') as f: shutil.copyfileobj(r,f)
+          PY
+          unzip -q /tmp/source.zip -d artifacts/source
+          SOURCE_CSV=$(find artifacts/source -type f -name 'GBPUSD_H1_2016_2025_MASTER.csv' | head -1)
+          test -n "$SOURCE_CSV"
+          echo "SOURCE_CSV=$SOURCE_CSV" >> "$GITHUB_ENV"
+          git rev-parse HEAD > artifacts/revision.txt
+      - name: Development 2016-2024
+        run: |
+          python BACKTEST/EXECUTABLE_TRADING_ADAPTER_V1.py "$SOURCE_CSV" artifacts/dev_2016_2024
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('artifacts/dev_2016_2024/metrics.json'); d=json.loads(p.read_text())
+          # The same frozen parameters are used for OOS; no tuning occurs here.
+          print(json.dumps(d,indent=2))
+          PY
+      - name: Locked OOS 2025
+        run: |
+          python - <<'PY'
+          import pandas as pd, os
+          src=os.environ['SOURCE_CSV']
+          df=pd.read_csv(src)
+          t=next(c for c in df.columns if str(c).lower() in {'timestamp','datetime','date','time'})
+          dt=pd.to_datetime(df[t],utc=True,errors='coerce')
+          df= df.loc[dt.dt.year.eq(2025)].copy()
+          if df.empty: raise SystemExit('NO_2025_DATA')
+          out='artifacts/source/GBPUSD_H1_2025_OOS.csv'; df.to_csv(out,index=False)
+          print('2025 rows:',len(df))
+          PY
+          python BACKTEST/EXECUTABLE_TRADING_ADAPTER_V1.py artifacts/source/GBPUSD_H1_2025_OOS.csv artifacts/oos_2025
+      - name: OOS lock manifest
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          d={
+            'model':'ATB_V1_EXECUTION_ADAPTER',
+            'development_window':'2016-2024',
+            'oos_window':'2025',
+            'oos_locked':True,
+            'parameter_tuning_on_2025':False,
+            'entry_protocol':'next_bar_open',
+            'costs_applied':False,
+            'official_profitability_claim_allowed':False,
+            'note':'Independent executable adapter; not a claim that the full 78-rule Decision Brain is production-complete.'
+          }
+          Path('artifacts/oos_lock_manifest.json').write_text(json.dumps(d,indent=2),encoding='utf-8')
+          PY
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: executable-trading-adapter-backtest
+          path: artifacts/
