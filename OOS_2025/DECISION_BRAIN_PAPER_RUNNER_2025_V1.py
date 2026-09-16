@@ -1,5 +1,5 @@
 from __future__ import annotations
-import argparse, importlib.util, json
+import argparse, importlib.util, json, re
 from pathlib import Path
 from typing import Any
 import pandas as pd
@@ -28,6 +28,85 @@ def load_csv(path: Path, required: set[str], dup=False) -> pd.DataFrame:
 def norm(v: Any) -> str | None:
     t = str(v or "").strip().upper()
     return {"BUY":"BULLISH","BULL":"BULLISH","BULLISH":"BULLISH","SELL":"BEARISH","BEAR":"BEARISH","BEARISH":"BEARISH"}.get(t)
+
+
+def _num(v: Any) -> float | None:
+    if v is None or (isinstance(v, float) and pd.isna(v)):
+        return None
+    try:
+        return float(v)
+    except Exception:
+        d = norm(v)
+        if d == "BULLISH": return 1.0
+        if d == "BEARISH": return -1.0
+        return None
+
+
+def _canon(name: str) -> str:
+    return re.sub(r"[^a-z0-9]", "", str(name).lower())
+
+
+def _resolve_col(columns, aliases):
+    exact = {_canon(c): c for c in columns}
+    for a in aliases:
+        if _canon(a) in exact:
+            return exact[_canon(a)]
+    return None
+
+
+def _resolve_timeframe_col(columns, tf, kind):
+    aliases = [
+        f"{tf}_{kind}_regime", f"{tf}_{kind}", f"{kind}_regime_{tf}",
+        f"{kind}_{tf}_regime", f"{kind}_{tf}", f"{tf}_regime_{kind}", f"{tf}_{kind}state"
+    ]
+    hit = _resolve_col(columns, aliases)
+    if hit:
+        return hit
+    tfc, kc = _canon(tf), _canon(kind)
+    candidates = []
+    for c in columns:
+        cc = _canon(c)
+        if tfc in cc and kc in cc and ("regime" in cc or kind == "trend"):
+            candidates.append(c)
+    return sorted(candidates, key=lambda x: ("regime" not in _canon(x), len(str(x))))[0] if candidates else None
+
+
+def brain_row(r: pd.Series) -> tuple[dict[str,Any], dict[str,str]]:
+    """Resolve the recovered Brain's canonical inputs from the actual source schema.
+    No 2025 values are inferred from outcomes or tuned; only deterministic field aliases
+    and explicit bullish/bearish text-to-number normalization are used.
+    """
+    cols=list(r.index)
+    out={
+        "mtf_trend_score":0.0,
+        "M5_trend_regime":0.0,"M15_trend_regime":0.0,"M30_trend_regime":0.0,
+        "H1_trend_regime":0.0,"H4_trend_regime":0.0,"D1_trend_regime":0.0,
+        "volume_available":False,
+        "M5_volume_regime":0.0,"M15_volume_regime":0.0,"M30_volume_regime":0.0,
+        "H1_volume_regime":0.0,"H4_volume_regime":0.0,"D1_volume_regime":0.0,
+    }
+    mapping={}
+    score_col=_resolve_col(cols,["mtf_trend_score","mtf_score","multi_timeframe_trend_score","multi_tf_trend_score"])
+    if score_col and pd.notna(r[score_col]):
+        v=_num(r[score_col])
+        if v is not None: out["mtf_trend_score"]=v; mapping["mtf_trend_score"]=score_col
+    for tf in ["M5","M15","M30","H1","H4","D1"]:
+        tc=_resolve_timeframe_col(cols,tf,"trend")
+        if tc and pd.notna(r[tc]):
+            v=_num(r[tc])
+            if v is not None:
+                out[f"{tf}_trend_regime"]=v; mapping[f"{tf}_trend_regime"]=tc
+        vc=_resolve_timeframe_col(cols,tf,"volume")
+        if vc and pd.notna(r[vc]):
+            v=_num(r[vc])
+            if v is not None:
+                out[f"{tf}_volume_regime"]=v; mapping[f"{tf}_volume_regime"]=vc
+    va=_resolve_col(cols,["volume_available","has_volume","volume_data_available"])
+    if va and pd.notna(r[va]):
+        out["volume_available"]=bool(r[va]); mapping["volume_available"]=va
+    elif any(k.endswith("_volume_regime") for k in mapping):
+        out["volume_available"]=True
+    return out,mapping
 
 
 def aggregate_murphy(df: pd.DataFrame) -> pd.DataFrame:
@@ -63,16 +142,6 @@ def brain_module():
     return m
 
 
-def brain_row(r: pd.Series) -> dict[str,Any]:
-    keys=["mtf_trend_score","M5_trend_regime","M15_trend_regime","M30_trend_regime","H1_trend_regime","H4_trend_regime","D1_trend_regime","volume_available","M5_volume_regime","M15_volume_regime","M30_volume_regime","H1_volume_regime","H4_volume_regime","D1_volume_regime"]
-    out={k:0.0 for k in keys}
-    out["volume_available"]=False
-    for k in keys:
-        if k in r.index and pd.notna(r[k]):
-            out[k]=r[k]
-    return out
-
-
 def simulate(bars, entry_i, side, entry, atr):
     risk=STOP_ATR*atr
     sl=entry-risk if side=="BUY" else entry+risk
@@ -104,13 +173,15 @@ def run(h1:Path,murphy:Path,nison:Path,context:Path,out:Path)->dict:
         c["atr"]=c["atr20"]
     c=c[c.timestamp.dt.year==2025].copy()
     merged=c.merge(aggregate_murphy(m),on="timestamp",how="left").merge(aggregate_nison(n),on="timestamp",how="left")
-    brain=brain_module(); events=[]; trades=[]
+    brain=brain_module(); events=[]; trades=[]; mapping_counts={}
     for _,r in merged.iterrows():
         md=norm(r.get("murphy_direction"))
         nd=r.get("nison_confirmation")
         passed=json.loads(r.get("nison_passed_directions") or "[]")
         contradiction=bool(md in {"BULLISH","BEARISH"} and any(x in {"BULLISH","BEARISH"} and x!=md for x in passed))
-        a=brain.assess(brain_row(r),similarity=None)
+        brow,bmap=brain_row(r)
+        for k,v in bmap.items(): mapping_counts[k]=mapping_counts.get(k,0)+1
+        a=brain.assess(brow,similarity=None)
         raw_bias=a.directional_bias
         bias=norm(raw_bias)
         executable=(md in {"BULLISH","BEARISH"} and bias==md and not contradiction and pd.notna(r.entry_price) and pd.notna(r.atr) and float(r.atr)>0)
@@ -134,7 +205,8 @@ def run(h1:Path,murphy:Path,nison:Path,context:Path,out:Path)->dict:
     gw=float(resolved.loc[resolved.r_multiple>0,"r_multiple"].sum()) if not resolved.empty else 0
     gl=float(-resolved.loc[resolved.r_multiple<0,"r_multiple"].sum()) if not resolved.empty else 0
     eq=resolved.r_multiple.cumsum() if not resolved.empty else pd.Series(dtype=float)
-    metrics={"status":"EVALUATION_ONLY","window":"2025-only","events":len(ev),"murphy_directional":int(ev.murphy_direction.isin(["BULLISH","BEARISH"]).sum()),"brain_directional":int(ev.brain_bias.isin(["BULLISH","BEARISH"]).sum()),"decision_aligned":int(((ev.murphy_direction==ev.brain_bias)&ev.murphy_direction.isin(["BULLISH","BEARISH"])).sum()),"nison_contradictions":int(ev.nison_contradiction.sum()),"executed":len(tr),"resolved":len(resolved),"wins":wins,"losses":losses,"win_rate":wins/len(resolved) if len(resolved) else None,"profit_factor":gw/gl if gl else None,"expectancy_R":float(resolved.r_multiple.mean()) if len(resolved) else None,"total_R":float(resolved.r_multiple.sum()) if len(resolved) else 0.0,"max_drawdown_R":float((eq-eq.cummax()).min()) if not eq.empty else 0.0,"stop_atr":STOP_ATR,"target_R":TARGET_R,"entry_policy":"next_h1_open","nison_absent_is_allowed":True,"nison_fail_is_not_contradiction":True,"future_data_used":False,"tuning_applied":False,"live_execution":False,"official_profitability_claim":False}
+    trend_mapped_rows=int(ev.shape[0]) if all(k in mapping_counts for k in ["M5_trend_regime","M15_trend_regime","M30_trend_regime","H1_trend_regime","H4_trend_regime","D1_trend_regime"]) else 0
+    metrics={"status":"EVALUATION_ONLY","window":"2025-only","events":len(ev),"murphy_directional":int(ev.murphy_direction.isin(["BULLISH","BEARISH"]).sum()),"brain_directional":int(ev.brain_bias.isin(["BULLISH","BEARISH"]).sum()),"decision_aligned":int(((ev.murphy_direction==ev.brain_bias)&ev.murphy_direction.isin(["BULLISH","BEARISH"])).sum()),"nison_contradictions":int(ev.nison_contradiction.sum()),"executed":len(tr),"resolved":len(resolved),"wins":wins,"losses":losses,"win_rate":wins/len(resolved) if len(resolved) else None,"profit_factor":gw/gl if gl else None,"expectancy_R":float(resolved.r_multiple.mean()) if len(resolved) else None,"total_R":float(resolved.r_multiple.sum()) if len(resolved) else 0.0,"max_drawdown_R":float((eq-eq.cummax()).min()) if not eq.empty else 0.0,"stop_atr":STOP_ATR,"target_R":TARGET_R,"entry_policy":"next_h1_open","nison_absent_is_allowed":True,"nison_fail_is_not_contradiction":True,"future_data_used":False,"tuning_applied":False,"live_execution":False,"official_profitability_claim":False,"brain_input_mapping_counts":mapping_counts,"all_six_trend_regimes_mapped":bool(trend_mapped_rows)}
     (out/"metrics_2025.json").write_text(json.dumps(metrics,indent=2))
     return metrics
 
