@@ -31,7 +31,6 @@ jobs:
           mkdir -p artifacts/nison artifacts/murphy/unpacked artifacts/source/unpacked
           python - <<'PY'
           import json, os, shutil, urllib.request
-          from pathlib import Path
           token=os.environ['DROPBOX_ACCESS_TOKEN']
           def dl(path,out):
               req=urllib.request.Request('https://content.dropboxapi.com/2/files/download',data=b'',method='POST',headers={'Authorization':f'Bearer {token}','Dropbox-API-Arg':json.dumps({'path':path})})
@@ -60,14 +59,18 @@ jobs:
               key='source_rule_id' if 'source_rule_id' in df.columns else 'rule_id'
               vals=set()
               for v in df[key].dropna(): vals.update(x.strip() for x in str(v).split('|') if x.strip())
-              years=pd.to_datetime(df['timestamp'],utc=True,errors='coerce').dt.year.dropna()
+              years=pd.to_datetime(df['timestamp'],utc=True,errors='coerce',format='mixed').dt.year.dropna()
               candidates.append((len(df),len(vals),int(years.min()) if len(years) else 0,int(years.max()) if len(years) else 0,p,vals))
           if not candidates: raise SystemExit('NO_MURPHY_CSV')
           candidates.sort(reverse=True,key=lambda x:(x[1],x[0]))
           rows,rules,y0,y1,p,vals=candidates[0]
           if y0>2016 or y1<2024: raise SystemExit(f'BAD_WINDOW:{y0}-{y1}')
-          out=Path('artifacts/murphy/MURPHY_DROPBOX_PARTIAL_FANIN.csv'); out.write_bytes(p.read_bytes())
-          manifest={'artifact':str(p),'rows':rows,'observed_rule_count':rules,'observed_rule_ids':sorted(vals),'governed_murphy_runtime_total':34,'coverage_status':'PARTIAL_DIAGNOSTIC_ONLY','official_profitability_claim_allowed':False}
+          df=pd.read_csv(p)
+          df['timestamp']=pd.to_datetime(df['timestamp'],utc=True,errors='coerce',format='mixed')
+          if df['timestamp'].isna().any(): raise SystemExit('MURPHY_TIMESTAMP_NORMALIZATION_FAILED')
+          out=Path('artifacts/murphy/MURPHY_DROPBOX_PARTIAL_FANIN.csv')
+          df.to_csv(out,index=False)
+          manifest={'artifact':str(p),'rows':rows,'observed_rule_count':rules,'observed_rule_ids':sorted(vals),'governed_murphy_runtime_total':34,'coverage_status':'PARTIAL_DIAGNOSTIC_ONLY','official_profitability_claim_allowed':False,'timestamp_normalization':'pd.to_datetime(format=mixed, utc=True)'}
           Path('artifacts/murphy/partial_coverage_manifest.json').write_text(__import__('json').dumps(manifest,indent=2),encoding='utf-8')
           print(__import__('json').dumps(manifest,indent=2))
           PY
