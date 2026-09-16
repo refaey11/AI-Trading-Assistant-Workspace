@@ -72,7 +72,6 @@ def evaluate_frozen_candidate_risk(
 
 
 source = V4.read_text(encoding="utf-8")
-# Keep the V4 future import at the beginning; then inject frozen execution globals.
 if source.startswith("from __future__ import annotations\n"):
     source = source.replace(
         "from __future__ import annotations\n",
@@ -82,18 +81,23 @@ if source.startswith("from __future__ import annotations\n"):
 else:
     source = "SL_ATR = 0.75\nTP_R = 2.0\n" + source
 
-# Development-only compatibility rule: Nison absence/failure is not a contradiction.
-# Only an opposite directional PASS may contradict Murphy.
+# Development-only compatibility: Nison is optional confirmation evidence.
+# Missing/failed Nison is not a contradiction; only an opposite-direction PASS is.
 source = source.replace(
+    '        ng = nison_groups.get(ts)\n'
+    '        if market_row is None or mtf_row is None or ng is None or any(pd.isna(mtf_row.get(k)) for k in MTF_FIELDS):\n'
+    '            continue\n'
     '        nids = {rid for ids in ng.expanded_ids for rid in ids}\n'
     '        if nids != NISON_IDS:\n'
     '            continue\n',
-    '        nids = {rid for ids in ng.expanded_ids for rid in ids}\n'
-    '        if not nids:\n'
+    '        ng = nison_groups.get(ts)\n'
+    '        if market_row is None or mtf_row is None or any(pd.isna(mtf_row.get(k)) for k in MTF_FIELDS):\n'
     '            continue\n'
+    '        if ng is None:\n'
+    '            ng = pd.DataFrame(columns=["source_rule_id", "expanded_ids", "status", "direction"])\n'
+    '        nids = {rid for ids in ng.expanded_ids for rid in ids}\n'
 )
 
-# V5.4 must use the frozen 0.75 ATR / 2R execution contract consistently.
 source = source.replace(
     '            rr_target = 1.5 * atr\n',
     '            stop_distance = SL_ATR * atr\n'
