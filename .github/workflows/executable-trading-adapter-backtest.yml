@@ -3,7 +3,12 @@ name: Executable Trading Adapter Backtest
 on:
   push:
     branches: [main]
+    paths-ignore:
+      - 'BACKTEST_RESULTS/**'
   workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   backtest:
@@ -49,6 +54,39 @@ jobs:
           d={'model':'ATB_V1_EXECUTION_ADAPTER','development_window':'2016-2024','oos_window':'2025','oos_locked':True,'parameter_tuning_on_2025':False,'feature_warmup_uses_pre_2025_history':True,'entry_protocol':'next_bar_open','costs_applied':False,'official_profitability_claim_allowed':False}
           Path('artifacts/oos_lock_manifest.json').write_text(json.dumps(d,indent=2),encoding='utf-8')
           PY
+      - name: Persist metrics to repository
+        run: |
+          set -eu
+          mkdir -p BACKTEST_RESULTS
+          cp artifacts/dev_2016_2024/metrics.json BACKTEST_RESULTS/ATB_V1_DEV_2016_2024_metrics.json
+          cp artifacts/oos_2025/metrics.json BACKTEST_RESULTS/ATB_V1_OOS_2025_metrics.json
+          cp artifacts/oos_lock_manifest.json BACKTEST_RESULTS/ATB_V1_OOS_2025_lock_manifest.json
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          dev=json.loads(Path('BACKTEST_RESULTS/ATB_V1_DEV_2016_2024_metrics.json').read_text())
+          oos=json.loads(Path('BACKTEST_RESULTS/ATB_V1_OOS_2025_metrics.json').read_text())
+          out={
+            'model':'ATB_V1_EXECUTION_ADAPTER',
+            'development':dev,
+            'oos_2025':oos,
+            'methodology':{
+              'entry_protocol':'next_bar_open',
+              'sl_atr':1.0,
+              'tp_R':2.0,
+              'intrabar_ambiguity':'fail_closed',
+              'feature_warmup_uses_full_2016_2025_history':True,
+              'costs_applied':False,
+              'official_profitability_claim_allowed':False
+            }
+          }
+          Path('BACKTEST_RESULTS/ATB_V1_BACKTEST_SUMMARY.json').write_text(json.dumps(out,indent=2,default=str),encoding='utf-8')
+          PY
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add BACKTEST_RESULTS/
+          git diff --cached --quiet || git commit -m 'results: executable adapter backtest'
+          git push
       - name: Upload results
         if: always()
         uses: actions/upload-artifact@v4
