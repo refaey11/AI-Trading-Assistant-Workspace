@@ -1,6 +1,6 @@
 //+------------------------------------------------------------------+
 //| Decision Brain V1 - MT5 Display Bridge                           |
-//| Uses the existing Python Decision Brain; orders are disabled.    |
+//| Existing Python Brain V1; display/analysis only; no orders.      |
 //+------------------------------------------------------------------+
 #property strict
 #property indicator_chart_window
@@ -10,190 +10,150 @@ input string BridgeURL = "http://127.0.0.1:8765/assess";
 input int RefreshSeconds = 5;
 input int WebRequestTimeoutMs = 1500;
 
-ENUM_TIMEFRAMES TFs[6] = {PERIOD_M5, PERIOD_M15, PERIOD_M30, PERIOD_H1, PERIOD_H4, PERIOD_D1};
+ENUM_TIMEFRAMES TFs[6] = {PERIOD_M5,PERIOD_M15,PERIOD_M30,PERIOD_H1,PERIOD_H4,PERIOD_D1};
 string TFNames[6] = {"M5","M15","M30","H1","H4","D1"};
 
-datetime last_refresh = 0;
-string last_status = "Starting...";
-string last_state = "";
-string last_bias = "";
-double last_conf = 0.0;
-string last_reasons = "";
-
-string JsonEscape(string s)
+double ClampSigned(double x)
 {
-   StringReplace(s, "\\", "\\\\");
-   StringReplace(s, """, "\\"");
-   return s;
-}
-
-double Clamp01(double x)
-{
-   if(x < 0.0) return 0.0;
    if(x > 1.0) return 1.0;
+   if(x < -1.0) return -1.0;
    return x;
 }
 
-double Regime(ENUM_TIMEFRAMES tf)
+double GetRegime(ENUM_TIMEFRAMES tf)
 {
-   int h50 = iMA(_Symbol, tf, 50, 0, MODE_EMA, PRICE_CLOSE);
-   int h200 = iMA(_Symbol, tf, 200, 0, MODE_EMA, PRICE_CLOSE);
-   if(h50 == INVALID_HANDLE || h200 == INVALID_HANDLE)
-      return 0.0;
-
-   double a50[3], a200[3], cls[3];
-   ArraySetAsSeries(a50, true);
-   ArraySetAsSeries(a200, true);
-   ArraySetAsSeries(cls, true);
-
-   if(CopyBuffer(h50, 0, 0, 3, a50) < 3 ||
-      CopyBuffer(h200, 0, 0, 3, a200) < 3 ||
-      CopyClose(_Symbol, tf, 0, 3, cls) < 3)
+   int h50=iMA(_Symbol,tf,50,0,MODE_EMA,PRICE_CLOSE);
+   int h200=iMA(_Symbol,tf,200,0,MODE_EMA,PRICE_CLOSE);
+   if(h50==INVALID_HANDLE || h200==INVALID_HANDLE)
    {
-      IndicatorRelease(h50);
-      IndicatorRelease(h200);
+      if(h50!=INVALID_HANDLE) IndicatorRelease(h50);
+      if(h200!=INVALID_HANDLE) IndicatorRelease(h200);
       return 0.0;
    }
 
-   double slope = a50[0] - a50[1];
-   double scale = MathMax(a50[0] * 0.0001, _Point * 10.0);
-   double s = 0.0;
-   if(a50[0] > a200[0] && slope > 0.0 && cls[0] > a50[0])
-      s = 1.0;
-   else if(a50[0] < a200[0] && slope < 0.0 && cls[0] < a50[0])
-      s = -1.0;
-   else
-      s = (a50[0] > a200[0] ? 0.25 : (a50[0] < a200[0] ? -0.25 : 0.0));
+   double ema50[2],ema200[2],cls[2];
+   ArraySetAsSeries(ema50,true);
+   ArraySetAsSeries(ema200,true);
+   ArraySetAsSeries(cls,true);
 
+   int ok1=CopyBuffer(h50,0,0,2,ema50);
+   int ok2=CopyBuffer(h200,0,0,2,ema200);
+   int ok3=CopyClose(_Symbol,tf,0,2,cls);
    IndicatorRelease(h50);
    IndicatorRelease(h200);
-   return Clamp01(MathAbs(s)) * (s >= 0.0 ? 1.0 : -1.0);
+
+   if(ok1<2 || ok2<2 || ok3<2) return 0.0;
+
+   double slope=ema50[0]-ema50[1];
+   if(ema50[0]>ema200[0] && slope>0.0 && cls[0]>ema50[0]) return 1.0;
+   if(ema50[0]<ema200[0] && slope<0.0 && cls[0]<ema50[0]) return -1.0;
+   if(ema50[0]>ema200[0]) return 0.25;
+   if(ema50[0]<ema200[0]) return -0.25;
+   return 0.0;
 }
 
-double MTFScore(double &regs[])
+string BuildPayload()
 {
-   double sum = 0.0;
-   for(int i=0;i<ArraySize(regs);i++) sum += regs[i];
-   return sum / ArraySize(regs);
-}
-
-string BuildJSON()
-{
-   double regs[6];
-   string json = "{";
-   json += ""mtf_trend_score":";
-   for(int i=0;i<6;i++) regs[i] = Regime(TFs[i]);
-   json += DoubleToString(MTFScore(regs), 6);
-
+   double r[6];
+   double sum=0.0;
    for(int i=0;i<6;i++)
    {
-      json += ","" + TFNames[i] + "_trend_regime":" + DoubleToString(regs[i], 6);
+      r[i]=GetRegime(TFs[i]);
+      sum+=r[i];
    }
 
-   // Tick volume is intentionally not promoted to governed volume evidence.
-   // The existing Brain therefore reports volume as unavailable.
-   json += ","volume_available":false";
-   json += ","symbol":"" + JsonEscape(_Symbol) + """;
-   json += ","timeframe":"" + IntegerToString(PeriodSeconds(_Period)/60) + "m"";
-   json += "}";
-   return json;
+   string j="{";
+   j += "\"mtf_trend_score\":"+DoubleToString(ClampSigned(sum/6.0),6);
+
+   for(int i=0;i<6;i++)
+      j += ",\""+TFNames[i]+"_trend_regime\":"+DoubleToString(r[i],6);
+
+   // The current Brain only treats source-backed volume as governed evidence.
+   j += ",\"volume_available\":false";
+   j += "}";
+   return j;
 }
 
-string ExtractString(string json, string key)
+string JsonString(string body,string key)
 {
-   string needle = """ + key + "":"";
-   int p = StringFind(json, needle);
-   if(p < 0) return "";
-   p += StringLen(needle);
-   int e = StringFind(json, """, p);
-   if(e < 0) return "";
-   return StringSubstr(json, p, e-p);
+   string needle="\""+key+"\":\"";
+   int p=StringFind(body,needle);
+   if(p<0) return "";
+   p+=StringLen(needle);
+   int e=StringFind(body,"\"",p);
+   if(e<0) return "";
+   return StringSubstr(body,p,e-p);
 }
 
-double ExtractNumber(string json, string key)
+double JsonNumber(string body,string key)
 {
-   string needle = """ + key + "":";
-   int p = StringFind(json, needle);
-   if(p < 0) return 0.0;
-   p += StringLen(needle);
-   int e = p;
-   while(e < StringLen(json))
+   string needle="\""+key+"\":";
+   int p=StringFind(body,needle);
+   if(p<0) return 0.0;
+   p+=StringLen(needle);
+   int e=p;
+   while(e<StringLen(body))
    {
-      ushort c = StringGetCharacter(json, e);
-      if((c >= '0' && c <= '9') || c == '-' || c == '+' || c == '.' || c == 'e' || c == 'E')
+      ushort c=StringGetCharacter(body,e);
+      if((c>='0' && c<='9') || c=='-' || c=='+' || c=='.' || c=='e' || c=='E')
          e++;
       else
          break;
    }
-   return StringToDouble(StringSubstr(json, p, e-p));
+   return StringToDouble(StringSubstr(body,p,e-p));
 }
 
-void DrawPanel(string text)
+void Show(string s)
 {
-   Comment(text);
+   Comment(s);
 }
 
-void RequestAssessment()
+void RequestBrain()
 {
-   string payload = BuildJSON();
-   char data[];
+   string payload=BuildPayload();
+   char post[];
    char result[];
-   string headers = "Content-Type: application/json\r\n";
-   int n = StringToCharArray(payload, data, 0, WHOLE_ARRAY, CP_UTF8);
-   if(n > 0) ArrayResize(data, n-1);
+   string response_headers;
+   string headers="Content-Type: application/json\r\n";
 
-   string result_headers;
+   int n=StringToCharArray(payload,post,0,WHOLE_ARRAY,CP_UTF8);
+   if(n>0) ArrayResize(post,n-1);
+
    ResetLastError();
-   int code = WebRequest("POST", BridgeURL, headers, WebRequestTimeoutMs, data, result, result_headers);
+   int code=WebRequest("POST",BridgeURL,headers,WebRequestTimeoutMs,post,result,response_headers);
 
-   if(code != 200)
+   if(code!=200)
    {
-      int err = GetLastError();
-      last_status = "Bridge error HTTP=" + IntegerToString(code) + " err=" + IntegerToString(err);
-      DrawPanel("DECISION BRAIN V1\n\n" + last_status +
-                "\n\nStart the local Python bridge.\nOrders: DISABLED");
+      int err=GetLastError();
+      Show("DECISION BRAIN V1\n\nBridge not reachable.\nHTTP: "+
+           IntegerToString(code)+"  Error: "+IntegerToString(err)+
+           "\n\nStart the Python bridge and allow WebRequest.");
       return;
    }
 
-   string body = CharArrayToString(result, 0, -1, CP_UTF8);
-   if(StringFind(body, ""error"") >= 0)
-   {
-      last_status = "Bridge returned an error";
-      DrawPanel("DECISION BRAIN V1\n\n" + body);
-      return;
-   }
+   string body=CharArrayToString(result,0,-1,CP_UTF8);
+   string state=JsonString(body,"market_state");
+   string bias=JsonString(body,"directional_bias");
+   double conf=JsonNumber(body,"confidence");
 
-   last_state = ExtractString(body, "market_state");
-   last_bias = ExtractString(body, "directional_bias");
-   last_conf = ExtractNumber(body, "confidence");
-
-   string reasons = "";
-   if(StringFind(body, "no_trade_reasons") >= 0)
-      reasons = "See Brain response / volume gate.";
-   last_reasons = reasons;
-   last_status = "LIVE • " + TimeToString(TimeCurrent(), TIME_SECONDS);
-
-   string panel =
-      "DECISION BRAIN V1\n" +
-      "-------------------------\n" +
-      "Symbol: " + _Symbol + "\n" +
-      "Market: " + last_state + "\n" +
-      "Bias:   " + last_bias + "\n" +
-      "Confidence: " + DoubleToString(last_conf*100.0, 1) + "%\n" +
-      "-------------------------\n" +
-      "Analysis source: existing Brain V1\n" +
-      "Orders: DISABLED\n" +
-      "Volume gate: unavailable\n" +
-      "-------------------------\n" +
-      last_status;
-
-   DrawPanel(panel);
+   Show("DECISION BRAIN V1\n"+
+        "-------------------------\n"+
+        "Symbol: "+_Symbol+"\n"+
+        "Market: "+state+"\n"+
+        "Bias: "+bias+"\n"+
+        "Confidence: "+DoubleToString(conf*100.0,1)+"%\n"+
+        "-------------------------\n"+
+        "Source: existing Brain V1\n"+
+        "Orders: DISABLED\n"+
+        "Volume: unavailable\n"+
+        "-------------------------\n"+
+        "LIVE: "+TimeToString(TimeCurrent(),TIME_SECONDS));
 }
 
 int OnInit()
 {
-   EventSetTimer(MathMax(1, RefreshSeconds));
-   RequestAssessment();
+   EventSetTimer(MathMax(1,RefreshSeconds));
+   RequestBrain();
    return(INIT_SUCCEEDED);
 }
 
@@ -205,7 +165,7 @@ void OnDeinit(const int reason)
 
 void OnTimer()
 {
-   RequestAssessment();
+   RequestBrain();
 }
 
 int OnCalculate(const int rates_total,
@@ -219,5 +179,5 @@ int OnCalculate(const int rates_total,
                 const long &volume[],
                 const int &spread[])
 {
-   return(rates_total);
+   return rates_total;
 }
