@@ -136,19 +136,28 @@ void RequestBrain()
    string bias=JsonString(body,"directional_bias");
    double conf=JsonNumber(body,"confidence");
 
+   string mtf="";
+   for(int i=0;i<6;i++)
+   {
+      double v=JsonNumber(body,TFNames[i]+"_trend_regime");
+      string d=(v>0.0 ? "BULLISH" : (v<0.0 ? "BEARISH" : "NEUTRAL"));
+      mtf += TFNames[i]+": "+d+"\n";
+   }
+
    Show("DECISION BRAIN V1\n"+
         "-------------------------\n"+
         "Symbol: "+_Symbol+"\n"+
         "Market: "+state+"\n"+
-        "Bias: "+bias+"\n"+
+        "Brain Bias: "+bias+"\n"+
         "Confidence: "+DoubleToString(conf*100.0,1)+"%\n"+
+        "-------------------------\n"+
+        mtf+
         "-------------------------\n"+
         "Source: existing Brain V1\n"+
         "Orders: DISABLED\n"+
         "Volume: unavailable\n"+
         "-------------------------\n"+
         "LIVE: "+TimeToString(TimeCurrent(),TIME_SECONDS));
-}
 
 int OnInit()
 {
