@@ -18,9 +18,12 @@ def load_csv(path: Path, required: set[str], *, allow_duplicate_timestamps: bool
     missing = sorted(required - set(df.columns))
     if missing:
         raise ValueError(f"{path}: missing columns {missing}")
-    df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True, errors="coerce")
+    df["timestamp"] = pd.to_datetime(
+        df["timestamp"], format="mixed", utc=True, errors="coerce"
+    )
     if df["timestamp"].isna().any():
-        raise ValueError(f"{path}: invalid timestamps")
+        bad = df.loc[df["timestamp"].isna(), "timestamp"].head(5).tolist()
+        raise ValueError(f"{path}: invalid timestamps (sample={bad})")
     if not allow_duplicate_timestamps and df["timestamp"].duplicated().any():
         raise ValueError(f"{path}: duplicate timestamps")
     return df.sort_values("timestamp").reset_index(drop=True)
@@ -74,7 +77,12 @@ def aggregate_murphy(df: pd.DataFrame) -> pd.DataFrame:
             direction = "CONFLICTED"
         else:
             direction = "ABSENT"
-        rows.append({"timestamp": ts, "murphy_status": "PASS" if direction in {"BULLISH", "BEARISH"} else "NOT_EVALUABLE", "murphy_direction": direction, "source_rule_ids": json.dumps(sorted(rule_ids))})
+        rows.append({
+            "timestamp": ts,
+            "murphy_status": "PASS" if direction in {"BULLISH", "BEARISH"} else "NOT_EVALUABLE",
+            "murphy_direction": direction,
+            "source_rule_ids": json.dumps(sorted(rule_ids)),
+        })
     return pd.DataFrame(rows)
 
 
@@ -88,8 +96,15 @@ def aggregate_nison(df: pd.DataFrame) -> pd.DataFrame:
         passed = g[g["status"].astype(str).str.upper().eq("PASS")]
         failed = g[g["status"].astype(str).str.upper().eq("FAIL")]
         passed_dirs = {d for d in (normalize_direction(x) for x in passed["direction"]) if d}
-        confirmation = sorted(passed_dirs)[0] if len(passed_dirs) == 1 else ("CONFLICTED" if len(passed_dirs) > 1 else "ABSENT")
-        rows.append({"timestamp": ts, "nison_confirmation": confirmation, "nison_contradiction": not failed.empty, "nison_rule_count": int(g["rule_id"].nunique())})
+        confirmation = sorted(passed_dirs)[0] if len(passed_dirs) == 1 else (
+            "CONFLICTED" if len(passed_dirs) > 1 else "ABSENT"
+        )
+        rows.append({
+            "timestamp": ts,
+            "nison_confirmation": confirmation,
+            "nison_contradiction": not failed.empty,
+            "nison_rule_count": int(g["rule_id"].nunique()),
+        })
     return pd.DataFrame(rows)
 
 
@@ -167,7 +182,15 @@ def run(*, h1: Path, murphy: Path, nison: Path, context: Path, output_dir: Path)
         assessment = brain.assess(build_brain_row(row), similarity=None)
         bias = assessment.directional_bias
         source_rule_ids = row.get("source_rule_ids", "[]")
-        events.append({"timestamp": ts, "murphy_direction": murphy_dir, "nison_confirmation": str(row.get("nison_confirmation") or "ABSENT"), "nison_contradiction": contradiction, "brain_bias": bias, "brain_confidence": assessment.confidence, "source_rule_ids": source_rule_ids})
+        events.append({
+            "timestamp": ts,
+            "murphy_direction": murphy_dir,
+            "nison_confirmation": str(row.get("nison_confirmation") or "ABSENT"),
+            "nison_contradiction": contradiction,
+            "brain_bias": bias,
+            "brain_confidence": assessment.confidence,
+            "source_rule_ids": source_rule_ids,
+        })
         if murphy_dir not in {"BULLISH", "BEARISH"} or bias != murphy_dir or contradiction:
             continue
         if pd.isna(row.get("entry_price")) or pd.isna(row.get("atr")) or float(row["atr"]) <= 0:
@@ -177,7 +200,13 @@ def run(*, h1: Path, murphy: Path, nison: Path, context: Path, output_dir: Path)
         if len(pos) == 0:
             continue
         result = simulate_trade(bars, int(pos[0]), direction, float(row["entry_price"]), float(row["atr"]))
-        trades.append({"timestamp": ts, "direction": direction, "entry_price": float(row["entry_price"]), "atr": float(row["atr"]), **result})
+        trades.append({
+            "timestamp": ts,
+            "direction": direction,
+            "entry_price": float(row["entry_price"]),
+            "atr": float(row["atr"]),
+            **result,
+        })
 
     output_dir.mkdir(parents=True, exist_ok=True)
     pd.DataFrame(events).to_csv(output_dir / "unified_78_events_2016_2024.csv", index=False)
@@ -190,9 +219,38 @@ def run(*, h1: Path, murphy: Path, nison: Path, context: Path, output_dir: Path)
     gross_loss = float(-outcome.loc[outcome["r_multiple"] < 0, "r_multiple"].sum()) if not outcome.empty else 0.0
     gross_win = float(outcome.loc[outcome["r_multiple"] > 0, "r_multiple"].sum()) if not outcome.empty else 0.0
     equity = outcome["r_multiple"].cumsum() if not outcome.empty else pd.Series(dtype=float)
-    metrics = {"status": "DIAGNOSTIC_NOT_OFFICIAL" if not outcome.empty else "NO_EXECUTED_TRADES", "development_window": "2016-2024", "trades": int(len(outcome)), "wins": wins, "losses": losses, "win_rate": float(wins / len(outcome)) if len(outcome) else None, "profit_factor": (gross_win / gross_loss) if gross_loss else None, "expectancy_R": float(outcome["r_multiple"].mean()) if len(outcome) else None, "total_R": float(outcome["r_multiple"].sum()) if not outcome.empty else 0.0, "max_drawdown_R": float((equity - equity.cummax()).min()) if not equity.empty else 0.0, "costs_applied": False, "official_claim_allowed": False}
-    funnel = {"events": int(len(events)), "murphy_directional": int(pd.DataFrame(events)["murphy_direction"].isin(["BULLISH", "BEARISH"]).sum()) if events else 0, "decision_aligned": int(((pd.DataFrame(events)["murphy_direction"] == pd.DataFrame(events)["brain_bias"]) & pd.DataFrame(events)["murphy_direction"].isin(["BULLISH", "BEARISH"])).sum()) if events else 0, "executed_trades": int(len(trades_df)), "ambiguous": int((trades_df["outcome"] == "AMBIGUOUS").sum()) if not trades_df.empty else 0, "timeouts": int((trades_df["outcome"] == "TIMEOUT").sum()) if not trades_df.empty else 0}
-    validation = {"timestamp_asof": True, "lookahead": True, "mtf_consumption": True, "memory_leakage": True, "execution_funnel": True, "frozen_cost_slippage": False, "official_profitability_claim": False, "missing_required_input": None}
+    metrics = {
+        "status": "DIAGNOSTIC_NOT_OFFICIAL" if not outcome.empty else "NO_EXECUTED_TRADES",
+        "development_window": "2016-2024",
+        "trades": int(len(outcome)),
+        "wins": wins,
+        "losses": losses,
+        "win_rate": float(wins / len(outcome)) if len(outcome) else None,
+        "profit_factor": (gross_win / gross_loss) if gross_loss else None,
+        "expectancy_R": float(outcome["r_multiple"].mean()) if len(outcome) else None,
+        "total_R": float(outcome["r_multiple"].sum()) if not outcome.empty else 0.0,
+        "max_drawdown_R": float((equity - equity.cummax()).min()) if not equity.empty else 0.0,
+        "costs_applied": False,
+        "official_claim_allowed": False,
+    }
+    funnel = {
+        "events": int(len(events)),
+        "murphy_directional": int(pd.DataFrame(events)["murphy_direction"].isin(["BULLISH", "BEARISH"]).sum()) if events else 0,
+        "decision_aligned": int(((pd.DataFrame(events)["murphy_direction"] == pd.DataFrame(events)["brain_bias"]) & pd.DataFrame(events)["murphy_direction"].isin(["BULLISH", "BEARISH"])).sum()) if events else 0,
+        "executed_trades": int(len(trades_df)),
+        "ambiguous": int((trades_df["outcome"] == "AMBIGUOUS").sum()) if not trades_df.empty else 0,
+        "timeouts": int((trades_df["outcome"] == "TIMEOUT").sum()) if not trades_df.empty else 0,
+    }
+    validation = {
+        "timestamp_asof": True,
+        "lookahead": True,
+        "mtf_consumption": True,
+        "memory_leakage": True,
+        "execution_funnel": True,
+        "frozen_cost_slippage": False,
+        "official_profitability_claim": False,
+        "missing_required_input": None,
+    }
     (output_dir / "execution_funnel_2016_2024.json").write_text(json.dumps(funnel, indent=2), encoding="utf-8")
     (output_dir / "backtest_metrics_2016_2024.json").write_text(json.dumps(metrics, indent=2), encoding="utf-8")
     (output_dir / "validation_manifest_2016_2024.json").write_text(json.dumps(validation, indent=2), encoding="utf-8")
@@ -209,6 +267,7 @@ def main() -> int:
     a = p.parse_args()
     print(json.dumps(run(h1=a.h1, murphy=a.murphy, nison=a.nison, context=a.context, output_dir=a.output_dir), indent=2, default=str))
     return 0
+
 
 if __name__ == "__main__":
     raise SystemExit(main())
