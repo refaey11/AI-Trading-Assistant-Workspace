@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import importlib.util
 import json
+import re
 from pathlib import Path
 from typing import Any
 
@@ -12,18 +13,17 @@ ROOT = Path(__file__).resolve().parents[1]
 ALLOWLIST = ROOT / "governance/DECISION_BRAIN_RULE_ALLOWLIST_V1.json"
 BRAIN_PATH = ROOT / "RECOVERED_SOURCES/DECISION_BRAIN_V1/decision_brain.py"
 
+TF_NAMES = ("M5", "M15", "M30", "H1", "H4", "D1")
+
 
 def load_csv(path: Path, required: set[str], *, allow_duplicate_timestamps: bool = False) -> pd.DataFrame:
     df = pd.read_csv(path)
     missing = sorted(required - set(df.columns))
     if missing:
         raise ValueError(f"{path}: missing columns {missing}")
-    df["timestamp"] = pd.to_datetime(
-        df["timestamp"], format="mixed", utc=True, errors="coerce"
-    )
+    df["timestamp"] = pd.to_datetime(df["timestamp"], format="mixed", utc=True, errors="coerce")
     if df["timestamp"].isna().any():
-        bad = df.loc[df["timestamp"].isna(), "timestamp"].head(5).tolist()
-        raise ValueError(f"{path}: invalid timestamps (sample={bad})")
+        raise ValueError(f"{path}: invalid timestamps")
     if not allow_duplicate_timestamps and df["timestamp"].duplicated().any():
         raise ValueError(f"{path}: duplicate timestamps")
     return df.sort_values("timestamp").reset_index(drop=True)
@@ -71,12 +71,7 @@ def aggregate_murphy(df: pd.DataFrame) -> pd.DataFrame:
         if "source_rule_id" in g.columns:
             for value in g["source_rule_id"].dropna():
                 rule_ids.update(expand_rule_ids(value))
-        if len(dirs) == 1:
-            direction = dirs[0]
-        elif len(dirs) > 1:
-            direction = "CONFLICTED"
-        else:
-            direction = "ABSENT"
+        direction = dirs[0] if len(dirs) == 1 else ("CONFLICTED" if len(dirs) > 1 else "ABSENT")
         rows.append({
             "timestamp": ts,
             "murphy_status": "PASS" if direction in {"BULLISH", "BEARISH"} else "NOT_EVALUABLE",
@@ -94,18 +89,92 @@ def aggregate_nison(df: pd.DataFrame) -> pd.DataFrame:
     rows = []
     for ts, g in df.groupby("timestamp", sort=True):
         passed = g[g["status"].astype(str).str.upper().eq("PASS")]
-        failed = g[g["status"].astype(str).str.upper().eq("FAIL")]
         passed_dirs = {d for d in (normalize_direction(x) for x in passed["direction"]) if d}
         confirmation = sorted(passed_dirs)[0] if len(passed_dirs) == 1 else (
             "CONFLICTED" if len(passed_dirs) > 1 else "ABSENT"
         )
+        # FAIL means that a specific Nison rule did not pass. It is not an
+        # opposite-direction contradiction unless a PASS explicitly supplies
+        # the opposite direction. NOT_EVALUABLE/UNKNOWN is also non-directional.
+        passed_dir_values = sorted(passed_dirs)
         rows.append({
             "timestamp": ts,
             "nison_confirmation": confirmation,
-            "nison_contradiction": not failed.empty,
+            "nison_contradiction": len(passed_dir_values) > 1,
             "nison_rule_count": int(g["rule_id"].nunique()),
         })
     return pd.DataFrame(rows)
+
+
+def _infer_tf(path: Path, df: pd.DataFrame) -> str | None:
+    for col in ("timeframe", "tf", "interval"):
+        if col in df.columns:
+            vals = {str(v).upper().strip() for v in df[col].dropna().unique()}
+            for tf in TF_NAMES:
+                if tf in vals:
+                    return tf
+    name = path.stem.upper()
+    for tf in TF_NAMES:
+        if re.search(rf"(?<![A-Z0-9]){tf}(?![A-Z0-9])", name):
+            return tf
+    return None
+
+
+def _trend_to_score(value: Any) -> float | None:
+    if value is None or (isinstance(value, float) and pd.isna(value)):
+        return None
+    text = str(value).strip().upper()
+    if text in {"BULL", "BULLISH", "BULL_TREND", "UP", "UPTREND", "1", "1.0"}:
+        return 1.0
+    if text in {"BEAR", "BEARISH", "BEAR_TREND", "DOWN", "DOWNTREND", "-1", "-1.0"}:
+        return -1.0
+    if text in {"TRANSITION", "MIXED", "NEUTRAL", "RANGE", "0", "0.0"}:
+        return 0.0
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        return None
+
+
+def load_mtf_context(mtf_dir: Path | None) -> pd.DataFrame:
+    if mtf_dir is None:
+        return pd.DataFrame(columns=["timestamp"])
+    files = sorted(mtf_dir.rglob("*.csv"))
+    if not files:
+        raise ValueError(f"{mtf_dir}: no CSV timeframe source found")
+
+    pieces: list[pd.DataFrame] = []
+    for path in files:
+        try:
+            raw = pd.read_csv(path)
+        except Exception:
+            continue
+        if "timestamp" not in raw.columns:
+            continue
+        tf = _infer_tf(path, raw)
+        if tf is None:
+            continue
+        trend_col = next((c for c in ("trend_regime", "trend", "market_trend") if c in raw.columns), None)
+        if trend_col is None:
+            continue
+        part = raw[["timestamp", trend_col]].copy()
+        part["timestamp"] = pd.to_datetime(part["timestamp"], format="mixed", utc=True, errors="coerce")
+        part = part.dropna(subset=["timestamp"])
+        part[f"{tf}_trend_regime"] = part[trend_col].map(_trend_to_score)
+        part = part[["timestamp", f"{tf}_trend_regime"]].drop_duplicates("timestamp").sort_values("timestamp")
+        pieces.append(part)
+
+    if not pieces:
+        raise ValueError(f"{mtf_dir}: no source-backed timeframe trend columns found")
+
+    out = pieces[0]
+    for piece in pieces[1:]:
+        out = out.merge(piece, on="timestamp", how="outer")
+    out = out.sort_values("timestamp").reset_index(drop=True)
+    tf_cols = [f"{tf}_trend_regime" for tf in TF_NAMES if f"{tf}_trend_regime" in out.columns]
+    out["mtf_trend_score"] = out[tf_cols].mean(axis=1, skipna=True)
+    out["mtf_timeframes_available"] = out[tf_cols].notna().sum(axis=1)
+    return out
 
 
 def normalize_context(ctx: pd.DataFrame) -> pd.DataFrame:
@@ -122,16 +191,18 @@ def normalize_context(ctx: pd.DataFrame) -> pd.DataFrame:
 
 
 def build_brain_row(r: pd.Series) -> dict[str, Any]:
-    defaults = {
-        "mtf_trend_score": 0.0, "M5_trend_regime": 0.0, "M15_trend_regime": 0.0,
-        "M30_trend_regime": 0.0, "H1_trend_regime": 0.0, "H4_trend_regime": 0.0,
-        "D1_trend_regime": 0.0, "volume_available": False, "M5_volume_regime": 0.0,
+    out: dict[str, Any] = {
+        "mtf_trend_score": 0.0,
+        "volume_available": False,
+        "M5_volume_regime": 0.0,
         "M15_volume_regime": 0.0,
     }
-    out = dict(defaults)
-    for k in out:
-        if k in r.index and pd.notna(r[k]):
-            out[k] = r[k]
+    for tf in TF_NAMES:
+        key = f"{tf}_trend_regime"
+        if key in r.index and pd.notna(r[key]):
+            out[key] = float(r[key])
+    if "mtf_trend_score" in r.index and pd.notna(r["mtf_trend_score"]):
+        out["mtf_trend_score"] = float(r["mtf_trend_score"])
     return out
 
 
@@ -153,11 +224,15 @@ def simulate_trade(bars: pd.DataFrame, entry_idx: int, direction: str, entry: fl
     return {"exit_timestamp": None, "outcome": "TIMEOUT", "r_multiple": None, "stop_loss": sl, "take_profit": tp}
 
 
-def run(*, h1: Path, murphy: Path, nison: Path, context: Path, output_dir: Path) -> dict[str, Any]:
+def run(*, h1: Path, murphy: Path, nison: Path, context: Path, output_dir: Path, mtf_dir: Path | None = None) -> dict[str, Any]:
     bars = load_csv(h1, {"timestamp", "open", "high", "low", "close"})
     murphy_raw = load_csv(murphy, {"timestamp", "status", "direction"}, allow_duplicate_timestamps=True)
     nison_raw = load_csv(nison, {"timestamp", "status", "direction", "rule_id"}, allow_duplicate_timestamps=True)
     ctx = normalize_context(load_csv(context, {"timestamp"}, allow_duplicate_timestamps=False))
+
+    mtf = load_mtf_context(mtf_dir)
+    if not mtf.empty:
+        ctx = ctx.merge(mtf, on="timestamp", how="left")
 
     allowed = allowed_rule_ids()
     observed_m: set[str] = set()
@@ -172,6 +247,7 @@ def run(*, h1: Path, murphy: Path, nison: Path, context: Path, output_dir: Path)
 
     merged = ctx.merge(aggregate_murphy(murphy_raw), on="timestamp", how="left").merge(aggregate_nison(nison_raw), on="timestamp", how="left")
     merged = merged[(merged["timestamp"].dt.year >= 2016) & (merged["timestamp"].dt.year <= 2024)].copy()
+
     brain = load_brain()
     events: list[dict[str, Any]] = []
     trades: list[dict[str, Any]] = []
@@ -189,6 +265,7 @@ def run(*, h1: Path, murphy: Path, nison: Path, context: Path, output_dir: Path)
             "nison_contradiction": contradiction,
             "brain_bias": bias,
             "brain_confidence": assessment.confidence,
+            "mtf_timeframes_available": int(row.get("mtf_timeframes_available", 0) or 0),
             "source_rule_ids": source_rule_ids,
         })
         if murphy_dir not in {"BULLISH", "BEARISH"} or bias != murphy_dir or contradiction:
@@ -200,13 +277,7 @@ def run(*, h1: Path, murphy: Path, nison: Path, context: Path, output_dir: Path)
         if len(pos) == 0:
             continue
         result = simulate_trade(bars, int(pos[0]), direction, float(row["entry_price"]), float(row["atr"]))
-        trades.append({
-            "timestamp": ts,
-            "direction": direction,
-            "entry_price": float(row["entry_price"]),
-            "atr": float(row["atr"]),
-            **result,
-        })
+        trades.append({"timestamp": ts, "direction": direction, "entry_price": float(row["entry_price"]), "atr": float(row["atr"]), **result})
 
     output_dir.mkdir(parents=True, exist_ok=True)
     pd.DataFrame(events).to_csv(output_dir / "unified_78_events_2016_2024.csv", index=False)
@@ -232,11 +303,14 @@ def run(*, h1: Path, murphy: Path, nison: Path, context: Path, output_dir: Path)
         "max_drawdown_R": float((equity - equity.cummax()).min()) if not equity.empty else 0.0,
         "costs_applied": False,
         "official_claim_allowed": False,
+        "mtf_source_consumed": bool(not mtf.empty),
+        "mtf_timeframes_found": [c.replace("_trend_regime", "") for c in mtf.columns if c.endswith("_trend_regime")] if not mtf.empty else [],
     }
+    event_df = pd.DataFrame(events)
     funnel = {
         "events": int(len(events)),
-        "murphy_directional": int(pd.DataFrame(events)["murphy_direction"].isin(["BULLISH", "BEARISH"]).sum()) if events else 0,
-        "decision_aligned": int(((pd.DataFrame(events)["murphy_direction"] == pd.DataFrame(events)["brain_bias"]) & pd.DataFrame(events)["murphy_direction"].isin(["BULLISH", "BEARISH"])).sum()) if events else 0,
+        "murphy_directional": int(event_df["murphy_direction"].isin(["BULLISH", "BEARISH"]).sum()) if events else 0,
+        "decision_aligned": int(((event_df["murphy_direction"] == event_df["brain_bias"]) & event_df["murphy_direction"].isin(["BULLISH", "BEARISH"])).sum()) if events else 0,
         "executed_trades": int(len(trades_df)),
         "ambiguous": int((trades_df["outcome"] == "AMBIGUOUS").sum()) if not trades_df.empty else 0,
         "timeouts": int((trades_df["outcome"] == "TIMEOUT").sum()) if not trades_df.empty else 0,
@@ -244,12 +318,12 @@ def run(*, h1: Path, murphy: Path, nison: Path, context: Path, output_dir: Path)
     validation = {
         "timestamp_asof": True,
         "lookahead": True,
-        "mtf_consumption": True,
+        "mtf_consumption": bool(not mtf.empty),
         "memory_leakage": True,
         "execution_funnel": True,
         "frozen_cost_slippage": False,
         "official_profitability_claim": False,
-        "missing_required_input": None,
+        "missing_required_input": None if not mtf_dir or not mtf.empty else "MTF_SOURCE",
     }
     (output_dir / "execution_funnel_2016_2024.json").write_text(json.dumps(funnel, indent=2), encoding="utf-8")
     (output_dir / "backtest_metrics_2016_2024.json").write_text(json.dumps(metrics, indent=2), encoding="utf-8")
@@ -264,8 +338,9 @@ def main() -> int:
     p.add_argument("--nison", required=True, type=Path)
     p.add_argument("--context", required=True, type=Path)
     p.add_argument("--output-dir", required=True, type=Path)
+    p.add_argument("--mtf-dir", required=False, type=Path)
     a = p.parse_args()
-    print(json.dumps(run(h1=a.h1, murphy=a.murphy, nison=a.nison, context=a.context, output_dir=a.output_dir), indent=2, default=str))
+    print(json.dumps(run(h1=a.h1, murphy=a.murphy, nison=a.nison, context=a.context, output_dir=a.output_dir, mtf_dir=a.mtf_dir), indent=2, default=str))
     return 0
 
 
