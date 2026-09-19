@@ -36,10 +36,9 @@ jobs:
         run: |
           set -eu
           test -n "$DROPBOX_ACCESS_TOKEN"
-          mkdir -p artifacts/source artifacts/murphy artifacts/nison
+          mkdir -p artifacts/source artifacts/murphy artifacts/nison artifacts/mtf
           python - <<'PY'
           import json, os, urllib.request
-          from pathlib import Path
           token=os.environ['DROPBOX_ACCESS_TOKEN']
           def dl(remote, local):
               req=urllib.request.Request(
@@ -54,15 +53,21 @@ jobs:
           dl('/New 8/NISON_2016_2024_FULL_EVIDENCE.csv','artifacts/nison/NISON_2016_2024_FULL_EVIDENCE.csv')
           dl('/New 8/MURPHY_HISTORICAL_34_RULE_FANIN_2016_2024.zip','artifacts/murphy/murphy.zip')
           dl('/New 8/GBPUSD_MARKET_STATE 6.csv','artifacts/market_state.csv')
+          dl('/MTF_ALIGNMENT_GBPUSD_V1.zip','artifacts/mtf/mtf_alignment.zip')
           PY
           unzip -q artifacts/source/h1.zip -d artifacts/source
           unzip -q artifacts/murphy/murphy.zip -d artifacts/murphy
+          unzip -q artifacts/mtf/mtf_alignment.zip -d artifacts/mtf/extracted
           H1=$(find artifacts/source -type f -name 'GBPUSD_H1_2016_2025_MASTER.csv' | head -1)
           MURPHY=$(find artifacts/murphy -type f -name 'MURPHY_2016_2024_FULL_EVIDENCE.csv' | head -1)
           test -n "$H1"
           test -n "$MURPHY"
+          test -n "$(find artifacts/mtf/extracted -type f -name '*.csv' | head -1)"
           echo "H1=$H1" >> "$GITHUB_ENV"
           echo "MURPHY=$MURPHY" >> "$GITHUB_ENV"
+          echo "MTF_DIR=artifacts/mtf/extracted" >> "$GITHUB_ENV"
+          echo "MTF archive contents:"
+          find artifacts/mtf/extracted -type f -maxdepth 6 | sort
 
       - name: Validate governed 78-rule evidence envelope
         run: |
@@ -82,14 +87,9 @@ jobs:
           print(json.dumps({'governed_expected':len(expected),'nison_observed':len(observed_n),'murphy_observed':len(observed_m),'murphy_missing_from_source':sorted(set(allow['MURPHY'])-observed_m)},indent=2))
           PY
 
-      - name: Run existing Decision Brain runner with real Murphy + real Nison
+      - name: Run existing Decision Brain runner with real Murphy + real Nison + existing MTF
         run: |
-          python BACKTEST/DEV_BACKTEST_RUNNER_V1.py \
-            --h1 "$H1" \
-            --murphy "$MURPHY" \
-            --nison artifacts/nison/NISON_2016_2024_FULL_EVIDENCE.csv \
-            --context artifacts/market_state.csv \
-            --output-dir artifacts/governed_78_rule_2016_2024
+          python BACKTEST/DEV_BACKTEST_RUNNER_V1.py             --h1 "$H1"             --murphy "$MURPHY"             --nison artifacts/nison/NISON_2016_2024_FULL_EVIDENCE.csv             --context artifacts/market_state.csv             --mtf-dir "$MTF_DIR"             --output-dir artifacts/governed_78_rule_2016_2024
 
       - name: Write OOS lock manifest
         run: |
@@ -107,7 +107,8 @@ jobs:
             'similarity_role':'historical_evidence_only',
             'tiz_role':'process_psychology_gate_only',
             'costs_applied':False,
-            'official_profitability_claim_allowed':False
+            'official_profitability_claim_allowed':False,
+            'mtf_source':'/MTF_ALIGNMENT_GBPUSD_V1.zip'
           }
           Path('artifacts/governed_78_rule_2016_2024/oos_lock_manifest.json').write_text(json.dumps(d,indent=2),encoding='utf-8')
           PY
@@ -119,4 +120,4 @@ jobs:
           name: governed-78-rule-development-backtest
           path: artifacts/
 
-# Trigger governed development execution after verified Nison 44 success.
+# Existing source-backed MTF alignment is consumed; no synthetic timeframe mapping.
