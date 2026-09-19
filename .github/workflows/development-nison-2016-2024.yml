@@ -44,7 +44,7 @@ jobs:
           df=pd.read_csv(p, usecols=['timestamp','rule_id'])
           ts=pd.to_datetime(df['timestamp'], errors='coerce', format='mixed', utc=True)
           if ts.isna().any(): raise SystemExit(f'invalid timestamps: {int(ts.isna().sum())}')
-          rules=sorted(df['rule_id'].astype(str).str.extract(r'(\d+)')[0].dropna().astype(int).unique())
+          rules=sorted(int(x) for x in df['rule_id'].astype(str).str.extract(r'(\d+)')[0].dropna().astype(int).unique())
           if len(rules) != 44: raise SystemExit(f'expected 44 Nison rules, found {len(rules)}')
           print(json.dumps({'rows':int(len(df)),'unique_rule_ids':len(rules),'rule_ids':rules,'development_window':'2016-2024','oos_2025_locked':True},indent=2))
           PY
