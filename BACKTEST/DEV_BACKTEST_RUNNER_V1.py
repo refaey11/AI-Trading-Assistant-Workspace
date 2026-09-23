@@ -154,7 +154,22 @@ def load_mtf_context(mtf_dir: Path | None) -> pd.DataFrame:
         tf = _infer_tf(path, raw)
         if tf is None:
             continue
-        trend_col = next((c for c in ("trend_regime", "trend", "market_trend") if c in raw.columns), None)
+        # Accept the source-backed MTF archive's common naming variants without
+        # manufacturing a trend from OHLC. Only an explicit trend/direction/bias
+        # field from the supplied MTF source is consumed.
+        candidates = (
+            "trend_regime", "trend", "market_trend", "trend_direction",
+            "direction", "bias", "market_bias", "regime"
+        )
+        trend_col = next((c for c in candidates if c in raw.columns), None)
+        if trend_col is None:
+            # Also support a wide source file with explicit timeframe-prefixed
+            # trend fields, e.g. M5_trend, H1_trend_regime.
+            prefixed = next((
+                c for c in raw.columns
+                if re.match(rf"^{tf}([_.-])(trend_regime|trend|market_trend|trend_direction|direction|bias|market_bias|regime)$", str(c), re.I)
+            ), None)
+            trend_col = prefixed
         if trend_col is None:
             continue
         part = raw[["timestamp", trend_col]].copy()
