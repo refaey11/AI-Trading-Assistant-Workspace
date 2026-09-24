@@ -23,7 +23,72 @@ jobs:
         run: |
           set -eu
           mkdir -p artifacts/replay
-          gh run download 35952096828 -n decision-brain-backtest-2016-2024 -D artifacts/replay
+          gh run download 35806971916 -n governed-78-rule-development-backtest -D artifacts/replay
+          python - <<'PY'
+          import json, base64, zipfile
+          from pathlib import Path
+          import pandas as pd
+
+          replay=Path('artifacts/replay/murphy/MURPHY_2016_2024_FULL_EVIDENCE.csv')
+          if replay.exists():
+              df=pd.read_csv(replay,usecols=lambda c: c in {'timestamp','rule_id','source_rule_id','status','direction'})
+              key='source_rule_id' if 'source_rule_id' in df.columns else 'rule_id'
+              ids=set()
+              for value in df[key].dropna().astype(str): ids.update(x.strip() for x in value.split('|') if x.strip())
+              coverage_ok=len(ids)==34 and min(ids) is not None and all(x.startswith('MURPHY_') for x in ids)
+          else:
+              coverage_ok=False
+
+          # The checked-in R1 source bundle is a governed GitHub artifact. Use it
+          # when the older replay artifact is incomplete (known 7/34 case).
+          if not coverage_ok:
+              bundle=Path('BACKTEST/DEV_BACKTEST_R1_MURPHY_SOURCE.zip.b64.txt')
+              raw=base64.b64decode(''.join(bundle.read_text(encoding='utf-8').split()))
+              z=Path('/tmp/murphy_r1.zip')
+              z.write_bytes(raw)
+              root=Path('/tmp/murphy_r1')
+              root.mkdir(parents=True,exist_ok=True)
+              with zipfile.ZipFile(z) as archive:
+                  archive.extractall(root)
+              candidates=list(root.rglob('*.csv'))
+              chosen=None
+              for p in candidates:
+                  try:
+                      cols=pd.read_csv(p,nrows=0).columns.tolist()
+                  except Exception:
+                      continue
+                  if 'timestamp' in cols and ('rule_id' in cols or 'source_rule_id' in cols) and 'status' in cols and 'direction' in cols:
+                      chosen=p
+                      break
+              if chosen is None:
+                  raise SystemExit('BLOCKED: bundled Murphy R1 CSV not found')
+              target=Path('artifacts/replay/murphy/MURPHY_2016_2024_FULL_EVIDENCE.csv')
+              target.write_bytes(chosen.read_bytes())
+              df=pd.read_csv(target,usecols=lambda c: c in {'timestamp','rule_id','source_rule_id','status','direction'})
+              key='source_rule_id' if 'source_rule_id' in df.columns else 'rule_id'
+              ids=set()
+              for value in df[key].dropna().astype(str): ids.update(x.strip() for x in value.split('|') if x.strip())
+              ts=pd.to_datetime(df['timestamp'],format='mixed',utc=True,errors='coerce')
+              if len(ids)!=34 or ts.isna().any() or ts.dt.year.min()!=2016 or ts.dt.year.max()!=2024:
+                  raise SystemExit(f'BLOCKED: bundled Murphy source scope/coverage invalid: {len(ids)} rules, {ts.dt.year.min()}-{ts.dt.year.max()}')
+              print('Using checked-in governed Murphy R1 bundle:',chosen,'rules=',len(ids),'rows=',len(df))
+
+          # The runner requires a manifest whose runtime coverage is governed by
+          # the verified allowlist. Generate the manifest from that allowlist only;
+          # it does not invent rule logic or evidence.
+          allow=Path('governance/DECISION_BRAIN_RULE_ALLOWLIST_V1.json')
+          data=json.loads(allow.read_text(encoding='utf-8'))
+          murphy=sorted(data['verified_runtime']['MURPHY'])
+          manifest={
+              'runtime_rule_ids': murphy,
+              'rule_coverage': {rid:{'decision_eligible':True} for rid in murphy},
+              'source': 'governance/DECISION_BRAIN_RULE_ALLOWLIST_V1.json',
+              'generated_for': 'governed replay of checked-in Murphy R1 source',
+          }
+          out=Path('artifacts/replay/murphy/MURPHY_2016_2024_MANIFEST.json')
+          out.write_text(json.dumps(manifest,indent=2),encoding='utf-8')
+          print('Generated Murphy replay manifest:',len(murphy),'runtime rules')
+          PY
           test -s artifacts/replay/source/GBPUSD_H1_2016_2025_MASTER.csv
           test -s artifacts/replay/murphy/MURPHY_2016_2024_FULL_EVIDENCE.csv
           test -s artifacts/replay/nison/NISON_2016_2024_FULL_EVIDENCE.csv
