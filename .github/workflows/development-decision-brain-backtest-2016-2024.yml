@@ -22,6 +22,30 @@ jobs:
           python-version: "3.12"
       - name: Install dependencies
         run: python -m pip install --upgrade pip pandas pytest
+      - name: Replay current runner on previously acquired governed inputs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -eu
+          mkdir -p artifacts/replay
+          gh run download 35806971916 -n governed-78-rule-development-backtest -D artifacts/replay
+          python BACKTEST/DEV_BACKTEST_RUNNER_V1.py \
+            --h1 artifacts/replay/source/GBPUSD_H1_2016_2025_MASTER.csv \
+            --murphy artifacts/replay/murphy/MURPHY_2016_2024_FULL_EVIDENCE.csv \
+            --nison artifacts/replay/nison/NISON_2016_2024_FULL_EVIDENCE.csv \
+            --context artifacts/replay/market_state.csv \
+            --mtf-dir artifacts/replay/mtf/extracted \
+            --output-dir artifacts/replay/current_runner_2016_2024
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          p=Path('artifacts/replay/current_runner_2016_2024/validation_manifest_2016_2024.json')
+          m=json.loads(p.read_text())
+          print(json.dumps(m, indent=2))
+          if m.get('official_profitability_claim'):
+              raise SystemExit('FAIL_CLOSED: replay cannot make official profitability claim')
+          PY
+
       - name: Verify Dropbox access
         run: test -n "$DROPBOX_ACCESS_TOKEN"
       - name: Download existing governed Nison development evidence
