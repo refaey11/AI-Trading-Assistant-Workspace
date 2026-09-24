@@ -168,6 +168,53 @@ jobs:
           PY
           test -s artifacts/GBPUSD_MARKET_STATE.csv
 
+      - name: Acquire source-backed six-timeframe MTF alignment
+        if: github.ref == 'refs/heads/main'
+        run: |
+          set -eu
+          mkdir -p artifacts/mtf/extracted
+          python - <<'PY'
+          import os
+          from pathlib import Path
+          from urllib.request import Request, urlopen
+          token=os.environ['DROPBOX_ACCESS_TOKEN']
+          path='/MTF_ALIGNMENT_GBPUSD_V1.zip'
+          req=Request(
+              'https://content.dropboxapi.com/2/files/download',
+              data=b'',
+              method='POST',
+              headers={
+                  'Authorization':f'Bearer {token}',
+                  'Dropbox-API-Arg':'{"path":"/MTF_ALIGNMENT_GBPUSD_V1.zip"}',
+              },
+          )
+          out=Path('artifacts/mtf/MTF_ALIGNMENT_GBPUSD_V1.zip')
+          with urlopen(req, timeout=900) as r:
+              with out.open('wb') as f:
+                  while True:
+                      chunk=r.read(1024*1024)
+                      if not chunk: break
+                      f.write(chunk)
+          print('Downloaded MTF source:', out, out.stat().st_size)
+          PY
+          unzip -q artifacts/mtf/MTF_ALIGNMENT_GBPUSD_V1.zip -d artifacts/mtf/extracted
+          python - <<'PY'
+          from pathlib import Path
+          import pandas as pd
+          root=Path('artifacts/mtf/extracted')
+          files=sorted(root.glob('GBPUSD_M5_MTF_ALIGNMENT_*.csv'))
+          years=[]
+          total=0
+          for p in files:
+              df=pd.read_csv(p,usecols=['timestamp'])
+              ts=pd.to_datetime(df['timestamp'],utc=True,errors='coerce')
+              if ts.isna().any(): raise SystemExit(f'Invalid MTF timestamps: {p}')
+              years.extend(ts.dt.year.unique().tolist())
+              total += len(df)
+          assert set(range(2016,2025)).issubset(set(map(int,years)))
+          print('MTF source PASS:',len(files),'files /',total,'rows / years',sorted(set(map(int,years))))
+          PY
+
       - name: Download historical-memory metadata
         if: github.ref == 'refs/heads/main'
         run: |
@@ -231,6 +278,7 @@ jobs:
             --murphy artifacts/murphy/MURPHY_2016_2024_FULL_EVIDENCE.csv \
             --nison artifacts/nison/NISON_2016_2024_FULL_EVIDENCE.csv \
             --context artifacts/GBPUSD_MARKET_STATE.csv \
+            --mtf-dir artifacts/mtf/extracted \
             --historical-context-index artifacts/memory/CONTEXT_MEMORY_INDEX.csv \
             --historical-outcome-stats artifacts/memory/CONTEXT_OUTCOME_STATS.csv \
             --similarity-summary artifacts/memory/SIMILARITY_OUTCOME_SUMMARY.csv \
