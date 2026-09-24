@@ -194,12 +194,15 @@ def build_nison_evidence(
 
 def build_murphy_evidence(rows: list[dict[str, Any]]) -> dict[str, Any]:
     summary = summarize_directional_evidence(rows)
+    expanded_rule_ids: set[str] = set()
+    for row in rows:
+        expanded_rule_ids.update(expand_rule_ids(row.get("source_rule_id")))
     return {
         "status": summary["status"],
         "direction": summary["direction"],
         "evidence_set": rows,
-        "evidence_count": summary["rule_count"],
-        "rule_ids": summary["rule_ids"],
+        "evidence_count": len(expanded_rule_ids),
+        "rule_ids": sorted(expanded_rule_ids),
     }
 
 
@@ -512,7 +515,11 @@ def run(
     observed_m: set[str] = set()
     for value in murphy_raw["source_rule_id"].dropna():
         observed_m.update(expand_rule_ids(value))
-    observed_n = set(nison_raw["source_rule_id"].dropna().astype(str))
+    observed_n: set[str] = set()
+    for value in nison_raw["source_rule_id"].dropna():
+        observed_n.update(expand_rule_ids(value))
+    expected_murphy = {x for x in allowed if x.startswith("MURPHY_")}
+    expected_nison = {x for x in allowed if x.startswith("NISON_")}
     if not observed_m.issubset(allowed):
         raise ValueError(f"Unknown Murphy rule IDs: {sorted(observed_m - allowed)}")
     if not observed_n.issubset(allowed):
@@ -792,8 +799,8 @@ def run(
     )
     rule_counts_ok = bool(
         not event_df.empty
-        and int(event_df["murphy_rule_count"].min()) == 34
-        and int(event_df["nison_rule_count"].min()) == 44
+        and int(event_df["murphy_rule_count"].min()) == len(expected_murphy)
+        and int(event_df["nison_rule_count"].min()) == len(expected_nison)
     )
 
     metrics = {
@@ -852,6 +859,14 @@ def run(
     }
 
     missing_required: list[str] = []
+    if len(observed_m) != len(expected_murphy):
+        missing_required.append(
+            f"FULL_MURPHY_RULE_COVERAGE:{len(observed_m)}/{len(expected_murphy)}"
+        )
+    if len(observed_n) != len(expected_nison):
+        missing_required.append(
+            f"FULL_NISON_RULE_COVERAGE:{len(observed_n)}/{len(expected_nison)}"
+        )
     if not mtf_consumed:
         missing_required.append("MTF_SOURCE_BACKED_FIELDS")
     if not rule_counts_ok:
