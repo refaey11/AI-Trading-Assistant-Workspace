@@ -1038,6 +1038,7 @@ def main() -> int:
     p.add_argument("--context", required=True, type=Path)
     p.add_argument("--output-dir", required=True, type=Path)
     p.add_argument("--mtf-dir", required=False, type=Path)
+    p.add_argument("--murphy-manifest", required=False, type=Path)
     p.add_argument("--historical-context-index", type=Path)
     p.add_argument("--historical-outcome-stats", type=Path)
     p.add_argument("--similarity-summary", type=Path)
