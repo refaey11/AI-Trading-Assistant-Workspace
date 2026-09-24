@@ -30,9 +30,47 @@ jobs:
           set -eu
           mkdir -p artifacts/replay
           gh run download 35806971916 -n governed-78-rule-development-backtest -D artifacts/replay
+          mkdir -p artifacts/replay/r1_murphy
+          python - <<'PY'
+          import base64, zipfile
+          from pathlib import Path
+          b64=Path("BACKTEST/DEV_BACKTEST_R1_MURPHY_SOURCE.zip.b64.txt").read_text().strip()
+          z=base64.b64decode(b64)
+          Path("artifacts/replay/r1_murphy/source.zip").write_bytes(z)
+          with zipfile.ZipFile("artifacts/replay/r1_murphy/source.zip") as zf:
+              zf.extractall("artifacts/replay/r1_murphy/extracted")
+          PY
+          python - <<'PY'
+          from pathlib import Path
+          import json, pandas as pd
+          root=Path("artifacts/replay/r1_murphy/extracted")
+          candidates=[]
+          for p in root.rglob("*.csv"):
+              cols=pd.read_csv(p,nrows=0).columns.tolist()
+              if "timestamp" in cols and "status" in cols and "direction" in cols and ("source_rule_id" in cols or "rule_id" in cols):
+                  candidates.append(p)
+          if not candidates:
+              raise SystemExit("R1_MURPHY_SOURCE_CSV_NOT_FOUND")
+          p=candidates[0]
+          df=pd.read_csv(p,usecols=[c for c in ("timestamp","status","direction","source_rule_id","rule_id") if c in pd.read_csv(p,nrows=0).columns])
+          key="source_rule_id" if "source_rule_id" in df.columns else "rule_id"
+          ids=set()
+          for value in df[key].dropna():
+              ids.update(str(value).split("|"))
+          ids={x.strip() for x in ids if x.strip()}
+          expected={f"MURPHY_{n:04d}" for n in (3,4,6,7,18,19,21,22,23,25,26,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,47,48,49,50,51)}
+          ts=pd.to_datetime(df["timestamp"],utc=True,errors="coerce")
+          report={"path":str(p),"rows":len(df),"observed_rule_count":len(ids),"missing_rule_ids":sorted(expected-ids),"extra_rule_ids":sorted(ids-expected),"min_year":int(ts.dt.year.min()),"max_year":int(ts.dt.year.max())}
+          Path("artifacts/replay/r1_murphy/coverage.json").write_text(json.dumps(report,indent=2))
+          print(json.dumps(report,indent=2))
+          if ids != expected:
+              raise SystemExit("R1_MURPHY_SOURCE_COVERAGE_NOT_34")
+          out=Path("artifacts/replay/r1_murphy/MURPHY_2016_2024_FULL_34_RULE_COVERAGE.csv")
+          out.write_bytes(p.read_bytes())
+          PY
           python BACKTEST/DEV_BACKTEST_RUNNER_V1.py \
             --h1 artifacts/replay/source/GBPUSD_H1_2016_2025_MASTER.csv \
-            --murphy artifacts/replay/murphy/MURPHY_2016_2024_FULL_EVIDENCE.csv \
+            --murphy artifacts/replay/r1_murphy/MURPHY_2016_2024_FULL_34_RULE_COVERAGE.csv \
             --nison artifacts/replay/nison/NISON_2016_2024_FULL_EVIDENCE.csv \
             --context artifacts/replay/market_state.csv \
             --mtf-dir artifacts/replay/mtf/extracted \
