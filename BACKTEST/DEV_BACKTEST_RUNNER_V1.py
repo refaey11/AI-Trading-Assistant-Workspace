@@ -457,6 +457,8 @@ def run(
             raise ValueError(f"{mtf_dir}: no CSV timeframe source found")
 
         mtf_parts: list[pd.DataFrame] = []
+        wide_parts: list[pd.DataFrame] = []
+        narrow_parts: list[pd.DataFrame] = []
         for path in files:
             raw = pd.read_csv(path)
             if "timestamp" not in raw.columns:
@@ -466,15 +468,16 @@ def run(
             )
 
             # Prefer a source-backed wide MTF file carrying explicit fields for
-            # all six timeframes. This matches the existing MTF_ALIGNMENT artifact
-            # and avoids collapsing a six-TF source to only the M5 column.
+            # all six timeframes. This matches the existing MTF_ALIGNMENT artifact.
             wide_cols = [f"{tf}_trend_regime" for tf in TF_NAMES if f"{tf}_trend_regime" in raw.columns]
             if len(wide_cols) >= 2:
                 keep = ["timestamp", *wide_cols]
                 part = raw[keep].copy()
                 for col in wide_cols:
                     part[col] = part[col].map(_trend_to_score)
-                mtf_parts.append(part.dropna(subset=["timestamp"]).drop_duplicates("timestamp"))
+                wide_parts.append(
+                    part.dropna(subset=["timestamp"]).drop_duplicates("timestamp")
+                )
                 continue
 
             tf = path.stem.upper()
@@ -502,14 +505,27 @@ def run(
                 continue
             part = raw[["timestamp", trend_col]].copy()
             part[f"{matched_tf}_trend_regime"] = part[trend_col].map(_trend_to_score)
-            mtf_parts.append(
+            narrow_parts.append(
                 part[["timestamp", f"{matched_tf}_trend_regime"]]
                 .dropna()
                 .drop_duplicates("timestamp")
             )
+
+        if wide_parts:
+            mtf = pd.concat(wide_parts, ignore_index=True, sort=False)
+            mtf = mtf.sort_values("timestamp").drop_duplicates("timestamp", keep="last")
+            mtf_parts.append(mtf.reset_index(drop=True))
+        mtf_parts.extend(narrow_parts)
+
         if mtf_parts:
             mtf = mtf_parts[0]
             for part in mtf_parts[1:]:
+                overlap = [c for c in part.columns if c != "timestamp" and c in mtf.columns]
+                if overlap:
+                    # Never create suffix columns for two source files carrying
+                    # the same explicit timeframe. Keep the first source-backed
+                    # value and only add columns that are absent.
+                    part = part.drop(columns=overlap)
                 mtf = mtf.merge(part, on="timestamp", how="outer")
             mtf = mtf.sort_values("timestamp").reset_index(drop=True)
             tf_cols = [
