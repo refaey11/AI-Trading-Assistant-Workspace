@@ -49,8 +49,17 @@ def load_csv(
     required: set[str],
     *,
     allow_duplicate_timestamps: bool = False,
+    preferred_columns: tuple[str, ...] | None = None,
 ) -> pd.DataFrame:
-    df = pd.read_csv(path)
+    if preferred_columns:
+        header = pd.read_csv(path, nrows=0).columns.tolist()
+        selected = [c for c in preferred_columns if c in header]
+        missing = sorted(required - set(selected))
+        if missing:
+            raise ValueError(f"{path}: missing columns {missing}")
+        df = pd.read_csv(path, usecols=selected)
+    else:
+        df = pd.read_csv(path)
     missing = sorted(required - set(df.columns))
     if missing:
         raise ValueError(f"{path}: missing columns {missing}")
@@ -430,16 +439,46 @@ def run(
     retrieval_summary: Path | None = None,
     round_trip_cost_price: float | None = None,
 ) -> dict[str, Any]:
-    bars = load_csv(h1, {"timestamp", "open", "high", "low", "close"})
+    bars = load_csv(
+        h1,
+        {"timestamp", "open", "high", "low", "close"},
+        preferred_columns=("timestamp", "open", "high", "low", "close"),
+    )
     murphy_raw = normalize_rule_columns(
-        load_csv(murphy, {"timestamp", "status", "direction"}, allow_duplicate_timestamps=True),
+        load_csv(
+            murphy,
+            {"timestamp", "status", "direction"},
+            allow_duplicate_timestamps=True,
+            preferred_columns=("timestamp", "status", "direction", "source_rule_id", "rule_id"),
+        ),
         "MURPHY",
     )
     nison_raw = normalize_rule_columns(
-        load_csv(nison, {"timestamp", "status", "direction", "rule_id"}, allow_duplicate_timestamps=True),
+        load_csv(
+            nison,
+            {"timestamp", "status", "direction", "rule_id"},
+            allow_duplicate_timestamps=True,
+            preferred_columns=("timestamp", "status", "direction", "rule_id", "source_rule_id"),
+        ),
         "NISON",
     )
-    ctx = load_csv(context, {"timestamp"}, allow_duplicate_timestamps=False)
+    ctx = load_csv(
+        context,
+        {"timestamp"},
+        allow_duplicate_timestamps=False,
+        preferred_columns=(
+            "timestamp", "entry_price", "atr", "atr20", "close",
+            *tuple(f"{tf}_trend_regime" for tf in TF_NAMES),
+            *tuple(f"{tf}_trend" for tf in TF_NAMES),
+            *tuple(f"{tf}_market_trend" for tf in TF_NAMES),
+            *tuple(f"{tf}_bias" for tf in TF_NAMES),
+            *tuple(f"{tf}_market_bias" for tf in TF_NAMES),
+            *tuple(f"{tf}_volume_regime" for tf in TF_NAMES),
+            *tuple(f"{tf}_volume_bias" for tf in TF_NAMES),
+            *tuple(f"{tf}_volume_score" for tf in TF_NAMES),
+            "mtf_trend_score", "mtf_alignment", "multi_timeframe_trend", "multi_timeframe_bias",
+        ),
+    )
 
     if "entry_price" not in ctx.columns and "close" in ctx.columns:
         ctx["entry_price"] = pd.to_numeric(ctx["close"], errors="coerce")
@@ -460,7 +499,17 @@ def run(
         wide_parts: list[pd.DataFrame] = []
         narrow_parts: list[pd.DataFrame] = []
         for path in files:
-            raw = pd.read_csv(path)
+            header = pd.read_csv(path, nrows=0).columns.tolist()
+            candidate_mtf_cols = [
+                "timestamp",
+                *[f"{tf}_trend_regime" for tf in TF_NAMES],
+                "trend_regime", "trend", "market_trend", "trend_direction",
+                "direction", "bias", "market_bias", "regime",
+            ]
+            selected_mtf_cols = [c for c in candidate_mtf_cols if c in header]
+            if "timestamp" not in selected_mtf_cols:
+                continue
+            raw = pd.read_csv(path, usecols=selected_mtf_cols)
             if "timestamp" not in raw.columns:
                 continue
             raw["timestamp"] = pd.to_datetime(
