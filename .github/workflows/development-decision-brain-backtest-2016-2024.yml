@@ -35,6 +35,7 @@ jobs:
           import base64, zipfile
           from pathlib import Path
           b64=Path("BACKTEST/DEV_BACKTEST_R1_MURPHY_SOURCE.zip.b64.txt").read_text().strip()
+          b64 += "=" * ((4 - len(b64) % 4) % 4)
           z=base64.b64decode(b64)
           Path("artifacts/replay/r1_murphy/source.zip").write_bytes(z)
           with zipfile.ZipFile("artifacts/replay/r1_murphy/source.zip") as zf:
