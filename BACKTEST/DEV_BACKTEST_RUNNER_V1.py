@@ -34,12 +34,9 @@ BRAIN_PATH = ROOT / "RECOVERED_SOURCES/DECISION_BRAIN_V1/decision_brain.py"
 from OOS_2025.full_decision_brain_assembler_v1 import assemble_decision_event
 from OOS_2025.governed_rule_fan_in_v1 import build_lossless_rule_groups
 from OOS_2025.execution_oos_adapter_v1 import SL_ATR, TP_R
-from OOS_2025.frozen_candidate_risk_profile_v1 import (
-    AFTER_TWO_LOSSES_RISK_PCT,
-    BASE_RISK_PCT,
-    DRAWDOWN_BREAKER_PCT,
-)
 from risk_engine.risk_execution_runtime_v1 import RiskRequest, evaluate_risk
+
+BASE_RISK_PCT = 0.005
 
 
 DEVELOPMENT_START_YEAR = 2016
@@ -675,48 +672,29 @@ def run(
                 if action == "BUY"
                 else entry - (SL_ATR * atr * TP_R)
             )
-            current_drawdown = max(
-                0.0,
-                (risk_state["peak_equity"] - risk_state["equity"])
-                / risk_state["peak_equity"],
+            risk_result = evaluate_risk(
+                RiskRequest(
+                    equity=risk_state["equity"],
+                    risk_percent=BASE_RISK_PCT,
+                    entry_price=entry,
+                    stop_distance=abs(entry - provisional_stop),
+                    take_profit_distance=abs(provisional_target - entry),
+                    stop_mode="structure",
+                    risk_budget_locked=True,
+                ),
+                action,
+                atr,
             )
-            current_risk_pct = (
-                AFTER_TWO_LOSSES_RISK_PCT
-                if risk_state["prior_loss_streak"] >= 2
-                else BASE_RISK_PCT
-            )
-            if current_drawdown >= DRAWDOWN_BREAKER_PCT:
-                risk_evidence = {
-                    "risk_pass": False,
-                    "risk_status": "FAIL",
-                    "reason": "DRAWDOWN_CIRCUIT_BREAKER",
-                    "risk_percent": current_risk_pct,
-                }
-            else:
-                risk_result = evaluate_risk(
-                    RiskRequest(
-                        equity=risk_state["equity"],
-                        risk_percent=current_risk_pct,
-                        entry_price=entry,
-                        stop_distance=abs(entry - provisional_stop),
-                        take_profit_distance=abs(provisional_target - entry),
-                        stop_mode="structure",
-                        risk_budget_locked=True,
-                    ),
-                    action,
-                    atr,
-                )
-                risk_evidence = {
-                    "risk_pass": bool(risk_result.risk_pass),
-                    "risk_status": "PASS" if risk_result.risk_pass else "FAIL",
-                    "reason": risk_result.reason,
+            risk_evidence = {
+                "risk_pass": bool(risk_result.risk_pass),
+                "risk_status": "PASS" if risk_result.risk_pass else "FAIL",
+                "reason": risk_result.reason,
                 "risk_money": risk_result.risk_money,
                 "position_size": risk_result.position_size,
                 "stop_loss": risk_result.stop_loss,
                 "take_profit": risk_result.take_profit,
                 "rr": TP_R,
-                "risk_percent": current_risk_pct,
-                "drawdown": current_drawdown,
+                "risk_percent": BASE_RISK_PCT,
             }
 
         tiz_evidence = {
@@ -761,7 +739,7 @@ def run(
                 "decision_brain_unchanged": True,
                 "memory_shadow_only": True,
                 "tiz_optional_unverified": True,
-                "risk_contract": "0.75_ATR_STOP_2R_TARGET_WITH_FROZEN_RISK_THROTTLE",
+                "risk_contract": "0.75_ATR_STOP_2R_TARGET_0.5pct",
             },
         )
 
