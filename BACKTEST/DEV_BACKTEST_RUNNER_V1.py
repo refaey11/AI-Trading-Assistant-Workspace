@@ -439,6 +439,7 @@ def run(
     similarity_summary: Path | None = None,
     retrieval_summary: Path | None = None,
     round_trip_cost_price: float | None = None,
+    murphy_manifest: Path | None = None,
 ) -> dict[str, Any]:
     bars = load_csv(
         h1,
@@ -600,6 +601,36 @@ def run(
         observed_n.update(expand_rule_ids(value))
     expected_murphy = {x for x in allowed if x.startswith("MURPHY_")}
     expected_nison = {x for x in allowed if x.startswith("NISON_")}
+
+    if murphy_manifest is None:
+        murphy_runtime_ids = set()
+        murphy_decision_eligible_ids = set()
+    else:
+        manifest_data = json.loads(murphy_manifest.read_text(encoding="utf-8"))
+        murphy_runtime_ids = set(map(str, manifest_data.get("runtime_rule_ids", [])))
+        coverage = manifest_data.get("rule_coverage", {})
+        murphy_decision_eligible_ids = {
+            str(rule_id)
+            for rule_id, meta in coverage.items()
+            if isinstance(meta, dict) and bool(meta.get("decision_eligible", False))
+        }
+        if not murphy_runtime_ids:
+            raise ValueError("Murphy manifest missing runtime_rule_ids")
+        if not murphy_decision_eligible_ids:
+            raise ValueError("Murphy manifest has no decision-eligible Murphy rules")
+        if murphy_runtime_ids != expected_murphy:
+            raise ValueError(
+                f"Murphy manifest runtime scope mismatch: {sorted(murphy_runtime_ids ^ expected_murphy)}"
+            )
+        if not observed_m.issubset(murphy_decision_eligible_ids):
+            raise ValueError(
+                "Murphy evidence contains rules marked not decision-eligible: "
+                + str(sorted(observed_m - murphy_decision_eligible_ids))
+            )
+    murphy_decision_eligible_coverage_ok = bool(
+        murphy_manifest is not None
+        and observed_m == murphy_decision_eligible_ids
+    )
     if not observed_m.issubset(allowed):
         raise ValueError(f"Unknown Murphy rule IDs: {sorted(observed_m - allowed)}")
     if not observed_n.issubset(allowed):
@@ -879,7 +910,7 @@ def run(
     )
     rule_counts_ok = bool(
         not event_df.empty
-        and int(event_df["murphy_rule_count"].min()) == len(expected_murphy)
+        and murphy_decision_eligible_coverage_ok
         and int(event_df["nison_rule_count"].min()) == len(expected_nison)
     )
 
@@ -898,6 +929,11 @@ def run(
         "round_trip_cost_price": round_trip_cost_price,
         "official_claim_allowed": False,
         "rule_counts_ok": rule_counts_ok,
+        "murphy_runtime_rule_count": len(murphy_runtime_ids),
+        "murphy_decision_eligible_rule_count": len(murphy_decision_eligible_ids),
+        "murphy_observed_rule_count": len(observed_m),
+        "murphy_decision_eligible_coverage": murphy_decision_eligible_coverage_ok,
+        "nison_runtime_rule_count": len(observed_n),
         "mtf_source_consumed": mtf_consumed,
         "memory_shadow_only": True,
         "tiz_verified": False,
@@ -939,9 +975,11 @@ def run(
     }
 
     missing_required: list[str] = []
-    if len(observed_m) != len(expected_murphy):
+    if murphy_manifest is None:
+        missing_required.append("MURPHY_RUNTIME_MANIFEST")
+    elif not murphy_decision_eligible_coverage_ok:
         missing_required.append(
-            f"FULL_MURPHY_RULE_COVERAGE:{len(observed_m)}/{len(expected_murphy)}"
+            f"MURPHY_DECISION_ELIGIBLE_COVERAGE:{len(observed_m)}/{len(murphy_decision_eligible_ids)}"
         )
     if len(observed_n) != len(expected_nison):
         missing_required.append(
@@ -950,7 +988,7 @@ def run(
     if not mtf_consumed:
         missing_required.append("MTF_SOURCE_BACKED_FIELDS")
     if not rule_counts_ok:
-        missing_required.append("FULL_34X44_RULE_EVIDENCE")
+        missing_required.append("DECISION_EVIDENCE_COVERAGE")
     if not memory_meta["official_asof_memory_gate"]:
         missing_required.append("ASOF_HISTORICAL_MEMORY_EVIDENCE")
     if round_trip_cost_price is None:
@@ -1023,6 +1061,7 @@ def main() -> int:
         similarity_summary=a.similarity_summary,
         retrieval_summary=a.retrieval_summary,
         round_trip_cost_price=a.round_trip_cost_price,
+        murphy_manifest=a.murphy_manifest,
     )
     print(json.dumps(result, indent=2, default=str))
     return 0
