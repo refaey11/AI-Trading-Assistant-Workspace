@@ -2,7 +2,7 @@ name: Development Decision Brain Backtest 2016-2024
 
 on:
   push:
-    branches: [main]
+    branches: [main, "codex/**"]
   workflow_dispatch:
 
 jobs:
@@ -137,6 +137,40 @@ jobs:
           else: raise SystemExit('No governed Market State source found.')
           PY
           test -s artifacts/GBPUSD_MARKET_STATE.csv
+
+      - name: Download historical-memory metadata
+        run: |
+          set -eu
+          mkdir -p artifacts/memory
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          from urllib.request import Request, urlopen
+
+          token = os.environ['DROPBOX_ACCESS_TOKEN']
+          sources = {
+              'CONTEXT_MEMORY_INDEX.csv': '/AI_Trading_Assistant_FULL_PROJECT_V1/AI_Trading_Assistant_HISTORICAL_CONTEXT_MEMORY_V1/CONTEXT_MEMORY_INDEX.csv',
+              'CONTEXT_OUTCOME_STATS.csv': '/AI_Trading_Assistant_FULL_PROJECT_V1/AI_Trading_Assistant_HISTORICAL_OUTCOME_MEMORY_V1/CONTEXT_OUTCOME_STATS.csv',
+              'SIMILARITY_OUTCOME_SUMMARY.csv': '/AI_Trading_Assistant_FULL_PROJECT_V1/AI_Trading_Assistant_SIMILARITY_MEMORY_V2/SIMILARITY_OUTCOME_SUMMARY.csv',
+              'CONTEXT_AWARE_SUMMARY.csv': '/ai_trading_assistant_full_project_v1/AI_Trading_Assistant_CONTEXT_AWARE_RETRIEVAL_V2/CONTEXT_AWARE_SUMMARY.csv',
+          }
+          for name, path in sources.items():
+              req = Request(
+                  'https://content.dropboxapi.com/2/files/download',
+                  data=b'',
+                  method='POST',
+                  headers={
+                      'Authorization': f'Bearer {token}',
+                      'Dropbox-API-Arg': json.dumps({'path': path}),
+                  },
+              )
+              out = Path('artifacts/memory') / name
+              with urlopen(req, timeout=300) as r:
+                  out.write_bytes(r.read())
+              print('Downloaded:', name, out.stat().st_size)
+          PY
+          for f in artifacts/memory/*.csv; do test -s "$f"; done
+
       - name: Verify governed Nison artifact scope
         run: |
           python - <<'PY'
@@ -153,11 +187,21 @@ jobs:
         run: |
           set -eu
           mkdir -p artifacts/decision_brain_backtest_2016_2024
+          python - <<'PY'
+          import pandas as pd
+          p='artifacts/GBPUSD_MARKET_STATE.csv'
+          cols=pd.read_csv(p,nrows=0).columns.tolist()
+          print('Market State columns:', [c for c in cols if any(k in str(c).lower() for k in ('trend','bias','volume','mtf'))])
+          PY
           python BACKTEST/DEV_BACKTEST_RUNNER_V1.py \
             --h1 "$SOURCE_CSV" \
             --murphy artifacts/murphy/MURPHY_2016_2024_FULL_EVIDENCE.csv \
             --nison artifacts/nison/NISON_2016_2024_FULL_EVIDENCE.csv \
             --context artifacts/GBPUSD_MARKET_STATE.csv \
+            --historical-context-index artifacts/memory/CONTEXT_MEMORY_INDEX.csv \
+            --historical-outcome-stats artifacts/memory/CONTEXT_OUTCOME_STATS.csv \
+            --similarity-summary artifacts/memory/SIMILARITY_OUTCOME_SUMMARY.csv \
+            --retrieval-summary artifacts/memory/CONTEXT_AWARE_SUMMARY.csv \
             --output-dir artifacts/decision_brain_backtest_2016_2024
       - name: Store backtest artifacts
         if: always()
