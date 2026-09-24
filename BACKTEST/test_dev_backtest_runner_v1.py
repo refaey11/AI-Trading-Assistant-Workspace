@@ -120,3 +120,29 @@ def test_runner_blocks_2025(tmp_path):
     result = run(h1=h1, murphy=murphy, nison=nison, context=ctx, output_dir=out)
     assert result["funnel"]["events"] == 0
     assert result["validation"]["2025_present"] is False
+
+
+
+def test_wide_mtf_annual_files_are_concatenated(tmp_path):
+    from BACKTEST.DEV_BACKTEST_RUNNER_V1 import load_mtf_context
+
+    mtf_dir = tmp_path / "mtf"
+    mtf_dir.mkdir()
+    for year, ts in [(2016, "2016-01-04T10:00:00Z"), (2017, "2017-01-04T10:00:00Z")]:
+        pd.DataFrame([{
+            "timestamp": ts,
+            "M5_trend_regime": 1,
+            "M15_trend_regime": 1,
+            "M30_trend_regime": 1,
+            "H1_trend_regime": 1,
+            "H4_trend_regime": -1,
+            "D1_trend_regime": 1,
+        }]).to_csv(mtf_dir / f"GBPUSD_M5_MTF_ALIGNMENT_{year}.csv", index=False)
+
+    out = load_mtf_context(mtf_dir)
+    assert len(out) == 2
+    assert set(c for c in out.columns if c.endswith("_trend_regime")) == {
+        "M5_trend_regime","M15_trend_regime","M30_trend_regime",
+        "H1_trend_regime","H4_trend_regime","D1_trend_regime",
+    }
+    assert out["mtf_timeframes_available"].min() == 6
