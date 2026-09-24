@@ -337,7 +337,7 @@ def load_optional_memory_metadata(
         "direction_generated": False,
         "future_data_used_for_direction": False,
         "official_asof_memory_gate": all(
-            v.get("status") == "AVAILABLE_METADATA_ONLY" and v.get("as_of_usable") is False
+            v.get("status") == "AVAILABLE_ASOF" and v.get("as_of_usable") is True
             for v in sources.values()
         ),
     }
@@ -686,7 +686,9 @@ def run(
             "nison_rule_count": n_evidence["evidence_count"],
             "brain_bias": assessment.directional_bias.upper(),
             "brain_confidence": assessment.confidence,
-            "mtf_timeframes_available": int(crow.get("mtf_timeframes_available", 0) or 0),
+            "mtf_timeframes_available": int(
+                sum(1 for tf in TF_NAMES if f"{tf}_trend_regime" in brain_row)
+            ),
             "risk_pass": bool(risk_evidence.get("risk_pass", False)),
             "risk_percent": risk_evidence.get("risk_percent"),
             "stop_loss": risk_evidence.get("stop_loss"),
