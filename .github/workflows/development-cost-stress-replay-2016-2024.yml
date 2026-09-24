@@ -1,0 +1,64 @@
+name: Development Cost Stress Replay 2016-2024
+
+on:
+  push:
+    branches: ["codex/**"]
+  workflow_dispatch:
+
+jobs:
+  cost-stress-replay:
+    runs-on: ubuntu-latest
+    env:
+      PYTHONPATH: ${{ github.workspace }}:${{ github.workspace }}/OOS_2025
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        run: python -m pip install --upgrade pip pandas
+      - name: Recover last governed development inputs
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -eu
+          mkdir -p artifacts/replay
+          gh run download 35952096828 -n decision-brain-backtest-2016-2024 -D artifacts/replay
+          test -s artifacts/replay/source/GBPUSD_H1_2016_2025_MASTER.csv
+          test -s artifacts/replay/murphy/MURPHY_2016_2024_FULL_EVIDENCE.csv
+          test -s artifacts/replay/nison/NISON_2016_2024_FULL_EVIDENCE.csv
+          test -s artifacts/replay/market_state.csv
+      - name: Run governed replay with frozen 2-pip development stress cost
+        run: |
+          set -eu
+          python BACKTEST/DEV_BACKTEST_RUNNER_V1.py \
+            --h1 artifacts/replay/source/GBPUSD_H1_2016_2025_MASTER.csv \
+            --murphy artifacts/replay/murphy/MURPHY_2016_2024_FULL_EVIDENCE.csv \
+            --murphy-manifest artifacts/replay/murphy/MURPHY_2016_2024_MANIFEST.json \
+            --nison artifacts/replay/nison/NISON_2016_2024_FULL_EVIDENCE.csv \
+            --context artifacts/replay/market_state.csv \
+            --mtf-dir artifacts/replay/mtf/extracted \
+            --historical-context-index artifacts/replay/memory/CONTEXT_MEMORY_INDEX.csv \
+            --historical-outcome-stats artifacts/replay/memory/CONTEXT_OUTCOME_STATS.csv \
+            --similarity-summary artifacts/replay/memory/SIMILARITY_OUTCOME_SUMMARY.csv \
+            --retrieval-summary artifacts/replay/memory/CONTEXT_AWARE_SUMMARY.csv \
+            --round-trip-cost-price 0.0002 \
+            --output-dir artifacts/cost_stress_2016_2024
+      - name: Validate cost scenario provenance
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+          spec=json.loads(Path('governance/FROZEN_DEVELOPMENT_COST_SLIPPAGE_V1.json').read_text())
+          assert spec['round_trip_cost_pips']==2.0
+          assert spec['round_trip_cost_price']==0.0002
+          assert spec['source_scenario']=='NORMAL_2PIP'
+          assert spec['live_use_allowed'] is False
+          print(json.dumps(spec,indent=2))
+          PY
+      - name: Store cost stress artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: decision-brain-cost-stress-2016-2024
+          path: artifacts/cost_stress_2016_2024
