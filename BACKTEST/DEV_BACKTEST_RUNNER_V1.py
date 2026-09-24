@@ -455,6 +455,7 @@ def run(
         files = sorted(mtf_dir.rglob("*.csv"))
         if not files:
             raise ValueError(f"{mtf_dir}: no CSV timeframe source found")
+
         mtf_parts: list[pd.DataFrame] = []
         for path in files:
             raw = pd.read_csv(path)
@@ -463,6 +464,19 @@ def run(
             raw["timestamp"] = pd.to_datetime(
                 raw["timestamp"], format="mixed", utc=True, errors="coerce"
             )
+
+            # Prefer a source-backed wide MTF file carrying explicit fields for
+            # all six timeframes. This matches the existing MTF_ALIGNMENT artifact
+            # and avoids collapsing a six-TF source to only the M5 column.
+            wide_cols = [f"{tf}_trend_regime" for tf in TF_NAMES if f"{tf}_trend_regime" in raw.columns]
+            if len(wide_cols) >= 2:
+                keep = ["timestamp", *wide_cols]
+                part = raw[keep].copy()
+                for col in wide_cols:
+                    part[col] = part[col].map(_trend_to_score)
+                mtf_parts.append(part.dropna(subset=["timestamp"]).drop_duplicates("timestamp"))
+                continue
+
             tf = path.stem.upper()
             matched_tf = next((x for x in TF_NAMES if x in tf), None)
             if matched_tf is None:
