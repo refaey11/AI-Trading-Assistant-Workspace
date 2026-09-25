@@ -713,6 +713,8 @@ def run(
             )
     murphy_decision_eligible_coverage_ok = bool(
         murphy_manifest is not None
+        and murphy_decision_eligible_ids == expected_murphy
+        and observed_m == expected_murphy
         and observed_m == murphy_decision_eligible_ids
     )
     if not observed_m.issubset(allowed):
@@ -1072,7 +1074,9 @@ def run(
         missing_required.append("MURPHY_RUNTIME_MANIFEST")
     elif not murphy_decision_eligible_coverage_ok:
         missing_required.append(
-            f"MURPHY_DECISION_ELIGIBLE_COVERAGE:{len(observed_m)}/{len(murphy_decision_eligible_ids)}"
+            "MURPHY_DECISION_ELIGIBLE_COVERAGE:"
+            f"observed={len(observed_m)}/{len(expected_murphy)};"
+            f"manifest_decision_eligible={len(murphy_decision_eligible_ids)}/{len(expected_murphy)}"
         )
     if len(observed_n) != len(expected_nison):
         missing_required.append(
