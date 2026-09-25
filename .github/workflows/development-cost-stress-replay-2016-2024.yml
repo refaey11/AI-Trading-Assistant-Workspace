@@ -41,7 +41,7 @@ jobs:
             --mtf-dir artifacts/replay/mtf/extracted \
             --round-trip-cost-price 0.0002 \
             --output-dir artifacts/cost_stress_2016_2024
-      - name: Validate cost scenario provenance
+      - name: Validate cost scenario and fail-closed governance
         run: |
           python - <<'PY'
           import json
@@ -51,7 +51,13 @@ jobs:
           assert spec['round_trip_cost_price']==0.0002
           assert spec['source_scenario']=='NORMAL_2PIP'
           assert spec['live_use_allowed'] is False
-          print(json.dumps(spec,indent=2))
+
+          manifest=json.loads(Path('artifacts/cost_stress_2016_2024/validation_manifest_2016_2024.json').read_text())
+          assert manifest['official_profitability_claim'] is False
+          assert manifest['status']=='BLOCKED'
+          missing=' '.join(manifest.get('missing_required_input') or [])
+          assert 'MURPHY_DECISION_ELIGIBLE_COVERAGE' in missing
+          print(json.dumps({'cost_spec':spec,'validation':manifest},indent=2))
           PY
       - name: Store cost stress artifacts
         if: always()
