@@ -505,6 +505,37 @@ def simulate_trade(
     }
 
 
+def load_mtf_context(mtf_dir: Path) -> pd.DataFrame:
+    """Load and normalize source-backed annual wide MTF files."""
+    files = sorted(mtf_dir.rglob("GBPUSD_M5_MTF_ALIGNMENT_*.csv"))
+    if not files:
+        raise ValueError(f"{mtf_dir}: no annual MTF files found")
+
+    parts: list[pd.DataFrame] = []
+    for path in files:
+        header = pd.read_csv(path, nrows=0).columns.tolist()
+        wide_cols = [f"{tf}_trend_regime" for tf in TF_NAMES if f"{tf}_trend_regime" in header]
+        if "timestamp" not in header or not wide_cols:
+            continue
+        raw = pd.read_csv(path, usecols=["timestamp", *wide_cols])
+        raw["timestamp"] = pd.to_datetime(raw["timestamp"], utc=True, errors="coerce", format="mixed")
+        if raw["timestamp"].isna().any():
+            raise ValueError(f"{path}: invalid timestamps")
+        for col in wide_cols:
+            raw[col] = raw[col].map(_trend_to_score)
+        raw = raw.dropna(subset=["timestamp"]).drop_duplicates("timestamp", keep="last")
+        parts.append(raw)
+
+    if not parts:
+        raise ValueError(f"{mtf_dir}: no valid wide annual MTF files found")
+
+    out = pd.concat(parts, ignore_index=True).sort_values("timestamp", kind="stable")
+    out = out.drop_duplicates("timestamp", keep="last").reset_index(drop=True)
+    tf_cols = [f"{tf}_trend_regime" for tf in TF_NAMES if f"{tf}_trend_regime" in out.columns]
+    out["mtf_trend_score"] = out[tf_cols].mean(axis=1, skipna=True)
+    out["mtf_timeframes_available"] = out[tf_cols].notna().sum(axis=1)
+    return out
+
 def run(
     *,
     h1: Path,
