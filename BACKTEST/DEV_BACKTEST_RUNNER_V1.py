@@ -35,6 +35,8 @@ from OOS_2025.full_decision_brain_assembler_v1 import assemble_decision_event
 from OOS_2025.governed_rule_fan_in_v1 import build_lossless_rule_groups
 from OOS_2025.execution_oos_adapter_v1 import SL_ATR, TP_R
 from risk_engine.risk_execution_runtime_v1 import RiskRequest, evaluate_risk
+from DEVELOPMENT_2016_2024.current_stack_historical_memory_provider_v1 import HistoricalMemoryProvider
+from compatibility.memory_decision_handoff_adapter_v1 import build_memory_handoff
 
 BASE_RISK_PCT = 0.005
 
@@ -321,12 +323,7 @@ def load_optional_memory_metadata(
     similarity_summary: Path | None,
     retrieval_summary: Path | None,
 ) -> dict[str, Any]:
-    """Record memory-source presence without using aggregate/future statistics.
-
-    The supplied summary/index files are metadata-only. They are not passed into
-    the Brain as directional features because some include observations extending
-    through 2025 and therefore cannot be treated as per-event as-of evidence.
-    """
+    """Keep legacy summary metadata for provenance/reporting only."""
     sources: dict[str, dict[str, Any]] = {}
     for name, path in (
         ("historical_context", historical_context_index),
@@ -349,11 +346,93 @@ def load_optional_memory_metadata(
         "shadow_only": True,
         "direction_generated": False,
         "future_data_used_for_direction": False,
-        "official_asof_memory_gate": all(
-            v.get("status") == "AVAILABLE_ASOF" and v.get("as_of_usable") is True
-            for v in sources.values()
-        ),
+        "official_asof_memory_gate": False,
     }
+
+
+def build_runtime_memory_provider(
+    *,
+    historical_context: Path | None,
+    historical_outcome: Path | None,
+    similarity_artifact: Path | None,
+    retrieval_artifact: Path | None,
+    scenario_artifact: Path | None,
+) -> HistoricalMemoryProvider | None:
+    paths = (historical_context, historical_outcome, similarity_artifact, retrieval_artifact, scenario_artifact)
+    if any(p is None for p in paths):
+        return None
+    return HistoricalMemoryProvider(
+        context_path=historical_context,
+        outcome_path=historical_outcome,
+        similarity_artifact=similarity_artifact,
+        retrieval_artifact=retrieval_artifact,
+        scenario_artifact=scenario_artifact,
+    )
+
+
+def runtime_memory_evidence(
+    provider: HistoricalMemoryProvider | None,
+    *,
+    query_as_of: pd.Timestamp,
+    murphy_direction: str | None,
+) -> tuple[dict[str, Any], bool]:
+    if provider is None:
+        return ({
+            "status": "NOT_EVALUABLE",
+            "reason": "MEMORY_RUNTIME_SOURCES_NOT_PROVIDED",
+            "memory_role": "EVIDENCE_ONLY",
+            "direction": None,
+            "final_trade_decision": None,
+            "governance": {
+                "memory_generated_direction": False,
+                "predicted_return_used_as_direction": False,
+                "final_trade_decision_generated": False,
+                "future_data_allowed": False,
+            },
+        }, False)
+    try:
+        raw = provider.evidence(query_as_of.isoformat(), {"timestamp": query_as_of.isoformat()})
+        handoff = build_memory_handoff(
+            query_as_of=query_as_of.isoformat(),
+            murphy_direction=murphy_direction,
+            historical_context=raw["sources"].get("historical_context"),
+            historical_outcome=raw["sources"].get("historical_outcome"),
+            similarity=raw["sources"].get("similarity"),
+            context_aware_retrieval=raw["sources"].get("context_aware_retrieval"),
+            provenance={
+                "provider": "DEVELOPMENT_2016_2024/current_stack_historical_memory_provider_v1.py",
+                "mode": "development",
+            },
+        )
+        evidence = dict(handoff["historical_evidence"])
+        evidence["provider_scenario_engine"] = raw["sources"].get("scenario_engine", {})
+        evidence["provider_governance"] = raw.get("governance", {})
+        evidence["provider_status"] = raw.get("status")
+        lookahead_safe = bool(
+            raw.get("status") == "PASS"
+            and raw.get("governance", {}).get("future_data_allowed") is False
+            and raw.get("governance", {}).get("predicted_return_used_as_direction") is False
+            and all(
+                not bool(src.get("lookahead_violation", False))
+                for src in raw.get("sources", {}).values()
+                if isinstance(src, dict)
+            )
+        )
+        return evidence, lookahead_safe
+    except Exception as exc:
+        return ({
+            "status": "NOT_EVALUABLE",
+            "reason": f"MEMORY_RUNTIME_ERROR:{type(exc).__name__}:{exc}",
+            "memory_role": "EVIDENCE_ONLY",
+            "direction": None,
+            "final_trade_decision": None,
+            "governance": {
+                "memory_generated_direction": False,
+                "predicted_return_used_as_direction": False,
+                "final_trade_decision_generated": False,
+                "future_data_allowed": False,
+            },
+        }, False)
 
 
 def simulate_trade(
@@ -438,6 +517,11 @@ def run(
     historical_outcome_stats: Path | None = None,
     similarity_summary: Path | None = None,
     retrieval_summary: Path | None = None,
+    historical_context: Path | None = None,
+    historical_outcome: Path | None = None,
+    similarity_artifact: Path | None = None,
+    retrieval_artifact: Path | None = None,
+    scenario_artifact: Path | None = None,
     round_trip_cost_price: float | None = None,
     murphy_manifest: Path | None = None,
 ) -> dict[str, Any]:
@@ -651,6 +735,13 @@ def run(
         similarity_summary=similarity_summary,
         retrieval_summary=retrieval_summary,
     )
+    memory_provider = build_runtime_memory_provider(
+        historical_context=historical_context,
+        historical_outcome=historical_outcome,
+        similarity_artifact=similarity_artifact,
+        retrieval_artifact=retrieval_artifact,
+        scenario_artifact=scenario_artifact,
+    )
 
     events: list[dict[str, Any]] = []
     trades: list[dict[str, Any]] = []
@@ -679,6 +770,11 @@ def run(
         crow = context_map.loc[ts]
         brain_row = build_brain_row(crow)
         assessment = brain.assess(brain_row, similarity=None)
+        historical_evidence, memory_asof_safe = runtime_memory_evidence(
+            memory_provider,
+            query_as_of=ts,
+            murphy_direction=mdir,
+        )
 
         entry = float(crow["entry_price"]) if pd.notna(crow["entry_price"]) else None
         atr = float(crow["atr"]) if pd.notna(crow["atr"]) else None
@@ -752,14 +848,7 @@ def run(
             nison_evidence=n_evidence,
             tiz_evidence=tiz_evidence,
             risk_evidence=risk_evidence,
-            historical_evidence={
-                "retrieval_status": "SHADOW_ONLY_METADATA",
-                "candidate_count": 0,
-                "warnings": [
-                    "Historical memory summaries/indexes are metadata-only and not used for direction.",
-                    "No per-event as-of similarity evidence is introduced by this runner.",
-                ],
-            },
+            historical_evidence=historical_evidence,
             source_rule_ids=source_rule_ids,
             entry_price=entry,
             atr=atr,
@@ -814,7 +903,8 @@ def run(
             "tiz_status": tiz_evidence["process_gate"],
             "tiz_verified": False,
             "memory_shadow_only": True,
-            "memory_asof_usable": False,
+            "memory_asof_usable": bool(memory_asof_safe),
+            "memory_runtime_status": historical_evidence.get("status"),
             "decision": final_decision,
             "status": execution_status,
             "reason": event_reason or assembled.get("reason"),
@@ -936,6 +1026,9 @@ def run(
         "nison_runtime_rule_count": len(observed_n),
         "mtf_source_consumed": mtf_consumed,
         "memory_shadow_only": True,
+        "memory_runtime_enabled": memory_provider is not None,
+        "memory_asof_safe_all_events": bool(event_df["memory_asof_usable"].all()) if not event_df.empty else False,
+        "memory_asof_safe_event_count": int(event_df["memory_asof_usable"].sum()) if not event_df.empty else 0,
         "tiz_verified": False,
         "sl_atr": SL_ATR,
         "tp_R": TP_R,
@@ -989,7 +1082,9 @@ def run(
         missing_required.append("MTF_SOURCE_BACKED_FIELDS")
     if not rule_counts_ok:
         missing_required.append("DECISION_EVIDENCE_COVERAGE")
-    if not memory_meta["official_asof_memory_gate"]:
+    if memory_provider is None:
+        missing_required.append("ASOF_HISTORICAL_MEMORY_EVIDENCE")
+    elif not event_df.empty and not bool(event_df["memory_asof_usable"].all()):
         missing_required.append("ASOF_HISTORICAL_MEMORY_EVIDENCE")
     if round_trip_cost_price is None:
         missing_required.append("FROZEN_COST_SLIPPAGE_INPUT")
@@ -999,8 +1094,8 @@ def run(
         "timestamp_asof": True,
         "lookahead": True,
         "mtf_consumption": mtf_consumed,
-        "memory_leakage": True,
-        "memory_asof_evidence": False,
+        "memory_leakage": bool(memory_provider is not None),
+        "memory_asof_evidence": bool(memory_provider is not None and (event_df.empty or event_df["memory_asof_usable"].all())),
         "execution_funnel": True,
         "frozen_cost_slippage": round_trip_cost_price is not None,
         "official_profitability_claim": False,
@@ -1043,6 +1138,11 @@ def main() -> int:
     p.add_argument("--historical-outcome-stats", type=Path)
     p.add_argument("--similarity-summary", type=Path)
     p.add_argument("--retrieval-summary", type=Path)
+    p.add_argument("--historical-context", type=Path)
+    p.add_argument("--historical-outcome", type=Path)
+    p.add_argument("--similarity-artifact", type=Path)
+    p.add_argument("--retrieval-artifact", type=Path)
+    p.add_argument("--scenario-artifact", type=Path)
     p.add_argument(
         "--round-trip-cost-price",
         type=float,
@@ -1061,6 +1161,11 @@ def main() -> int:
         historical_outcome_stats=a.historical_outcome_stats,
         similarity_summary=a.similarity_summary,
         retrieval_summary=a.retrieval_summary,
+        historical_context=a.historical_context,
+        historical_outcome=a.historical_outcome,
+        similarity_artifact=a.similarity_artifact,
+        retrieval_artifact=a.retrieval_artifact,
+        scenario_artifact=a.scenario_artifact,
         round_trip_cost_price=a.round_trip_cost_price,
         murphy_manifest=a.murphy_manifest,
     )
