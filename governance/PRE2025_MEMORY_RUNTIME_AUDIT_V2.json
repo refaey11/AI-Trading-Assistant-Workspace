@@ -1,0 +1,45 @@
+{
+  "artifact": "PRE2025_MEMORY_RUNTIME_AUDIT_V2",
+  "status": "PASS",
+  "query_as_of": "2024-12-31T12:00:00Z",
+  "development_window_end": 2024,
+  "oos_2025_locked": true,
+  "sources": {
+    "historical_context": {
+      "status": "WORKING",
+      "candidate_count": 273367,
+      "archive_latest": "2025-12-31 16:00:00+00:00",
+      "selected_latest": "2024-12-31 12:00:00+00:00",
+      "future_rows_excluded": 30825,
+      "queryable": "historical_context_csv"
+    },
+    "historical_outcome": {
+      "status": "WORKING",
+      "candidate_count": 273149,
+      "archive_latest": "2025-12-31 16:00:00+00:00",
+      "selected_latest": "2024-12-27 16:00:00+00:00",
+      "future_rows_excluded": 31043,
+      "queryable": "historical_outcomes_csv",
+      "max_horizon_hours": 48
+    },
+    "similarity": {
+      "status": "PRESENT_BUT_NOT_CONSUMED",
+      "candidate_count": 87,
+      "current_read_rows": 5,
+      "current_read_latest": "2025-12-31 16:00:00+00:00",
+      "reason": "precomputed current-read snapshots are not consumed as development direction"
+    },
+    "context_aware_retrieval": {
+      "status": "PRESENT_BUT_NOT_CONSUMED",
+      "candidate_count": 0,
+      "current_read_rows": 5,
+      "current_read_latest": "2025-12-31 16:00:00+00:00",
+      "reason": "precomputed retrieval snapshots are not consumed as development direction"
+    }
+  },
+  "lookahead_violations": 0,
+  "memory_direction_changed": false,
+  "source_path": "/New 7/PRE2025_MEMORY_RUNTIME_AUDIT_V2.json",
+  "live_use_allowed": false,
+  "note": "This is an existing source-backed audit copied into GitHub governance. It does not replace the missing per-event runtime retrieval adapter."
+}
