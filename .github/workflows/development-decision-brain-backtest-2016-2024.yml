@@ -28,46 +28,14 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -eu
-          mkdir -p artifacts/replay artifacts/memory/{historical_context,historical_outcome,similarity,retrieval,scenario}
+          mkdir -p artifacts/replay
           gh run download 35806971916 -n governed-78-rule-development-backtest -D artifacts/replay
-          python - <<'PY'
-          import json, os
-          from pathlib import Path
-          from urllib.request import Request, urlopen
-
-          token=os.environ['DROPBOX_ACCESS_TOKEN']
-          sources={
-              'historical_context.zip':'/ai_trading_assistant_full_project_v1/AI_Trading_Assistant_HISTORICAL_CONTEXT_MEMORY_V1.zip',
-              'historical_outcome.zip':'/ai_trading_assistant_full_project_v1/AI_Trading_Assistant_HISTORICAL_OUTCOME_MEMORY_V1.zip',
-              'similarity.zip':'/ai_trading_assistant_full_project_v1/AI_Trading_Assistant_SIMILARITY_MEMORY_V2.zip',
-              'retrieval.zip':'/ai_trading_assistant_full_project_v1/AI_Trading_Assistant_CONTEXT_AWARE_RETRIEVAL_V2.zip',
-              'scenario.zip':'/AI_Trading_Assistant_FULL_PROJECT_V1/AI_Trading_Assistant_MARKET_SCENARIO_ENGINE_V1.zip',
-          }
-          out=Path('artifacts/memory')
-          for name,path in sources.items():
-              req=Request(
-                  'https://content.dropboxapi.com/2/files/download',
-                  data=b'',
-                  method='POST',
-                  headers={'Authorization':f'Bearer {token}','Dropbox-API-Arg':json.dumps({'path':path})},
-              )
-              p=out/name
-              with urlopen(req,timeout=900) as r:
-                  p.write_bytes(r.read())
-              print(name,p.stat().st_size)
-          PY
-          unzip -q artifacts/memory/historical_context.zip -d artifacts/memory/historical_context
-          unzip -q artifacts/memory/historical_outcome.zip -d artifacts/memory/historical_outcome
-          unzip -q artifacts/memory/similarity.zip -d artifacts/memory/similarity
-          unzip -q artifacts/memory/retrieval.zip -d artifacts/memory/retrieval
-          unzip -q artifacts/memory/scenario.zip -d artifacts/memory/scenario
-
-          HC=$(find artifacts/memory/historical_context -type f -name 'HISTORICAL_CONTEXT_MEMORY.csv' | head -1)
-          HO=$(find artifacts/memory/historical_outcome -type f -name 'HISTORICAL_OUTCOMES.csv' | head -1)
-          SIM=$(find artifacts/memory/similarity -type f -name 'SIMILAR_CONTEXT_READS.json' | head -1)
-          RET=$(find artifacts/memory/retrieval -type f -name 'CONTEXT_AWARE_READINGS.json' | head -1)
-          SCN=$(find artifacts/memory/scenario -type f -name 'MARKET_SCENARIOS.json' | head -1)
-          test -n "$HC" && test -n "$HO" && test -n "$SIM" && test -n "$RET" && test -n "$SCN"
+          HC="$GITHUB_WORKSPACE/BACKTEST/fixtures/memory_runtime_2016_2024/historical_context.csv"
+          HO="$GITHUB_WORKSPACE/BACKTEST/fixtures/memory_runtime_2016_2024/historical_outcome.csv"
+          SIM="$GITHUB_WORKSPACE/BACKTEST/fixtures/memory_runtime_2016_2024/similarity.json"
+          RET="$GITHUB_WORKSPACE/BACKTEST/fixtures/memory_runtime_2016_2024/retrieval.json"
+          SCN="$GITHUB_WORKSPACE/BACKTEST/fixtures/memory_runtime_2016_2024/scenario.json"
+          test -s "$HC" && test -s "$HO" && test -s "$SIM" && test -s "$RET" && test -s "$SCN"
 
           python BACKTEST/DEV_BACKTEST_RUNNER_V1.py \
             --h1 artifacts/replay/source/GBPUSD_H1_2016_2025_MASTER.csv \
