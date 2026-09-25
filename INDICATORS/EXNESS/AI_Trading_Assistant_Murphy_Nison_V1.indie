@@ -1,0 +1,365 @@
+# indie:lang_version = 5
+"""AI Trading Assistant — Murphy 0006/0007 + Nison Confirmation
+
+Runnable Indie overlay based on the project's frozen V18 lifecycle contract.
+
+Governed semantics used here:
+- Murphy 0006: consecutive same-family confirmed LOW pivots with higher LOW ->
+  UP structure, freeze A1/A2, exact third touch/line-hold, HIGH reaction.
+- Murphy 0007: consecutive same-family confirmed HIGH pivots with lower HIGH ->
+  DOWN structure, freeze A1/A2, exact third touch/line-hold, LOW reaction.
+- Pivot confirmation is causal: a pivot at [3] is only accepted when bars [2]
+  and [1] are already closed; no current forming bar is used for a signal.
+- Third-touch qualification uses the project rule's exact line intersection and
+  exact line-hold semantics. No ATR/% tolerance is invented.
+- Nison is confirmation/contradiction only: bullish/bearish engulfing cannot
+  create direction without a completed Murphy setup.
+- One BUY/SELL is emitted, then the setup is reset.
+- SL = 0.75 ATR and TP = 2R are the frozen execution distances.
+
+Important implementation note:
+The project freeze specifies the ATR multiplier, not a canonical ATR lookback.
+The indicator therefore exposes ATR length as a display/execution input only;
+it does not affect signal formation. Default = 14 so the same default can be
+used by the exact-logic backtest companion.
+"""
+
+from math import nan
+from indie import indicator, param, plot, MainContext, Optional, color
+from indie.algorithms import Atr
+from indie.drawings import LineSegment, AbsolutePosition, extend_type
+
+
+# ---------------------------------------------------------------------------
+# Pure candle predicates — no lookahead.
+# A pivot centered at [3] uses only [4], [3], [2], [1].
+# ---------------------------------------------------------------------------
+def is_pivot_low(self, shift=3):
+    return (
+        self.low[shift] < self.low[shift + 1]
+        and self.low[shift] < self.low[shift + 2]
+        and self.low[shift] < self.low[shift - 1]
+        and self.low[shift] < self.low[shift - 2]
+    )
+
+
+def is_pivot_high(self, shift=3):
+    return (
+        self.high[shift] > self.high[shift + 1]
+        and self.high[shift] > self.high[shift + 2]
+        and self.high[shift] > self.high[shift - 1]
+        and self.high[shift] > self.high[shift - 2]
+    )
+
+
+def bullish_engulfing(self, shift=1):
+    # Nison confirmation scope used by the V18 lifecycle.
+    prev = shift + 1
+    return (
+        self.close[prev] < self.open[prev]
+        and self.close[shift] > self.open[shift]
+        and self.open[shift] < self.close[prev]
+        and self.close[shift] > self.open[prev]
+    )
+
+
+def bearish_engulfing(self, shift=1):
+    prev = shift + 1
+    return (
+        self.close[prev] > self.open[prev]
+        and self.close[shift] < self.open[shift]
+        and self.open[shift] > self.close[prev]
+        and self.close[shift] < self.open[prev]
+    )
+
+
+@indicator('AI Trading Assistant — Murphy 0006/0007 + Nison', overlay_main_pane=True)
+@param.int('atr_length', default=14, min=1, title='ATR Length (execution display)')
+@plot.line(color=color.TRANSPARENT, title='Signal Code (1=BUY, -1=SELL)')
+@plot.marker(style=plot.marker_style.LABEL, position=plot.marker_position.CENTER, size=4,
+             title='BUY / SELL')
+@plot.marker(style=plot.marker_style.CIRCLE, position=plot.marker_position.CENTER, size=3,
+             title='LOW Pivot')
+@plot.marker(style=plot.marker_style.CIRCLE, position=plot.marker_position.CENTER, size=3,
+             title='HIGH Pivot')
+class Main(MainContext):
+    """Single-state lifecycle matching the verified V18 behavior."""
+
+    def __init__(self):
+        # setup_dir: 0=none, 1=0006 bullish, -1=0007 bearish
+        self.setup_dir = self.new_var(0)
+        # phase: 0=collect anchors, 1=wait third touch, 2=wait reaction,
+        #        3=wait matching Nison confirmation
+        self.phase = self.new_var(0)
+
+        self.last_pivot_family = self.new_var(0)  # 1=LOW, -1=HIGH
+        self.last_low_price = self.new_var(0.0)
+        self.last_low_time = self.new_var(0.0)
+        self.last_low_bar = self.new_var(-1)
+        self.last_high_price = self.new_var(0.0)
+        self.last_high_time = self.new_var(0.0)
+        self.last_high_bar = self.new_var(-1)
+
+        # Frozen anchor pair for the active setup.
+        self.a1_price = self.new_var(0.0)
+        self.a1_time = self.new_var(0.0)
+        self.a1_bar = self.new_var(-1)
+        self.a2_price = self.new_var(0.0)
+        self.a2_time = self.new_var(0.0)
+        self.a2_bar = self.new_var(-1)
+
+        self.touch_bar = self.new_var(-1)
+        self.reaction_bar = self.new_var(-1)
+
+        # Active trendline drawing.
+        self.active_line = self.new_var(Optional[LineSegment]())
+
+        # Latest signal execution levels. Only the latest set is drawn.
+        self.entry_line = self.new_var(Optional[LineSegment]())
+        self.sl_line = self.new_var(Optional[LineSegment]())
+        self.tp_line = self.new_var(Optional[LineSegment]())
+
+    def _erase_line(self, var):
+        if var.get() is not None:
+            self.chart.erase(var.get().value())
+            var.set(None)
+
+    def _reset_setup(self):
+        # Erase only active drawings; historical plot markers remain rollback-safe.
+        self._erase_line(self.active_line)
+        self.setup_dir.set(0)
+        self.phase.set(0)
+        self.touch_bar.set(-1)
+        self.reaction_bar.set(-1)
+
+    def _line_price(self, t):
+        dt = self.a2_time.get() - self.a1_time.get()
+        if dt == 0:
+            return nan
+        slope = (self.a2_price.get() - self.a1_price.get()) / dt
+        return self.a1_price.get() + slope * (t - self.a1_time.get())
+
+    def _freeze_bullish_setup(self):
+        self.setup_dir.set(1)
+        self.phase.set(1)
+        self.a1_price.set(self.last_low_price.get())
+        self.a1_time.set(self.last_low_time.get())
+        self.a1_bar.set(self.last_low_bar.get())
+        self.a2_price.set(self.low[3])
+        self.a2_time.set(self.time[3])
+        self.a2_bar.set(self.bar_index - 3)
+        self.touch_bar.set(-1)
+        self.reaction_bar.set(-1)
+        self._erase_line(self.active_line)
+        self.active_line.set(LineSegment(
+            AbsolutePosition(self.a1_time.get(), self.a1_price.get()),
+            AbsolutePosition(self.time[0], self._line_price(self.time[0])),
+            extend_type=extend_type.RIGHT,
+            color=color.GREEN,
+            line_width=2,
+        ))
+        self.chart.draw(self.active_line.get().value())
+
+    def _freeze_bearish_setup(self):
+        self.setup_dir.set(-1)
+        self.phase.set(1)
+        self.a1_price.set(self.last_high_price.get())
+        self.a1_time.set(self.last_high_time.get())
+        self.a1_bar.set(self.last_high_bar.get())
+        self.a2_price.set(self.high[3])
+        self.a2_time.set(self.time[3])
+        self.a2_bar.set(self.bar_index - 3)
+        self.touch_bar.set(-1)
+        self.reaction_bar.set(-1)
+        self._erase_line(self.active_line)
+        self.active_line.set(LineSegment(
+            AbsolutePosition(self.a1_time.get(), self.a1_price.get()),
+            AbsolutePosition(self.time[0], self._line_price(self.time[0])),
+            extend_type=extend_type.RIGHT,
+            color=color.RED,
+            line_width=2,
+        ))
+        self.chart.draw(self.active_line.get().value())
+
+    def _draw_active_line(self):
+        if self.setup_dir.get() == 0 or self.active_line.get() is None:
+            return
+        line = self.active_line.get().value()
+        line.point_b = AbsolutePosition(self.time[0], self._line_price(self.time[0]))
+        self.chart.draw(line)
+
+    def _draw_execution_levels(self, direction, entry, atr):
+        self._erase_line(self.entry_line)
+        self._erase_line(self.sl_line)
+        self._erase_line(self.tp_line)
+
+        risk_distance = 0.75 * atr
+        reward_distance = 2.0 * risk_distance
+        if direction == 1:
+            sl = entry - risk_distance
+            tp = entry + reward_distance
+            line_color = color.GREEN
+        else:
+            sl = entry + risk_distance
+            tp = entry - reward_distance
+            line_color = color.RED
+
+        end_time = self.time[0]
+        self.entry_line.set(LineSegment(
+            AbsolutePosition(self.time[1], entry),
+            AbsolutePosition(end_time, entry),
+            extend_type=extend_type.RIGHT,
+            color=color.BLUE,
+            line_width=1,
+        ))
+        self.sl_line.set(LineSegment(
+            AbsolutePosition(self.time[1], sl),
+            AbsolutePosition(end_time, sl),
+            extend_type=extend_type.RIGHT,
+            color=color.RED,
+            line_width=1,
+        ))
+        self.tp_line.set(LineSegment(
+            AbsolutePosition(self.time[1], tp),
+            AbsolutePosition(end_time, tp),
+            extend_type=extend_type.RIGHT,
+            color=line_color,
+            line_width=1,
+        ))
+        self.chart.draw(self.entry_line.get().value())
+        self.chart.draw(self.sl_line.get().value())
+        self.chart.draw(self.tp_line.get().value())
+
+    def calc(self, atr_length):
+        # Need enough confirmed history for the five-bar pivot and engulfing test.
+        if self.bar_index < 6:
+            return nan, plot.Marker(value=nan), plot.Marker(value=nan), plot.Marker(value=nan)
+
+        atr = Atr.new(atr_length)
+        signal_code = 0.0
+        signal_marker_value = nan
+        signal_text = ''
+
+        low_pivot = is_pivot_low(self, 3)
+        high_pivot = is_pivot_high(self, 3)
+        pivot_index = self.bar_index - 3
+
+        # ---------------------------------------------------------------
+        # 1) Existing active setup lifecycle.
+        # ---------------------------------------------------------------
+        if self.setup_dir.get() != 0:
+            line_now = self._line_price(self.time[1])
+
+            if self.phase.get() == 1:
+                # Exact line-hold rule: penetration before/at third touch invalidates.
+                if self.setup_dir.get() == 1 and self.low[1] < line_now:
+                    self._reset_setup()
+                elif self.setup_dir.get() == -1 and self.high[1] > line_now:
+                    self._reset_setup()
+                else:
+                    # Third touch must occur strictly after A2.
+                    if self.bar_index - 1 > self.a2_bar.get():
+                        if self.setup_dir.get() == 1 and self.low[1] <= line_now <= self.high[1]:
+                            # Because the exact line-hold rule disallows penetration,
+                            # the qualified touch is the exact line contact.
+                            if self.low[1] == line_now:
+                                self.touch_bar.set(self.bar_index - 1)
+                                self.phase.set(2)
+                        elif self.setup_dir.get() == -1 and self.low[1] <= line_now <= self.high[1]:
+                            if self.high[1] == line_now:
+                                self.touch_bar.set(self.bar_index - 1)
+                                self.phase.set(2)
+
+            if self.setup_dir.get() != 0 and self.phase.get() == 2:
+                # Exact line-hold invalidation remains active after third touch.
+                if self.setup_dir.get() == 1 and self.low[1] < line_now:
+                    self._reset_setup()
+                elif self.setup_dir.get() == -1 and self.high[1] > line_now:
+                    self._reset_setup()
+                else:
+                    # Opposite confirmed pivot = reaction.
+                    if self.setup_dir.get() == 1 and high_pivot and pivot_index > self.touch_bar.get():
+                        self.reaction_bar.set(pivot_index)
+                        self.phase.set(3)
+                    elif self.setup_dir.get() == -1 and low_pivot and pivot_index > self.touch_bar.get():
+                        self.reaction_bar.set(pivot_index)
+                        self.phase.set(3)
+
+            if self.setup_dir.get() != 0 and self.phase.get() == 3:
+                # Nison confirmation/contradiction only. Absence is not contradiction.
+                bull_nison = bullish_engulfing(self, 1)
+                bear_nison = bearish_engulfing(self, 1)
+
+                if self.setup_dir.get() == 1:
+                    if bear_nison:
+                        self._reset_setup()
+                    elif bull_nison and self.bar_index - 1 > self.reaction_bar.get():
+                        entry = self.close[1]
+                        atr_value = atr[1]
+                        if atr_value > 0:
+                            signal_code = 1.0
+                            signal_marker_value = entry
+                            signal_text = 'BUY'
+                            self._draw_execution_levels(1, entry, atr_value)
+                            # Freeze one signal then reset, matching V18.
+                            self._reset_setup()
+                else:
+                    if bull_nison:
+                        self._reset_setup()
+                    elif bear_nison and self.bar_index - 1 > self.reaction_bar.get():
+                        entry = self.close[1]
+                        atr_value = atr[1]
+                        if atr_value > 0:
+                            signal_code = -1.0
+                            signal_marker_value = entry
+                            signal_text = 'SELL'
+                            self._draw_execution_levels(-1, entry, atr_value)
+                            self._reset_setup()
+
+        # ---------------------------------------------------------------
+        # 2) No setup: collect consecutive same-family confirmed pivots.
+        # ---------------------------------------------------------------
+        if self.setup_dir.get() == 0:
+            if low_pivot and high_pivot:
+                # Ambiguous dual-family pivot: update neither direction.
+                self.last_pivot_family.set(0)
+            elif low_pivot:
+                curr_low = self.low[3]
+                if self.last_pivot_family.get() == 1 and curr_low > self.last_low_price.get():
+                    self._freeze_bullish_setup()
+                else:
+                    self.last_low_price.set(curr_low)
+                    self.last_low_time.set(self.time[3])
+                    self.last_low_bar.set(pivot_index)
+                    self.last_pivot_family.set(1)
+            elif high_pivot:
+                curr_high = self.high[3]
+                if self.last_pivot_family.get() == -1 and curr_high < self.last_high_price.get():
+                    self._freeze_bearish_setup()
+                else:
+                    self.last_high_price.set(curr_high)
+                    self.last_high_time.set(self.time[3])
+                    self.last_high_bar.set(pivot_index)
+                    self.last_pivot_family.set(-1)
+
+        # Always refresh the active trendline only; this avoids duplicate drawing objects.
+        self._draw_active_line()
+
+        # Rollback-safe chart markers use offsets to the already-closed source bars.
+        low_marker = plot.Marker(
+            value=self.low[3] if low_pivot else nan,
+            text='LOW',
+            offset=-3,
+        )
+        high_marker = plot.Marker(
+            value=self.high[3] if high_pivot else nan,
+            text='HIGH',
+            offset=-3,
+        )
+        signal_marker = plot.Marker(
+            value=signal_marker_value,
+            text=signal_text,
+            offset=-1,
+        )
+
+        return signal_code, signal_marker, low_marker, high_marker
