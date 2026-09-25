@@ -22,14 +22,53 @@ jobs:
           python-version: "3.12"
       - name: Install dependencies
         run: python -m pip install --upgrade pip pandas pytest
-      - name: Replay current runner on previously acquired governed inputs
+      - name: Replay runner with existing governed market inputs + runtime memory sources
         if: github.ref != 'refs/heads/main'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -eu
-          mkdir -p artifacts/replay
+          mkdir -p artifacts/replay artifacts/memory/{historical_context,historical_outcome,similarity,retrieval,scenario}
           gh run download 35806971916 -n governed-78-rule-development-backtest -D artifacts/replay
+          python - <<'PY'
+          import json, os
+          from pathlib import Path
+          from urllib.request import Request, urlopen
+
+          token=os.environ['DROPBOX_ACCESS_TOKEN']
+          sources={
+              'historical_context.zip':'/ai_trading_assistant_full_project_v1/AI_Trading_Assistant_HISTORICAL_CONTEXT_MEMORY_V1.zip',
+              'historical_outcome.zip':'/ai_trading_assistant_full_project_v1/AI_Trading_Assistant_HISTORICAL_OUTCOME_MEMORY_V1.zip',
+              'similarity.zip':'/ai_trading_assistant_full_project_v1/AI_Trading_Assistant_SIMILARITY_MEMORY_V2.zip',
+              'retrieval.zip':'/ai_trading_assistant_full_project_v1/AI_Trading_Assistant_CONTEXT_AWARE_RETRIEVAL_V2.zip',
+              'scenario.zip':'/AI_Trading_Assistant_FULL_PROJECT_V1/AI_Trading_Assistant_MARKET_SCENARIO_ENGINE_V1.zip',
+          }
+          out=Path('artifacts/memory')
+          for name,path in sources.items():
+              req=Request(
+                  'https://content.dropboxapi.com/2/files/download',
+                  data=b'',
+                  method='POST',
+                  headers={'Authorization':f'Bearer {token}','Dropbox-API-Arg':json.dumps({'path':path})},
+              )
+              p=out/name
+              with urlopen(req,timeout=900) as r:
+                  p.write_bytes(r.read())
+              print(name,p.stat().st_size)
+          PY
+          unzip -q artifacts/memory/historical_context.zip -d artifacts/memory/historical_context
+          unzip -q artifacts/memory/historical_outcome.zip -d artifacts/memory/historical_outcome
+          unzip -q artifacts/memory/similarity.zip -d artifacts/memory/similarity
+          unzip -q artifacts/memory/retrieval.zip -d artifacts/memory/retrieval
+          unzip -q artifacts/memory/scenario.zip -d artifacts/memory/scenario
+
+          HC=$(find artifacts/memory/historical_context -type f -name 'HISTORICAL_CONTEXT_MEMORY.csv' | head -1)
+          HO=$(find artifacts/memory/historical_outcome -type f -name 'HISTORICAL_OUTCOMES.csv' | head -1)
+          SIM=$(find artifacts/memory/similarity -type f -name 'SIMILAR_CONTEXT_READS.json' | head -1)
+          RET=$(find artifacts/memory/retrieval -type f -name 'CONTEXT_AWARE_READINGS.json' | head -1)
+          SCN=$(find artifacts/memory/scenario -type f -name 'MARKET_SCENARIOS.json' | head -1)
+          test -n "$HC" && test -n "$HO" && test -n "$SIM" && test -n "$RET" && test -n "$SCN"
+
           python BACKTEST/DEV_BACKTEST_RUNNER_V1.py \
             --h1 artifacts/replay/source/GBPUSD_H1_2016_2025_MASTER.csv \
             --murphy artifacts/replay/murphy/MURPHY_2016_2024_FULL_EVIDENCE.csv \
@@ -37,15 +76,24 @@ jobs:
             --nison artifacts/replay/nison/NISON_2016_2024_FULL_EVIDENCE.csv \
             --context artifacts/replay/market_state.csv \
             --mtf-dir artifacts/replay/mtf/extracted \
+            --historical-context "$HC" \
+            --historical-outcome "$HO" \
+            --similarity-artifact "$SIM" \
+            --retrieval-artifact "$RET" \
+            --scenario-artifact "$SCN" \
+            --round-trip-cost-price 0.0002 \
             --output-dir artifacts/replay/current_runner_2016_2024
+
           python - <<'PY'
           import json
           from pathlib import Path
           p=Path('artifacts/replay/current_runner_2016_2024/validation_manifest_2016_2024.json')
           m=json.loads(p.read_text())
-          print(json.dumps(m, indent=2))
+          print(json.dumps(m,indent=2))
           if m.get('official_profitability_claim'):
               raise SystemExit('FAIL_CLOSED: replay cannot make official profitability claim')
+          if m.get('memory_asof_evidence') is not True:
+              raise SystemExit('FAIL_CLOSED: runtime memory as-of gate did not pass')
           PY
 
       - name: Verify Dropbox access
