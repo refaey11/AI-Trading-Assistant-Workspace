@@ -27,7 +27,6 @@ jobs:
           test -s artifacts/replay/murphy/MURPHY_2016_2024_FULL_EVIDENCE.csv
           test -s artifacts/replay/murphy/MURPHY_2016_2024_MANIFEST.json
           test -s artifacts/replay/source/GBPUSD_H1_2016_2025_MASTER.csv
-test -s artifacts/replay/murphy/MURPHY_2016_2024_FULL_EVIDENCE.csv
           test -s artifacts/replay/nison/NISON_2016_2024_FULL_EVIDENCE.csv
           test -s artifacts/replay/market_state.csv
       - name: Run governed replay with frozen 2-pip development stress cost
