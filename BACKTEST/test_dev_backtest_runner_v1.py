@@ -146,3 +146,83 @@ def test_wide_mtf_annual_files_are_concatenated(tmp_path):
         "H1_trend_regime","H4_trend_regime","D1_trend_regime",
     }
     assert out["mtf_timeframes_available"].min() == 6
+
+
+
+def test_runner_consumes_existing_asof_memory_provider_without_direction(tmp_path):
+    ts = "2024-01-02T10:00:00Z"
+    prior = "2023-12-30T10:00:00Z"
+    h1 = tmp_path / "h1.csv"
+    ctx = tmp_path / "context.csv"
+    murphy = tmp_path / "murphy.csv"
+    nison = tmp_path / "nison.csv"
+    historical_context = tmp_path / "historical_context.csv"
+    historical_outcome = tmp_path / "historical_outcome.csv"
+    similarity = tmp_path / "similarity.json"
+    retrieval = tmp_path / "retrieval.json"
+    scenario = tmp_path / "scenario.json"
+    out = tmp_path / "out"
+
+    pd.DataFrame([
+        {"timestamp": ts, "open": 1.1000, "high": 1.1000, "low": 1.1000, "close": 1.1000},
+        {"timestamp": "2024-01-02T11:00:00Z", "open": 1.1000, "high": 1.1040, "low": 1.0995, "close": 1.1035},
+    ]).to_csv(h1, index=False)
+
+    pd.DataFrame([{
+        "timestamp": ts,
+        "entry_price": 1.1000,
+        "atr": 0.0020,
+        "M5_trend_regime": 1,
+        "M15_trend_regime": 1,
+        "M30_trend_regime": 1,
+        "H1_trend_regime": 1,
+        "H4_trend_regime": 1,
+        "D1_trend_regime": 1,
+        "M5_volume_regime": 1,
+        "M15_volume_regime": 1,
+        "M30_volume_regime": 1,
+        "H1_volume_regime": 1,
+        "H4_volume_regime": 1,
+        "D1_volume_regime": 1,
+    }]).to_csv(ctx, index=False)
+
+    pd.DataFrame(_murphy_rows(ts)).to_csv(murphy, index=False)
+    pd.DataFrame(_nison_rows(ts)).to_csv(nison, index=False)
+
+    pd.DataFrame([{
+        "pair": "GBPUSD",
+        "timestamp": prior,
+        "context_signature": "BULL_TREND / INSIDE_RANGE / MID_RANGE / CONTRACTION / NORMAL / no_major_candle",
+    }]).to_csv(historical_context, index=False)
+    pd.DataFrame([{
+        "pair": "GBPUSD",
+        "timestamp": prior,
+        "context_signature": "BULL_TREND / INSIDE_RANGE / MID_RANGE / CONTRACTION / NORMAL / no_major_candle",
+        "return_48h": 0.001,
+    }]).to_csv(historical_outcome, index=False)
+    similarity.write_text("{}", encoding="utf-8")
+    retrieval.write_text("{}", encoding="utf-8")
+    scenario.write_text("{}", encoding="utf-8")
+
+    result = run(
+        h1=h1,
+        murphy=murphy,
+        nison=nison,
+        context=ctx,
+        output_dir=out,
+        historical_context=historical_context,
+        historical_outcome=historical_outcome,
+        similarity_artifact=similarity,
+        retrieval_artifact=retrieval,
+        scenario_artifact=scenario,
+        round_trip_cost_price=0.0002,
+    )
+
+    manifest = json.loads((out / "validation_manifest_2016_2024.json").read_text())
+    events = pd.read_csv(out / "unified_78_events_2016_2024.csv")
+
+    assert result["validation"]["memory_asof_evidence"] is True
+    assert manifest["memory_asof_evidence"] is True
+    assert bool(events.iloc[0]["memory_asof_usable"]) is True
+    assert bool(events.iloc[0]["memory_shadow_only"]) is True
+    assert manifest["official_profitability_claim"] is False
