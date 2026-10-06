@@ -228,21 +228,54 @@ bearEngulf = upTrendContext and prevBull and currBear and realBodyEngulfs
 var float bullEngulfHigh = na
 var int bullEngulfTime = na
 var bool bullNisonPass = false
+var bool bullNisonArmed = false
+var int bullMurphyPassTime = na
 
 var float bearEngulfLow = na
 var int bearEngulfTime = na
 var bool bearNisonPass = false
+var bool bearNisonArmed = false
+var int bearMurphyPassTime = na
 
-// Pattern creates a candidate. The source-defined trigger is used for PASS.
-if bullEngulf
+// Nison is armed only after the CURRENT Murphy lifecycle reaches reaction/PASS.
+// This prevents an old engulfing candidate from leaking into a later setup.
+if bullMurphyPass and not bullNisonArmed
+    bullNisonArmed := true
+    bullMurphyPassTime := time
+    bullNisonPass := false
+    bullEngulfHigh := na
+    bullEngulfTime := na
+    // A new bullish setup clears stale opposite-direction Nison evidence.
+    bearNisonPass := false
+    bearNisonArmed := false
+    bearMurphyPassTime := na
+    bearEngulfLow := na
+    bearEngulfTime := na
+
+if bearMurphyPass and not bearNisonArmed
+    bearNisonArmed := true
+    bearMurphyPassTime := time
+    bearNisonPass := false
+    bearEngulfLow := na
+    bearEngulfTime := na
+    // A new bearish setup clears stale opposite-direction Nison evidence.
+    bullNisonPass := false
+    bullNisonArmed := false
+    bullMurphyPassTime := na
+    bullEngulfHigh := na
+    bullEngulfTime := na
+
+// Pattern creates a candidate ONLY after the current Murphy PASS.
+// The source-defined trigger is used for PASS.
+if bullNisonArmed and not na(bullMurphyPassTime) and time > bullMurphyPassTime and bullEngulf
     bullEngulfHigh := high
     bullEngulfTime := time
-if bearEngulf
+if bearNisonArmed and not na(bearMurphyPassTime) and time > bearMurphyPassTime and bearEngulf
     bearEngulfLow := low
     bearEngulfTime := time
 
-bool bullNisonTriggered = not na(bullEngulfHigh) and not na(bullEngulfTime) and time > bullEngulfTime and close > bullEngulfHigh
-bool bearNisonTriggered = not na(bearEngulfLow) and not na(bearEngulfTime) and time > bearEngulfTime and close < bearEngulfLow
+bool bullNisonTriggered = bullNisonArmed and not na(bullEngulfHigh) and not na(bullEngulfTime) and time > bullEngulfTime and close > bullEngulfHigh
+bool bearNisonTriggered = bearNisonArmed and not na(bearEngulfLow) and not na(bearEngulfTime) and time > bearEngulfTime and close < bearEngulfLow
 
 if bullNisonTriggered
     bullNisonPass := true
@@ -282,6 +315,8 @@ shortTP = close - (shortSL - close) * rrTarget
 if buySignal
     bullMurphyPass := false
     bullNisonPass := false
+    bullNisonArmed := false
+    bullMurphyPassTime := na
     bullEngulfHigh := na
     bullEngulfTime := na
     bullA1Price := na
@@ -299,6 +334,8 @@ if buySignal
 if sellSignal
     bearMurphyPass := false
     bearNisonPass := false
+    bearNisonArmed := false
+    bearMurphyPassTime := na
     bearEngulfLow := na
     bearEngulfTime := na
     bearA1Price := na
