@@ -157,7 +157,7 @@ if bullThirdCandidate
         int evTime = newLowPivot ? lowPivotTime : highPivotTime
         float evLow = newLowPivot ? lowPivotLow : highPivotLow
         float lp = linePrice(bullA1Time, bullA1Price, bullA2Time, bullA2Price, evTime)
-        if evTime >= bullThirdTime and not na(lp) and evLow < lp
+        if evTime > bullThirdTime and not na(lp) and evLow < lp
             bullMurphyInvalidated := true
 
 if bearThirdCandidate
@@ -165,7 +165,7 @@ if bearThirdCandidate
         int evTime = newHighPivot ? highPivotTime : lowPivotTime
         float evHigh = newHighPivot ? highPivotHigh : lowPivotHigh
         float lp = linePrice(bearA1Time, bearA1Price, bearA2Time, bearA2Price, evTime)
-        if evTime >= bearThirdTime and not na(lp) and evHigh > lp
+        if evTime > bearThirdTime and not na(lp) and evHigh > lp
             bearMurphyInvalidated := true
 
 // ---- Reaction: first eligible opposite-family confirmed pivot after third touch.
