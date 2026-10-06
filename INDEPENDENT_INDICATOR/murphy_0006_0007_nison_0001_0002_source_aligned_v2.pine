@@ -120,6 +120,18 @@ if newLowPivot and not bullThirdCandidate and not na(bullA2Price)
         bullThirdCandidate := true
         bullThirdTime := lowPivotTime
         bullThirdAvailableTime := lowPivotAvailable
+    else if eligible and pivotLow > bullA2Price
+        // Rolling anchor update happens only after the existing line fails to
+        // qualify this pivot as a third touch.
+        bullA1Price := bullA2Price
+        bullA1Time := bullA2Time
+        bullA2Price := pivotLow
+        bullA2Time := lowPivotTime
+        bullLineAvailableTime := lowPivotAvailable
+        if showLines
+            if not na(bullLine)
+                line.delete(bullLine)
+            bullLine := line.new(bullA1Time, bullA1Price, bullA2Time, bullA2Price, xloc=xloc.bar_time, extend=extend.right)
 
 if newHighPivot and not bearThirdCandidate and not na(bearA2Price)
     bool eligible = highPivotTime > bearA2Time and highPivotTime >= bearLineAvailableTime
@@ -129,6 +141,18 @@ if newHighPivot and not bearThirdCandidate and not na(bearA2Price)
         bearThirdCandidate := true
         bearThirdTime := highPivotTime
         bearThirdAvailableTime := highPivotAvailable
+    else if eligible and pivotHigh < bearA2Price
+        // Rolling anchor update happens only after the existing line fails to
+        // qualify this pivot as a third touch.
+        bearA1Price := bearA2Price
+        bearA1Time := bearA2Time
+        bearA2Price := pivotHigh
+        bearA2Time := highPivotTime
+        bearLineAvailableTime := highPivotAvailable
+        if showLines
+            if not na(bearLine)
+                line.delete(bearLine)
+            bearLine := line.new(bearA1Time, bearA1Price, bearA2Time, bearA2Price, xloc=xloc.bar_time, extend=extend.right)
 
 if bullThirdCandidate and (newLowPivot or newHighPivot)
     int evTime = newLowPivot ? lowPivotTime : highPivotTime
