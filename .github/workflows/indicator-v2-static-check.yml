@@ -16,4 +16,4 @@ jobs:
         with:
           python-version: "3.11"
       - name: Run source-aligned indicator tests
-        run: python -m pytest INDEPENDENT_INDICATOR/test_murphy_0006_0007_nison_0001_0002_source_aligned_v2.py -q
+        run: python INDEPENDENT_INDICATOR/test_murphy_0006_0007_nison_0001_0002_source_aligned_v2.py
