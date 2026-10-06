@@ -1,0 +1,319 @@
+//@version=6
+indicator("Murphy 0006/0007 + Nison 0001/0002 — Source-Aligned V2", overlay=true, max_labels_count=500, max_lines_count=50)
+
+// SOURCE-ALIGNED RESEARCH INDICATOR
+// Murphy: two same-family anchors -> line availability -> third touch ->
+// confirmed-event line-hold -> opposite-family reaction.
+// Nison: real-body engulfing -> explicit break trigger.
+// MTF is a contextual proxy only. Orders are disabled. 2025 is locked.
+
+groupPlatform = "0. Platform"
+pivotStrength = input.int(3, "Confirmed pivot strength (existing prototype setting)", minval=1, maxval=10, group=groupPlatform)
+showLines = input.bool(true, "Show frozen Murphy trendlines", group=groupPlatform)
+
+groupContext = "1. Nison Trend Context Adapter"
+emaFastLen = input.int(21, "Fast EMA", minval=2, group=groupContext)
+emaSlowLen = input.int(50, "Slow EMA", minval=5, group=groupContext)
+
+groupMTF = "2. MTF Context (existing prototype proxy)"
+tf2 = input.timeframe("15", "TF2", group=groupMTF)
+tf3 = input.timeframe("30", "TF3", group=groupMTF)
+tf4 = input.timeframe("60", "TF4", group=groupMTF)
+tf5 = input.timeframe("240", "TF5", group=groupMTF)
+tf6 = input.timeframe("D", "TF6", group=groupMTF)
+mtfMin = input.int(3, "Minimum aligned higher TFs", minval=1, maxval=5, group=groupMTF)
+
+groupRisk = "3. Frozen Execution Display"
+atrLen = input.int(14, "ATR length", minval=2, group=groupRisk)
+slAtr = input.float(0.75, "SL ATR multiple", minval=0.1, step=0.05, group=groupRisk)
+rrTarget = input.float(2.0, "Target R:R", minval=0.5, step=0.1, group=groupRisk)
+
+emaFast = ta.ema(close, emaFastLen)
+emaSlow = ta.ema(close, emaSlowLen)
+atr = ta.atr(atrLen)
+downTrendContext = emaFast < emaSlow and emaFast < emaFast[1]
+upTrendContext = emaFast > emaSlow and emaFast > emaFast[1]
+
+pivotLow = ta.pivotlow(low, pivotStrength, pivotStrength)
+pivotHigh = ta.pivothigh(high, pivotStrength, pivotStrength)
+newLowPivot = not na(pivotLow)
+newHighPivot = not na(pivotHigh)
+lowPivotTime = newLowPivot ? time[pivotStrength] : na
+highPivotTime = newHighPivot ? time[pivotStrength] : na
+lowPivotAvailable = newLowPivot ? time : na
+highPivotAvailable = newHighPivot ? time : na
+lowPivotLow = newLowPivot ? low[pivotStrength] : na
+lowPivotHigh = newLowPivot ? high[pivotStrength] : na
+highPivotLow = newHighPivot ? low[pivotStrength] : na
+highPivotHigh = newHighPivot ? high[pivotStrength] : na
+
+linePrice(t1, p1, t2, p2, tx) =>
+    float out = na
+    if not na(t1) and not na(t2) and t2 != t1
+        out := p1 + (p2 - p1) * (tx - t1) / (t2 - t1)
+    out
+
+var float bullA1Price = na
+var float bullA2Price = na
+var int bullA1Time = na
+var int bullA2Time = na
+var int bullLineAvailableTime = na
+var int bullThirdTime = na
+var int bullThirdAvailableTime = na
+var bool bullThirdCandidate = false
+var bool bullMurphyPass = false
+var line bullLine = na
+
+var float bearA1Price = na
+var float bearA2Price = na
+var int bearA1Time = na
+var int bearA2Time = na
+var int bearLineAvailableTime = na
+var int bearThirdTime = na
+var int bearThirdAvailableTime = na
+var bool bearThirdCandidate = false
+var bool bearMurphyPass = false
+var line bearLine = na
+
+bool bullMurphyInvalidated = false
+bool bearMurphyInvalidated = false
+
+if newLowPivot
+    if na(bullA1Price)
+        bullA1Price := pivotLow
+        bullA1Time := lowPivotTime
+    else if na(bullA2Price) and lowPivotTime > bullA1Time
+        if pivotLow > bullA1Price
+            bullA2Price := pivotLow
+            bullA2Time := lowPivotTime
+            bullLineAvailableTime := lowPivotAvailable
+            if showLines
+                if not na(bullLine)
+                    line.delete(bullLine)
+                bullLine := line.new(bullA1Time, bullA1Price, bullA2Time, bullA2Price, xloc=xloc.bar_time, extend=extend.right)
+        else
+            bullA1Price := pivotLow
+            bullA1Time := lowPivotTime
+
+if newHighPivot
+    if na(bearA1Price)
+        bearA1Price := pivotHigh
+        bearA1Time := highPivotTime
+    else if na(bearA2Price) and highPivotTime > bearA1Time
+        if pivotHigh < bearA1Price
+            bearA2Price := pivotHigh
+            bearA2Time := highPivotTime
+            bearLineAvailableTime := highPivotAvailable
+            if showLines
+                if not na(bearLine)
+                    line.delete(bearLine)
+                bearLine := line.new(bearA1Time, bearA1Price, bearA2Time, bearA2Price, xloc=xloc.bar_time, extend=extend.right)
+        else
+            bearA1Price := pivotHigh
+            bearA1Time := highPivotTime
+
+if newLowPivot and not bullThirdCandidate and not na(bullA2Price)
+    bool eligible = lowPivotTime > bullA2Time and lowPivotTime >= bullLineAvailableTime
+    float lp = linePrice(bullA1Time, bullA1Price, bullA2Time, bullA2Price, lowPivotTime)
+    bool intersects = not na(lp) and lowPivotLow <= lp and lp <= lowPivotHigh
+    if eligible and intersects
+        bullThirdCandidate := true
+        bullThirdTime := lowPivotTime
+        bullThirdAvailableTime := lowPivotAvailable
+
+if newHighPivot and not bearThirdCandidate and not na(bearA2Price)
+    bool eligible = highPivotTime > bearA2Time and highPivotTime >= bearLineAvailableTime
+    float lp = linePrice(bearA1Time, bearA1Price, bearA2Time, bearA2Price, highPivotTime)
+    bool intersects = not na(lp) and highPivotLow <= lp and lp <= highPivotHigh
+    if eligible and intersects
+        bearThirdCandidate := true
+        bearThirdTime := highPivotTime
+        bearThirdAvailableTime := highPivotAvailable
+
+if bullThirdCandidate and (newLowPivot or newHighPivot)
+    int evTime = newLowPivot ? lowPivotTime : highPivotTime
+    float evLow = newLowPivot ? lowPivotLow : highPivotLow
+    float lp = linePrice(bullA1Time, bullA1Price, bullA2Time, bullA2Price, evTime)
+    if evTime > bullThirdTime and not na(lp) and evLow < lp
+        bullMurphyInvalidated := true
+
+if bearThirdCandidate and (newLowPivot or newHighPivot)
+    int evTime = newHighPivot ? highPivotTime : lowPivotTime
+    float evHigh = newHighPivot ? highPivotHigh : lowPivotHigh
+    float lp = linePrice(bearA1Time, bearA1Price, bearA2Time, bearA2Price, evTime)
+    if evTime > bearThirdTime and not na(lp) and evHigh > lp
+        bearMurphyInvalidated := true
+
+if bullThirdCandidate and newHighPivot and not bullMurphyInvalidated
+    bool reactionEligible = highPivotTime > bullThirdTime and highPivotAvailable >= bullThirdAvailableTime
+    if reactionEligible
+        bullMurphyPass := true
+        bullThirdCandidate := false
+
+if bearThirdCandidate and newLowPivot and not bearMurphyInvalidated
+    bool reactionEligible = lowPivotTime > bearThirdTime and lowPivotAvailable >= bearThirdAvailableTime
+    if reactionEligible
+        bearMurphyPass := true
+        bearThirdCandidate := false
+
+if bullMurphyInvalidated
+    bullA1Price := na, bullA2Price := na, bullA1Time := na, bullA2Time := na
+    bullLineAvailableTime := na, bullThirdTime := na, bullThirdAvailableTime := na
+    bullThirdCandidate := false, bullMurphyPass := false
+    if not na(bullLine)
+        line.delete(bullLine), bullLine := na
+
+if bearMurphyInvalidated
+    bearA1Price := na, bearA2Price := na, bearA1Time := na, bearA2Time := na
+    bearLineAvailableTime := na, bearThirdTime := na, bearThirdAvailableTime := na
+    bearThirdCandidate := false, bearMurphyPass := false
+    if not na(bearLine)
+        line.delete(bearLine), bearLine := na
+
+prevBear = close[1] < open[1]
+prevBull = close[1] > open[1]
+currBull = close > open
+currBear = close < open
+prevBodyLow = math.min(open[1], close[1])
+prevBodyHigh = math.max(open[1], close[1])
+currBodyLow = math.min(open, close)
+currBodyHigh = math.max(open, close)
+realBodyEngulfs = currBodyLow <= prevBodyLow and currBodyHigh >= prevBodyHigh and currBodyHigh > currBodyLow
+bullEngulf = downTrendContext and prevBear and currBull and realBodyEngulfs
+bearEngulf = upTrendContext and prevBull and currBear and realBodyEngulfs
+
+var float bullEngulfHigh = na
+var int bullEngulfTime = na
+var bool bullNisonPass = false
+var bool bullNisonArmed = false
+var int bullMurphyPassTime = na
+
+var float bearEngulfLow = na
+var int bearEngulfTime = na
+var bool bearNisonPass = false
+var bool bearNisonArmed = false
+var int bearMurphyPassTime = na
+
+if bullMurphyPass and not bullNisonArmed
+    bullNisonArmed := true
+    bullMurphyPassTime := time
+    bullNisonPass := false
+    bullEngulfHigh := na
+    bullEngulfTime := na
+    bearNisonPass := false
+    bearNisonArmed := false
+    bearMurphyPassTime := na
+    bearEngulfLow := na
+    bearEngulfTime := na
+
+if bearMurphyPass and not bearNisonArmed
+    bearNisonArmed := true
+    bearMurphyPassTime := time
+    bearNisonPass := false
+    bearEngulfLow := na
+    bearEngulfTime := na
+    bullNisonPass := false
+    bullNisonArmed := false
+    bullMurphyPassTime := na
+    bullEngulfHigh := na
+    bullEngulfTime := na
+
+if bullNisonArmed and not na(bullMurphyPassTime) and time > bullMurphyPassTime and bullEngulf
+    bullEngulfHigh := high
+    bullEngulfTime := time
+if bearNisonArmed and not na(bearMurphyPassTime) and time > bearMurphyPassTime and bearEngulf
+    bearEngulfLow := low
+    bearEngulfTime := time
+
+bool bullNisonTriggered = bullNisonArmed and not na(bullEngulfHigh) and not na(bullEngulfTime) and time > bullEngulfTime and close > bullEngulfHigh
+bool bearNisonTriggered = bearNisonArmed and not na(bearEngulfLow) and not na(bearEngulfTime) and time > bearEngulfTime and close < bearEngulfLow
+if bullNisonTriggered
+    bullNisonPass := true
+if bearNisonTriggered
+    bearNisonPass := true
+
+bullContradiction = bearMurphyPass or bearNisonPass
+bearContradiction = bullMurphyPass or bullNisonPass
+
+mtfTrend(tf) =>
+    request.security(syminfo.tickerid, tf, close > ta.ema(close, 50) ? 1 : close < ta.ema(close, 50) ? -1 : 0, lookahead=barmerge.lookahead_off)
+t2 = mtfTrend(tf2), t3 = mtfTrend(tf3), t4 = mtfTrend(tf4), t5 = mtfTrend(tf5), t6 = mtfTrend(tf6)
+bullMtfCount = (t2 == 1 ? 1 : 0) + (t3 == 1 ? 1 : 0) + (t4 == 1 ? 1 : 0) + (t5 == 1 ? 1 : 0) + (t6 == 1 ? 1 : 0)
+bearMtfCount = (t2 == -1 ? 1 : 0) + (t3 == -1 ? 1 : 0) + (t4 == -1 ? 1 : 0) + (t5 == -1 ? 1 : 0) + (t6 == -1 ? 1 : 0)
+mtfBull = bullMtfCount >= mtfMin
+mtfBear = bearMtfCount >= mtfMin
+
+bool buySignal = bullMurphyPass and bullNisonPass and mtfBull and not bullContradiction
+bool sellSignal = bearMurphyPass and bearNisonPass and mtfBear and not bearContradiction
+
+longSL = close - atr * slAtr
+longTP = close + (close - longSL) * rrTarget
+shortSL = close + atr * slAtr
+shortTP = close - (shortSL - close) * rrTarget
+
+if buySignal
+    bullMurphyPass := false
+    bullNisonPass := false
+    bullNisonArmed := false
+    bullMurphyPassTime := na
+    bullEngulfHigh := na
+    bullEngulfTime := na
+    bullA1Price := na
+    bullA2Price := na
+    bullA1Time := na
+    bullA2Time := na
+    bullLineAvailableTime := na
+    bullThirdTime := na
+    bullThirdAvailableTime := na
+    bullThirdCandidate := false
+    if not na(bullLine)
+        line.delete(bullLine), bullLine := na
+
+if sellSignal
+    bearMurphyPass := false
+    bearNisonPass := false
+    bearNisonArmed := false
+    bearMurphyPassTime := na
+    bearEngulfLow := na
+    bearEngulfTime := na
+    bearA1Price := na
+    bearA2Price := na
+    bearA1Time := na
+    bearA2Time := na
+    bearLineAvailableTime := na
+    bearThirdTime := na
+    bearThirdAvailableTime := na
+    bearThirdCandidate := false
+    if not na(bearLine)
+        line.delete(bearLine), bearLine := na
+
+plot(emaFast, "Fast EMA", linewidth=1)
+plot(emaSlow, "Slow EMA", linewidth=2)
+plotshape(buySignal, title="BUY", style=shape.labelup, location=location.belowbar, text="BUY", size=size.tiny)
+plotshape(sellSignal, title="SELL", style=shape.labeldown, location=location.abovebar, text="SELL", size=size.tiny)
+plot(buySignal ? longSL : na, "BUY SL", style=plot.style_linebr)
+plot(buySignal ? longTP : na, "BUY TP", style=plot.style_linebr)
+plot(sellSignal ? shortSL : na, "SELL SL", style=plot.style_linebr)
+plot(sellSignal ? shortTP : na, "SELL TP", style=plot.style_linebr)
+
+var table dash = table.new(position.top_right, 2, 12, border_width=1)
+if barstate.islast
+    string murphyState = bullMurphyPass ? "0006 PASS" : bearMurphyPass ? "0007 PASS" : bullThirdCandidate ? "0006 THIRD CANDIDATE" : bearThirdCandidate ? "0007 THIRD CANDIDATE" : (not na(bullA2Price) ? "0006 LINE ACTIVE" : not na(bearA2Price) ? "0007 LINE ACTIVE" : "WAITING ANCHORS")
+    string nisonState = bullNisonPass ? "0001 PASS" : bearNisonPass ? "0002 PASS" : not na(bullEngulfHigh) ? "0001 PENDING BREAK" : not na(bearEngulfLow) ? "0002 PENDING BREAK" : "NONE"
+    string mtfState = str.tostring(bullMtfCount) + " / " + str.tostring(bearMtfCount)
+    string outputState = buySignal ? "BUY" : sellSignal ? "SELL" : "NO TRADE"
+    table.cell(dash, 0, 0, "Layer"), table.cell(dash, 1, 0, "State")
+    table.cell(dash, 0, 1, "Murphy"), table.cell(dash, 1, 1, murphyState)
+    table.cell(dash, 0, 2, "Nison"), table.cell(dash, 1, 2, nisonState)
+    table.cell(dash, 0, 3, "MTF proxy"), table.cell(dash, 1, 3, mtfState)
+    table.cell(dash, 0, 4, "Trend context"), table.cell(dash, 1, 4, downTrendContext ? "DOWN" : upTrendContext ? "UP" : "TRANSITION")
+    table.cell(dash, 0, 5, "0006 line"), table.cell(dash, 1, 5, not na(bullA2Price) ? (bullThirdCandidate ? "3RD CANDIDATE" : "ACTIVE") : "OFF")
+    table.cell(dash, 0, 6, "0007 line"), table.cell(dash, 1, 6, not na(bearA2Price) ? (bearThirdCandidate ? "3RD CANDIDATE" : "ACTIVE") : "OFF")
+    table.cell(dash, 0, 7, "Nison trigger"), table.cell(dash, 1, 7, "Break engulfing H/L")
+    table.cell(dash, 0, 8, "Risk"), table.cell(dash, 1, 8, "SL 0.75 ATR / TP 2R")
+    table.cell(dash, 0, 9, "2025"), table.cell(dash, 1, 9, "LOCKED / NO TUNING")
+    table.cell(dash, 0, 10, "Output"), table.cell(dash, 1, 10, outputState)
+    table.cell(dash, 0, 11, "Orders"), table.cell(dash, 1, 11, "DISABLED")
+
+alertcondition(buySignal, title="Murphy+Nison BUY", message="Source-aligned Murphy 0006 + Nison 0001. Orders disabled.")
+alertcondition(sellSignal, title="Murphy+Nison SELL", message="Source-aligned Murphy 0007 + Nison 0002. Orders disabled.")
