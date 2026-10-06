@@ -133,7 +133,7 @@ if newHighPivot
 
 // ---- 0006 third-touch candidate: first eligible LOW event intersects line.
 if newLowPivot and not bullThirdCandidate and not na(bullA2Price)
-    bool eligible = lowPivotTime >= bullLineAvailableTime
+    bool eligible = lowPivotTime > bullA2Time and lowPivotTime >= bullLineAvailableTime
     float lp = linePrice(bullA1Time, bullA1Price, bullA2Time, bullA2Price, lowPivotTime)
     bool intersects = not na(lp) and lowPivotLow <= lp and lp <= lowPivotHigh
     if eligible and intersects
@@ -143,7 +143,7 @@ if newLowPivot and not bullThirdCandidate and not na(bullA2Price)
 
 // ---- 0007 third-touch candidate: first eligible HIGH event intersects line.
 if newHighPivot and not bearThirdCandidate and not na(bearA2Price)
-    bool eligible = highPivotTime >= bearLineAvailableTime
+    bool eligible = highPivotTime > bearA2Time and highPivotTime >= bearLineAvailableTime
     float lp = linePrice(bearA1Time, bearA1Price, bearA2Time, bearA2Price, highPivotTime)
     bool intersects = not na(lp) and highPivotLow <= lp and lp <= highPivotHigh
     if eligible and intersects
