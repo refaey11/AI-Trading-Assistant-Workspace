@@ -10,6 +10,8 @@ checks = [
     ("pine v6", SRC.splitlines()[0].strip() == "//@version=6"),
     ("0006 A2 precedes third", "lowPivotTime > bullA2Time" in SRC),
     ("0007 A2 precedes third", "highPivotTime > bearA2Time" in SRC),
+    ("0006 third before roll", "else if eligible and pivotLow > bullA2Price" in SRC),
+    ("0007 third before roll", "else if eligible and pivotHigh < bearA2Price" in SRC),
     ("reaction after third", "reactionEligible" in SRC),
     ("post-touch break", "evTime > bullThirdTime" in SRC and "evTime > bearThirdTime" in SRC),
     ("real body engulfing", "realBodyEngulfs" in SRC),
