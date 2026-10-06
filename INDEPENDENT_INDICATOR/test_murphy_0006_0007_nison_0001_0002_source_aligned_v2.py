@@ -1,54 +1,50 @@
 from pathlib import Path
 
 PINE = Path(__file__).with_name("murphy_0006_0007_nison_0001_0002_source_aligned_v2.pine")
-src = PINE.read_text(encoding="utf-8")
+SRC = PINE.read_text(encoding="utf-8")
 
-def test_pine_v6_indicator_header():
-    lines = src.splitlines()
-    assert lines[0].strip() == "//@version=6"
-    assert lines[1].startswith('indicator("Murphy 0006/0007 + Nison 0001/0002')
+def check(name, condition):
+    if not condition:
+        raise AssertionError(name)
 
-def test_murphy_0006_0007_lifecycle_is_present():
-    required = [
+def main():
+    lines = SRC.splitlines()
+    check("pine v6 header", lines[0].strip() == "//@version=6")
+    check("indicator header", lines[1].startswith('indicator("Murphy 0006/0007 + Nison 0001/0002'))
+
+    for token in [
         "bullA1Price", "bullA2Price", "bullLineAvailableTime",
         "bullThirdCandidate", "bullMurphyPass",
         "bearA1Price", "bearA2Price", "bearLineAvailableTime",
         "bearThirdCandidate", "bearMurphyPass",
         "linePrice(", "lowPivotTime >= bullLineAvailableTime",
-        "highPivotTime >= bearLineAvailableTime",
-        "reactionEligible"
-    ]
-    for token in required:
-        assert token in src, token
+        "highPivotTime >= bearLineAvailableTime", "reactionEligible",
+    ]:
+        check("Murphy token: " + token, token in SRC)
 
-def test_nison_real_body_and_explicit_break_trigger():
-    required = [
+    for token in [
         "realBodyEngulfs",
         "bullEngulf = downTrendContext",
         "bearEngulf = upTrendContext",
         "close > bullEngulfHigh",
-        "close < bearEngulfLow"
-    ]
-    for token in required:
-        assert token in src, token
+        "close < bearEngulfLow",
+    ]:
+        check("Nison token: " + token, token in SRC)
 
-def test_no_legacy_proxy_confirmation_layers():
-    forbidden = [
+    for token in [
         "bullPin", "bearPin", "volumeMult", "rsiBull", "rsiBear",
-        "scoreMin", "usePin", "useInsideBreak", "confirmWindow"
-    ]
-    for token in forbidden:
-        assert token not in src, token
+        "scoreMin", "usePin", "useInsideBreak", "confirmWindow",
+    ]:
+        check("legacy proxy removed: " + token, token not in SRC)
 
-def test_mtf_uses_lookahead_off_and_orders_disabled():
-    assert "lookahead=barmerge.lookahead_off" in src
-    assert '"Orders"' in src
-    assert '"DISABLED"' in src
+    check("MTF lookahead off", "lookahead=barmerge.lookahead_off" in SRC)
+    check("orders disabled", '"Orders"' in SRC and '"DISABLED"' in SRC)
+    check("frozen SL", 'input.float(0.75, "SL ATR multiple"' in SRC)
+    check("frozen TP", 'input.float(2.0, "Target R:R"' in SRC)
+    check("2025 lock", "2025" in SRC and "LOCKED / NO TUNING" in SRC)
+    check("post-touch break starts after touch", "evTime > bullThirdTime" in SRC and "evTime > bearThirdTime" in SRC)
 
-def test_frozen_execution_values_are_visible():
-    assert 'input.float(0.75, "SL ATR multiple"' in src
-    assert 'input.float(2.0, "Target R:R"' in src
+    print("SOURCE-ALIGNED INDICATOR V2 STATIC TEST: PASS")
 
-def test_2025_lock_is_documented():
-    assert "2025" in src
-    assert "LOCKED / NO TUNING" in src
+if __name__ == "__main__":
+    main()
