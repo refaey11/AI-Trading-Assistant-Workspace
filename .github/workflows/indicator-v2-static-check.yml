@@ -5,6 +5,10 @@ on:
     paths:
       - "INDEPENDENT_INDICATOR/**"
       - ".github/workflows/indicator-v2-static-check.yml"
+  pull_request:
+    paths:
+      - "INDEPENDENT_INDICATOR/**"
+      - ".github/workflows/indicator-v2-static-check.yml"
 
 jobs:
   static-check:
