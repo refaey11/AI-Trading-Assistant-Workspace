@@ -14,11 +14,11 @@ def main():
 
     for token in [
         "bullA1Price", "bullA2Price", "bullLineAvailableTime",
-        "bullThirdCandidate", "bullMurphyPass",
+        "bullThirdCandidate", "bullMurphyPass", "lowPivotTime > bullA2Time",
         "bearA1Price", "bearA2Price", "bearLineAvailableTime",
         "bearThirdCandidate", "bearMurphyPass",
         "linePrice(", "lowPivotTime >= bullLineAvailableTime",
-        "highPivotTime >= bearLineAvailableTime", "reactionEligible",
+        "highPivotTime > bearA2Time", "highPivotTime >= bearLineAvailableTime", "reactionEligible",
     ]:
         check("Murphy token: " + token, token in SRC)
 
