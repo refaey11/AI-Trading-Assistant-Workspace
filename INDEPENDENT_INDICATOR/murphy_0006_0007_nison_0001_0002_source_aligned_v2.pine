@@ -132,6 +132,17 @@ if newLowPivot and not bullThirdCandidate and not na(bullA2Price)
             if not na(bullLine)
                 line.delete(bullLine)
             bullLine := line.new(bullA1Time, bullA1Price, bullA2Time, bullA2Price, xloc=xloc.bar_time, extend=extend.right)
+    else if eligible
+        // The higher-low sequence failed before third touch: restart from the
+        // current lower reaction low instead of leaving a stale A1/A2 pair.
+        bullA1Price := pivotLow
+        bullA1Time := lowPivotTime
+        bullA2Price := na
+        bullA2Time := na
+        bullLineAvailableTime := na
+        if not na(bullLine)
+            line.delete(bullLine)
+            bullLine := na
 
 if newHighPivot and not bearThirdCandidate and not na(bearA2Price)
     bool eligible = highPivotTime > bearA2Time and highPivotTime >= bearLineAvailableTime
@@ -153,6 +164,17 @@ if newHighPivot and not bearThirdCandidate and not na(bearA2Price)
             if not na(bearLine)
                 line.delete(bearLine)
             bearLine := line.new(bearA1Time, bearA1Price, bearA2Time, bearA2Price, xloc=xloc.bar_time, extend=extend.right)
+    else if eligible
+        // The lower-high sequence failed before third touch: restart from the
+        // current higher reaction high instead of leaving a stale A1/A2 pair.
+        bearA1Price := pivotHigh
+        bearA1Time := highPivotTime
+        bearA2Price := na
+        bearA2Time := na
+        bearLineAvailableTime := na
+        if not na(bearLine)
+            line.delete(bearLine)
+            bearLine := na
 
 if bullThirdCandidate and (newLowPivot or newHighPivot)
     int evTime = newLowPivot ? lowPivotTime : highPivotTime
