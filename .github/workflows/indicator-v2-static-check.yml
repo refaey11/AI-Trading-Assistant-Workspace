@@ -1,0 +1,19 @@
+name: Indicator V2 Static Check
+
+on:
+  push:
+    paths:
+      - "INDEPENDENT_INDICATOR/murphy_0006_0007_nison_0001_0002_source_aligned_v2.pine"
+      - "INDEPENDENT_INDICATOR/test_murphy_0006_0007_nison_0001_0002_source_aligned_v2.py"
+      - ".github/workflows/indicator-v2-static-check.yml"
+
+jobs:
+  static-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Run source-aligned indicator tests
+        run: python -m pytest INDEPENDENT_INDICATOR/test_murphy_0006_0007_nison_0001_0002_source_aligned_v2.py -q
