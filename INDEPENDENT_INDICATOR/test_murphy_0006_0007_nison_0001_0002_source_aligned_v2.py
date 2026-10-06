@@ -44,6 +44,17 @@ def main():
     check("2025 lock", "2025" in SRC and "LOCKED / NO TUNING" in SRC)
     check("post-touch break starts after touch", "evTime > bullThirdTime" in SRC and "evTime > bearThirdTime" in SRC)
 
+    # Nison lifecycle must be bound to the current Murphy PASS; stale engulfings
+    # from a previous setup must not survive into a new setup.
+    for token in [
+        "bullNisonArmed", "bearNisonArmed",
+        "bullMurphyPassTime", "bearMurphyPassTime",
+        "bullNisonArmed and not na(bullMurphyPassTime) and time > bullMurphyPassTime",
+        "bearNisonArmed and not na(bearMurphyPassTime) and time > bearMurphyPassTime",
+        "bearNisonPass := false", "bullNisonPass := false",
+    ]:
+        check("Nison lifecycle token: " + token, token in SRC)
+
     print("SOURCE-ALIGNED INDICATOR V2 STATIC TEST: PASS")
 
 if __name__ == "__main__":
