@@ -1,0 +1,13 @@
+{
+  "schema": "FROZEN_DEVELOPMENT_COST_SLIPPAGE_V1",
+  "instrument": "GBPUSD",
+  "development_window": "2016-2024",
+  "round_trip_cost_pips": 2.0,
+  "round_trip_cost_price": 0.0002,
+  "source": "AI_Trading_Assistant_COST_SLIPPAGE_TEST_V1 / COST_MODEL_SPEC_V1",
+  "source_scenario": "NORMAL_2PIP",
+  "source_scope_note": "The source defines 0/1/2/3/5 pip all-in stress scenarios and explicitly says they are not broker-specific quoted costs.",
+  "use": "development_stress_only",
+  "live_use_allowed": false,
+  "official_profitability_claim_allowed": false
+}
