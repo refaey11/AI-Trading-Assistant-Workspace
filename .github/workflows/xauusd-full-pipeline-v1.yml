@@ -1,24 +1,7 @@
 name: XAUUSD Full Pipeline V1
 
 on:
-  push:
-    branches:
-      - prototype/xauusd-evidence-pipeline-v1
-    paths:
-      - "DEVELOPMENT_2016_2024/**"
-      - "BACKTEST/**"
-      - "RUNTIME/NISON_EVALUATORS_V1/**"
-      - "MURPHY_EVALUATORS_V1/**"
-      - ".github/workflows/xauusd-full-pipeline-v1.yml"
-  pull_request:
-    branches:
-      - main
-    paths:
-      - "DEVELOPMENT_2016_2024/**"
-      - "BACKTEST/**"
-      - "RUNTIME/NISON_EVALUATORS_V1/**"
-      - "MURPHY_EVALUATORS_V1/**"
-      - ".github/workflows/xauusd-full-pipeline-v1.yml"
+  workflow_dispatch:
 
 jobs:
   xauusd-full:
