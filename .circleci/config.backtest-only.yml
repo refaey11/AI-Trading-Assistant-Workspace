@@ -1,6 +1,32 @@
 version: 2.1
 
 jobs:
+
+  xauusd_full_pipeline_2016_2024:
+    docker:
+      - image: cimg/python:3.12
+    environment:
+      PYTHONPATH: /home/circleci/project
+    steps:
+      - checkout
+      - run: python -m pip install --upgrade pip pandas numpy pytest
+      - run:
+          name: Run XAUUSD governed full pipeline
+          command: |
+            set -eu
+            test -n "${DROPBOX_ACCESS_TOKEN:-}"
+            python -m py_compile \
+              DEVELOPMENT_2016_2024/run_xauusd_full_pipeline_v1.py \
+              DEVELOPMENT_2016_2024/run_xauusd_murphy_evidence_v1.py \
+              DEVELOPMENT_2016_2024/xauusd_murphy_0006_0007_runtime_evidence_v1.py
+            PYTHONPATH=. pytest -q \
+              DEVELOPMENT_2016_2024/test_xauusd_murphy_evidence_v1.py \
+              DEVELOPMENT_2016_2024/test_xauusd_full_pipeline_v1.py
+            PYTHONPATH=. python DEVELOPMENT_2016_2024/run_xauusd_full_pipeline_v1.py \
+              --output-dir XAUUSD_FULL_PIPELINE_2016_2024
+      - store_artifacts:
+          path: XAUUSD_FULL_PIPELINE_2016_2024
+          destination: xauusd_full_pipeline_2016_2024
   decision_brain_backtest_2016_2024_only:
     docker:
       - image: cimg/python:3.12
@@ -78,6 +104,10 @@ jobs:
           destination: decision_brain_backtest_2016_2024
 
 workflows:
+
+  xauusd_governed_2016_2024:
+    jobs:
+      - xauusd_full_pipeline_2016_2024
   backtest_only_2016_2024:
     jobs:
       - decision_brain_backtest_2016_2024_only
