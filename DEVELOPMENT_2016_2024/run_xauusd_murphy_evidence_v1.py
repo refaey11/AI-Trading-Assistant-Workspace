@@ -10,7 +10,7 @@ if str(ROOT) not in sys.path:
 
 from MURPHY_EVALUATORS_V1.murphy_runtime_entrypoint_v1 import evaluate_rule
 
-MURPHY_RULES = (
+BLOCKED_MURPHY_RULES = ("MURPHY_0008",)\n\nMURPHY_RULES = (
     "MURPHY_0003","MURPHY_0004","MURPHY_0006","MURPHY_0007",
     "MURPHY_0018","MURPHY_0019","MURPHY_0021","MURPHY_0022","MURPHY_0023",
     "MURPHY_0025","MURPHY_0026","MURPHY_0028","MURPHY_0029","MURPHY_0030",
@@ -88,7 +88,7 @@ def main():
     args.output.parent.mkdir(parents=True,exist_ok=True); evidence.to_csv(args.output,index=False)
     manifest={
         "status":"PASS_WITH_NOT_EVALUABLES","mode":"XAUUSD_MURPHY_EVIDENCE_ADAPTER_V1",
-        "development_window":"2016-2024","rules":len(MURPHY_RULES),
+        "development_window":"2016-2024","rules":len(MURPHY_RULES),\n        "blocked_rules":list(BLOCKED_MURPHY_RULES),
         "rows":int(len(evidence)),"2025_used":False,
         "lookahead_policy":"confirmed-past-pivots-only","fail_closed":True,
         "synthetic_geometry":False,"source":str(args.input),"output":str(args.output),
