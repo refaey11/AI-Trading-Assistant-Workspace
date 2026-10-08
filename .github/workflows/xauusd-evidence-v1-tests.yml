@@ -1,0 +1,31 @@
+name: XAUUSD Evidence Pipeline V1
+
+on:
+  push:
+    branches:
+      - prototype/xauusd-evidence-pipeline-v1
+    paths:
+      - "DEVELOPMENT_2016_2024/**"
+      - "MURPHY_EVALUATORS_V1/**"
+      - ".github/workflows/xauusd-evidence-v1-tests.yml"
+      - "governance/DECISION_BRAIN_RULE_ALLOWLIST_V1.json"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "DEVELOPMENT_2016_2024/**"
+      - "MURPHY_EVALUATORS_V1/**"
+      - ".github/workflows/xauusd-evidence-v1-tests.yml"
+      - "governance/DECISION_BRAIN_RULE_ALLOWLIST_V1.json"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: python -m pip install --upgrade pip
+      - run: pip install numpy pandas pytest
+      - run: python -m py_compile DEVELOPMENT_2016_2024/xauusd_murphy_0006_0007_runtime_evidence_v1.py DEVELOPMENT_2016_2024/run_xauusd_murphy_evidence_v1.py DEVELOPMENT_2016_2024/run_xauusd_0006_0007_evidence_v1.py\n      - run: PYTHONPATH=. pytest -q DEVELOPMENT_2016_2024/test_xauusd_murphy_evidence_v1.py
