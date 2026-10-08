@@ -32,8 +32,8 @@ def test_mtf_split_requires_explicit_source_trends(tmp_path: Path):
     src = pd.DataFrame(
         {
             "timestamp": ts,
-            "H1_trend": ["BULL_TREND", "BEAR_TREND"],
-            "H4_trend": ["BULL_TREND", "TRANSITION"],
+            "trend": ["BULL_TREND", "BEAR_TREND"],
+            "h4_trend": ["BULL_TREND", "TRANSITION"],
         }
     )
     out = split_mtf_source(src, tmp_path)
@@ -51,3 +51,4 @@ def test_2025_lock_in_source_contract():
     assert '"2025_used": False' in source
     assert "XAUUSD_MTF_H4_H1.csv" in source
     assert "XAUUSD_MARKET_STATE.csv" in source
+    assert "ns:14922141667//" in source
