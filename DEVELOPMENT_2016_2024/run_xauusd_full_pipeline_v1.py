@@ -17,6 +17,9 @@ import pandas as pd
 ROOT = Path(__file__).resolve().parents[1]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
+NISON_DIR = ROOT / "RUNTIME" / "NISON_EVALUATORS_V1"
+if str(NISON_DIR) not in sys.path:
+    sys.path.insert(0, str(NISON_DIR))
 
 from BACKTEST.DEV_BACKTEST_RUNNER_V1 import run as run_decision_brain
 from DEVELOPMENT_2016_2024.run_xauusd_murphy_evidence_v1 import emit as emit_murphy
