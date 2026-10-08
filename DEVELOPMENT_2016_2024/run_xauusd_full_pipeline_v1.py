@@ -25,9 +25,9 @@ from BACKTEST.DEV_BACKTEST_RUNNER_V1 import run as run_decision_brain
 from DEVELOPMENT_2016_2024.run_xauusd_murphy_evidence_v1 import emit as emit_murphy
 from RUNTIME.NISON_EVALUATORS_V1.nison_0001_0010_router import evaluate_rule as nison_evaluate_rule
 
-XAU_H1_DROPBOX_PATH = "/XAUUSD_H1_2016_2025_MASTER.zip"
-XAU_MTF_DROPBOX_PATH = "/ai_trading_assistant_full_project_v1/AI_Trading_Assistant_MULTI_TIMEFRAME_READER_V1/XAUUSD_MTF_H4_H1.csv"
-XAU_MARKET_STATE_DROPBOX_PATH = "/ai_trading_assistant_full_project_v1/AI_Trading_Assistant_MARKET_STATE_READER_V1/XAUUSD_MARKET_STATE.csv"
+XAU_H1_DROPBOX_PATH = "ns:14922141667//XAUUSD_H1_2016_2025_MASTER.zip"
+XAU_MTF_DROPBOX_PATH = "ns:14922141667//ai_trading_assistant_full_project_v1/AI_Trading_Assistant_MULTI_TIMEFRAME_READER_V1/XAUUSD_MTF_H4_H1.csv"
+XAU_MARKET_STATE_DROPBOX_PATH = "ns:14922141667//ai_trading_assistant_full_project_v1/AI_Trading_Assistant_MARKET_STATE_READER_V1/XAUUSD_MARKET_STATE.csv"
 
 DEV_START = pd.Timestamp("2016-01-01", tz="UTC")
 DEV_END = pd.Timestamp("2025-01-01", tz="UTC")
@@ -249,7 +249,7 @@ def build_context(bars: pd.DataFrame, market_state: pd.DataFrame) -> pd.DataFram
 
 
 def split_mtf_source(mtf: pd.DataFrame, out_dir: Path) -> Path:
-    required = {"timestamp", "H1_trend", "H4_trend"}
+    required = {"timestamp", "trend", "h4_trend"}
     missing = sorted(required - set(mtf.columns))
     if missing:
         raise ValueError(f"XAU MTF source missing explicit trend fields: {missing}")
@@ -261,10 +261,10 @@ def split_mtf_source(mtf: pd.DataFrame, out_dir: Path) -> Path:
     h4_dir.mkdir(parents=True, exist_ok=True)
 
     mtf_dev = mtf[(mtf["timestamp"] >= DEV_START) & (mtf["timestamp"] < DEV_END)].copy()
-    mtf_dev[["timestamp", "H1_trend"]].rename(columns={"H1_trend": "trend"}).to_csv(
+    mtf_dev[["timestamp", "trend"]].to_csv(
         h1_dir / "XAUUSD_H1.csv", index=False
     )
-    mtf_dev[["timestamp", "H4_trend"]].rename(columns={"H4_trend": "trend"}).to_csv(
+    mtf_dev[["timestamp", "h4_trend"]].rename(columns={"h4_trend": "trend"}).to_csv(
         h4_dir / "XAUUSD_H4.csv", index=False
     )
     return root
