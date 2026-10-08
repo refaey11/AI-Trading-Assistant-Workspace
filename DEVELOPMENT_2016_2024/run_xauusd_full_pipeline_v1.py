@@ -295,17 +295,26 @@ def year_metrics(trades: pd.DataFrame) -> dict[str, Any]:
     return out
 
 
-def run(output_dir: Path) -> dict[str, Any]:
+def run(output_dir: Path, *, h1_zip: Path | None = None, mtf_csv: Path | None = None, market_state_csv: Path | None = None) -> dict[str, Any]:
     source_dir = output_dir / "source"
     source_dir.mkdir(parents=True, exist_ok=True)
 
-    h1_zip = download_dropbox_file(XAU_H1_DROPBOX_PATH, source_dir / "XAUUSD_H1_2016_2025_MASTER.zip")
-    mtf_csv = download_dropbox_file(XAU_MTF_DROPBOX_PATH, source_dir / "XAUUSD_MTF_H4_H1.csv")
-    state_csv = download_dropbox_file(XAU_MARKET_STATE_DROPBOX_PATH, source_dir / "XAUUSD_MARKET_STATE.csv")
+    if h1_zip is None:
+        h1_zip = download_dropbox_file(XAU_H1_DROPBOX_PATH, source_dir / "XAUUSD_H1_2016_2025_MASTER.zip")
+    else:
+        h1_zip = Path(h1_zip)
+    if mtf_csv is None:
+        mtf_csv = download_dropbox_file(XAU_MTF_DROPBOX_PATH, source_dir / "XAUUSD_MTF_H4_H1.csv")
+    else:
+        mtf_csv = Path(mtf_csv)
+    if market_state_csv is None:
+        market_state_csv = download_dropbox_file(XAU_MARKET_STATE_DROPBOX_PATH, source_dir / "XAUUSD_MARKET_STATE.csv")
+    else:
+        market_state_csv = Path(market_state_csv)
 
     bars = load_xau_h1(h1_zip, output_dir)
     mtf = load_csv(mtf_csv)
-    market_state = load_csv(state_csv)
+    market_state = load_csv(market_state_csv)
 
     dev_bars = bars[(bars["timestamp"] >= DEV_START) & (bars["timestamp"] < DEV_END)].copy()
     if dev_bars.empty:
@@ -325,9 +334,12 @@ def run(output_dir: Path) -> dict[str, Any]:
     nison_path = output_dir / "XAUUSD_NISON_EVIDENCE_2016_2024.csv"
     nison.to_csv(nison_path, index=False)
 
+    h1_dev_path = output_dir / "XAUUSD_H1_2016_2024_ONLY.csv"
+    bars[(bars["timestamp"] >= DEV_START) & (bars["timestamp"] < DEV_END)].to_csv(h1_dev_path, index=False)
+
     decision_dir = output_dir / "DECISION_BRAIN_RUN_2016_2024"
     result = run_decision_brain(
-        h1=output_dir / "source" / "xau_h1_unpacked" / "XAUUSD_H1_2016_2025_MASTER.csv",
+        h1=h1_dev_path,
         murphy=murphy_path,
         nison=nison_path,
         context=context_path,
@@ -387,6 +399,9 @@ def run(output_dir: Path) -> dict[str, Any]:
 def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output-dir", type=Path, required=True)
+    parser.add_argument("--h1-zip", type=Path)
+    parser.add_argument("--mtf-csv", type=Path)
+    parser.add_argument("--market-state-csv", type=Path)
     args = parser.parse_args()
 
     stop = threading.Event()
@@ -399,7 +414,7 @@ def main() -> int:
     watcher = threading.Thread(target=heartbeat, daemon=True)
     watcher.start()
     try:
-        summary = run(args.output_dir)
+        summary = run(args.output_dir, h1_zip=args.h1_zip, mtf_csv=args.mtf_csv, market_state_csv=args.market_state_csv)
     finally:
         stop.set()
         watcher.join(timeout=2)
