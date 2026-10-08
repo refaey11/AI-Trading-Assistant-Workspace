@@ -182,71 +182,33 @@ def build_xau_trendline_evidence(df: pd.DataFrame) -> pd.DataFrame:
     rows: list[dict[str, Any]] = []
     for rule_id in ("MURPHY_0006", "MURPHY_0007"):
         family = "LOW" if rule_id == "MURPHY_0006" else "HIGH"
-        family_pivots = [p for p in all_pivots if p.family == family]
+        opposite_family = "HIGH" if family == "LOW" else "LOW"
 
         anchor_1: Pivot | None = None
         anchor_2: Pivot | None = None
         third: Pivot | None = None
         phase = "PAIR"
+        line_available_at: pd.Timestamp | None = None
+        line_price_at: Callable[[Any], float] | None = None
 
-        for pivot in family_pivots:
+        for pivot in all_pivots:
             if pivot.index + 2 >= len(source):
                 continue
 
             if phase == "REACTION":
-                # The reaction is searched from the full pivot stream so the
-                # first opposite confirmed pivot after the third touch wins.
-                continue
-
-            if phase == "PAIR":
-                if anchor_1 is None:
-                    anchor_1 = pivot
+                if pivot.family != opposite_family or pivot.index <= third.index:  # type: ignore[union-attr]
                     continue
-                if _valid_anchor_pair(rule_id, anchor_1, pivot):
-                    anchor_2 = pivot
-                    phase = "CANDIDATE"
-                else:
-                    anchor_1 = pivot
-                continue
-
-            # CANDIDATE: first same-family pivot eligible after line creation.
-            assert anchor_1 is not None and anchor_2 is not None
-            if pivot.index < anchor_2.index + 2:
-                continue
-
-            line_available_at = anchor_2.available_at
-            line_price_at = _line_builder(source, rule_id, anchor_1, anchor_2)
-            line_at_candidate = line_price_at(pivot.timestamp)
-            intersects = float(source.iloc[pivot.index]["low"]) <= line_at_candidate <= float(
-                source.iloc[pivot.index]["high"]
-            )
-
-            if not intersects:
-                anchor_1 = pivot
-                anchor_2 = None
-                phase = "PAIR"
-                continue
-
-            # Freeze this line after the first eligible successful third touch.
-            third = pivot
-            phase = "REACTION"
-
-            # Search the first opposite confirmed pivot after the third touch.
-            opposite_family = "HIGH" if family == "LOW" else "LOW"
-            for reaction in [p for p in all_pivots if p.family == opposite_family]:
-                if reaction.index <= third.index:
-                    continue
-                if reaction.available_at < third.available_at:
+                if pivot.available_at < third.available_at:  # type: ignore[union-attr]
                     continue
 
                 events = _events_for_runtime(
                     source,
                     rule_id,
-                    line_available_at,
-                    third,
-                    reaction,
-                    third.index,
-                    reaction.index,
+                    line_available_at,  # type: ignore[arg-type]
+                    third,  # type: ignore[arg-type]
+                    pivot,
+                    third.index,  # type: ignore[union-attr]
+                    pivot.index,
                 )
                 result = evaluate_rule(
                     rule_id,
@@ -259,38 +221,74 @@ def build_xau_trendline_evidence(df: pd.DataFrame) -> pd.DataFrame:
                 if result.get("status") == "CONFIRMED":
                     rows.append(
                         {
-                            "timestamp": reaction.available_at,
+                            "timestamp": pivot.available_at,
                             "rule_id": rule_id,
                             "status": "PASS",
                             "direction": result.get("direction"),
                             "reason": result.get("reason", "Runtime-confirmed trendline."),
-                            "third_touch_timestamp": third.timestamp,
-                            "confirmed_at": reaction.available_at,
-                            "anchor_1_timestamp": anchor_1.timestamp,
-                            "anchor_1_price": anchor_1.price,
-                            "anchor_2_timestamp": anchor_2.timestamp,
-                            "anchor_2_price": anchor_2.price,
+                            "third_touch_timestamp": third.timestamp,  # type: ignore[union-attr]
+                            "confirmed_at": pivot.available_at,
+                            "anchor_1_timestamp": anchor_1.timestamp,  # type: ignore[union-attr]
+                            "anchor_1_price": anchor_1.price,  # type: ignore[union-attr]
+                            "anchor_2_timestamp": anchor_2.timestamp,  # type: ignore[union-attr]
+                            "anchor_2_price": anchor_2.price,  # type: ignore[union-attr]
                             "line_available_at": line_available_at,
-                            "reaction_timestamp": reaction.timestamp,
-                            "as_of_timestamp": reaction.available_at,
+                            "reaction_timestamp": pivot.timestamp,
+                            "as_of_timestamp": pivot.available_at,
                             "2025_excluded": True,
                             "source": "XAUUSD_M1_MASTER_2016_2026_08_V1",
                         }
                     )
-                    anchor_1 = pivot
-                    anchor_2 = None
-                    third = None
-                    phase = "PAIR"
-                    break
 
-                # A first eligible reaction with a line-hold violation ends the
-                # frozen line. Do not skip forward to a later reaction for the
-                # same third touch.
+                # The first eligible opposite pivot is terminal for this frozen
+                # line, whether it confirms or fails the runtime line-hold gate.
                 anchor_1 = third
                 anchor_2 = None
                 third = None
                 phase = "PAIR"
-                break
+                line_available_at = None
+                line_price_at = None
+                continue
+
+            if pivot.family != family:
+                continue
+
+            if phase == "PAIR":
+                if anchor_1 is None:
+                    anchor_1 = pivot
+                    continue
+
+                if _valid_anchor_pair(rule_id, anchor_1, pivot):
+                    anchor_2 = pivot
+                    line_available_at = anchor_2.available_at
+                    line_price_at = _line_builder(source, rule_id, anchor_1, anchor_2)
+                    phase = "CANDIDATE"
+                else:
+                    anchor_1 = pivot
+                continue
+
+            # CANDIDATE: first same-family pivot eligible after line creation.
+            assert anchor_1 is not None and anchor_2 is not None
+            if pivot.index < anchor_2.index + 2:
+                continue
+
+            assert line_price_at is not None and line_available_at is not None
+            line_at_candidate = line_price_at(pivot.timestamp)
+            intersects = float(source.iloc[pivot.index]["low"]) <= line_at_candidate <= float(
+                source.iloc[pivot.index]["high"]
+            )
+
+            if not intersects:
+                anchor_1 = pivot
+                anchor_2 = None
+                phase = "PAIR"
+                line_available_at = None
+                line_price_at = None
+                continue
+
+            # Freeze this line after the first eligible successful third touch.
+            third = pivot
+            phase = "REACTION"
 
     if not rows:
         return pd.DataFrame(
