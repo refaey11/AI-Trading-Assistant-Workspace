@@ -112,6 +112,22 @@ def main() -> int:
 
     status_counts = evidence["status"].value_counts().to_dict()
     per_rule = evidence.groupby(["rule_id", "status"]).size().unstack(fill_value=0).to_dict(orient="index")
+    available = evidence["available"].astype(bool)
+    per_rule_available = evidence.groupby("rule_id")["available"].apply(lambda s: int(s.astype(bool).sum())).to_dict()
+    per_rule_coverage = {
+        str(rule_id): {
+            "rows": int(len(group)),
+            "available_rows": int(group["available"].astype(bool).sum()),
+            "available_rate": float(group["available"].astype(bool).mean()),
+            "pass": int((group["status"].astype(str) == "PASS").sum()),
+            "fail": int((group["status"].astype(str) == "FAIL").sum()),
+            "not_evaluable": int((group["status"].astype(str) == "NOT_EVALUABLE").sum()),
+        }
+        for rule_id, group in evidence.groupby("rule_id", sort=True)
+    }
+    rules_with_any_available = sum(v > 0 for v in per_rule_available.values())
+    rules_with_full_coverage = sum(v == len(bars_2025) for v in per_rule_available.values())
+
     manifest = {
         "input": str(args.input),
         "context": str(context_path) if context_path else None,
@@ -124,12 +140,24 @@ def main() -> int:
         "evidence_rows": int(len(evidence)),
         "status_counts": {k: int(v) for k, v in status_counts.items()},
         "per_rule_status_counts": {k: {sk: int(sv) for sk, sv in v.items()} for k, v in per_rule.items()},
+        "available_rows": int(available.sum()),
+        "available_rate": float(available.mean()),
+        "rules_with_any_available_evidence": int(rules_with_any_available),
+        "rules_with_full_timestamp_coverage": int(rules_with_full_coverage),
+        "rules_with_no_available_evidence": int(EXPECTED_RULES - rules_with_any_available),
+        "per_rule_availability": per_rule_coverage,
         "lookahead_policy": "none",
         "oos_policy": "2025 is evaluation-only; no tuning or threshold selection",
     }
     args.manifest.write_text(json.dumps(manifest, indent=2, sort_keys=True), encoding="utf-8")
 
     print(json.dumps(manifest, indent=2, sort_keys=True))
+    print("NISON_2025_FRESH_COVERAGE", json.dumps({
+        "rules_with_any_available_evidence": rules_with_any_available,
+        "rules_with_full_timestamp_coverage": rules_with_full_coverage,
+        "rules_with_no_available_evidence": EXPECTED_RULES - rules_with_any_available,
+        "available_rows": int(available.sum()),
+    }, sort_keys=True))
     return 0
 
 
