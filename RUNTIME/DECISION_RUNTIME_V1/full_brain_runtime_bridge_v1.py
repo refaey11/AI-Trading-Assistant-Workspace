@@ -29,6 +29,17 @@ def _is_authoritative(evidence: Mapping[str, Any] | None) -> bool:
     return bool((evidence or {}).get("authoritative", False))
 
 
+def _resolve_rule_ids(murphy_evidence: Mapping[str, Any], supplied: list[str] | None) -> list[str]:
+    """Keep the full Murphy envelope; never silently reduce it to candidates."""
+    if supplied:
+        return list(dict.fromkeys(str(value) for value in supplied))
+    for key in ("rule_ids", "source_rule_ids", "eligible_rule_ids", "loaded_rule_ids"):
+        value = murphy_evidence.get(key)
+        if isinstance(value, (list, tuple, set)):
+            return list(dict.fromkeys(str(item) for item in value))
+    return []
+
+
 def run_full_brain_cycle(
     *,
     row: Mapping[str, Any],
@@ -63,7 +74,8 @@ def run_full_brain_cycle(
     sys.modules["gate3c_decision_brain"] = brain
     brain_spec.loader.exec_module(brain)
 
-    return assemble_decision_event(
+    resolved_rule_ids = _resolve_rule_ids(murphy_evidence, source_rule_ids)
+    result = assemble_decision_event(
         decision_brain_module=brain,
         row=row,
         query_as_of=query_as_of,
@@ -72,12 +84,14 @@ def run_full_brain_cycle(
         tiz_evidence={"authoritative": tiz_available, "process_state": tiz_state, "tiz_verified": tiz_available, "unverified": not tiz_available, "source": tiz.get("source", "TIZ_RUNTIME_BOUNDARY_RESOLUTION_V2")},
         risk_evidence=risk_evidence,
         historical_evidence=historical_evidence,
-        source_rule_ids=list(source_rule_ids or []),
+        source_rule_ids=resolved_rule_ids,
         entry_price=entry_price,
         atr=atr,
         mode=mode,
-        provenance={"bridge": "full_brain_runtime_bridge_v1", "tiz_optional_when_unavailable": not tiz_available},
+        provenance={"bridge": "full_brain_runtime_bridge_v1", "tiz_optional_when_unavailable": not tiz_available, "murphy_rule_ids_resolved": len(resolved_rule_ids)},
     )
+    result.setdefault("audit", {})["murphy_rule_ids_resolved"] = resolved_rule_ids
+    return result
 
 
 __all__ = ["run_full_brain_cycle"]
