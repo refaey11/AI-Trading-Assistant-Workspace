@@ -3,7 +3,6 @@ from pathlib import Path
 
 from compatibility.decision_brain_v1_handoff_adapter import assess_with_governance
 
-
 ROOT = Path(__file__).resolve().parents[2]
 BRAIN_PATH = ROOT / "RECOVERED_SOURCES" / "DECISION_BRAIN_V1" / "decision_brain.py"
 
@@ -47,7 +46,6 @@ def good_evidence():
             "earliest": "2024-10-01T00:00:00Z",
             "latest": "2024-12-31T00:00:00Z",
         },
-        # Deliberately present: adapter must strip it from directional use.
         "predicted_return": 0.004,
     }
 
@@ -113,6 +111,20 @@ def test_tiz_fail_blocks_execution():
     )
     assert result["execution"]["eligible"] is False
     assert "TIZ_PROCESS_GATE_FAIL" in result["execution"]["hard_blocks"]
+
+
+def test_tiz_available_is_audit_only_and_does_not_block():
+    result = assess_with_governance(
+        load_brain(),
+        row=base_row(),
+        query_as_of="2024-12-31T23:00:00Z",
+        nison_evidence={"confirmation": "CONFIRMED", "contradiction": False},
+        tiz_evidence={"process_gate": "AVAILABLE", "tiz_verified": False},
+        risk_evidence={"risk_status": "PASS"},
+    )
+    assert result["execution"]["eligible"] is True
+    assert result["execution"]["hard_blocks"] == []
+    assert result["execution"]["needs_review"] == []
 
 
 def test_nison_contradiction_requires_review_and_cannot_flip_direction():
