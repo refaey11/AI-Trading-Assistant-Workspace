@@ -1,0 +1,36 @@
+name: TIZ Execution Evidence Producer Candidate
+
+on:
+  push:
+    branches:
+      - tiz-execution-evidence-producer-v1
+    paths:
+      - '03_TIZ/**'
+      - 'bridges/tiz_execution_evidence_bridge_candidate_v1.py'
+      - 'bridges/test_tiz_execution_evidence_bridge_candidate_v1.py'
+      - '.github/workflows/tiz-execution-evidence-producer.yml'
+  pull_request:
+    paths:
+      - '03_TIZ/**'
+      - 'bridges/tiz_execution_evidence_bridge_candidate_v1.py'
+      - 'bridges/test_tiz_execution_evidence_bridge_candidate_v1.py'
+      - '.github/workflows/tiz-execution-evidence-producer.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Install pytest
+        run: python -m pip install --disable-pip-version-check pytest
+      - name: Run TIZ producer tests
+        run: python -m pytest -q 03_TIZ/test_tiz_execution_evidence_producer_candidate_v1.py bridges/test_tiz_execution_evidence_bridge_candidate_v1.py
