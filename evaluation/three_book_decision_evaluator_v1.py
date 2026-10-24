@@ -155,6 +155,11 @@ def evaluate_three_book_decision(
             return _no_trade("MURPHY_FULL_RULE_BRAIN_DIRECTION_CONFLICT", timestamp, source_rule_ids)
         if full_audit["murphy_bearish_pass"] and bias == "BULLISH":
             return _no_trade("MURPHY_FULL_RULE_BRAIN_DIRECTION_CONFLICT", timestamp, source_rule_ids)
+        # A complete envelope is not proof of a directional setup. If no
+        # verified Murphy PASS row establishes direction, the legacy summary
+        # must not independently authorize BUY/SELL.
+        if not full_audit["murphy_bullish_pass"] and not full_audit["murphy_bearish_pass"]:
+            return _no_trade("MURPHY_FULL_RULE_DIRECTION_NOT_ESTABLISHED", timestamp, source_rule_ids)
         if full_audit["nison_contradiction"]:
             return _no_trade("NISON_FULL_RULE_CONTRADICTION", timestamp, source_rule_ids)
 
