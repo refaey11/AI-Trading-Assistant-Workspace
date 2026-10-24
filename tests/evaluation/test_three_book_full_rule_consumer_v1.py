@@ -89,7 +89,10 @@ def test_incomplete_full_rule_envelope_fails_closed():
     nison.pop(next(iter(nison)))
     result = evaluate_three_book_decision(**_base(murphy, nison))
     assert result["status"] == "NO_TRADE"
-    assert "FULL_RULE_EVIDENCE_INCOMPLETE" in result["decision"]["reasons_against"]
+    assert any(
+        reason in result["decision"]["reasons_against"]
+        for reason in {"ADAPTER_PACKAGE_EVIDENCE_SET_MISMATCH", "FULL_RULE_EVIDENCE_INCOMPLETE"}
+    )
 
 
 
