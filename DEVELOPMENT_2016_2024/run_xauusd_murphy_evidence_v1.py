@@ -100,8 +100,11 @@ def emit(df: pd.DataFrame) -> pd.DataFrame:
 
     rows = []
     for i in range(len(df)):
-        lows = np.where(pivot_low[: i + 1])[0]
-        highs = np.where(pivot_high[: i + 1])[0]
+        # A pivot centered at j is knowable only after bars j+1 and j+2 close.
+        # At decision bar i, include only pivot indices j <= i-2.
+        confirmed_end = max(0, i - 1)  # exclusive; includes indices through i-2
+        lows = np.where(pivot_low[:confirmed_end])[0]
+        highs = np.where(pivot_high[:confirmed_end])[0]
 
         payload = {
             "events": [],
