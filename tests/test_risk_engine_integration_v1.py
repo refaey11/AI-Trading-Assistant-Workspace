@@ -1,17 +1,14 @@
-import importlib.util
+import sys
 from pathlib import Path
 import unittest
 
-MODULE_PATH = (
+MODULE_DIR = (
     Path(__file__).resolve().parents[1]
     / "RUNTIME"
     / "RISK_ENGINE_INTEGRATION_V1"
-    / "risk_engine_integration_v1.py"
 )
-SPEC = importlib.util.spec_from_file_location("risk_engine_integration_v1", MODULE_PATH)
-assert SPEC and SPEC.loader
-risk = importlib.util.module_from_spec(SPEC)
-SPEC.loader.exec_module(risk)
+sys.path.insert(0, str(MODULE_DIR))
+import risk_engine_integration_v1 as risk
 
 
 class RiskEngineHardGateTests(unittest.TestCase):
