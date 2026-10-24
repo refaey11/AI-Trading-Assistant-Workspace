@@ -74,6 +74,13 @@ def pivots(df: pd.DataFrame) -> tuple[np.ndarray, np.ndarray]:
     return pivot_low, pivot_high
 
 
+def confirmed_pivot_indices(flags: np.ndarray, decision_index: int) -> np.ndarray:
+    """Indices of pivots knowable at decision_index after two confirming bars."""
+    if decision_index < 2:
+        return np.array([], dtype=int)
+    return np.where(flags[: decision_index - 1])[0]
+
+
 def atr14(df: pd.DataFrame) -> np.ndarray:
     close = df["close"].to_numpy(dtype=float)
     high = df["high"].to_numpy(dtype=float)
@@ -100,8 +107,10 @@ def emit(df: pd.DataFrame) -> pd.DataFrame:
 
     rows = []
     for i in range(len(df)):
-        lows = np.where(pivot_low[: i + 1])[0]
-        highs = np.where(pivot_high[: i + 1])[0]
+        # A pivot centered at j is knowable only after bars j+1 and j+2 close.
+        # At decision bar i, include only pivot indices j <= i-2.
+        lows = confirmed_pivot_indices(pivot_low, i)
+        highs = confirmed_pivot_indices(pivot_high, i)
 
         payload = {
             "events": [],

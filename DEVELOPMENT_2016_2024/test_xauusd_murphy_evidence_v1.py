@@ -3,6 +3,7 @@ from pathlib import Path
 import pandas as pd
 
 from DEVELOPMENT_2016_2024 import run_xauusd_murphy_evidence_v1 as adapter
+from DEVELOPMENT_2016_2024.run_xauusd_murphy_evidence_v1 import confirmed_pivot_indices
 from DEVELOPMENT_2016_2024.xauusd_murphy_0006_0007_runtime_evidence_v1 import (
     strict_five_bar_pivots,
 )
@@ -41,3 +42,15 @@ def test_pivot_confirmation_is_two_bars_late():
     assert bool(low[2]) is True
     assert bool(high[2]) is False
     assert ts[4] > ts[2]
+
+
+
+def test_only_pivots_confirmed_by_two_completed_bars_are_visible():
+    flags = pd.Series([False, False, True, False, False, True, False]).to_numpy()
+    # Decision bar 3 can only know pivot 1 or earlier; pivot at index 2
+    # requires bars 3 and 4 to close and is not yet confirmed.
+    assert confirmed_pivot_indices(flags, 3).tolist() == []
+    # At decision bar 4, pivot index 2 has two confirming bars and becomes visible.
+    assert confirmed_pivot_indices(flags, 4).tolist() == [2]
+    # The later pivot cannot leak into the earlier decision.
+    assert confirmed_pivot_indices(flags, 5).tolist() == [2]

@@ -249,10 +249,48 @@ def build_context(bars: pd.DataFrame, market_state: pd.DataFrame) -> pd.DataFram
 
 
 def split_mtf_source(mtf: pd.DataFrame, out_dir: Path) -> Path:
-    required = {"timestamp", "trend", "h4_trend"}
-    missing = sorted(required - set(mtf.columns))
+    # Normalize only explicit source columns. Do not infer trend from OHLC.
+    source = mtf.copy()
+    source.columns = [str(c).strip() for c in source.columns]
+    lower_to_original = {c.lower(): c for c in source.columns}
+
+    def explicit_column(candidates: tuple[str, ...]) -> str | None:
+        for candidate in candidates:
+            found = lower_to_original.get(candidate.lower())
+            if found is not None:
+                return found
+        return None
+
+    h1_col = explicit_column((
+        "trend", "h1_trend", "trend_h1", "h1_trend_regime",
+        "trend_regime_h1", "H1.trend", "H1_trend_direction",
+    ))
+    h4_col = explicit_column((
+        "h4_trend", "trend_h4", "h4_trend_regime",
+        "trend_regime_h4", "H4.trend", "H4_trend",
+        "h4_trend_direction", "H4_trend_direction",
+    ))
+    missing = []
+    if "timestamp" not in source.columns:
+        missing.append("timestamp")
+    if h1_col is None:
+        missing.append("explicit H1 trend column (accepted aliases: trend, h1_trend, trend_h1, h1_trend_regime)")
+    if h4_col is None:
+        missing.append("explicit H4 trend column (accepted aliases: h4_trend, trend_h4, h4_trend_regime)")
     if missing:
-        raise ValueError(f"XAU MTF source missing explicit trend fields: {missing}")
+        raise ValueError(
+            "XAU MTF source missing required explicit fields: "
+            + "; ".join(missing)
+            + f". Available columns: {list(source.columns)}"
+        )
+
+    source["timestamp"] = pd.to_datetime(source["timestamp"], utc=True, errors="coerce")
+    if source["timestamp"].isna().any():
+        raise ValueError("XAU MTF source contains invalid timestamps")
+    if source["timestamp"].duplicated().any():
+        raise ValueError("XAU MTF source contains duplicate timestamps")
+    source = source.sort_values("timestamp").reset_index(drop=True)
+    source = source.rename(columns={h1_col: "trend", h4_col: "h4_trend"})
 
     root = out_dir / "mtf_source"
     h1_dir = root / "H1"
