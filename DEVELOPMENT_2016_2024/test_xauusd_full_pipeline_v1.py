@@ -52,3 +52,32 @@ def test_2025_lock_in_source_contract():
     assert "XAUUSD_MTF_H4_H1.csv" in source
     assert "XAUUSD_MARKET_STATE.csv" in source
     assert "ns:14922141667//" in source
+
+
+
+def test_mtf_split_accepts_explicit_timeframe_column_aliases(tmp_path: Path):
+    ts = pd.date_range("2024-01-01", periods=2, freq="h", tz="UTC")
+    src = pd.DataFrame(
+        {
+            "timestamp": ts,
+            "H1_trend_regime": ["BULL_TREND", "BEAR_TREND"],
+            "H4_trend_regime": ["BULL_TREND", "TRANSITION"],
+        }
+    )
+    out = split_mtf_source(src, tmp_path)
+    h1 = pd.read_csv(out / "H1/XAUUSD_H1.csv")
+    h4 = pd.read_csv(out / "H4/XAUUSD_H4.csv")
+    assert list(h1["trend"]) == ["BULL_TREND", "BEAR_TREND"]
+    assert list(h4["trend"]) == ["BULL_TREND", "TRANSITION"]
+
+
+def test_mtf_split_reports_available_columns_when_aliases_missing(tmp_path: Path):
+    ts = pd.date_range("2024-01-01", periods=1, freq="h", tz="UTC")
+    src = pd.DataFrame({"timestamp": ts, "close": [2000.0]})
+    try:
+        split_mtf_source(src, tmp_path)
+    except ValueError as exc:
+        assert "Available columns" in str(exc)
+        assert "explicit H1 trend column" in str(exc)
+    else:
+        raise AssertionError("Missing explicit trend fields must fail closed")
