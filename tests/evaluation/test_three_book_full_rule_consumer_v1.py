@@ -2,6 +2,7 @@ import json
 from pathlib import Path
 
 from evaluation.three_book_decision_evaluator_v1 import evaluate_three_book_decision
+from compatibility.governed_78_rule_adapter_v1 import build_governed_78_package
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -35,10 +36,19 @@ def _evidence_sets(*, murphy_bearish=False, nison_contradiction=False):
 
 
 def _base(murphy, nison):
+    adapted = build_governed_78_package(
+        query_as_of="2024-12-31T00:00:00+00:00",
+        murphy_rows=list(murphy.values()),
+        nison_rows=list(nison.values()),
+        mode="development",
+        provenance={"source": "unit-test-fixture"},
+    )
+    assert adapted.status == "PASS", adapted.reason
+    package = dict(adapted.package)
     return {
         "brain_assessment": {"directional_bias": "BULLISH", "confidence": 0.7},
-        "murphy_evidence": {"status": "PASS", "direction": "BULLISH", "evidence_set": murphy},
-        "nison_evidence": {"confirmation": "NOT_EVALUABLE", "contradiction": False, "evidence_set": nison},
+        "murphy_evidence": {"status": "PASS", "direction": "BULLISH", "evidence_set": murphy, "governed_78_package": package},
+        "nison_evidence": {"confirmation": "NOT_EVALUABLE", "contradiction": False, "evidence_set": nison, "governed_78_package": package},
         "tiz_evidence": {"process_gate": "READY"},
         "risk_evidence": {"risk_pass": True, "stop_loss": "1.2450"},
         "source_rule_ids": [*murphy.keys(), *nison.keys()],
@@ -80,3 +90,16 @@ def test_incomplete_full_rule_envelope_fails_closed():
     result = evaluate_three_book_decision(**_base(murphy, nison))
     assert result["status"] == "NO_TRADE"
     assert "FULL_RULE_EVIDENCE_INCOMPLETE" in result["decision"]["reasons_against"]
+
+
+
+def test_full_murphy_evidence_without_directional_pass_fails_closed():
+    murphy, nison = _evidence_sets()
+    for row in murphy.values():
+        row["status"] = "NOT_EVALUABLE"
+        row["directional_confirmation"] = "UNKNOWN"
+    args = _base(murphy, nison)
+    # The legacy summary claims bullish, but no full Murphy rule establishes it.
+    result = evaluate_three_book_decision(**args)
+    assert result["status"] == "NO_TRADE"
+    assert "MURPHY_FULL_RULE_DIRECTION_NOT_ESTABLISHED" in result["decision"]["reasons_against"]
