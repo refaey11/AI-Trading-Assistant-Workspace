@@ -4,17 +4,19 @@ on:
   pull_request:
     paths:
       - "BACKTEST/MTF_SIX_TF_SOURCE_ADAPTER_V1.py"
-      - "tests/test_mtf_six_tf_source_adapter_v1.py"
+      - "RUNTIME/RISK_ENGINE_INTEGRATION_V1/risk_engine_integration_v1.py"
+      - "tests/test_*.py"
       - ".github/workflows/multi-symbol-inspector-tests.yml"
   push:
     branches: ["work/multi-pair-ingestion-plan-v1"]
     paths:
       - "BACKTEST/MTF_SIX_TF_SOURCE_ADAPTER_V1.py"
-      - "tests/test_mtf_six_tf_source_adapter_v1.py"
+      - "RUNTIME/RISK_ENGINE_INTEGRATION_V1/risk_engine_integration_v1.py"
+      - "tests/test_*.py"
       - ".github/workflows/multi-symbol-inspector-tests.yml"
 
 jobs:
-  inspector-tests:
+  inspector-and-risk-gate-tests:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -26,5 +28,5 @@ jobs:
           python-version: "3.12"
       - name: Install test dependency
         run: python -m pip install --upgrade pip pandas
-      - name: Run multi-symbol inspector tests
-        run: python -m unittest discover -s tests -p "test_mtf_six_tf_source_adapter_v1.py" -v
+      - name: Run regression tests
+        run: python -m unittest discover -s tests -p "test_*.py" -v
