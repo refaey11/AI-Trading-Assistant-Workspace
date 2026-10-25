@@ -38,6 +38,15 @@ def assessment_payload(row: dict) -> dict:
         "evidence": a.evidence,
         "contradictions": a.contradictions,
         "no_trade_reasons": a.no_trade_reasons,
+        # Echo explicit MT5 timeframe regimes so the display panel reports the
+        # source values it sent, rather than rendering missing keys as NEUTRAL.
+        # These context fields do not authorize a trade.
+        **{
+            f"{tf}_trend_regime": float(row[f"{tf}_trend_regime"])
+            for tf in ("M5", "M15", "M30", "H1", "H4", "D1")
+            if isinstance(row.get(f"{tf}_trend_regime"), (int, float))
+            and not isinstance(row.get(f"{tf}_trend_regime"), bool)
+        },
         "order_execution": "DISABLED",
         "official_profitability_claim_allowed": False,
     }
