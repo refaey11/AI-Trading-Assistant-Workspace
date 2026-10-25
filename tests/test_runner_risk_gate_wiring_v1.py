@@ -33,6 +33,11 @@ class RunnerRiskGateWiringTests(unittest.TestCase):
         self.assertIsNone(runner.run.__kwdefaults__["equity"])
         self.assertIsNone(runner.run.__kwdefaults__["peak_equity"])
 
+    def test_brain_lowercase_bias_normalizes_to_governed_direction(self):
+        self.assertEqual(runner.normalize_direction("bullish"), "BULLISH")
+        self.assertEqual(runner.normalize_direction("bearish"), "BEARISH")
+        self.assertIsNone(runner.normalize_direction("conflicted"))
+
 
 if __name__ == "__main__":
     unittest.main()
