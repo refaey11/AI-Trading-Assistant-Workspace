@@ -193,6 +193,10 @@ def evaluate_candidate(candidate_id: str, signals: pd.DataFrame, h1: pd.DataFram
         "expectancy_R": (total_r / closed) if closed else None,
         "profit_factor": (wins_r / losses_r) if losses_r else (None if wins_r == 0 else "INF"),
         "total_R": total_r,
+        # Sensitivity only: count every same-bar SL/TP ambiguity as a full stop.
+        # Keep the primary result unchanged so ambiguity remains explicitly reported.
+        "total_R_if_ambiguous_counted_as_SL": total_r - amb_n,
+        "expectancy_R_if_ambiguous_counted_as_SL": ((total_r - amb_n) / (closed + amb_n)) if (closed + amb_n) else None,
         "drawdown_R": None,
         "evaluation_status": "EVALUATION_ONLY",
     }
