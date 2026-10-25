@@ -35,6 +35,8 @@ def load_brain():
     if not spec or not spec.loader:
         raise RuntimeError("Unable to load recovered Decision Brain V1")
     module = importlib.util.module_from_spec(spec)
+    import sys
+    sys.modules[spec.name] = module
     spec.loader.exec_module(module)
     return module
 
