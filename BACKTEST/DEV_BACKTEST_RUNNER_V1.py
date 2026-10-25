@@ -287,7 +287,9 @@ def run(*, h1: Path, murphy: Path, nison: Path, context: Path, output_dir: Path,
         murphy_dir = row.get("murphy_direction")
         contradiction = bool(row.get("nison_contradiction", False))
         assessment = brain.assess(build_brain_row(row), similarity=None)
-        bias = assessment.directional_bias
+        # Decision Brain emits lowercase bullish/bearish/neutral/conflicted; normalize
+        # before comparing against the uppercase governed evidence direction.
+        bias = normalize_direction(assessment.directional_bias) or str(assessment.directional_bias).strip().upper()
         source_rule_ids = row.get("source_rule_ids", "[]")
         events.append({
             "timestamp": ts,
