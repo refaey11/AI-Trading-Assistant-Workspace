@@ -208,11 +208,15 @@ def main() -> None:
     market = read_csv(args.market_state)
     mtf = read_csv(args.mtf)
 
-    for name, df in (("H1", h1), ("market-state", market), ("MTF", mtf)):
-        if not set(df["timestamp"].dt.year.unique()).issubset({2025}):
-            raise ValueError(f"{name}: source contains timestamps outside 2025")
     if set(mur["timestamp"].dt.year.unique()) != {2025}:
         raise ValueError("Murphy evidence must contain 2025 only")
+    # The H1 master and market-state files may contain earlier history; use only
+    # their 2025 rows for this locked OOS evaluation.
+    h1 = h1[h1["timestamp"].dt.year.eq(2025)].reset_index(drop=True)
+    market = market[market["timestamp"].dt.year.eq(2025)].reset_index(drop=True)
+    mtf = mtf[mtf["timestamp"].dt.year.eq(2025)].reset_index(drop=True)
+    if h1.empty or market.empty or mtf.empty:
+        raise ValueError("one or more required 2025 source partitions are empty")
     for col in ("open", "high", "low", "close"):
         find_col(h1, (col,), f"H1 {col}")
     h1 = h1.rename(columns={find_col(h1, ("open",), "open"): "open",
