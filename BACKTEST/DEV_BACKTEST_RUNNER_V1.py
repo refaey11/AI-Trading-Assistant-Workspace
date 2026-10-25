@@ -327,14 +327,16 @@ def run(*, h1: Path, murphy: Path, nison: Path, context: Path, output_dir: Path,
         events[-1]["risk_gate_pass"] = bool(risk.risk_pass)
         events[-1]["risk_gate_reason"] = risk.reason
         events[-1]["risk_percent"] = risk.risk_percent
-        events[-1]["position_size"] = risk.position_size
+        # The generic risk adapter lacks broker contract/tick-value metadata; do not label its raw quotient as lots.
+        events[-1]["position_size_unverified_units"] = risk.position_size
+        events[-1]["position_size_is_broker_lots"] = False
         if not risk.risk_pass:
             events[-1]["execution_status"] = "NO_TRADE"
             events[-1]["no_trade_reason"] = "RISK_GATE:" + risk.reason
             continue
         result = simulate_trade(bars, int(pos[0]), direction, entry, atr_value)
         events[-1]["execution_status"] = "TRADE_SIMULATED"
-        trades.append({"timestamp": ts, "direction": direction, "entry_price": entry, "atr": atr_value, "risk_percent": risk.risk_percent, "position_size": risk.position_size, "risk_gate_reason": risk.reason, **result})
+        trades.append({"timestamp": ts, "direction": direction, "entry_price": entry, "atr": atr_value, "risk_percent": risk.risk_percent, "position_size_unverified_units": risk.position_size, "position_size_is_broker_lots": False, "risk_gate_reason": risk.reason, **result})
 
     output_dir.mkdir(parents=True, exist_ok=True)
     pd.DataFrame(events).to_csv(output_dir / "unified_78_events_2016_2024.csv", index=False)
@@ -362,6 +364,8 @@ def run(*, h1: Path, murphy: Path, nison: Path, context: Path, output_dir: Path,
         "official_claim_allowed": False,
         "mtf_source_consumed": bool(not mtf.empty),
         "risk_engine_integrated": True,
+        "broker_lot_sizing_verified": False,
+        "position_size_is_broker_lots": False,
         "risk_gate_requires_explicit_equity": True,
         "missing_risk_inputs_fail_closed": True,
         "mtf_timeframes_found": [c.replace("_trend_regime", "") for c in mtf.columns if c.endswith("_trend_regime")] if not mtf.empty else [],
