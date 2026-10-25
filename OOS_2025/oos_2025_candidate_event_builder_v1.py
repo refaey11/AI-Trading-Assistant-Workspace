@@ -234,15 +234,29 @@ def main() -> None:
                             find_col(h1, ("high",), "high"): "high",
                             find_col(h1, ("low",), "low"): "low",
                             find_col(h1, ("close",), "close"): "close"})
-    vol_col = find_col(mur, ("volatility_regime", "volatility", "volatility_state"), "Murphy volatility regime")
+    # The Murphy file is rule evidence (timestamp/status/direction/rule id), not
+    # a market-state table. Volatility is sourced from the market-state reader
+    # and joined backward/as-of, never inferred from future rows.
     direction_col = find_col(mur, ("direction", "signal_direction"), "Murphy direction")
     mur["direction"] = normalized(mur[direction_col]).str.upper()
-    high_mask = normalized(mur[vol_col]).eq("high")
+    vol_col = find_col(
+        market,
+        ("volatility_regime", "volatility", "volatility_state", "volatility_level", "atr_volatility_regime"),
+        "market-state volatility regime",
+    )
 
     # As-of joins only: context timestamps must never be later than the event.
     mtf = mtf.sort_values("timestamp")
     market = market.sort_values("timestamp")
     base = mur.sort_values("timestamp")
+    market_vol = market[["timestamp", vol_col]].rename(columns={vol_col: "_volatility_regime"})
+    base = pd.merge_asof(
+        base.sort_values("timestamp"),
+        market_vol.sort_values("timestamp"),
+        on="timestamp",
+        direction="backward",
+    )
+    high_mask = normalized(base["_volatility_regime"]).eq("high")
     market_clock = market[["timestamp"]].rename(columns={"timestamp": "market_timestamp"})
     merged = pd.merge_asof(
         base[["timestamp"]].sort_values("timestamp"),
@@ -255,7 +269,7 @@ def main() -> None:
     mtf_join = pd.merge_asof(base[["timestamp"]].sort_values("timestamp"), mtf.sort_values("timestamp"), on="timestamp", direction="backward")
     c1_mask = high_mask.reset_index(drop=True) & bearish_mtf_mask(mtf_join).reset_index(drop=True)
     c2_mask = high_mask.reset_index(drop=True) & h4_bearish_mask(mtf_join).reset_index(drop=True)
-    c3_mask = high_mask.reset_index(drop=True) & mur["direction"].eq("SELL").reset_index(drop=True)
+    c3_mask = high_mask.reset_index(drop=True) & base["direction"].isin({"SELL", "BEARISH"}).reset_index(drop=True)
 
     # Context is required for provenance and checked as-of; missing context is not filled forward from the future.
     if merged["market_timestamp"].isna().any() or (merged["market_timestamp"] > merged["timestamp"]).any():
