@@ -44,6 +44,8 @@ def load_risk_engine():
     if not spec or not spec.loader:
         raise RuntimeError("Unable to load Risk Engine integration V1")
     module = importlib.util.module_from_spec(spec)
+    import sys
+    sys.modules[spec.name] = module
     spec.loader.exec_module(module)
     return module
 
