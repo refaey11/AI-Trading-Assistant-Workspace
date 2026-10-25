@@ -288,7 +288,7 @@ def main() -> None:
         raw_evidence_rows = len(sig)
         # A candidate event is one timestamp, not one row per matching Murphy rule.
         # Preserve the raw evidence count so rule-row multiplicity stays auditable.
-        sig = sig.drop_duplicates(subset=["timestamp", "direction"], keep="first").reset_index(drop=True)
+        sig = sig.drop_duplicates(subset=["timestamp"], keep="first").reset_index(drop=True)
         duplicate_timestamp_rows_removed = raw_evidence_rows - len(sig)
         # C1/C2 are short-only frozen bearish candidates; C3 is explicit SELL+HIGH.
         sig["direction"] = "SELL"
