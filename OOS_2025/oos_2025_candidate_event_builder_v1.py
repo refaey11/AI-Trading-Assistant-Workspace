@@ -96,16 +96,18 @@ def evaluate_candidate(candidate_id: str, signals: pd.DataFrame, h1: pd.DataFram
     highs = pd.to_numeric(h1["high"], errors="coerce")
     lows = pd.to_numeric(h1["low"], errors="coerce")
     atrs = atr_series(h1)
-    index_by_ts = {ts: i for i, ts in enumerate(h1["timestamp"])}
+    h1_times = list(h1["timestamp"])
     trades: list[dict] = []
     seen_entry_idx = -1
 
     for signal in signals.sort_values("timestamp").itertuples(index=False):
         signal_ts = signal.timestamp
-        signal_idx = index_by_ts.get(signal_ts)
-        if signal_idx is None:
-            # Event is not aligned to an H1 candle; do not fabricate an entry.
-            trades.append({"candidate_id": candidate_id, "timestamp": signal_ts.isoformat(), "status": "NOT_EVALUABLE", "reason": "NO_EXACT_H1_SIGNAL_BAR"})
+        # Locate the latest H1 bar at or before the event timestamp. This is
+        # strictly as-of; the entry is still the next H1 open after that bar.
+        import bisect
+        signal_idx = bisect.bisect_right(h1_times, signal_ts) - 1
+        if signal_idx < 0:
+            trades.append({"candidate_id": candidate_id, "timestamp": signal_ts.isoformat(), "status": "NOT_EVALUABLE", "reason": "NO_PRIOR_H1_BAR"})
             continue
         entry_idx = signal_idx + 1  # frozen next-H1-open entry protocol
         if entry_idx >= len(h1):
@@ -232,10 +234,14 @@ def main() -> None:
     mtf = mtf.sort_values("timestamp")
     market = market.sort_values("timestamp")
     base = mur.sort_values("timestamp")
-    mtf_cols = [c for c in mtf.columns if c != "timestamp"]
-    merged = pd.merge_asof(base, mtf[["timestamp"] + mtf_cols], on="timestamp", direction="backward", suffixes=("", "_mtf"))
-    market_cols = [c for c in market.columns if c != "timestamp"]
-    merged = pd.merge_asof(merged.sort_values("timestamp"), market[["timestamp"] + market_cols], on="timestamp", direction="backward", suffixes=("", "_market"))
+    market_clock = market[["timestamp"]].rename(columns={"timestamp": "market_timestamp"})
+    merged = pd.merge_asof(
+        base[["timestamp"]].sort_values("timestamp"),
+        market_clock.sort_values("market_timestamp"),
+        left_on="timestamp",
+        right_on="market_timestamp",
+        direction="backward",
+    )
     # MTF conditions must be derived from the actual MTF source, not same-named Murphy fields.
     mtf_join = pd.merge_asof(base[["timestamp"]].sort_values("timestamp"), mtf.sort_values("timestamp"), on="timestamp", direction="backward")
     c1_mask = high_mask.reset_index(drop=True) & bearish_mtf_mask(mtf_join).reset_index(drop=True)
@@ -243,11 +249,8 @@ def main() -> None:
     c3_mask = high_mask.reset_index(drop=True) & mur["direction"].eq("SELL").reset_index(drop=True)
 
     # Context is required for provenance and checked as-of; missing context is not filled forward from the future.
-    if merged[market_cols].isna().all(axis=1).any():
-        # It is permissible for individual context fields to be missing, but not for the whole context row.
-        raise ValueError("market-state as-of context missing for one or more Murphy event timestamps")
-    if merged["timestamp"].isna().any():
-        raise ValueError("invalid event timestamps")
+    if merged["market_timestamp"].isna().any() or (merged["market_timestamp"] > merged["timestamp"]).any():
+        raise ValueError("market-state as-of context missing or future-dated for one or more Murphy event timestamps")
     if not {"open", "high", "low", "close"}.issubset(h1.columns):
         raise ValueError("H1 price schema invalid")
 
