@@ -108,6 +108,7 @@ def evaluate_candidate(candidate_id: str, signals: pd.DataFrame, h1: pd.DataFram
     h1_times = list(h1["timestamp"])
     trades: list[dict] = []
     seen_entry_idx = -1
+    skipped_overlap = 0
 
     for signal in signals.sort_values("timestamp").itertuples(index=False):
         signal_ts = signal.timestamp
@@ -123,6 +124,7 @@ def evaluate_candidate(candidate_id: str, signals: pd.DataFrame, h1: pd.DataFram
             trades.append({"candidate_id": candidate_id, "timestamp": signal_ts.isoformat(), "status": "NOT_EVALUABLE", "reason": "NO_NEXT_H1_BAR"})
             continue
         if entry_idx <= seen_entry_idx:
+            skipped_overlap += 1
             continue
         entry = opens.iloc[entry_idx]
         atr = atrs.iloc[signal_idx]
@@ -180,6 +182,7 @@ def evaluate_candidate(candidate_id: str, signals: pd.DataFrame, h1: pd.DataFram
     summary = {
         "candidate_id": candidate_id,
         "events": len(signals),
+        "signals_skipped_overlap": skipped_overlap,
         "evaluated": len(evaluated),
         "TP": tp_n,
         "SL": sl_n,
