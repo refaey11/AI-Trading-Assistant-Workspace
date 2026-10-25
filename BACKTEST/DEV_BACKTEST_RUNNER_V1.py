@@ -383,9 +383,13 @@ def run(*, h1: Path, murphy: Path, nison: Path, context: Path, output_dir: Path,
     }
     validation = {
         "timestamp_asof": True,
-        "lookahead": True,
+        # These are deliberately unknown until independently audited; do not
+        # hard-code a successful lookahead or memory-leakage claim.
+        "lookahead": None,
+        "lookahead_audit_status": "NOT_AUDITED",
         "mtf_consumption": bool(not mtf.empty),
-        "memory_leakage": True,
+        "memory_leakage": None,
+        "memory_leakage_audit_status": "NOT_AUDITED",
         "execution_funnel": True,
         "frozen_cost_slippage": False,
         "official_profitability_claim": False,
