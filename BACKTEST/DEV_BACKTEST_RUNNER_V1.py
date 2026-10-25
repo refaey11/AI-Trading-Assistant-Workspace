@@ -12,6 +12,7 @@ import pandas as pd
 ROOT = Path(__file__).resolve().parents[1]
 ALLOWLIST = ROOT / "governance/DECISION_BRAIN_RULE_ALLOWLIST_V1.json"
 BRAIN_PATH = ROOT / "RECOVERED_SOURCES/DECISION_BRAIN_V1/decision_brain.py"
+RISK_ENGINE_PATH = ROOT / "RUNTIME/RISK_ENGINE_INTEGRATION_V1/risk_engine_integration_v1.py"
 
 TF_NAMES = ("M5", "M15", "M30", "H1", "H4", "D1")
 
@@ -34,6 +35,19 @@ def load_brain():
     if not spec or not spec.loader:
         raise RuntimeError("Unable to load recovered Decision Brain V1")
     module = importlib.util.module_from_spec(spec)
+    import sys
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+def load_risk_engine():
+    spec = importlib.util.spec_from_file_location("risk_engine_integration_v1", RISK_ENGINE_PATH)
+    if not spec or not spec.loader:
+        raise RuntimeError("Unable to load Risk Engine integration V1")
+    module = importlib.util.module_from_spec(spec)
+    import sys
+    sys.modules[spec.name] = module
     spec.loader.exec_module(module)
     return module
 
@@ -239,7 +253,7 @@ def simulate_trade(bars: pd.DataFrame, entry_idx: int, direction: str, entry: fl
     return {"exit_timestamp": None, "outcome": "TIMEOUT", "r_multiple": None, "stop_loss": sl, "take_profit": tp}
 
 
-def run(*, h1: Path, murphy: Path, nison: Path, context: Path, output_dir: Path, mtf_dir: Path | None = None) -> dict[str, Any]:
+def run(*, h1: Path, murphy: Path, nison: Path, context: Path, output_dir: Path, mtf_dir: Path | None = None, equity: float | None = None, peak_equity: float | None = None, prior_loss_streak: int = 0) -> dict[str, Any]:
     bars = load_csv(h1, {"timestamp", "open", "high", "low", "close"})
     murphy_raw = load_csv(murphy, {"timestamp", "status", "direction"}, allow_duplicate_timestamps=True)
     nison_raw = load_csv(nison, {"timestamp", "status", "direction", "rule_id"}, allow_duplicate_timestamps=True)
@@ -264,6 +278,8 @@ def run(*, h1: Path, murphy: Path, nison: Path, context: Path, output_dir: Path,
     merged = merged[(merged["timestamp"].dt.year >= 2016) & (merged["timestamp"].dt.year <= 2024)].copy()
 
     brain = load_brain()
+    risk_engine = load_risk_engine()
+    risk_inputs_available = equity is not None and peak_equity is not None and equity > 0 and peak_equity > 0
     events: list[dict[str, Any]] = []
     trades: list[dict[str, Any]] = []
     for _, row in merged.iterrows():
@@ -271,7 +287,9 @@ def run(*, h1: Path, murphy: Path, nison: Path, context: Path, output_dir: Path,
         murphy_dir = row.get("murphy_direction")
         contradiction = bool(row.get("nison_contradiction", False))
         assessment = brain.assess(build_brain_row(row), similarity=None)
-        bias = assessment.directional_bias
+        # Decision Brain emits lowercase bullish/bearish/neutral/conflicted; normalize
+        # before comparing against the uppercase governed evidence direction.
+        bias = normalize_direction(assessment.directional_bias) or str(assessment.directional_bias).strip().upper()
         source_rule_ids = row.get("source_rule_ids", "[]")
         events.append({
             "timestamp": ts,
@@ -283,16 +301,44 @@ def run(*, h1: Path, murphy: Path, nison: Path, context: Path, output_dir: Path,
             "mtf_timeframes_available": int(row.get("mtf_timeframes_available", 0) or 0),
             "source_rule_ids": source_rule_ids,
         })
-        if murphy_dir not in {"BULLISH", "BEARISH"} or bias != murphy_dir or contradiction:
-            continue
-        if pd.isna(row.get("entry_price")) or pd.isna(row.get("atr")) or float(row["atr"]) <= 0:
+        nison_confirmation = str(row.get("nison_confirmation") or "ABSENT").upper()
+        risk_block_reason = None
+        if not risk_inputs_available:
+            risk_block_reason = "MISSING_EQUITY_OR_PEAK_EQUITY"
+        elif murphy_dir not in {"BULLISH", "BEARISH"} or bias != murphy_dir or contradiction:
+            risk_block_reason = "MURPHY_BRAIN_MISMATCH_OR_CONTRADICTION"
+        elif nison_confirmation != murphy_dir:
+            risk_block_reason = "NISON_CONFIRMATION_MISSING_OR_NOT_ALIGNED"
+        elif pd.isna(row.get("entry_price")) or pd.isna(row.get("atr")) or float(row["atr"]) <= 0:
+            risk_block_reason = "MISSING_ENTRY_OR_ATR"
+        if risk_block_reason:
+            events[-1]["execution_status"] = "NO_TRADE"
+            events[-1]["no_trade_reason"] = risk_block_reason
             continue
         direction = "BUY" if murphy_dir == "BULLISH" else "SELL"
         pos = bars.index[bars["timestamp"].eq(ts)]
         if len(pos) == 0:
+            events[-1]["execution_status"] = "NO_TRADE"
+            events[-1]["no_trade_reason"] = "NO_MATCHING_EXECUTION_BAR"
             continue
-        result = simulate_trade(bars, int(pos[0]), direction, float(row["entry_price"]), float(row["atr"]))
-        trades.append({"timestamp": ts, "direction": direction, "entry_price": float(row["entry_price"]), "atr": float(row["atr"]), **result})
+        entry = float(row["entry_price"]); atr_value = float(row["atr"])
+        stop_distance = 0.75 * atr_value
+        stop_loss = entry - stop_distance if direction == "BUY" else entry + stop_distance
+        take_profit = entry + 2.0 * stop_distance if direction == "BUY" else entry - 2.0 * stop_distance
+        risk = risk_engine.evaluate_risk(equity=float(equity), peak_equity=float(peak_equity), entry=entry, stop_loss=stop_loss, take_profit=take_profit, atr=atr_value, prior_loss_streak=prior_loss_streak)
+        events[-1]["risk_gate_pass"] = bool(risk.risk_pass)
+        events[-1]["risk_gate_reason"] = risk.reason
+        events[-1]["risk_percent"] = risk.risk_percent
+        # The generic risk adapter lacks broker contract/tick-value metadata; do not label its raw quotient as lots.
+        events[-1]["position_size_unverified_units"] = risk.position_size
+        events[-1]["position_size_is_broker_lots"] = False
+        if not risk.risk_pass:
+            events[-1]["execution_status"] = "NO_TRADE"
+            events[-1]["no_trade_reason"] = "RISK_GATE:" + risk.reason
+            continue
+        result = simulate_trade(bars, int(pos[0]), direction, entry, atr_value)
+        events[-1]["execution_status"] = "TRADE_SIMULATED"
+        trades.append({"timestamp": ts, "direction": direction, "entry_price": entry, "atr": atr_value, "risk_percent": risk.risk_percent, "position_size_unverified_units": risk.position_size, "position_size_is_broker_lots": False, "risk_gate_reason": risk.reason, **result})
 
     output_dir.mkdir(parents=True, exist_ok=True)
     pd.DataFrame(events).to_csv(output_dir / "unified_78_events_2016_2024.csv", index=False)
@@ -319,6 +365,11 @@ def run(*, h1: Path, murphy: Path, nison: Path, context: Path, output_dir: Path,
         "costs_applied": False,
         "official_claim_allowed": False,
         "mtf_source_consumed": bool(not mtf.empty),
+        "risk_engine_integrated": True,
+        "broker_lot_sizing_verified": False,
+        "position_size_is_broker_lots": False,
+        "risk_gate_requires_explicit_equity": True,
+        "missing_risk_inputs_fail_closed": True,
         "mtf_timeframes_found": [c.replace("_trend_regime", "") for c in mtf.columns if c.endswith("_trend_regime")] if not mtf.empty else [],
     }
     event_df = pd.DataFrame(events)
@@ -332,9 +383,13 @@ def run(*, h1: Path, murphy: Path, nison: Path, context: Path, output_dir: Path,
     }
     validation = {
         "timestamp_asof": True,
-        "lookahead": True,
+        # These are deliberately unknown until independently audited; do not
+        # hard-code a successful lookahead or memory-leakage claim.
+        "lookahead": None,
+        "lookahead_audit_status": "NOT_AUDITED",
         "mtf_consumption": bool(not mtf.empty),
-        "memory_leakage": True,
+        "memory_leakage": None,
+        "memory_leakage_audit_status": "NOT_AUDITED",
         "execution_funnel": True,
         "frozen_cost_slippage": False,
         "official_profitability_claim": False,
@@ -354,8 +409,11 @@ def main() -> int:
     p.add_argument("--context", required=True, type=Path)
     p.add_argument("--output-dir", required=True, type=Path)
     p.add_argument("--mtf-dir", required=False, type=Path)
+    p.add_argument("--equity", type=float, default=None, help="Required to pass the Risk Engine hard gate")
+    p.add_argument("--peak-equity", type=float, default=None, help="Required to evaluate the drawdown circuit breaker")
+    p.add_argument("--prior-loss-streak", type=int, default=0)
     a = p.parse_args()
-    print(json.dumps(run(h1=a.h1, murphy=a.murphy, nison=a.nison, context=a.context, output_dir=a.output_dir, mtf_dir=a.mtf_dir), indent=2, default=str))
+    print(json.dumps(run(h1=a.h1, murphy=a.murphy, nison=a.nison, context=a.context, output_dir=a.output_dir, mtf_dir=a.mtf_dir, equity=a.equity, peak_equity=a.peak_equity, prior_loss_streak=a.prior_loss_streak), indent=2, default=str))
     return 0
 
 
