@@ -209,6 +209,27 @@ def evaluate_candidate(candidate_id: str, signals: pd.DataFrame, h1: pd.DataFram
         peak = max(peak, equity)
         max_dd = max(max_dd, peak - equity)
     summary["drawdown_R"] = max_dd
+    # Illustrative GBPUSD round-trip cost sensitivity, not broker-observed costs.
+    # Ambiguous bars are conservatively counted as -1R for these sensitivity fields.
+    conservative_r = sum(
+        2.0 if t["status"] == "TP" else -1.0
+        for t in evaluated
+        if t["status"] in {"TP", "SL", "AMBIGUOUS"}
+    )
+    risk_distances = [
+        STOP_ATR * float(t["atr"])
+        for t in evaluated
+        if t["status"] in {"TP", "SL", "AMBIGUOUS"}
+        and pd.notna(t.get("atr")) and float(t["atr"]) > 0
+    ]
+    for assumed_round_trip_pips in (0.5, 1.0, 2.0):
+        cost_r = sum(
+            (assumed_round_trip_pips * 0.0001) / distance
+            for distance in risk_distances
+        )
+        suffix = str(assumed_round_trip_pips).replace(".", "_")
+        summary[f"assumed_cost_{suffix}_pips_R"] = cost_r
+        summary[f"total_R_after_assumed_cost_{suffix}_pips_conservative"] = conservative_r - cost_r
     return summary, trades
 
 
