@@ -285,9 +285,16 @@ def main() -> None:
     summaries, all_trades = [], []
     for candidate, mask in zip(CANDIDATES, (c1_mask, c2_mask, c3_mask)):
         sig = base.loc[mask, ["timestamp", "direction"]].copy()
+        raw_evidence_rows = len(sig)
+        # A candidate event is one timestamp, not one row per matching Murphy rule.
+        # Preserve the raw evidence count so rule-row multiplicity stays auditable.
+        sig = sig.drop_duplicates(subset=["timestamp", "direction"], keep="first").reset_index(drop=True)
+        duplicate_timestamp_rows_removed = raw_evidence_rows - len(sig)
         # C1/C2 are short-only frozen bearish candidates; C3 is explicit SELL+HIGH.
         sig["direction"] = "SELL"
         summary, trades = evaluate_candidate(candidate, sig, h1)
+        summary["raw_evidence_rows"] = raw_evidence_rows
+        summary["duplicate_timestamp_rows_removed"] = duplicate_timestamp_rows_removed
         summaries.append(summary)
         all_trades.extend(trades)
 
