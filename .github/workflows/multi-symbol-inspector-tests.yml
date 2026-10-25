@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - "BACKTEST/MTF_SIX_TF_SOURCE_ADAPTER_V1.py"
+      - "BACKTEST/DEV_BACKTEST_RUNNER_V1.py"
       - "RUNTIME/RISK_ENGINE_INTEGRATION_V1/risk_engine_integration_v1.py"
       - "tests/test_*.py"
       - ".github/workflows/multi-symbol-inspector-tests.yml"
