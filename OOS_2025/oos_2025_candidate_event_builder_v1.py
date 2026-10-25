@@ -63,10 +63,19 @@ def bearish_mtf_mask(mtf: pd.DataFrame) -> pd.Series:
     flag_col = find_col(mtf, ("strong_bearish_mtf", "mtf_strong_bearish"), "strong bearish MTF flag", required=False)
     if flag_col:
         return truthy(mtf[flag_col])
+    # Source-backed fallback: require every canonical timeframe regime to be
+    # present and bearish. Never infer strong alignment from a partial subset.
+    canonical = ("M5_trend_regime", "M15_trend_regime", "M30_trend_regime",
+                 "H1_trend_regime", "H4_trend_regime", "D1_trend_regime")
+    lookup = {str(c).strip().lower(): c for c in mtf.columns}
+    cols = [lookup.get(name.lower()) for name in canonical]
+    if all(col is not None for col in cols):
+        regimes = mtf[cols].apply(pd.to_numeric, errors="coerce")
+        return regimes.notna().all(axis=1) & regimes.eq(-1).all(axis=1)
     # Do not infer "strong" from a single timeframe or missing data.
     raise ValueError(
-        "MTF source lacks an explicit strong-bearish alignment field/flag; "
-        "refusing to infer strong alignment from partial timeframes"
+        "MTF source lacks explicit strong-bearish alignment and the complete "
+        "six-timeframe trend regime set; refusing to infer from partial evidence"
     )
 
 
