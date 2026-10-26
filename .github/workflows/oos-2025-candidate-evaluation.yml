@@ -10,6 +10,9 @@ permissions:
 
 env:
   DROPBOX_ACCESS_TOKEN: ${{ secrets.DROPBOX_ACCESS_TOKEN }}
+  DROPBOX_REFRESH_TOKEN: ${{ secrets.DROPBOX_REFRESH_TOKEN }}
+  DROPBOX_APP_KEY: ${{ secrets.DROPBOX_APP_KEY }}
+  DROPBOX_APP_SECRET: ${{ secrets.DROPBOX_APP_SECRET }}
 
 jobs:
   oos-2025:
@@ -26,9 +29,29 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          TOKEN="$(printf '%s' "$DROPBOX_ACCESS_TOKEN" | tr -d '\r\n' | sed -E 's/^Bearer[[:space:]]+//; s/^\"//; s/\"$//')"
-          test -n "$TOKEN"
+          set +x
+          if [ -n "${DROPBOX_REFRESH_TOKEN:-}" ] && [ -n "${DROPBOX_APP_KEY:-}" ] && [ -n "${DROPBOX_APP_SECRET:-}" ]; then
+            TOKEN_RESPONSE=$(curl --fail --silent --show-error https://api.dropbox.com/oauth2/token \
+              -u "${DROPBOX_APP_KEY}:${DROPBOX_APP_SECRET}" \
+              -d grant_type=refresh_token \
+              --data-urlencode "refresh_token=${DROPBOX_REFRESH_TOKEN}") || {
+                echo "::error::Dropbox refresh-token exchange failed. Verify DROPBOX_REFRESH_TOKEN, DROPBOX_APP_KEY, and DROPBOX_APP_SECRET GitHub Secrets."
+                exit 1
+              }
+            TOKEN=$(python -c 'import json,sys; print(json.load(sys.stdin).get("access_token",""))' <<< "$TOKEN_RESPONSE")
+          else
+            TOKEN="$(printf '%s' "${DROPBOX_ACCESS_TOKEN:-}" | tr -d '\r\n' | sed -E 's/^Bearer[[:space:]]+//; s/^\"//; s/\"$//')"
+          fi
+          if [ -z "$TOKEN" ]; then
+            echo "::error::No Dropbox access token available. Add DROPBOX_ACCESS_TOKEN, or configure DROPBOX_REFRESH_TOKEN + DROPBOX_APP_KEY + DROPBOX_APP_SECRET as GitHub Secrets."
+            exit 1
+          fi
           mkdir -p artifacts/source/h1 artifacts/source/mtf
+          if ! curl --fail --silent --show-error https://api.dropboxapi.com/2/users/get_current_account \
+            -H "Authorization: Bearer ${TOKEN}" -H "Content-Type: application/json" --data '{}' >/dev/null; then
+            echo "::error::Dropbox rejected the credential (401/403 likely). A short-lived access token may have expired; configure refresh-token Secrets or replace DROPBOX_ACCESS_TOKEN."
+            exit 1
+          fi
           dl(){ curl -L --fail --silent --show-error https://content.dropboxapi.com/2/files/download -H "Authorization: Bearer ${TOKEN}" -H "Dropbox-API-Arg: {\"path\":\"$1\"}" -o "$2"; }
           dl "/New/MURPHY_2025_FULL_EVIDENCE.csv" artifacts/source/murphy_2025.csv
           dl "/New 8/GBPUSD_H1_2016_2025_MASTER.zip" artifacts/source/h1.zip
