@@ -43,7 +43,26 @@ def assemble_decision_event(
         provenance=provenance,
     )
     if governance.get("status") != "PASS":
-        return {"status": "NOT_EVALUABLE", "reason": governance.get("reason", "GOVERNANCE_GATE_NOT_PASS"), "governance": governance}
+        return {
+            "status": "NOT_EVALUABLE",
+            "reason": governance.get("reason", "GOVERNANCE_GATE_NOT_PASS"),
+            "governance": governance,
+        }
+
+    # The handoff adapter reports assessment status separately from execution
+    # eligibility. Enforce its hard blocks here before the evaluator can emit
+    # a directional decision. TIZ/Risk remain independent upstream gates.
+    execution_gate = governance.get("execution", {})
+    if execution_gate.get("hard_blocks"):
+        return {
+            "status": "NO_TRADE",
+            "reason": "GOVERNANCE_HARD_BLOCK",
+            "governance": governance,
+            "execution_plan": {
+                "status": "NOT_EXECUTABLE",
+                "reason": "governance_hard_block",
+            },
+        }
 
     decision = evaluate_three_book_decision(
         brain_assessment=governance["assessment"],
