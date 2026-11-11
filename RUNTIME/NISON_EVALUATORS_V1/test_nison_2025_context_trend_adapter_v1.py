@@ -6,7 +6,7 @@ import pandas as pd
 ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT / "OOS_2025"))
 
-from nison_2025_source_adapter_v1 import build_payload_rows
+from OOS_2025.nison_2025_source_adapter_v1 import build_payload_rows
 
 
 def _bars():
