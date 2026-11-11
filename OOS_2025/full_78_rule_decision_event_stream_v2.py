@@ -36,7 +36,8 @@ def build_rule_event_stream(
 
     def ingest(rows: Iterable[Mapping[str, Any]], source: str) -> None:
         for raw in rows:
-            stamp = pd.Timestamp(raw["timestamp"], tz="UTC")
+            stamp = pd.Timestamp(raw["timestamp"])
+            stamp = stamp.tz_localize("UTC") if stamp.tzinfo is None else stamp.tz_convert("UTC")
             rule_id = str(raw["rule_id"])
             if rule_id not in ALLOWLIST:
                 raise ValueError(f"rule_id outside frozen allowlist: {rule_id}")

@@ -20,12 +20,12 @@ jobs:
     steps:
       - name: Check requested time window
         run: |
-          NOW_UTC=$(date -u +%s)
-          START=$(date -u -d '2026-08-14T03:00:00Z' +%s)
-          CUTOFF=$(date -u -d '2026-08-14T11:05:00Z' +%s)
-          if [ "$NOW_UTC" -lt "$START" ] || [ "$NOW_UTC" -ge "$CUTOFF" ]; then
-            echo 'Outside requested 06:00-14:00 Cairo window; clean exit.'
-            exit 0
+          if [ "${GITHUB_EVENT_NAME:-}" != "workflow_dispatch" ]; then
+            CAIRO_HOUR=$(TZ=Africa/Cairo date +%H)
+            if [ "$CAIRO_HOUR" -lt 6 ] || [ "$CAIRO_HOUR" -ge 14 ]; then
+              echo "Outside daily 06:00-14:00 Cairo window (current Cairo hour: $CAIRO_HOUR); clean exit."
+              exit 0
+            fi
           fi
 
       - name: Checkout
