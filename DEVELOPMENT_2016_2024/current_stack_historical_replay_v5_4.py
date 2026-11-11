@@ -71,6 +71,13 @@ def evaluate_frozen_candidate_risk(
     return FrozenRiskResult(True, risk_pct, stop_loss, take_profit, position_size, "FROZEN_CANDIDATE_RISK_PASS_DEVELOPMENT")
 
 
+def _replace_exactly_once(source: str, old: str, new: str, label: str) -> str:
+    count = source.count(old)
+    if count != 1:
+        raise RuntimeError(f"V5.4 compatibility patch {label}: expected one source match, found {count}")
+    return source.replace(old, new, 1)
+
+
 source = V4.read_text(encoding="utf-8")
 if source.startswith("from __future__ import annotations\n"):
     source = source.replace(
@@ -83,7 +90,8 @@ else:
 
 # Development-only compatibility: Nison is optional confirmation evidence.
 # Missing/failed Nison is not a contradiction; only an opposite-direction PASS is.
-source = source.replace(
+source = _replace_exactly_once(
+    source,
     '        ng = nison_groups.get(ts)\n'
     '        if market_row is None or mtf_row is None or ng is None or any(pd.isna(mtf_row.get(k)) for k in MTF_FIELDS):\n'
     '            continue\n'
@@ -95,21 +103,28 @@ source = source.replace(
     '            continue\n'
     '        if ng is None:\n'
     '            ng = pd.DataFrame(columns=["source_rule_id", "expanded_ids", "status", "direction"])\n'
-    '        nids = {rid for ids in ng.expanded_ids for rid in ids}\n'
+    '        nids = {rid for ids in ng.expanded_ids for rid in ids}\n',
+    "optional_nison_confirmation",
 )
 
-source = source.replace(
+source = _replace_exactly_once(
+    source,
     '            rr_target = 1.5 * atr\n',
     '            stop_distance = SL_ATR * atr\n'
     '            rr_target = TP_R * stop_distance\n',
+    "frozen_reward_target",
 )
-source = source.replace(
+source = _replace_exactly_once(
+    source,
     '                stop_distance=0.75 * atr,\n',
     '                stop_distance=stop_distance,\n',
+    "frozen_stop_distance",
 )
-source = source.replace(
+source = _replace_exactly_once(
+    source,
     '                nison_evidence={"status":"PASS","rows":ng.drop(columns=["expanded_ids"], errors="ignore").to_dict("records"),"authoritative":True,"confirmation":confirmation,"contradiction":contradiction},\n',
     '                nison_evidence={"status":"AVAILABLE" if nids else "ABSENT","rows":ng.drop(columns=["expanded_ids"], errors="ignore").to_dict("records"),"authoritative":True,"confirmation":confirmation,"contradiction":contradiction},\n',
+    "nison_evidence_status",
 )
 
 mod = load_module_from_text(source, "current_stack_historical_replay_v5_4_impl")
