@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from nison_2025_source_adapter_v1 import build_payload_rows
+from OOS_2025.nison_2025_source_adapter_v1 import build_payload_rows
 
 
 def test_context_and_confirmation_are_nested_at_runtime_boundary():
