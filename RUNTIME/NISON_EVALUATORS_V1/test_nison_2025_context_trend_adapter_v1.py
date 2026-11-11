@@ -43,7 +43,7 @@ def test_bear_trend_is_translated_and_unknown_states_remain_fail_closed():
             {"timestamp": "2025-01-02T00:00:00Z", "trend": "BEAR_TREND"},
         ]
     )
-    rows = build_payload_rows(_bars(), ctx)
+    rows = build_payload_rows(_bars(), ctx, evaluation_year=2025)
     assert rows[0]["payload"]["context"]["trend"] == "Downtrend"
 
     ctx2 = pd.DataFrame(
