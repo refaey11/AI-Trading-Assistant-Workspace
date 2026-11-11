@@ -41,7 +41,7 @@ def test_frozen_candidate_risk_is_075_atr_and_2r():
     transformed = _load_v5_4_module().source
     assert "SL_ATR = 0.75" in transformed
     assert "TP_R = 2.0" in transformed
-    assert "reward_distance = TP_R * stop_distance" in transformed
+    assert "stop_distance = SL_ATR * atr" in transformed
     assert "rr_target = TP_R * stop_distance" in transformed
     assert "stop_distance=stop_distance," in transformed
 
