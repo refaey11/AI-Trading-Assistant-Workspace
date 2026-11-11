@@ -33,7 +33,7 @@ def test_market_state_trend_is_translated_to_nison_vocabulary():
             }
         ]
     )
-    rows = build_payload_rows(_bars(), ctx)
+    rows = build_payload_rows(_bars(), ctx, evaluation_year=2025)
     assert rows[0]["payload"]["context"]["trend"] == "Uptrend"
 
 
@@ -51,5 +51,5 @@ def test_bear_trend_is_translated_and_unknown_states_remain_fail_closed():
             {"timestamp": "2025-01-02T00:00:00Z", "trend": "TRANSITION"},
         ]
     )
-    rows2 = build_payload_rows(_bars(), ctx2)
+    rows2 = build_payload_rows(_bars(), ctx2, evaluation_year=2025)
     assert rows2[0]["payload"]["context"]["trend"] == "TRANSITION"
