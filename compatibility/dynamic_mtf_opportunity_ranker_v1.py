@@ -91,7 +91,7 @@ def select_best_opportunity(timeframe_evidence: Mapping[str, Mapping[str, Any]])
     chosen = sorted(candidates, key=lambda v: order[v.timeframe])[0]
     reasons = (
         f"{chosen.timeframe}: complete context + structure + setup + confirmation + risk",
-        "No performance history, out-of-sample evaluation data, or synthetic score used for selection.",
+        "Selection uses current evidence gates only; no performance history or synthetic score.",
         "Equal-quality executable candidates are resolved deterministically by existing execution-timeframe order.",
     )
     return OpportunitySelection("PASS", chosen.timeframe, chosen.direction, verdicts, reasons)
