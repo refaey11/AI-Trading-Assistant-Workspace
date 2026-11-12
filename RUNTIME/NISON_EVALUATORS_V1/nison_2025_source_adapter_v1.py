@@ -8,7 +8,6 @@ import pandas as pd
 # The adapter only packages source facts for the existing Nison evaluators.
 # It does not create pattern facts, direction, or confirmation labels.
 REQUIRED_OHLC = {"timestamp", "open", "high", "low", "close"}
-_TREND_TRANSLATION = {"BULL_TREND": "Uptrend", "BEAR_TREND": "Downtrend"}
 
 
 def _as_candle(row: pd.Series) -> dict[str, Any]:
@@ -27,37 +26,18 @@ def _as_candle(row: pd.Series) -> dict[str, Any]:
     return candle
 
 
-def _has_value(value: Any) -> bool:
-    if value is None:
-        return False
-    if isinstance(value, (dict, list, tuple)):
-        return bool(value)
-    try:
-        return bool(pd.notna(value))
-    except (TypeError, ValueError):
-        return True
-
-
-def _context_at_timestamp(
-    context: pd.DataFrame | None, ts: pd.Timestamp
-) -> tuple[dict[str, Any], dict[str, Any]]:
+def _context_at_timestamp(context: pd.DataFrame | None, ts: pd.Timestamp) -> dict[str, Any]:
     if context is None or context.empty or "timestamp" not in context.columns:
-        return {}, {}
+        return {}
     c = context.copy()
     c["timestamp"] = pd.to_datetime(c["timestamp"], utc=True, errors="coerce")
     c = c.dropna(subset=["timestamp"])
     matches = c.loc[c["timestamp"].eq(ts)]
     if matches.empty:
-        return {}, {}
+        return {}
     record = matches.iloc[-1].to_dict()
     record.pop("timestamp", None)
-    explicit_confirmation = record.pop("confirmation", {})
-    normalized = {k: v for k, v in record.items() if _has_value(v)}
-    trend = normalized.get("trend")
-    if isinstance(trend, str):
-        normalized["trend"] = _TREND_TRANSLATION.get(trend, trend)
-    confirmation = explicit_confirmation if isinstance(explicit_confirmation, dict) else {}
-    return normalized, confirmation
+    return {k: v for k, v in record.items() if pd.notna(v)}
 
 
 def build_payload_rows(
@@ -71,8 +51,7 @@ def build_payload_rows(
 
     Each output row contains the current timestamp, a governed rule id, and a
     payload made only from source OHLCV candles plus any supplied context row.
-    Explicit context and confirmation facts remain separate at the runtime
-    boundary; neither is synthesized by this adapter.
+    No pattern, confirmation, or directional fact is synthesized here.
     """
     missing = sorted(REQUIRED_OHLC - set(bars.columns))
     if missing:
@@ -90,14 +69,12 @@ def build_payload_rows(
         ts = row["timestamp"]
         prior = src.iloc[max(0, idx - (lookback_bars - 1)): idx + 1]
         candles = [_as_candle(r) for _, r in prior.iterrows()]
-        payload_context, payload_confirmation = _context_at_timestamp(context, ts)
+        payload_context = _context_at_timestamp(context, ts)
         for i in range(1, 45):
             rule_id = f"NISON_{i:04d}"
             payload = {"candles": candles}
             if payload_context:
                 payload["context"] = payload_context
-            if payload_confirmation:
-                payload["confirmation"] = payload_confirmation
             out.append({"timestamp": ts.isoformat(), "rule_id": rule_id, "payload": payload})
     return out
 
