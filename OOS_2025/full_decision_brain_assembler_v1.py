@@ -2,7 +2,7 @@
 
 This module creates no new trading logic. It composes the recovered Decision
 Brain assessment, governance handoff, Three-Book decision boundary, and frozen
-execution adapter. Missing evidence fails closed.
+execution adapter. TIZ is optional metadata only and cannot affect the decision.
 """
 from __future__ import annotations
 
@@ -21,7 +21,7 @@ def assemble_decision_event(
     query_as_of: Any,
     murphy_evidence: Mapping[str, Any],
     nison_evidence: Mapping[str, Any],
-    tiz_evidence: Mapping[str, Any],
+    tiz_evidence: Mapping[str, Any] | None,
     risk_evidence: Mapping[str, Any],
     historical_evidence: Mapping[str, Any] | None,
     source_rule_ids: list[str],
@@ -30,6 +30,16 @@ def assemble_decision_event(
     mode: str = "oos_evaluation",
     provenance: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
+    # TIZ may be absent, unavailable, or report any process state. Preserve it
+    # as metadata, but never use it as a gate or decision input.
+    tiz_metadata = dict(tiz_evidence or {})
+    tiz_state = str(
+        tiz_metadata.get("process_state")
+        or tiz_metadata.get("process_gate")
+        or tiz_metadata.get("status")
+        or "NOT_EVALUABLE"
+    ).upper().strip()
+
     governance = assess_with_governance(
         decision_brain_module,
         row=row,
@@ -37,29 +47,11 @@ def assemble_decision_event(
         mode=mode,
         murphy_evidence=murphy_evidence,
         nison_evidence=nison_evidence,
-        tiz_evidence=tiz_evidence,
+        tiz_evidence=tiz_metadata,
         risk_evidence=risk_evidence,
         historical_evidence=historical_evidence,
         provenance=provenance,
     )
-    tiz_state = str(
-        tiz_evidence.get("process_state")
-        or tiz_evidence.get("process_gate")
-        or tiz_evidence.get("status")
-        or "NOT_EVALUABLE"
-    ).upper().strip()
-    if tiz_state == "FAIL":
-        return {
-            "status": "NO_TRADE",
-            "reason": "TIZ_PROCESS_GATE_FAILED",
-            "governance": governance,
-        }
-    if tiz_state not in {"READY", "PASS", "AVAILABLE"}:
-        return {
-            "status": "NOT_EVALUABLE",
-            "reason": "TIZ_PROCESS_GATE_NOT_VERIFIED",
-            "governance": governance,
-        }
 
     if governance.get("status") != "PASS":
         return {"status": "NOT_EVALUABLE", "reason": governance.get("reason", "GOVERNANCE_GATE_NOT_PASS"), "governance": governance}
@@ -74,7 +66,7 @@ def assemble_decision_event(
         brain_assessment=governance["assessment"],
         murphy_evidence=murphy_evidence,
         nison_evidence=nison_evidence,
-        tiz_evidence={"process_state": tiz_evidence.get("process_state") or tiz_evidence.get("process_gate") or tiz_evidence.get("status"), **dict(tiz_evidence)},
+        tiz_evidence=tiz_metadata,
         risk_evidence={
             "risk_pass": risk_pass,
             "stop_loss": risk_evidence.get("stop_loss"),
@@ -93,7 +85,7 @@ def assemble_decision_event(
         "entry_price": entry_price,
         "atr": atr,
         "risk_pass": risk_pass,
-        "tiz_process_state": tiz_evidence.get("process_state") or tiz_evidence.get("process_gate") or tiz_evidence.get("status"),
+        "tiz_process_state": tiz_state,
         "mode": mode,
     })
     if execution_plan.get("status") != "EXECUTABLE":
@@ -110,6 +102,9 @@ def assemble_decision_event(
             "historical_memory_used_for_direction": False,
             "nison_generated_direction": False,
             "tiz_generated_direction": False,
+            "tiz_decision_authority": False,
+            "tiz_effect_on_eligibility": False,
+            "tiz_metadata_state": tiz_state,
             "risk_overridden": False,
             "oos_tuning": False,
         },
@@ -124,7 +119,7 @@ def assemble_from_dict(event: Mapping[str, Any]) -> dict[str, Any]:
         query_as_of=event["query_as_of"],
         murphy_evidence=event.get("murphy_evidence", {}),
         nison_evidence=event.get("nison_evidence", {}),
-        tiz_evidence=event.get("tiz_evidence", {}),
+        tiz_evidence=event.get("tiz_evidence"),
         risk_evidence=event.get("risk_evidence", {}),
         historical_evidence=event.get("historical_evidence"),
         source_rule_ids=list(event.get("source_rule_ids", [])),
