@@ -1,8 +1,7 @@
 """Governed handoff adapter around the recovered Decision Brain V1 source.
 
-This adapter does not modify the recovered Decision Brain and does not invent
-its scoring. It packages already-derived evidence and enforces integration
-boundaries before/after the V1 market assessment.
+This adapter does not modify the recovered Decision Brain or invent scoring.
+TIZ is retained as optional audit metadata only and has no decision authority.
 """
 from __future__ import annotations
 
@@ -46,7 +45,7 @@ def _normalize_risk_gate(risk: Mapping[str, Any]) -> str:
 def _sanitize_historical(historical: Mapping[str, Any] | None) -> dict[str, Any]:
     payload = dict(historical or {})
     sources = deepcopy(payload.get("sources", {}))
-    sanitized = {
+    return {
         "retrieval_status": payload.get("retrieval_status") or payload.get("status"),
         "candidate_count": payload.get("candidate_count"),
         "top_k_returned": payload.get("top_k_returned"),
@@ -64,7 +63,6 @@ def _sanitize_historical(historical: Mapping[str, Any] | None) -> dict[str, Any]
         "consumed_by_decision_boundary": bool(payload.get("consumed_by_decision_boundary", False)),
         "predicted_return_used_as_direction": False,
     }
-    return sanitized
 
 
 def assess_with_governance(
@@ -100,17 +98,15 @@ def assess_with_governance(
     risk = dict(risk_evidence or {})
     nison = dict(nison_evidence or {})
 
-    tiz_gate = _normalize_gate(tiz.get("process_gate") or tiz.get("status"))
+    # TIZ state is retained for traceability only. It is deliberately excluded
+    # from hard blocks, review requirements, and execution eligibility.
+    tiz_state = _normalize_gate(tiz.get("process_gate") or tiz.get("process_state") or tiz.get("status"))
     risk_gate = _normalize_risk_gate(risk)
     nison_confirmation = str(nison.get("confirmation") or "ABSENT").upper()
     nison_contradiction = bool(nison.get("contradiction", False))
 
     hard_blocks: list[str] = []
     needs_review: list[str] = []
-    if tiz_gate == "FAIL":
-        hard_blocks.append("TIZ_PROCESS_GATE_FAIL")
-    elif tiz_gate == "NOT_EVALUABLE":
-        needs_review.append("TIZ_PROCESS_GATE_NOT_EVALUABLE")
     if risk_gate == "FAIL":
         hard_blocks.append("RISK_GATE_FAIL")
     elif risk_gate == "NOT_EVALUABLE":
@@ -135,6 +131,8 @@ def assess_with_governance(
             "hard_blocks": hard_blocks,
             "needs_review": needs_review,
             "final_trade_decision": None,
+            "tiz_decision_authority": False,
+            "tiz_metadata_state": tiz_state,
         },
         "governance": {
             "recovered_v1_unchanged": True,
@@ -142,6 +140,9 @@ def assess_with_governance(
             "predicted_return_used_as_direction": False,
             "nison_generated_direction": False,
             "tiz_generated_direction": False,
+            "tiz_decision_authority": False,
+            "tiz_execution_gate": False,
+            "tiz_risk_influence": False,
             "risk_gate_overridable": False,
             "future_data_allowed": False,
             "2025_used_for_tuning": False,
