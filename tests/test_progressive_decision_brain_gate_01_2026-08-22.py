@@ -64,15 +64,17 @@ def test_gate01_nison_alone_cannot_create_direction():
     assert out["gates"]["abstain"] is True
 
 
-def test_gate01_process_block_cannot_be_overridden_by_historical_memory():
+def test_gate01_legacy_tiz_process_block_is_metadata_only():
     out = run(
         MARKET_ROW,
         {"alignment_state": "PROCESS_BLOCKED", "process_gate": "FAIL"},
         similarity={"predicted_return": 0.99},
     )
-    assert out["status"] == "BLOCK"
-    assert out["assessment"] is None
-    assert out["gates"]["hard_block"] is True
+    assert out["status"] == "ASSESSED"
+    assert out["assessment"] is not None
+    assert out["knowledge_evidence"]["process_gate"] == "FAIL"
+    assert out["knowledge_evidence"]["tiz_decision_authority"] is False
+    assert out["gates"]["hard_block"] is False
 
 
 def test_gate01_missing_alignment_fails_closed():
