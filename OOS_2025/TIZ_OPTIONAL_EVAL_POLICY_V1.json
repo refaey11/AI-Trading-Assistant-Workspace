@@ -1,25 +1,28 @@
 {
-  "version": "1.0",
-  "status": "EVALUATION_ONLY",
-  "mode": "TIZ_OPTIONAL_EVAL",
-  "purpose": "Permit a separate profitability evaluation path when authoritative TIZ evidence is unavailable, without changing the canonical three-book Decision Brain mode.",
-  "canonical_mode_unchanged": true,
-  "tiz_role": "process_only",
-  "tiz_direction": "NEUTRAL",
-  "tiz_missing_evidence": "NOT_EVALUABLE",
+  "version": "2.0",
+  "status": "SUPERSEDES_V1_METADATA_ONLY",
+  "mode": "EVALUATION_ONLY",
+  "purpose": "Retain TIZ outputs as optional audit metadata without affecting any Decision Brain or execution outcome.",
+  "canonical_mode_unchanged": false,
+  "tiz_role": "optional_metadata_only",
+  "tiz_direction": "NO_AUTHORITY",
+  "tiz_missing_evidence": "NO_DECISION_EFFECT",
   "tiz_may_generate_direction": false,
   "tiz_may_override_direction": false,
+  "decision_effects": {
+    "may_block_trade": false,
+    "may_allow_trade": false,
+    "may_change_direction": false,
+    "may_change_confidence_or_strength": false,
+    "may_change_risk_or_position_size": false,
+    "may_change_execution_levels": false,
+    "missing_or_failed_tiz_changes_eligibility": false
+  },
   "eligibility": {
     "required": ["nison_evidence_available", "risk_pass"],
-    "optional": ["tiz_evidence"],
-    "tiz_unavailable_action": "ALLOW_WITH_UNVERIFIED_TIZ_FLAG",
-    "tiz_available_action": "EVALUATE_AND_RECORD"
-  },
-  "outputs": {
-    "tiz_status": ["PASS", "READY", "AVAILABLE", "NOT_EVALUABLE"],
-    "execution_eligible": true,
-    "tiz_verified": false,
-    "evaluation_mode": "TIZ_OPTIONAL_EVAL"
+    "optional_metadata": ["tiz_evidence"],
+    "tiz_unavailable_action": "RECORD_ONLY",
+    "tiz_available_action": "RECORD_ONLY"
   },
   "governance": {
     "2025_is_oos": true,
@@ -27,6 +30,9 @@
     "no_new_psychological_thresholds": true,
     "no_new_direction_logic": true,
     "no_sl_tp_changes": true,
-    "canonical_full_three_book_mode_remains_fail_closed": true
+    "risk_remains_hard_gate": true,
+    "murphy_remains_market_context": true,
+    "nison_remains_confirmation_only": true,
+    "historical_memory_remains_evidence_only": true
   }
 }
