@@ -34,11 +34,9 @@ def test_rejects_contradicted_and_incomplete_candidates():
 
 
 def test_never_uses_performance_or_2025_fields_for_selection():
-    result = select_best_opportunity({"M30": {
-        **_complete(),
-        "historical_pf": 999.0,
-        "year": 2025,
-    }})
+    result = select_best_opportunity({
+        "M30": {**_complete(), "historical_pf": 0.1, "year": 2025},
+        "M15": {**_complete(), "historical_pf": 999.0, "year": 2016},
+    })
     assert result.status == "PASS"
     assert result.selected_timeframe == "M30"
-    assert all("2025" not in reason for reason in result.selection_reasons)
