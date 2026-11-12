@@ -4,14 +4,13 @@ from typing import Any, Dict
 
 SL_ATR = 0.75
 TP_R = 2.0
-ALLOWED_TIZ_STATES = {"READY", "PASS", "AVAILABLE", "NOT_EVALUABLE", ""}
 
 
 def build_optional_oos_execution_plan(event: Dict[str, Any]) -> Dict[str, Any]:
-    """Build an evaluation-only execution plan with TIZ explicitly optional.
+    """Build an evaluation-only execution plan with TIZ as optional metadata.
 
-    This adapter is isolated from the canonical three-book execution boundary.
-    It never creates direction and still requires the frozen Risk gate.
+    Direction, Risk pass, entry, and ATR determine this adapter's result.
+    TIZ is echoed for audit only; it cannot block or alter the plan.
     """
     if event.get("evaluation_mode") != "TIZ_OPTIONAL_EVAL":
         return {"status": "NOT_EXECUTABLE", "reason": "WRONG_EVALUATION_MODE"}
@@ -22,10 +21,6 @@ def build_optional_oos_execution_plan(event: Dict[str, Any]) -> Dict[str, Any]:
 
     if event.get("risk_pass") is not True:
         return {"status": "NOT_EXECUTABLE", "reason": "risk_gate_not_passed"}
-
-    tiz_state = str(event.get("tiz_process_state") or "NOT_EVALUABLE")
-    if tiz_state not in ALLOWED_TIZ_STATES:
-        return {"status": "NOT_EXECUTABLE", "reason": "unsupported_tiz_state"}
 
     entry = event.get("entry_price")
     atr = event.get("atr")
@@ -54,7 +49,7 @@ def build_optional_oos_execution_plan(event: Dict[str, Any]) -> Dict[str, Any]:
         "take_profit": float(take_profit),
         "risk_distance": float(risk_distance),
         "reward_distance": float(reward_distance),
-        "tiz_status": tiz_state,
-        "tiz_verified": tiz_state in {"READY", "PASS", "AVAILABLE"},
+        "tiz_metadata_status": str(event.get("tiz_process_state") or "NOT_EVALUABLE").upper(),
+        "tiz_decision_authority": False,
         "evaluation_mode": "TIZ_OPTIONAL_EVAL",
     }
