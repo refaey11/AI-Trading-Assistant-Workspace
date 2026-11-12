@@ -12,15 +12,19 @@ MARKET_ROW = {
     "M5_volume_regime": 0.5,
 }
 
-def test_process_fail_blocks_before_brain():
-    out = run(MARKET_ROW, {"alignment_state":"ALIGNED","process_gate":"FAIL"})
-    assert out["status"] == "BLOCK"
-    assert out["assessment"] is None
+
+def test_tiz_process_fail_does_not_block_brain_assessment():
+    out = run(MARKET_ROW, {"alignment_state":"PROCESS_BLOCKED","process_gate":"FAIL"})
+    assert out["status"] == "ASSESSED"
+    assert out["assessment"] is not None
+    assert out["gates"]["tiz_decision_authority"] is False
+
 
 def test_nison_contradiction_reviews_before_brain():
     out = run(MARKET_ROW, {"alignment_state":"ALIGNED","process_gate":"PASS","contradiction_gate":"CONTRADICTION"})
     assert out["status"] == "REVIEW"
     assert out["assessment"] is None
+
 
 def test_aligned_evidence_reaches_assessment_without_trade_command():
     out = run(MARKET_ROW, {"alignment_state":"ALIGNED","process_gate":"PASS","contradiction_gate":"PASS","candidate_direction":"BULLISH"})
@@ -28,7 +32,9 @@ def test_aligned_evidence_reaches_assessment_without_trade_command():
     assert out["assessment"].directional_bias in {"bullish","bearish","neutral","conflicted"}
     assert out["knowledge_evidence"]["final_trade_decision"] is None
 
-def test_similarity_cannot_override_process_block():
+
+def test_similarity_cannot_restore_tiz_gate_or_create_direction():
     out = run(MARKET_ROW, {"alignment_state":"PROCESS_BLOCKED","process_gate":"FAIL"}, {"predicted_return":0.99})
-    assert out["status"] == "BLOCK"
-    assert out["assessment"] is None
+    assert out["status"] == "ASSESSED"
+    assert out["assessment"] is not None
+    assert out["knowledge_evidence"]["final_trade_decision"] is None
