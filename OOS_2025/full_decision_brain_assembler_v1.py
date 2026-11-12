@@ -1,4 +1,4 @@
-"""Governed orchestration boundary for the existing full Decision Brain.
+""""Governed orchestration boundary for the existing full Decision Brain.
 
 This module creates no new trading logic. It composes the recovered Decision
 Brain assessment, governance handoff, Three-Book decision boundary, and frozen
@@ -30,6 +30,43 @@ def assemble_decision_event(
     mode: str = "oos_evaluation",
     provenance: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
+    tiz_state = str(
+        tiz_evidence.get("process_state")
+        or tiz_evidence.get("process_gate")
+        or tiz_evidence.get("status")
+        or "NOT_EVALUABLE"
+    ).upper().strip()
+
+    if tiz_state == "FAIL":
+        return {
+            "status": "NO_TRADE",
+            "reason": "TIZ_PROCESS_GATE_FAILED",
+            "execution_plan": {
+                "status": "NOT_EXECUTABLE",
+                "reason": "TIZ_PROCESS_GATE_FAILED",
+            },
+        }
+
+    if tiz_state not in {"READY", "PASS", "AVAILABLE"}:
+        return {
+            "status": "NOT_EVALUABLE",
+            "reason": "TIZ_PROCESS_GATE_NOT_VERIFIED",
+            "execution_plan": {
+                "status": "NOT_EXECUTABLE",
+                "reason": "TIZ_PROCESS_GATE_NOT_VERIFIED",
+            },
+        }
+
+    risk_pass = (
+        risk_evidence.get("risk_pass") is True
+        if "risk_pass" in risk_evidence
+        else str(
+            risk_evidence.get("risk_status")
+            or risk_evidence.get("status")
+            or ""
+        ).upper() == "PASS"
+    )
+
     governance = assess_with_governance(
         decision_brain_module,
         row=row,
@@ -49,9 +86,9 @@ def assemble_decision_event(
         brain_assessment=governance["assessment"],
         murphy_evidence=murphy_evidence,
         nison_evidence=nison_evidence,
-        tiz_evidence={"process_state": tiz_evidence.get("process_state") or tiz_evidence.get("process_gate") or tiz_evidence.get("status"), **dict(tiz_evidence)},
+        tiz_evidence={"process_state": tiz_state, **dict(tiz_evidence)},
         risk_evidence={
-            "risk_pass": risk_evidence.get("risk_pass") if "risk_pass" in risk_evidence else str(risk_evidence.get("risk_status") or risk_evidence.get("status") or "").upper() == "PASS",
+            "risk_pass": risk_pass,
             "stop_loss": risk_evidence.get("stop_loss"),
             "take_profit": risk_evidence.get("take_profit"),
             "rr": risk_evidence.get("rr"),
@@ -67,8 +104,8 @@ def assemble_decision_event(
         "final_action": decision["decision"]["final"],
         "entry_price": entry_price,
         "atr": atr,
-        "risk_pass": True,
-        "tiz_process_state": tiz_evidence.get("process_state") or tiz_evidence.get("process_gate") or tiz_evidence.get("status"),
+        "risk_pass": risk_pass,
+        "tiz_process_state": tiz_state,
         "mode": mode,
     })
     if execution_plan.get("status") != "EXECUTABLE":
