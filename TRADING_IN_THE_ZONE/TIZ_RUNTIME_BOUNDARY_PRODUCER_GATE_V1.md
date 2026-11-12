@@ -47,3 +47,10 @@ Therefore this document deliberately does **not** implement a new producer and d
 
 ## Next gate
 Close the authoritative producer/provenance contract first. Then implement only the smallest missing evidence fields, deterministic evaluators, adapter integration, historical QA, and final freeze gates.
+
+
+---
+
+## Superseded by project decision — 2026-11-12
+
+The prior process-gate / fail-closed implementation direction in this document is superseded. TIZ is now optional metadata only and has no Decision Brain or execution authority. Missing, failed, or unavailable TIZ evidence must not block or alter a decision. Preserve the existing TIZ knowledge and provenance; do not fabricate PASS. See `docs/TIZ_DECISION_AUTHORITY_CHANGE_2026-11-12.md` and the current `03_TIZ/TIZ_RUNTIME_BOUNDARY_RESOLUTION_V2.json` policy.
