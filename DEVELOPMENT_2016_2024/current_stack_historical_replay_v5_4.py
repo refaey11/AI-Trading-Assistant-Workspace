@@ -109,7 +109,7 @@ source = _replace_exactly_once(
 
 source = _replace_exactly_once(
     source,
-    '            rr_target = 1.5 * atr\n',
+    '            rr_target = ' + '1.5 * atr\n',
     '            stop_distance = SL_ATR * atr\n'
     '            rr_target = TP_R * stop_distance\n',
     "frozen_reward_target",
