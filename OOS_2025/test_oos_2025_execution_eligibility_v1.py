@@ -12,7 +12,7 @@ def test_missing_authoritative_evidence_is_not_eligible():
         }
     ])
     out = apply_execution_eligibility(events)
-    assert out.loc[0, "execution_eligible"] is False
+    assert bool(out.loc[0, "execution_eligible"]) is False
     assert out.loc[0, "execution_eligibility_reason"] == "NISON_NOT_AUTHORITATIVE"
 
 
