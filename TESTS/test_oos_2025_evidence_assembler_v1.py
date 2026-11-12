@@ -19,5 +19,5 @@ def test_assembler_keeps_2025_scope_and_fails_closed():
     assert out.iloc[0]['murphy_pass'] == 1
     assert out.iloc[0]['nison_status'] == 'NOT_EVALUABLE'
     assert out.iloc[0]['tiz_process_state'] == 'NOT_EVALUABLE'
-    assert out.iloc[0]['risk_pass'] is False
+    assert bool(out.iloc[0]['risk_pass']) is False
     assert out.iloc[0]['missing_authoritative'] == 'nison_evidence|tiz_evidence|risk_evidence'
