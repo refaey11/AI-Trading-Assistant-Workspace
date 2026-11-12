@@ -8,7 +8,7 @@ def row():
 def base():
     return dict(decision_brain_module=decision_brain,row=row(),query_as_of="2024-12-31T23:00:00Z",murphy_evidence={"status":"PASS","direction":"BULLISH"},nison_evidence={"confirmation":"CONFIRMED","contradiction":False},tiz_evidence={"process_gate":"PASS"},risk_evidence={"risk_status":"PASS","stop_loss":"1.2700","take_profit":"1.2800","rr":"2.0"},historical_evidence={"predicted_return":0.004,"retrieval_status":"OK"},source_rule_ids=RULES,entry_price=1.275,atr=0.002)
 
-def test_executes_only_when_existing_gates_pass():
+def test_executes_with_valid_market_confirmation_and_risk():
     result=assemble_decision_event(**base())
     assert result["status"]=="EXECUTABLE"
     assert result["decision"]["decision"]["final"]=="BUY"
@@ -17,14 +17,22 @@ def test_executes_only_when_existing_gates_pass():
     assert result["execution_plan"]["tp_r"]==2.0
     assert result["audit"]["historical_memory_used_for_direction"] is False
     assert result["audit"]["nison_generated_direction"] is False
+    assert result["audit"]["tiz_decision_authority"] is False
 
-def test_risk_nison_and_tiz_failures_block_execution():
+def test_risk_and_nison_failures_still_block_execution():
     a=base(); a["risk_evidence"]={"risk_status":"FAIL","stop_loss":"1.2700"}
     assert assemble_decision_event(**a)["status"]=="NO_TRADE"
     b=base(); b["nison_evidence"]={"confirmation":"CONTRADICTION","contradiction":True}
     assert assemble_decision_event(**b)["status"]=="NO_TRADE"
-    c=base(); c["tiz_evidence"]={"process_gate":"FAIL"}
-    assert assemble_decision_event(**c)["status"]=="NO_TRADE"
+
+def test_tiz_absent_failed_or_not_evaluable_has_no_decision_effect():
+    for evidence in (None, {}, {"process_gate":"FAIL"}, {"process_gate":"NOT_EVALUABLE"}, {"process_gate":"READY"}):
+        event=base()
+        event["tiz_evidence"]=evidence
+        result=assemble_decision_event(**event)
+        assert result["status"]=="EXECUTABLE"
+        assert result["decision"]["decision"]["final"]=="BUY"
+        assert result["audit"]["tiz_effect_on_eligibility"] is False
 
 def test_missing_execution_inputs_fail_closed_and_2025_never_tunes():
     a=base(); a["entry_price"]=None
