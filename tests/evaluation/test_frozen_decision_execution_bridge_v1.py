@@ -4,32 +4,32 @@ from evaluation.frozen_decision_execution_bridge_v1 import (
 )
 
 
-def test_long_requires_process_and_risk_gates():
+def test_long_does_not_require_tiz_process_state():
     result = evaluate_entry_eligibility({
         "direction": "LONG",
         "source_rule_ids": ["NISON_0001", "MURPHY_0030"],
-        "trading_zone": {"process_state": "READY"},
         "risk_engine": {"risk_pass": True},
     })
     assert result["execution_allowed"] is True
     assert result["status"] == "EXECUTABLE"
 
 
-def test_process_gate_blocks():
-    result = evaluate_entry_eligibility({
+def test_tiz_metadata_never_blocks_execution():
+    base = {
         "direction": "SHORT",
         "source_rule_ids": ["NISON_0002"],
-        "trading_zone": {"process_state": "NOT_READY"},
         "risk_engine": {"risk_pass": True},
-    })
-    assert result == {"status": "BLOCKED", "execution_allowed": False, "reason": "PROCESS_GATE"}
+    }
+    for state in ("READY", "NOT_READY", "FAIL", "NOT_EVALUABLE"):
+        result = evaluate_entry_eligibility({**base, "trading_zone": {"process_state": state}})
+        assert result["status"] == "EXECUTABLE"
+        assert result["execution_allowed"] is True
 
 
 def test_risk_gate_blocks():
     result = evaluate_entry_eligibility({
         "direction": "LONG",
         "source_rule_ids": ["MURPHY_0031"],
-        "trading_zone": {"process_state": "READY"},
         "risk_engine": {"risk_pass": False},
     })
     assert result == {"status": "BLOCKED", "execution_allowed": False, "reason": "RISK_GATE"}
@@ -39,7 +39,6 @@ def test_no_trade_stays_no_trade():
     result = evaluate_entry_eligibility({
         "direction": "NO_TRADE",
         "source_rule_ids": [],
-        "trading_zone": {"process_state": "READY"},
         "risk_engine": {"risk_pass": True},
     })
     assert result["status"] == "NO_TRADE"
@@ -51,7 +50,6 @@ def test_unknown_rule_is_rejected():
         evaluate_entry_eligibility({
             "direction": "LONG",
             "source_rule_ids": ["UNKNOWN_RULE_999"],
-            "trading_zone": {"process_state": "READY"},
             "risk_engine": {"risk_pass": True},
         })
     except ValueError as exc:
@@ -67,10 +65,5 @@ def test_2025_oos_context_accepts_clean_evaluation():
 
 
 def test_2025_oos_context_rejects_tuning_and_future_data():
-    result = validate_oos_context(
-        year=2025,
-        mode="oos_evaluation",
-        tuning=True,
-        future_data=True,
-    )
+    result = validate_oos_context(year=2025, mode="oos_evaluation", tuning=True, future_data=True)
     assert result == {"status": "REJECTED", "reason": "OOS_INTEGRITY_VIOLATION"}
