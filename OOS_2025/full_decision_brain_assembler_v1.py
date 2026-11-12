@@ -42,8 +42,33 @@ def assemble_decision_event(
         historical_evidence=historical_evidence,
         provenance=provenance,
     )
+    tiz_state = str(
+        tiz_evidence.get("process_state")
+        or tiz_evidence.get("process_gate")
+        or tiz_evidence.get("status")
+        or "NOT_EVALUABLE"
+    ).upper().strip()
+    if tiz_state == "FAIL":
+        return {
+            "status": "NO_TRADE",
+            "reason": "TIZ_PROCESS_GATE_FAILED",
+            "governance": governance,
+        }
+    if tiz_state not in {"READY", "PASS", "AVAILABLE"}:
+        return {
+            "status": "NOT_EVALUABLE",
+            "reason": "TIZ_PROCESS_GATE_NOT_VERIFIED",
+            "governance": governance,
+        }
+
     if governance.get("status") != "PASS":
         return {"status": "NOT_EVALUABLE", "reason": governance.get("reason", "GOVERNANCE_GATE_NOT_PASS"), "governance": governance}
+
+    risk_pass = (
+        risk_evidence.get("risk_pass") is True
+        if "risk_pass" in risk_evidence
+        else str(risk_evidence.get("risk_status") or risk_evidence.get("status") or "").upper() == "PASS"
+    )
 
     decision = evaluate_three_book_decision(
         brain_assessment=governance["assessment"],
@@ -51,7 +76,7 @@ def assemble_decision_event(
         nison_evidence=nison_evidence,
         tiz_evidence={"process_state": tiz_evidence.get("process_state") or tiz_evidence.get("process_gate") or tiz_evidence.get("status"), **dict(tiz_evidence)},
         risk_evidence={
-            "risk_pass": risk_evidence.get("risk_pass") if "risk_pass" in risk_evidence else str(risk_evidence.get("risk_status") or risk_evidence.get("status") or "").upper() == "PASS",
+            "risk_pass": risk_pass,
             "stop_loss": risk_evidence.get("stop_loss"),
             "take_profit": risk_evidence.get("take_profit"),
             "rr": risk_evidence.get("rr"),
@@ -67,7 +92,7 @@ def assemble_decision_event(
         "final_action": decision["decision"]["final"],
         "entry_price": entry_price,
         "atr": atr,
-        "risk_pass": True,
+        "risk_pass": risk_pass,
         "tiz_process_state": tiz_evidence.get("process_state") or tiz_evidence.get("process_gate") or tiz_evidence.get("status"),
         "mode": mode,
     })
