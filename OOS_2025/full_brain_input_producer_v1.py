@@ -50,7 +50,7 @@ def normalize(*, context: Path, murphy: Path, nison: Path, risk: Path, execution
         out = df[df["timestamp"].isin(common)].copy()
         out.to_csv(output_dir / f"{name}.csv", index=False)
         paths[name] = str(output_dir / f"{name}.csv")
-    manifest = {"status":"PASS","mode":"FULL_DECISION_BRAIN_INPUT_NORMALIZATION","evaluation_year":year,"common_timestamps":len(common),"streams":{name:{"rows":int(len(df[df["timestamp"].isin(common)])),"source":paths[name]} for name,df in streams.items()},"canonical_policy":{"nison_confirmation_only":True,"tiz_process_only":True,"risk_hard_gate":True,"historical_memory_evidence_only":True,"2025_is_oos":True,"no_tuning":True},"source_backed_only":True,"invented_evidence":False,"ready_for_full_brain_assembler":True}
+    manifest = {"status":"PASS","mode":"FULL_DECISION_BRAIN_INPUT_NORMALIZATION","evaluation_year":year,"common_timestamps":len(common),"streams":{name:{"rows":int(len(df[df["timestamp"].isin(common)])),"source":paths[name]} for name,df in streams.items()},"canonical_policy":{"nison_confirmation_only":True,"tiz_metadata_only":True,"tiz_decision_authority":False,"risk_hard_gate":True,"historical_memory_evidence_only":True,"2025_is_oos":True,"no_tuning":True},"source_backed_only":True,"invented_evidence":False,"ready_for_full_brain_assembler":True}
     (output_dir / "FULL_BRAIN_INPUT_MANIFEST.json").write_text(json.dumps(manifest,indent=2),encoding="utf-8")
     return manifest
 
