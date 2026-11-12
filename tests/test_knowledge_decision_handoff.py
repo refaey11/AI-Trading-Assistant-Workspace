@@ -27,19 +27,22 @@ def test_nison_contradiction_routes_to_review():
     assert out["gates"]["abstain"] is True
 
 
-def test_process_fail_is_hard_block():
+def test_tiz_process_fail_does_not_block_assessment():
     out = build_handoff(BASE, {
         "alignment_state": "PROCESS_BLOCKED",
         "process_gate": "FAIL",
     })
-    assert out["routing"] == "BLOCK"
-    assert out["gates"]["hard_block"] is True
+    assert out["routing"] == "ASSESS"
+    assert out["gates"]["hard_block"] is False
+    assert out["gates"]["tiz_decision_authority"] is False
+    assert out["knowledge_evidence"]["process_gate"] == "FAIL"
 
 
-def test_similarity_cannot_override_hard_block():
+def test_similarity_does_not_change_routing_or_create_trade_command():
     out = build_handoff(BASE, {
         "alignment_state": "PROCESS_BLOCKED",
         "process_gate": "FAIL",
     }, similarity={"predicted_return": 0.99})
-    assert out["routing"] == "BLOCK"
-    assert out["gates"]["hard_block"] is True
+    assert out["routing"] == "ASSESS"
+    assert out["gates"]["hard_block"] is False
+    assert out["knowledge_evidence"]["final_trade_decision"] is None
