@@ -52,7 +52,8 @@ jobs:
             OOS_2025/tiz_optional_execution_adapter_v2.py \
             RUNTIME/DECISION_RUNTIME_V1/full_brain_runtime_bridge_v1.py \
             RUNTIME/DECISION_RUNTIME_V1/single_event_gate.py \
-            evaluation/frozen_decision_execution_bridge_v1.py
+            evaluation/frozen_decision_execution_bridge_v1.py \\
+            evaluation/three_book_decision_evaluator_v1.py
       - name: Run TIZ metadata-only compatibility tests
         run: |
           python -m pytest -q \
@@ -61,7 +62,8 @@ jobs:
             tests/compatibility/test_tiz_runtime_boundary_resolution_v2.py \
             tests/evaluation/test_frozen_decision_execution_bridge_v1.py \
             tests/evaluation/test_full_decision_brain_assembler_v1.py \
-            tests/evaluation/test_tiz_optional_execution_adapter_v2.py \
+            tests/evaluation/test_tiz_optional_execution_adapter_v2.py \\
+            tests/evaluation/test_three_book_decision_evaluator_v1.py \
             tests/test_knowledge_decision_handoff.py \
             tests/test_knowledge_decision_brain_runtime.py \
             OOS_2025/test_execution_oos_adapter_v1.py \
