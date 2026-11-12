@@ -32,7 +32,9 @@ def build_from_frames(market: pd.DataFrame, mtf: pd.DataFrame, smoke: pd.DataFra
     m['nison_status'] = 'NOT_EVALUABLE'
     m['tiz_process_state'] = 'NOT_EVALUABLE'
     m['risk_pass'] = False
-    m['missing_authoritative'] = 'nison_evidence|tiz_evidence|risk_evidence'
+    # TIZ is optional metadata and is not included in the authoritative
+    # evidence-missing list. Nison and Risk remain independently represented.
+    m['missing_authoritative'] = 'nison_evidence|risk_evidence'
     return m[['timestamp','murphy_pass','murphy_fail','murphy_not_evaluable','directional_confirmation',
               'source_rule_ids','trend','structure_event','location','volatility_state','volume_state',
               'mtf_state','h4_trend','h4_structure','atr20','nison_status','tiz_process_state',
