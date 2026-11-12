@@ -6,7 +6,6 @@ def _event(**overrides):
         "evaluation_mode": "TIZ_OPTIONAL_EVAL",
         "final_action": "BUY",
         "risk_pass": True,
-        "tiz_process_state": "NOT_EVALUABLE",
         "entry_price": 1.2500,
         "atr": 0.0050,
     }
@@ -14,12 +13,19 @@ def _event(**overrides):
     return event
 
 
-def test_missing_tiz_is_allowed_only_in_optional_oos_mode():
+def test_missing_tiz_is_allowed_and_levels_remain_frozen():
     result = build_optional_oos_execution_plan(_event())
     assert result["status"] == "EXECUTABLE"
-    assert result["tiz_verified"] is False
     assert result["stop_loss"] == 1.24625
     assert result["take_profit"] == 1.2575
+    assert result["tiz_decision_authority"] is False
+
+
+def test_tiz_status_never_changes_execution_or_levels():
+    plans = [build_optional_oos_execution_plan(_event(tiz_process_state=state)) for state in ("READY", "FAIL", "NOT_EVALUABLE", "UNRECOGNIZED")]
+    assert all(plan["status"] == "EXECUTABLE" for plan in plans)
+    assert all(plan["stop_loss"] == plans[0]["stop_loss"] for plan in plans)
+    assert all(plan["take_profit"] == plans[0]["take_profit"] for plan in plans)
 
 
 def test_wrong_mode_is_rejected():
@@ -31,9 +37,3 @@ def test_risk_failure_is_still_hard_block():
     result = build_optional_oos_execution_plan(_event(risk_pass=False))
     assert result["status"] == "NOT_EXECUTABLE"
     assert result["reason"] == "risk_gate_not_passed"
-
-
-def test_tiz_available_is_recorded_as_verified():
-    result = build_optional_oos_execution_plan(_event(tiz_process_state="READY"))
-    assert result["status"] == "EXECUTABLE"
-    assert result["tiz_verified"] is True
