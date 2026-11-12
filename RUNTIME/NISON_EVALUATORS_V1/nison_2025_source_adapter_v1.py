@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Iterable, Iterator, Mapping
 
 import pandas as pd
 
@@ -44,7 +44,7 @@ def build_payload_rows(
     bars: pd.DataFrame,
     context: pd.DataFrame | None = None,
     *,
-    evaluation_year: int,
+    evaluation_year: int = 2025,
     lookback_bars: int = 60,
 ) -> list[dict[str, Any]]:
     """Package historical source facts for the existing 44-rule Nison runtime.
@@ -77,3 +77,19 @@ def build_payload_rows(
                 payload["context"] = payload_context
             out.append({"timestamp": ts.isoformat(), "rule_id": rule_id, "payload": payload})
     return out
+
+
+_VALID_NISON_RULE_IDS = {f"NISON_{i:04d}" for i in range(1, 45)}
+
+
+def iter_payload_rows(rows: Iterable[Mapping[str, Any]]) -> Iterator[dict[str, Any]]:
+    """Yield source payload rows after validating the canonical Nison rule id.
+
+    This compatibility iterator validates identity only; it does not infer or
+    synthesize pattern, confirmation, or directional evidence.
+    """
+    for row in rows:
+        rule_id = str(row.get("rule_id") or "")
+        if rule_id not in _VALID_NISON_RULE_IDS:
+            raise ValueError(f"Invalid Nison rule id: {rule_id}")
+        yield dict(row)
