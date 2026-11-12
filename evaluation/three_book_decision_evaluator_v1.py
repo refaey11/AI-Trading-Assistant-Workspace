@@ -32,21 +32,22 @@ def evaluate_three_book_decision(
     brain_assessment: Mapping[str, Any],
     murphy_evidence: Mapping[str, Any],
     nison_evidence: Mapping[str, Any],
-    tiz_evidence: Mapping[str, Any],
+    tiz_evidence: Mapping[str, Any] | None = None,
     risk_evidence: Mapping[str, Any],
     source_rule_ids: Sequence[str],
     timestamp: str,
 ) -> dict[str, Any]:
-    """Evaluate the existing contract with TIZ as audit-only process context."""
+    """Evaluate the existing contract; TIZ is optional audit metadata only."""
+    tiz_metadata = dict(tiz_evidence or {})
     if not _rule_ids_allowed(source_rule_ids):
-        return _no_trade("RULE_ALLOWLIST_REJECT", timestamp, source_rule_ids, tiz_evidence, murphy_evidence, nison_evidence, risk_evidence)
+        return _no_trade("RULE_ALLOWLIST_REJECT", timestamp, source_rule_ids, tiz_metadata, murphy_evidence, nison_evidence, risk_evidence)
 
     bias = _norm(brain_assessment.get("directional_bias"))
     murphy_status = _norm(murphy_evidence.get("status"))
     murphy_direction = _norm(murphy_evidence.get("direction") or murphy_evidence.get("candidate_direction"))
 
     if murphy_status != "PASS":
-        return _no_trade("MURPHY_CONTEXT_NOT_PASS", timestamp, source_rule_ids, tiz_evidence, murphy_evidence, nison_evidence, risk_evidence)
+        return _no_trade("MURPHY_CONTEXT_NOT_PASS", timestamp, source_rule_ids, tiz_metadata, murphy_evidence, nison_evidence, risk_evidence)
     if murphy_direction in {"BULL", "BULLISH", "BUY"} and bias != "BULLISH":
         return _no_trade("MURPHY_BRAIN_DIRECTION_CONFLICT", timestamp, source_rule_ids, tiz_evidence, murphy_evidence, nison_evidence, risk_evidence)
     if murphy_direction in {"BEAR", "BEARISH", "SELL"} and bias != "BEARISH":
@@ -77,7 +78,7 @@ def evaluate_three_book_decision(
         },
         "murphy": dict(murphy_evidence),
         "nison": dict(nison_evidence),
-        "trading_zone": dict(tiz_evidence),
+        "trading_zone": dict(tiz_metadata),
         "risk_engine": dict(risk_evidence),
         "decision": {
             "logic": strength,
@@ -90,7 +91,7 @@ def evaluate_three_book_decision(
             "timestamp": timestamp,
             "backtest_status": "UNTESTED",
             "tiz_execution_gate": "DISABLED",
-            "tiz_audit_state": dict(tiz_evidence),
+            "tiz_audit_state": dict(tiz_metadata),
         },
     }
 
