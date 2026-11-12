@@ -49,22 +49,22 @@ def evaluate_three_book_decision(
     if murphy_status != "PASS":
         return _no_trade("MURPHY_CONTEXT_NOT_PASS", timestamp, source_rule_ids, tiz_metadata, murphy_evidence, nison_evidence, risk_evidence)
     if murphy_direction in {"BULL", "BULLISH", "BUY"} and bias != "BULLISH":
-        return _no_trade("MURPHY_BRAIN_DIRECTION_CONFLICT", timestamp, source_rule_ids, tiz_evidence, murphy_evidence, nison_evidence, risk_evidence)
+        return _no_trade("MURPHY_BRAIN_DIRECTION_CONFLICT", timestamp, source_rule_ids, tiz_metadata, murphy_evidence, nison_evidence, risk_evidence)
     if murphy_direction in {"BEAR", "BEARISH", "SELL"} and bias != "BEARISH":
-        return _no_trade("MURPHY_BRAIN_DIRECTION_CONFLICT", timestamp, source_rule_ids, tiz_evidence, murphy_evidence, nison_evidence, risk_evidence)
+        return _no_trade("MURPHY_BRAIN_DIRECTION_CONFLICT", timestamp, source_rule_ids, tiz_metadata, murphy_evidence, nison_evidence, risk_evidence)
 
     if not bool(risk_evidence.get("risk_pass", False)):
-        return _no_trade("RISK_GATE_FAIL_OR_NOT_EVALUABLE", timestamp, source_rule_ids, tiz_evidence, murphy_evidence, nison_evidence, risk_evidence)
+        return _no_trade("RISK_GATE_FAIL_OR_NOT_EVALUABLE", timestamp, source_rule_ids, tiz_metadata, murphy_evidence, nison_evidence, risk_evidence)
     if not str(risk_evidence.get("stop_loss") or "").strip():
-        return _no_trade("STOP_LOSS_UNDEFINED", timestamp, source_rule_ids, tiz_evidence, murphy_evidence, nison_evidence, risk_evidence)
+        return _no_trade("STOP_LOSS_UNDEFINED", timestamp, source_rule_ids, tiz_metadata, murphy_evidence, nison_evidence, risk_evidence)
 
     nison_confirmation = _norm(nison_evidence.get("confirmation"))
     nison_contradiction = bool(nison_evidence.get("contradiction", False)) or nison_confirmation in {"CONTRADICTED", "CONTRADICTION"}
     if nison_contradiction:
-        return _no_trade("NISON_CONTRADICTION", timestamp, source_rule_ids, tiz_evidence, murphy_evidence, nison_evidence, risk_evidence)
+        return _no_trade("NISON_CONTRADICTION", timestamp, source_rule_ids, tiz_metadata, murphy_evidence, nison_evidence, risk_evidence)
 
     if bias not in {"BULLISH", "BEARISH"}:
-        return _no_trade("BRAIN_DIRECTION_NOT_EXECUTABLE", timestamp, source_rule_ids, tiz_evidence, murphy_evidence, nison_evidence, risk_evidence)
+        return _no_trade("BRAIN_DIRECTION_NOT_EXECUTABLE", timestamp, source_rule_ids, tiz_metadata, murphy_evidence, nison_evidence, risk_evidence)
 
     final = "BUY" if bias == "BULLISH" else "SELL"
     strength = "strong" if nison_confirmation == "CONFIRMED" else "medium"
