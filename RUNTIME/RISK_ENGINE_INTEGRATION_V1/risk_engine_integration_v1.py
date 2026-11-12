@@ -42,6 +42,8 @@ def evaluate_risk(*, equity: float, entry: float, stop_loss: Optional[float], ta
         return RiskResult(False, risk_pct, stop_distance, None, None, "STOP_DISTANCE_OUT_OF_RANGE", stop_loss, take_profit)
     target_distance = abs(take_profit - entry)
     rr = target_distance / stop_distance
-    if rr < CURRENT_CANONICAL_MIN_RR and not isclose(rr, CURRENT_CANONICAL_MIN_RR, rel_tol=0.0, abs_tol=RR_BOUNDARY_TOLERANCE):
+    if isclose(rr, CURRENT_CANONICAL_MIN_RR, rel_tol=0.0, abs_tol=RR_BOUNDARY_TOLERANCE):
+        rr = CURRENT_CANONICAL_MIN_RR
+    if rr < CURRENT_CANONICAL_MIN_RR:
         return RiskResult(False, risk_pct, stop_distance, rr, None, "RR_BELOW_CURRENT_CANONICAL_MINIMUM", stop_loss, take_profit)
     return RiskResult(True, risk_pct, stop_distance, rr, (equity * risk_pct) / stop_distance, "RISK_GATE_PASS", stop_loss, take_profit)
