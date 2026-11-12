@@ -10,7 +10,7 @@ def _event():
         "nison": {"as_of": "2024-01-08T10:00:00Z", "provenance": "fixture"},
         "memory": {"as_of": "2024-01-08T10:00:00Z", "provenance": "fixture"},
         "decision": {"direction": "NO_TRADE"},
-        "risk": {"status": "BLOCK"},
+        "risk": {"status": "BLOCK", "provenance": "fixture"},
         "trade_plan": None,
     }
 
