@@ -56,3 +56,12 @@ The implementation is not declared complete until:
 5. the complete project test suite passes locally and in CI.
 
 No production-trading readiness or profitability claim is implied by this change.
+
+
+## Second-pass compatibility finding
+
+A second pass found two additional legacy paths that encoded TIZ as a blocker:
+- `compatibility/knowledge_decision_handoff.py` treated `process_gate=FAIL` / `alignment_state=PROCESS_BLOCKED` as a hard block before Brain assessment. Those fields are now preserved as metadata but excluded from routing.
+- `OOS_2025/oos_2025_evidence_assembler_v1.py` listed missing TIZ evidence in `missing_authoritative`. TIZ remains a metadata column but is no longer classified as required authoritative evidence.
+
+The Nison contradiction/review path and independent Risk hard gate remain intact.
