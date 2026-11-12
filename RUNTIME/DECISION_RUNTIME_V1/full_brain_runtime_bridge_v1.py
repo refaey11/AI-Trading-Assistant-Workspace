@@ -53,8 +53,6 @@ def run_full_brain_cycle(
     tiz = dict(tiz_evidence or {})
     tiz_available = _is_authoritative(tiz)
     tiz_state = str(tiz.get("process_state") or tiz.get("process_gate") or tiz.get("status") or "NOT_EVALUABLE").upper()
-    if not tiz_available and mode not in {"development", "oos_evaluation"}:
-        return {"status": "NOT_EXECUTABLE", "reason": "TIZ_NOT_PRODUCTION_AUTHORIZED", "execution_plan": {"status": "NOT_EXECUTABLE"}}
 
     brain_spec = importlib.util.spec_from_file_location("gate3c_decision_brain", ROOT / "RECOVERED_SOURCES" / "DECISION_BRAIN_V1" / "decision_brain.py")
     if not brain_spec or not brain_spec.loader:
@@ -69,14 +67,23 @@ def run_full_brain_cycle(
         query_as_of=query_as_of,
         murphy_evidence=murphy_evidence,
         nison_evidence=nison_evidence,
-        tiz_evidence={"authoritative": tiz_available, "process_state": tiz_state, "tiz_verified": tiz_available, "unverified": not tiz_available, "source": tiz.get("source", "TIZ_RUNTIME_BOUNDARY_RESOLUTION_V2")},
+        tiz_evidence={
+            **tiz,
+            "authoritative": tiz_available,
+            "process_state": tiz_state,
+            "metadata_only": True,
+        },
         risk_evidence=risk_evidence,
         historical_evidence=historical_evidence,
         source_rule_ids=list(source_rule_ids or []),
         entry_price=entry_price,
         atr=atr,
         mode=mode,
-        provenance={"bridge": "full_brain_runtime_bridge_v1", "tiz_optional_when_unavailable": not tiz_available},
+        provenance={
+            "bridge": "full_brain_runtime_bridge_v1",
+            "tiz_metadata_only": True,
+            "tiz_authoritative": tiz_available,
+        },
     )
 
 
