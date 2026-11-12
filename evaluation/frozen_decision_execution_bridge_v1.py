@@ -3,8 +3,8 @@
 This is an evaluation boundary only. It does not modify Decision Brain V1,
 rebuild rules, create thresholds, or let Similarity/TIZ generate direction.
 
-The bridge consumes already-produced decision/risk/process fields and returns
-an auditable eligibility state for an execution evaluator.
+The bridge consumes an already-produced decision and authoritative risk
+result. TIZ is not part of execution eligibility.
 """
 from __future__ import annotations
 
@@ -34,11 +34,12 @@ def _validate_rule_ids(rule_ids: Iterable[str]) -> None:
 def evaluate_entry_eligibility(decision: Dict[str, Any]) -> Dict[str, Any]:
     """Evaluate an already-produced Decision Brain output without generating it.
 
-    Required hard gates:
-    - final direction must already exist (LONG/SHORT/NO_TRADE)
-    - process state must be READY for execution
-    - risk_engine.risk_pass must be True for execution
-    - all referenced source rule IDs must be in the frozen allowlist
+    Execution eligibility requires:
+    - final direction already exists (LONG/SHORT/NO_TRADE)
+    - Risk Engine hard gate passes
+    - all referenced source rule IDs are in the frozen allowlist
+
+    Any supplied trading_zone/TIZ payload is ignored for eligibility.
     """
     direction = decision.get("direction")
     if direction not in VALID_DIRECTIONS:
@@ -49,12 +50,7 @@ def evaluate_entry_eligibility(decision: Dict[str, Any]) -> Dict[str, Any]:
     if direction == "NO_TRADE":
         return {"status": "NO_TRADE", "execution_allowed": False, "reason": "BRAIN_NO_TRADE"}
 
-    trading_zone = decision.get("trading_zone", {}) or {}
     risk_engine = decision.get("risk_engine", {}) or {}
-
-    if trading_zone.get("process_state") != "READY":
-        return {"status": "BLOCKED", "execution_allowed": False, "reason": "PROCESS_GATE"}
-
     if risk_engine.get("risk_pass") is not True:
         return {"status": "BLOCKED", "execution_allowed": False, "reason": "RISK_GATE"}
 
@@ -63,7 +59,7 @@ def evaluate_entry_eligibility(decision: Dict[str, Any]) -> Dict[str, Any]:
         "execution_allowed": True,
         "direction": direction,
         "risk_pass": True,
-        "process_state": "READY",
+        "tiz_decision_authority": False,
     }
 
 
