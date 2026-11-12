@@ -107,6 +107,15 @@ source = _replace_exactly_once(
     "optional_nison_confirmation",
 )
 
+# Preserve the V4 execution contract: the computed RR target is passed as the TP distance.
+# This exact-match guard fails closed if the upstream execution call is renamed or removed.
+source = _replace_exactly_once(
+    source,
+    '                take_profit_distance=rr_target,\n',
+    '                take_profit_distance=rr_target,\n',
+    "take_profit_distance_contract",
+)
+
 source = _replace_exactly_once(
     source,
     '            rr_target = ' + '1.5 * atr\n',
