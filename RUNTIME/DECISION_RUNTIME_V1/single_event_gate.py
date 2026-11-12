@@ -1,8 +1,7 @@
 """Single-event Gate 3C validation scaffold.
 
-This module intentionally contains no trading strategy logic. It validates the
-shape and provenance of an already-produced canonical event before it can be
-consumed by the existing decision/risk runtime.
+This module validates the shape and provenance of an already-produced
+canonical event. TIZ is optional metadata and is not a required event group.
 """
 from __future__ import annotations
 
@@ -10,7 +9,8 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from typing import Any, Mapping
 
-REQUIRED_GROUPS = ("market", "murphy", "nison", "memory", "tiz", "risk")
+REQUIRED_GROUPS = ("market", "murphy", "nison", "memory", "risk")
+
 
 @dataclass(frozen=True)
 class GateResult:
@@ -59,9 +59,12 @@ def validate_single_event(event: Mapping[str, Any]) -> GateResult:
                     checks.append(f"{group} temporal guard")
             except ValueError:
                 failures.append(f"{group} as_of invalid")
+
+    # TIZ is optional and observational. Missing or non-evaluable TIZ does not
+    # fail validation and cannot affect the decision or risk gate.
     tiz = event.get("tiz")
-    if isinstance(tiz, Mapping) and tiz.get("status") == "NOT_EVALUABLE":
-        checks.append("TIZ explicit NOT_EVALUABLE")
+    if isinstance(tiz, Mapping):
+        checks.append("TIZ optional metadata")
     decision = event.get("decision")
     if not isinstance(decision, Mapping):
         failures.append("decision output missing")
@@ -81,6 +84,7 @@ def validate_single_event(event: Mapping[str, Any]) -> GateResult:
         checks.append("trade-plan/risk consistency")
     return GateResult(not failures, tuple(checks), tuple(failures))
 
+
 if __name__ == "__main__":
     fixture = {
         "symbol": "GBPUSD",
@@ -89,7 +93,6 @@ if __name__ == "__main__":
         "murphy": {"as_of": "2024-01-08T10:00:00Z", "provenance": "fixture"},
         "nison": {"as_of": "2024-01-08T10:00:00Z", "provenance": "fixture", "status": "ABSENT"},
         "memory": {"as_of": "2024-01-08T10:00:00Z", "provenance": "fixture", "status": "ABSENT"},
-        "tiz": {"as_of": "2024-01-08T10:00:00Z", "provenance": "fixture", "status": "NOT_EVALUABLE"},
         "decision": {"direction": "NO_TRADE"},
         "risk": {"status": "BLOCK"},
         "trade_plan": None,
