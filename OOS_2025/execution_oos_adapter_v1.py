@@ -7,24 +7,21 @@ TP_R = 2.0
 
 
 def build_execution_plan(event: Dict[str, Any]) -> Dict[str, Any]:
-    """Convert an approved decision event into a mechanical execution plan.
+    """Convert an approved decision into a mechanical evaluation execution plan.
 
-    This adapter does not create direction. It only consumes an already-approved
-    BUY/SELL decision plus entry price and ATR and derives the frozen candidate
-    execution levels: 0.75 ATR stop and 2R target.
+    This adapter does not create direction. It consumes an already-approved
+    BUY/SELL decision, authoritative Risk pass, entry price, and ATR. TIZ is
+    deliberately not an input to execution eligibility.
     """
     action = event.get("final_action")
     entry = event.get("entry_price")
     atr = event.get("atr")
     risk_pass = event.get("risk_pass")
-    tiz_state = event.get("tiz_process_state")
 
     if action not in {"BUY", "SELL"}:
         return {"status": "NOT_EXECUTABLE", "reason": "invalid_or_missing_direction"}
     if risk_pass is not True:
         return {"status": "NOT_EXECUTABLE", "reason": "risk_gate_not_passed"}
-    if tiz_state not in {"READY", "PASS", "AVAILABLE"}:
-        return {"status": "NOT_EXECUTABLE", "reason": "tiz_gate_not_ready"}
     if not isinstance(entry, (int, float)) or not isinstance(atr, (int, float)):
         return {"status": "NOT_EXECUTABLE", "reason": "missing_entry_or_atr"}
     if entry <= 0 or atr <= 0:
@@ -51,4 +48,5 @@ def build_execution_plan(event: Dict[str, Any]) -> Dict[str, Any]:
         "take_profit": float(take_profit),
         "risk_distance": float(risk_distance),
         "reward_distance": float(reward_distance),
+        "tiz_decision_authority": False,
     }
