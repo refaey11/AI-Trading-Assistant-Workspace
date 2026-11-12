@@ -13,7 +13,7 @@ def sample_columns():
 def test_0030_support_reference():
     r = evaluate_0030({"columns": sample_columns()})
     assert r["status"] == "PASS"
-    assert r["reference_column_index"] == 1 or r["origin_column_index"] == 1
+    assert r.get("reference_column_index") == 1 or r.get("origin_column_index") == 1
 
 
 def test_0031_long_stop_reference():
