@@ -21,7 +21,7 @@ def assemble_decision_event(
     query_as_of: Any,
     murphy_evidence: Mapping[str, Any],
     nison_evidence: Mapping[str, Any],
-    tiz_evidence: Mapping[str, Any] | None,
+    tiz_evidence: Mapping[str, Any] | None = None,
     risk_evidence: Mapping[str, Any],
     historical_evidence: Mapping[str, Any] | None,
     source_rule_ids: list[str],
