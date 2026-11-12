@@ -83,3 +83,12 @@ def test_brain_neutral_rejects_without_creating_direction():
     args["brain_assessment"] = {"directional_bias": "neutral", "confidence": 0.9}
     result = evaluate_three_book_decision(**args)
     assert result["decision"]["final"] == "NO_TRADE"
+
+
+def test_missing_tiz_is_allowed_and_recorded_as_empty_metadata():
+    args = base_inputs()
+    args.pop("tiz_evidence")
+    result = evaluate_three_book_decision(**args)
+    assert result["decision"]["final"] == "BUY"
+    assert result["trading_zone"] == {}
+    assert result["audit"]["tiz_execution_gate"] == "DISABLED"
