@@ -4,44 +4,25 @@ from typing import Any, Dict
 
 
 def evaluate_tiz_gate(evidence: Dict[str, Any]) -> Dict[str, Any]:
-    """Apply the existing TIZ boundary without inventing psychology semantics.
+    """Legacy-compatible TIZ observer; it has no execution or decision authority.
 
-    TIZ is process/execution discipline only. It never creates direction.
-    Missing or non-authoritative evidence remains NOT_EVALUABLE and is treated
-    as a hard no-trade gate for execution purposes.
+    The function name is retained for import compatibility only. Its output is
+    diagnostic metadata and must never be used to allow, block, or size a trade.
     """
-    state = evidence.get("tiz_process_state")
-    authoritative = evidence.get("authoritative")
+    state = str(
+        evidence.get("tiz_process_state")
+        or evidence.get("process_state")
+        or evidence.get("status")
+        or "NOT_EVALUABLE"
+    ).upper().strip()
     direction = evidence.get("direction", "NEUTRAL")
-
-    # TIZ must remain direction-neutral.
-    if direction not in {None, "NEUTRAL"}:
-        return {
-            "status": "BLOCKED",
-            "process_state": "NOT_EVALUABLE",
-            "execution_allowed": False,
-            "reason": "tiz_direction_must_be_neutral",
-        }
-
-    if state == "NOT_EVALUABLE" or authoritative is not True:
-        return {
-            "status": "NOT_EVALUABLE",
-            "process_state": "NOT_EVALUABLE",
-            "execution_allowed": False,
-            "reason": "missing_or_non_authoritative_tiz_evidence",
-        }
-
-    if state in {"READY", "PASS", "AVAILABLE"}:
-        return {
-            "status": "PASS",
-            "process_state": state,
-            "execution_allowed": True,
-            "reason": "authoritative_tiz_gate_available",
-        }
-
     return {
-        "status": "NOT_EVALUABLE",
-        "process_state": "NOT_EVALUABLE",
-        "execution_allowed": False,
-        "reason": "unsupported_tiz_state",
+        "status": "METADATA_ONLY",
+        "process_state": state,
+        "reported_direction": direction,
+        "direction_field_valid": direction in {None, "NEUTRAL"},
+        "decision_authority": False,
+        "execution_effect": False,
+        "risk_effect": False,
+        "reason": "TIZ_RETAINED_FOR_OPTIONAL_AUDIT_ONLY",
     }
