@@ -48,10 +48,14 @@ jobs:
           download "/GBPUSD_MARKET_STRUCTURE_ALL_TF_V1.zip" artifacts/source/GBPUSD_MARKET_STRUCTURE_ALL_TF_V1.zip
           download "/MTF_ALIGNMENT_GBPUSD_V1.zip" artifacts/source/MTF_ALIGNMENT_GBPUSD_V1.zip
           download "/GBPUSD_M1_MASTER_2016_2026_V1.zip" artifacts/source/GBPUSD_M1_MASTER_2016_2026_V1.zip
+          download "/MULTI_TF_MARKET_DATA_V1.zip" artifacts/source/MULTI_TF_MARKET_DATA_V1.zip
+          download "/FEATURE_ENGINEERING_V1_HIGHER_TF.zip" artifacts/source/FEATURE_ENGINEERING_V1_HIGHER_TF.zip
+          download "/AI_Trading_Assistant_CORE_V1.zip" artifacts/source/AI_Trading_Assistant_CORE_V1.zip
+          download "/AI_Trading_Assistant_FULL_PROJECT_V1.zip" artifacts/source/AI_Trading_Assistant_FULL_PROJECT_V1.zip
           ls -lh artifacts/source
 
       - name: Scan archive manifests and producer candidates
-        run: python tools/audit_mtf_archive_producer_lineage_v1.py --archive artifacts/source/GBPUSD_MARKET_STRUCTURE_ALL_TF_V1.zip --archive artifacts/source/MTF_ALIGNMENT_GBPUSD_V1.zip --archive artifacts/source/GBPUSD_M1_MASTER_2016_2026_V1.zip --output artifacts/MTF_ARCHIVE_PRODUCER_LINEAGE_AUDIT.json
+        run: python tools/audit_mtf_archive_producer_lineage_v1.py --archive artifacts/source/GBPUSD_MARKET_STRUCTURE_ALL_TF_V1.zip --archive artifacts/source/MTF_ALIGNMENT_GBPUSD_V1.zip --archive artifacts/source/GBPUSD_M1_MASTER_2016_2026_V1.zip --archive artifacts/source/MULTI_TF_MARKET_DATA_V1.zip --archive artifacts/source/FEATURE_ENGINEERING_V1_HIGHER_TF.zip --archive artifacts/source/AI_Trading_Assistant_CORE_V1.zip --archive artifacts/source/AI_Trading_Assistant_FULL_PROJECT_V1.zip --output artifacts/MTF_ARCHIVE_PRODUCER_LINEAGE_AUDIT.json
 
       - name: Upload read-only audit report
         if: always()
