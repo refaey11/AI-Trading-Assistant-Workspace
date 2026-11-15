@@ -1,0 +1,135 @@
+from __future__ import annotations
+
+import argparse
+import json
+import zipfile
+from pathlib import Path
+
+import pandas as pd
+
+
+def _csv_members(path: str | Path) -> list[str]:
+    with zipfile.ZipFile(path) as archive:
+        return [name for name in archive.namelist() if name.lower().endswith(".csv")]
+
+
+def _read_csv_from_zip(path: str | Path, *, required: set[str], preferred: str | None = None) -> pd.DataFrame:
+    with zipfile.ZipFile(path) as archive:
+        names = [n for n in archive.namelist() if n.lower().endswith(".csv")]
+        if preferred:
+            names = sorted(names, key=lambda n: (preferred.lower() not in Path(n).name.lower(), n))
+        failures = []
+        for name in names:
+            try:
+                with archive.open(name) as stream:
+                    frame = pd.read_csv(stream)
+                if required.issubset(set(frame.columns)):
+                    frame["_source_member"] = name
+                    return frame
+                failures.append(f"{name}: missing {sorted(required - set(frame.columns))}")
+            except Exception as exc:
+                failures.append(f"{name}: {type(exc).__name__}: {exc}")
+        raise ValueError("No CSV with required columns found: " + " | ".join(failures[:10]))
+
+
+def _timestamps(frame: pd.DataFrame, label: str) -> pd.Series:
+    values = pd.to_datetime(frame["timestamp"], utc=True, errors="coerce")
+    if values.isna().any():
+        raise ValueError(f"{label}: {int(values.isna().sum())} invalid timestamps")
+    return values
+
+
+def audit(m1_zip: str | Path, h1_zip: str | Path) -> dict:
+    m1 = _read_csv_from_zip(m1_zip, required={"timestamp", "volume"}, preferred="M1")
+    h1 = _read_csv_from_zip(h1_zip, required={"timestamp", "open", "high", "low", "close"}, preferred="H1")
+    m1_ts = _timestamps(m1, "M1")
+    h1_ts = _timestamps(h1, "H1")
+
+    m1 = m1.copy()
+    m1["_ts"] = m1_ts
+    m1["_volume"] = pd.to_numeric(m1["volume"], errors="coerce")
+    invalid_volume = int(m1["_volume"].isna().sum())
+    duplicate_m1 = int(m1["_ts"].duplicated(keep=False).sum())
+    off_minute = int((m1["_ts"] != m1["_ts"].dt.floor("min")).sum())
+    m1["_hour"] = m1["_ts"].dt.floor("h")
+    hourly = m1.groupby("_hour").agg(
+        m1_rows=("_ts", "size"),
+        unique_minutes=("_ts", "nunique"),
+        first_m1=("_ts", "min"),
+        last_m1=("_ts", "max"),
+        volume_sum=("_volume", "sum"),
+    ).reset_index()
+
+    h1 = h1.copy()
+    h1["_ts"] = h1_ts
+    duplicate_h1 = int(h1["_ts"].duplicated(keep=False).sum())
+    h1["_hour_floor"] = h1["_ts"].dt.floor("h")
+    joined = h1.merge(hourly, left_on="_hour_floor", right_on="_hour", how="left")
+    joined["m1_count"] = joined["m1_rows"].fillna(0).astype(int)
+    joined["m1_complete_60"] = joined["unique_minutes"].eq(60)
+    joined["latest_m1_minute"] = joined["last_m1"]
+    joined["hour_end_utc"] = joined["_hour_floor"] + pd.Timedelta(hours=1)
+    joined["m1_reaches_hour_end"] = joined["last_m1"].eq(joined["hour_end_utc"] - pd.Timedelta(minutes=1))
+    joined["timestamp_equals_hour_start"] = joined["_ts"].eq(joined["_hour_floor"])
+    joined["timestamp_equals_hour_end"] = joined["_ts"].eq(joined["hour_end_utc"])
+
+    # These are descriptive diagnostics only. They do not alter or certify a trading input.
+    report = {
+        "audit": "READ_ONLY_M1_TO_H1_COMPLETENESS_AND_TIMESTAMP",
+        "m1_archive": str(m1_zip),
+        "h1_archive": str(h1_zip),
+        "m1_csv_member": str(m1["_source_member"].iloc[0]),
+        "h1_csv_member": str(h1["_source_member"].iloc[0]),
+        "m1_rows": int(len(m1)),
+        "h1_rows": int(len(h1)),
+        "m1_invalid_volume_rows": invalid_volume,
+        "m1_duplicate_timestamp_rows": duplicate_m1,
+        "m1_off_minute_timestamp_rows": off_minute,
+        "h1_duplicate_timestamp_rows": duplicate_h1,
+        "active_m1_hours": int(len(hourly)),
+        "active_hours_with_exactly_60_unique_minutes": int(hourly["unique_minutes"].eq(60).sum()),
+        "active_hours_with_less_than_60_unique_minutes": int(hourly["unique_minutes"].lt(60).sum()),
+        "active_hours_with_more_than_60_unique_minutes": int(hourly["unique_minutes"].gt(60).sum()),
+        "m1_unique_minutes_per_hour_distribution": {
+            str(int(k)): int(v) for k, v in hourly["unique_minutes"].value_counts().sort_index().items()
+        },
+        "h1_rows_with_matching_m1_hour": int(joined["m1_rows"].notna().sum()),
+        "h1_rows_with_60_unique_m1_minutes": int(joined["m1_complete_60"].sum()),
+        "h1_rows_where_m1_reaches_minute_59": int(joined["m1_reaches_hour_end"].sum()),
+        "h1_timestamp_equals_hour_start_rows": int(joined["timestamp_equals_hour_start"].sum()),
+        "h1_timestamp_equals_hour_end_rows": int(joined["timestamp_equals_hour_end"].sum()),
+        "h1_timestamp_sample": [
+            {
+                "h1_timestamp": row["_ts"].isoformat(),
+                "m1_rows_in_floor_hour": int(row["m1_count"]),
+                "first_m1": row["first_m1"].isoformat() if pd.notna(row["first_m1"]) else None,
+                "last_m1": row["last_m1"].isoformat() if pd.notna(row["last_m1"]) else None,
+                "hour_end_utc": row["hour_end_utc"].isoformat(),
+                "m1_reaches_minute_59": bool(row["m1_reaches_hour_end"]),
+            }
+            for _, row in joined.head(20).iterrows()
+        ],
+        "interpretation": [
+            "A count of 60 unique M1 timestamps is a completeness indicator for an hour, not proof of exchange/session correctness.",
+            "An H1 timestamp at the hour start cannot be treated as an available completed H1 bar until the corresponding hour has closed.",
+            "This report is diagnostic only; it does not change volume calculations, thresholds, runtime behavior, or any 2025/OOS artifact.",
+        ],
+    }
+    return report
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--m1-zip", required=True)
+    parser.add_argument("--h1-zip", required=True)
+    parser.add_argument("--output", required=True)
+    args = parser.parse_args()
+    report = audit(args.m1_zip, args.h1_zip)
+    Path(args.output).parent.mkdir(parents=True, exist_ok=True)
+    Path(args.output).write_text(json.dumps(report, indent=2), encoding="utf-8")
+    print(json.dumps(report, indent=2))
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
