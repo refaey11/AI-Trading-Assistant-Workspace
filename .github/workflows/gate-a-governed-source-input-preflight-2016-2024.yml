@@ -1,0 +1,195 @@
+name: Gate A Governed Source Input Preflight 2016-2024
+
+on:
+  push:
+    branches:
+      - audit/gate-a-input-preflight-2026-11-15
+  pull_request:
+    branches:
+      - current-stack-dev-backtest-2016-2024-v3
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  input_preflight:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    env:
+      DROPBOX_ACCESS_TOKEN: \${{ secrets.DROPBOX_ACCESS_TOKEN }}
+      PYTHONUNBUFFERED: "1"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Run deterministic preflight unit tests
+        run: python -m unittest discover -s tests -p "test_governed_source_input_preflight_v1.py" -v
+
+      - name: Verify Dropbox access
+        if: github.event_name != 'pull_request'
+        run: test -n "$DROPBOX_ACCESS_TOKEN"
+
+      - name: Acquire exact pinned source revisions
+        if: github.event_name != 'pull_request'
+        run: |
+          python - <<'PY'
+          import hashlib, json, os, urllib.request, zipfile
+          from pathlib import Path
+          from BACKTEST.GOVERNED_SOURCE_INPUT_PREFLIGHT_V1 import MTF_NUMERIC_FIELDS
+
+          token = os.environ["DROPBOX_ACCESS_TOKEN"]
+          manifest = json.loads(Path("BACKTEST/GOVERNED_SOURCE_INPUT_MANIFEST_2016_2024_2026-11-15.json").read_text())
+          raw = Path("artifacts/raw")
+          unpacked = Path("artifacts/unpacked")
+          out = Path("artifacts/gate_a_preflight")
+          raw.mkdir(parents=True, exist_ok=True)
+          unpacked.mkdir(parents=True, exist_ok=True)
+          out.mkdir(parents=True, exist_ok=True)
+
+          def api_json(url, payload):
+              req = urllib.request.Request(
+                  url, data=json.dumps(payload).encode(), method="POST",
+                  headers={"Authorization": f"Bearer {token}", "Content-Type": "application/json"},
+              )
+              with urllib.request.urlopen(req, timeout=120) as response:
+                  return json.loads(response.read().decode())
+
+          def download(path, target):
+              req = urllib.request.Request(
+                  "https://content.dropboxapi.com/2/files/download", data=b"", method="POST",
+                  headers={"Authorization": f"Bearer {token}", "Dropbox-API-Arg": json.dumps({"path": path})},
+              )
+              with urllib.request.urlopen(req, timeout=900) as response, target.open("wb") as handle:
+                  while True:
+                      chunk = response.read(4 * 1024 * 1024)
+                      if not chunk:
+                          break
+                      handle.write(chunk)
+
+          def sha256(path):
+              h = hashlib.sha256()
+              with path.open("rb") as f:
+                  for chunk in iter(lambda: f.read(4 * 1024 * 1024), b""):
+                      h.update(chunk)
+              return h.hexdigest()
+
+          def safe_extract(archive_path, destination):
+              destination.mkdir(parents=True, exist_ok=True)
+              root = destination.resolve()
+              with zipfile.ZipFile(archive_path) as zf:
+                  for member in zf.infolist():
+                      target = (destination / member.filename).resolve()
+                      if root not in target.parents and target != root:
+                          raise RuntimeError(f"Unsafe ZIP member: {member.filename}")
+                  zf.extractall(destination)
+
+          downloaded = {}
+          for source in manifest["sources"]:
+              key = source["key"]
+              metadata = api_json(
+                  "https://api.dropboxapi.com/2/files/get_metadata",
+                  {"path": source["dropbox_path"]},
+              )
+              if metadata.get("rev") != source["revision"]:
+                  raise RuntimeError(
+                      f"SOURCE_REVISION_CHANGED:{key}:expected={source['revision']}:observed={metadata.get('rev')}"
+                  )
+              if int(metadata.get("size", -1)) != int(source["size_bytes"]):
+                  raise RuntimeError(
+                      f"SOURCE_SIZE_CHANGED:{key}:expected={source['size_bytes']}:observed={metadata.get('size')}"
+                  )
+              suffix = ".zip" if source["dropbox_path"].lower().endswith(".zip") else ".csv"
+              target = raw / f"{key}{suffix}"
+              print(f"Downloading pinned source {key}: {source['dropbox_path']} ({source['size_bytes']} bytes)")
+              download(source["dropbox_path"], target)
+              if target.stat().st_size != int(source["size_bytes"]):
+                  raise RuntimeError(f"DOWNLOADED_SIZE_MISMATCH:{key}")
+              downloaded[key] = {
+                  "dropbox_path": source["dropbox_path"],
+                  "revision": source["revision"],
+                  "size_bytes": target.stat().st_size,
+                  "sha256": sha256(target),
+              }
+
+          safe_extract(raw / "h1.zip", unpacked / "h1")
+          safe_extract(raw / "murphy.zip", unpacked / "murphy")
+          safe_extract(raw / "mtf.zip", unpacked / "mtf")
+
+          def find_exact(root, filename):
+              matches = list(root.rglob(filename))
+              if len(matches) != 1:
+                  raise RuntimeError(f"EXPECTED_ONE_FILE:{filename}:found={len(matches)}")
+              return matches[0]
+
+          h1 = find_exact(unpacked / "h1", "GBPUSD_H1_2016_2025_MASTER.csv")
+          murphy = find_exact(unpacked / "murphy", "MURPHY_2016_2024_FULL_EVIDENCE.csv")
+
+          required_mtf = {"timestamp", *MTF_NUMERIC_FIELDS}
+          mtf_candidates = []
+          for candidate in (unpacked / "mtf").rglob("*.csv"):
+              with candidate.open("r", encoding="utf-8-sig", newline="") as handle:
+                  import csv
+                  header = next(csv.reader(handle), [])
+              if required_mtf.issubset(set(header)):
+                  mtf_candidates.append(candidate)
+          if len(mtf_candidates) != 1:
+              raise RuntimeError(f"EXPECTED_ONE_CANONICAL_MTF_CSV:found={len(mtf_candidates)}")
+          mtf = mtf_candidates[0]
+
+          source_paths = {
+              "h1": h1,
+              "market_state": raw / "market_state.csv",
+              "mtf": mtf,
+              "murphy": murphy,
+              "nison": raw / "nison.csv",
+              "historical_context": raw / "historical_context.csv",
+              "historical_outcome": raw / "historical_outcome.csv",
+          }
+          for key, path in source_paths.items():
+              if not path.is_file() or path.stat().st_size == 0:
+                  raise RuntimeError(f"ACQUIRED_SOURCE_MISSING_OR_EMPTY:{key}:{path}")
+
+          acquired = {
+              "manifest_id": manifest["manifest_id"],
+              "snapshot_date": manifest["snapshot_date"],
+              "downloaded_sources": downloaded,
+              "resolved_csv_paths": {key: str(path) for key, path in source_paths.items()},
+              "2025_oos_used": False,
+          }
+          (out / "acquired_source_manifest.json").write_text(json.dumps(acquired, indent=2), encoding="utf-8")
+          with Path("artifacts/gate_a_preflight.env").open("w") as f:
+              for key, path in source_paths.items():
+                  f.write(f"{key.upper()}={path}\n")
+          print(json.dumps(acquired, indent=2))
+          PY
+
+      - name: Run full source input preflight
+        if: github.event_name != 'pull_request'
+        shell: bash
+        run: |
+          set -euo pipefail
+          source artifacts/gate_a_preflight.env
+          python BACKTEST/GOVERNED_SOURCE_INPUT_PREFLIGHT_V1.py \
+            --h1 "$H1" \
+            --market-state "$MARKET_STATE" \
+            --mtf "$MTF" \
+            --murphy "$MURPHY" \
+            --nison "$NISON" \
+            --historical-context "$HISTORICAL_CONTEXT" \
+            --historical-outcome "$HISTORICAL_OUTCOME" \
+            --source-manifest BACKTEST/GOVERNED_SOURCE_INPUT_MANIFEST_2016_2024_2026-11-15.json \
+            --output artifacts/gate_a_preflight/source_input_preflight.json
+
+      - name: Upload Gate A artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gate-a-source-input-preflight-2016-2024
+          path: artifacts/gate_a_preflight
+          if-no-files-found: warn
