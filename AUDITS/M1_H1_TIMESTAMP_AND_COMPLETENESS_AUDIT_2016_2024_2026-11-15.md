@@ -98,3 +98,16 @@ Before any runtime change, locate or reconstruct from source-backed producer con
 5. a single event-time contract carrying `bar_open_time`, `bar_close_time`, and `available_at` per source.
 
 No runtime change is authorized or implemented in this PR. The 2025 OOS freeze remains intact.
+
+
+## Existing project MTF contract compatibility check
+
+Dropbox also contains a separate component at `/AI_Trading_Assistant_FULL_PROJECT_V1/AI_Trading_Assistant_MULTI_TIMEFRAME_READER_V1/`:
+- `README.md` says the reader uses available H1 master data to create H4 context aggregated from H1 and H1 local structure; M15 is intentionally not fabricated from H1 and is deferred until real M15 data exists.
+- `CONTRACT.json` labels the component `RESEARCH_ONLY`, lists only H4 and H1, and says no trade decision is generated.
+- `MTF_COVERAGE.csv` reports H1/H4 coverage for GBPUSD (61,417 H1 bars and 16,051 H4 bars).
+- This separate reader folder also has a GBPUSD H4/H1 output CSV (8.61 MB).
+
+This is a **distinct component** from `/MTF_ALIGNMENT_GBPUSD_V1.zip`, which Gate3C currently consumes and whose annual CSV contains M5/M15/M30/H1/H4/D1 fields. The older H1/H4 reader contract must not be incorrectly imposed on the separate alignment archive. However, the two artifacts demonstrate that the project has multiple MTF products with different declared scopes. The producer, source lineage, and contract for `MTF_ALIGNMENT_GBPUSD_V1.zip` were not found in the repository code search or Dropbox search during this audit. Its six-timeframe fields therefore remain source-backed as file content, but their derivation and bar-availability semantics are not yet verified.
+
+No attempt was made to replace the Gate3C MTF source with the H1/H4 reader output, synthesize M15/M30/M5/D1, or merge the two contracts.
