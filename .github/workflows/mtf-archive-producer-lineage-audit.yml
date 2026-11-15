@@ -55,6 +55,7 @@ jobs:
           python tools/audit_mtf_archive_producer_lineage_v1.py \
             --archive artifacts/source/GBPUSD_MARKET_STRUCTURE_ALL_TF_V1.zip \
             --archive artifacts/source/MTF_ALIGNMENT_GBPUSD_V1.zip \
+            --archive artifacts/source/GBPUSD_M1_MASTER_2016_2026_V1.zip \\
             --output artifacts/MTF_ARCHIVE_PRODUCER_LINEAGE_AUDIT.json
 
       - name: Upload read-only audit report
