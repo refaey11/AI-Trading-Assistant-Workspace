@@ -4,9 +4,11 @@ on:
   push:
     branches:
       - current-stack-dev-backtest-2016-2024-v3
+      - fix/gate3c-auto-select-valid-event
   pull_request:
     branches:
       - current-stack-dev-backtest-2016-2024-v3
+      - fix/gate3c-mtf-event-year-source-selection
 
 permissions:
   contents: read
@@ -28,4 +30,5 @@ jobs:
         run: |
           python -m pytest -q \
             tests/test_gate3c_mtf_source_selection_v1.py \
-            tests/evaluation/test_gate3c_murphy_direction_contract_v1.py
+            tests/evaluation/test_gate3c_murphy_direction_contract_v1.py \
+            tests/test_gate3c_valid_event_candidate_v1.py
