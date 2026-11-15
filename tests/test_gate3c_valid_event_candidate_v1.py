@@ -67,7 +67,6 @@ def test_selector_skips_earlier_murphy_pass_with_incomplete_mtf_and_selects_next
 def test_selector_fails_closed_when_every_candidate_has_missing_mtf(tmp_path):
     kwargs = write_inputs(tmp_path)
     frame = pd.read_csv(kwargs["mtf_root"] / "GBPUSD_M5_MTF_ALIGNMENT_2020.csv")
-    frame[MTF_FIELDS] = frame[MTF_FIELDS].where(False, 1)
     frame.loc[:, "D1_trend_regime"] = None
     frame.to_csv(kwargs["mtf_root"] / "GBPUSD_M5_MTF_ALIGNMENT_2020.csv", index=False)
 
