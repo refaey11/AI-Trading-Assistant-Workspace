@@ -1,6 +1,13 @@
+import importlib.util
+from pathlib import Path
+
 import pandas as pd
 
-from tools.validate_m1_to_mtf_candle_reconciliation_v1 import reconcile_frames
+MODULE_PATH = Path(__file__).resolve().parents[1] / "tools" / "validate_m1_to_mtf_candle_reconciliation_v1.py"
+SPEC = importlib.util.spec_from_file_location("m1_mtf_reconciliation", MODULE_PATH)
+MODULE = importlib.util.module_from_spec(SPEC)
+SPEC.loader.exec_module(MODULE)
+reconcile_frames = MODULE.reconcile_frames
 
 
 def _m1_rows():
@@ -39,9 +46,7 @@ def test_exact_m1_to_m5_ohlc_aggregation_matches():
 def test_ohlc_mismatch_is_reported_not_repaired():
     result = reconcile_frames(_m1_rows(), _actual_row(high=1.47340), "M5")
     assert result["full_match_rows"] == 0
-    assert result["mismatch_samples"][0]["mismatch_fields"] == [
-        "high_match"
-    ]
+    assert result["mismatch_samples"][0]["mismatch_fields"] == ["high_match"]
 
 
 def test_2025_rows_are_excluded_from_development_reconciliation():
