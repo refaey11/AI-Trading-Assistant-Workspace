@@ -40,7 +40,7 @@ def _parse_bool(series: pd.Series) -> pd.Series:
 def reconcile_frames(m1: pd.DataFrame, actual: pd.DataFrame, timeframe: str) -> dict[str, Any]:
     if timeframe not in TIMEFRAMES:
         raise ValueError(f"unsupported timeframe: {timeframe}")
-    freq, minutes = TIMEFRAMES[timeframe]
+    freq, _nominal_minutes = TIMEFRAMES[timeframe]
     required_m1 = {"timestamp", *OHLC, "volume", "volume_available"}
     required_actual = {"timestamp", *OHLC, "volume", "m1_count", "bar_complete", "volume_available"}
     missing_m1 = sorted(required_m1 - set(m1.columns))
@@ -74,6 +74,7 @@ def reconcile_frames(m1: pd.DataFrame, actual: pd.DataFrame, timeframe: str) -> 
 
     left["volume_available"] = _parse_bool(left["volume_available"])
     right["volume_available"] = _parse_bool(right["volume_available"])
+    right["bar_complete"] = _parse_bool(right["bar_complete"])
     left = left.sort_values("timestamp", kind="mergesort")
     left["bucket"] = left["timestamp"].dt.floor(freq)
 
@@ -86,14 +87,12 @@ def reconcile_frames(m1: pd.DataFrame, actual: pd.DataFrame, timeframe: str) -> 
         m1_count=("timestamp", "size"),
         volume_available=("volume_available", "all"),
     ).reset_index().rename(columns={"bucket": "timestamp"})
-    expected["bar_complete_expected"] = expected["m1_count"].eq(minutes)
 
-    right = right.rename(columns={"m1_count": "m1_count_actual", "bar_complete": "bar_complete_actual"})
+    right = right.rename(columns={"m1_count": "m1_count_actual"})
     right["m1_count_actual"] = pd.to_numeric(right["m1_count_actual"], errors="coerce")
-    right["bar_complete_actual"] = _parse_bool(right["bar_complete_actual"])
 
     joined = expected.merge(
-        right[["timestamp", *OHLC, "volume", "m1_count_actual", "bar_complete_actual", "volume_available"]],
+        right[["timestamp", *OHLC, "volume", "m1_count_actual", "bar_complete", "volume_available"]],
         on="timestamp",
         how="outer",
         suffixes=("_expected", "_actual"),
@@ -110,7 +109,6 @@ def reconcile_frames(m1: pd.DataFrame, actual: pd.DataFrame, timeframe: str) -> 
             equal_nan=False,
         )
     matched["m1_count_match"] = matched["m1_count"].eq(matched["m1_count_actual"])
-    matched["bar_complete_match"] = matched["bar_complete_expected"].eq(matched["bar_complete_actual"])
     matched["volume_available_match"] = matched["volume_available_expected"].eq(matched["volume_available_actual"])
     volume_testable = matched["volume_available_expected"] & matched["volume_available_actual"]
     matched["volume_match"] = np.where(
@@ -119,7 +117,7 @@ def reconcile_frames(m1: pd.DataFrame, actual: pd.DataFrame, timeframe: str) -> 
         True,
     )
     match_cols = [f"{c}_match" for c in OHLC] + [
-        "m1_count_match", "bar_complete_match", "volume_available_match", "volume_match"
+        "m1_count_match", "volume_available_match", "volume_match"
     ]
     matched["full_match"] = matched[match_cols].all(axis=1)
 
@@ -145,10 +143,11 @@ def reconcile_frames(m1: pd.DataFrame, actual: pd.DataFrame, timeframe: str) -> 
         "extra_output_bars": int((joined["_merge"] == "right_only").sum()),
         "ohlc_match_rows": int(matched[[f"{c}_match" for c in OHLC]].all(axis=1).sum()),
         "m1_count_match_rows": int(matched["m1_count_match"].sum()),
-        "bar_complete_match_rows": int(matched["bar_complete_match"].sum()),
         "volume_available_match_rows": int(matched["volume_available_match"].sum()),
         "volume_testable_rows": int(volume_testable.sum()),
         "volume_match_rows": int(matched["volume_match"].sum()),
+        "bar_complete_true_rows_reported": int(matched["bar_complete"].sum()),
+        "bar_complete_false_rows_reported": int((~matched["bar_complete"]).sum()),
         "full_match_rows": int(matched["full_match"].sum()),
         "full_match_rate": float(matched["full_match"].mean()) if len(matched) else 0.0,
         "mismatch_samples": mismatch_samples,
@@ -167,12 +166,14 @@ def run(m1_zip: Path, mtf_zip: Path) -> dict[str, Any]:
         "status": "COMPLETED_READ_ONLY",
         "scope": "GBPUSD raw M1 to existing M5/M15/M30/H1/H4/D1 OHLCV outputs; 2016-2024 only.",
         "timezone_policy": "No timezone localization or conversion; source timestamps are compared as stored.",
-        "aggregation_contract_tested": "open=first, high=max, low=min, close=last, volume=sum; M1 count and completeness flags checked.",
+        "aggregation_contract_tested": "open=first, high=max, low=min, close=last, volume=sum; M1 count and volume availability flags checked.",
+        "bar_complete_policy": "Reported as an existing output flag only; no completeness formula is inferred.",
         "oos_policy": "2025+ excluded entirely; no tuning or calibration.",
         "timeframes": results,
         "interpretation": [
             "This verifies data-output consistency, not the identity or exact source code of the historical producer.",
             "A complete match supports the documented M1 aggregation lineage for the tested symbol and window.",
+            "The bar_complete flag is reported but not independently judged because its exact completeness contract is not assumed.",
             "Market Structure and MTF feature/score producers remain separate lineage questions.",
         ],
     }
