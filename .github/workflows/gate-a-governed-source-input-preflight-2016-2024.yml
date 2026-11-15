@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 90
     env:
-      DROPBOX_ACCESS_TOKEN: \${{ secrets.DROPBOX_ACCESS_TOKEN }}
+      DROPBOX_ACCESS_TOKEN: ${{ secrets.DROPBOX_ACCESS_TOKEN }}
       PYTHONUNBUFFERED: "1"
     steps:
       - name: Checkout
