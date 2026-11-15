@@ -67,7 +67,7 @@ def test_selector_skips_earlier_murphy_pass_with_incomplete_mtf_and_selects_next
 def test_selector_fails_closed_when_every_candidate_has_missing_mtf(tmp_path):
     kwargs = write_inputs(tmp_path)
     frame = pd.read_csv(kwargs["mtf_root"] / "GBPUSD_M5_MTF_ALIGNMENT_2020.csv")
-    frame.loc[:, "D1_trend_regime"] = None
+    frame.loc[:, "D1_trend_regime"] = float("nan")
     frame.to_csv(kwargs["mtf_root"] / "GBPUSD_M5_MTF_ALIGNMENT_2020.csv", index=False)
 
     with pytest.raises(ValueError, match="BLOCKED_NO_COMPLETE_EVENT_CANDIDATE"):
