@@ -1,0 +1,47 @@
+name: M1 H1 Completeness Timestamp Audit
+
+on:
+  pull_request:
+    paths:
+      - "tools/audit_m1_h1_completeness_timestamp_v1.py"
+      - ".github/workflows/m1-h1-completeness-timestamp-audit.yml"
+  push:
+    branches:
+      - "audit/m1-h1-completeness-timestamp-audit"
+
+jobs:
+  source-backed-read-only-audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install --upgrade pip pandas
+      - name: Acquire canonical source archives
+        env:
+          DROPBOX_ACCESS_TOKEN: ${{ secrets.DROPBOX_ACCESS_TOKEN }}
+        run: |
+          set -euo pipefail
+          test -n "$DROPBOX_ACCESS_TOKEN" || { echo "BLOCKED: DROPBOX_ACCESS_TOKEN secret is unavailable"; exit 2; }
+          curl -L --fail --silent --show-error https://content.dropboxapi.com/2/files/download \
+            -H "Authorization: Bearer $DROPBOX_ACCESS_TOKEN" \
+            -H 'Dropbox-API-Arg: {"path":"/GBPUSD_M1_MASTER_2016_2026_V1.zip"}' \
+            -o /tmp/GBPUSD_M1_MASTER.zip
+          curl -L --fail --silent --show-error https://content.dropboxapi.com/2/files/download \
+            -H "Authorization: Bearer $DROPBOX_ACCESS_TOKEN" \
+            -H 'Dropbox-API-Arg: {"path":"/GBPUSD_H1_2016_2025_MASTER.zip"}' \
+            -o /tmp/GBPUSD_H1_MASTER.zip
+          unzip -tq /tmp/GBPUSD_M1_MASTER.zip
+          unzip -tq /tmp/GBPUSD_H1_MASTER.zip
+      - name: Audit M1 completeness and H1 timestamp alignment
+        run: |
+          python tools/audit_m1_h1_completeness_timestamp_v1.py \
+            --m1-zip /tmp/GBPUSD_M1_MASTER.zip \
+            --h1-zip /tmp/GBPUSD_H1_MASTER.zip \
+            --output artifacts/m1_h1_completeness_timestamp_audit.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: m1-h1-completeness-timestamp-audit
+          path: artifacts/m1_h1_completeness_timestamp_audit.json
+          if-no-files-found: error
