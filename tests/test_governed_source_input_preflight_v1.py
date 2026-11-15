@@ -127,6 +127,18 @@ class GovernedSourceInputPreflightTests(unittest.TestCase):
         self.assertEqual(report["status"], "BLOCKED")
         self.assertIn("TIMEZONE_PROVENANCE_UNRESOLVED_NAIVE_TIMESTAMPS", report["sources"]["h1"]["errors"])
 
+    def test_timestamp_bounds_are_true_min_and_max_when_unsorted(self):
+        path = self.inputs["market_state"]
+        rows = list(csv.DictReader(path.open(encoding="utf-8")))
+        rows.reverse()
+        write_csv(path, ["timestamp", "trend"], rows)
+        report = self.run_gate()
+        self.assertEqual(report["status"], "PASS_INPUT_PREFLIGHT_ONLY")
+        source = report["sources"]["market_state"]
+        self.assertTrue(source["out_of_order_rows"] > 0)
+        self.assertTrue(source["min_timestamp"].startswith("2016-"))
+        self.assertTrue(source["max_timestamp"].startswith("2024-"))
+
     def test_invalid_ohlc_blocks(self):
         path = self.inputs["h1"]
         rows = list(csv.DictReader(path.open(encoding="utf-8")))
