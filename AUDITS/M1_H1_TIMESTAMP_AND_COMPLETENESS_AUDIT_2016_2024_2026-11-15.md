@@ -63,3 +63,38 @@ This is a proven **timestamp-contract gap / potential look-ahead**, not yet a li
 Create a separate, read-only event-time compatibility audit that records each source's row timestamp, bar interval, and earliest defensible availability time for one selected 2016-2024 event. Only after that audit should we propose the smallest approved runtime contract change.
 
 No volume thresholds, rule semantics, risk rules, book knowledge, Brain direction, or execution behavior were changed. No 2025 OOS data was used for tuning or modification.
+
+## Gate3C source timestamp neighborhood for the selected event
+
+A second read-only audit downloaded the actual Gate3C source set and inspected the selected event `2020-01-03T00:00:00Z`, plus the nearest prior and following timestamp for each source.
+
+| Source | Exact rows at event | Prior row | Next row | Explicit availability metadata |
+|---|---:|---|---|---|
+| H1 | 1 | 2020-01-02 23:00 | 2020-01-03 01:00 | None; only `timestamp` |
+| Market State | 1 | 2020-01-02 23:00 | 2020-01-03 01:00 | None; only `timestamp` |
+| MTF M5 | 1 | 2020-01-02 23:55 | 2020-01-03 00:05 | None; only `timestamp` |
+| Nison | 44 | 2020-01-02 23:00 | 2020-01-03 01:00 | None; only `timestamp` |
+| Murphy | 2 | 2020-01-02 23:00 | 2020-01-03 01:00 | None; only `timestamp` |
+
+H1 and Market State event OHLC values match exactly: O=1.31256, H=1.31289, L=1.31155, C=1.31207. Their volume field is 0. The separate M1 source has 60 rows in the 00:00-00:59 bucket and a summed volume of 430, but its OHLC does not match the H1/Market State event row. This demonstrates that the separate M1 archive cannot be assumed to be the same price/volume lineage as the H1/Market State source for this event.
+
+The MTF row at 00:00 contains M5=-1, M15=-1, M30=0, H1=+1, H4=+1, D1=+1, score=+1, and context=mixed. Its prior 23:55 row has D1 missing and score=0; its next 00:05 row has the same regimes as 00:00. This is a timestamp transition worth checking against the MTF producer, but the output file contains no bar-close or availability timestamp that proves when those values became knowable.
+
+Nison has 44 event rows. Its per-row provenance text declares `lookahead: none`, but the output still does not expose bar-close/available-at timestamps. Murphy has two event rows: the directional PASS is BEARISH from MURPHY_0021 with source IDs MURPHY_0021|MURPHY_0022|MURPHY_0023; the other row fails. Its output has no explicit availability metadata.
+
+## Code-path compatibility finding
+
+The candidate selector requires exact H1 and Market State timestamps and accepts the latest MTF row with timestamp <= event, provided its age is no more than five minutes. The canonical event builder uses the event's H1 and Market State slices, and the risk evidence builder uses the H1 close at the exact event timestamp as entry when no explicit entry field exists.
+
+Therefore the system currently aligns **labels**, not proven **availability times**. The files do not carry the metadata needed to prove that H1 close, MTF M5 state, Murphy PASS, Nison fan-in, and Market State values were all available at the event timestamp. This is a real contract/provenance gap. It is not sufficient evidence to mechanically shift all sources by one hour or five minutes.
+
+## Required next gate
+
+Before any runtime change, locate or reconstruct from source-backed producer contracts:
+1. whether H1 timestamps label bar-open or bar-close;
+2. whether MTF M5 and higher-timeframe values use only completed bars as of each M5 timestamp;
+3. whether Murphy and Nison event timestamps refer to the input bar's open, close, or evaluation/availability time;
+4. whether Market State outputs are generated from the same completed H1 bar or use a distinct as-of convention;
+5. a single event-time contract carrying `bar_open_time`, `bar_close_time`, and `available_at` per source.
+
+No runtime change is authorized or implemented in this PR. The 2025 OOS freeze remains intact.
