@@ -36,6 +36,7 @@ def diagnose_brain_assessment(
     row: Mapping[str, Any],
     assessment: Mapping[str, Any],
     decision: Mapping[str, Any] | None = None,
+    governance_execution: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Return an audit-only breakdown of MTF votes, confidence inputs and NO_TRADE handoff."""
     regimes = {field: _number(row.get(field)) for field in REGIME_FIELDS}
@@ -49,6 +50,11 @@ def diagnose_brain_assessment(
         "bullish" if votes["bullish"] > votes["bearish"]
         else "bearish" if votes["bearish"] > votes["bullish"]
         else "mixed"
+    )
+    structure_direction = (
+        "bullish" if regime_mean is not None and regime_mean > 0.20
+        else "bearish" if regime_mean is not None and regime_mean < -0.20
+        else "neutral"
     )
     mtf_score = _number(row.get("mtf_trend_score"))
     score_direction = (
@@ -76,7 +82,9 @@ def diagnose_brain_assessment(
 
     no_trade_reasons = [str(reason) for reason in (assessment.get("no_trade_reasons") or [])]
     final_decision = str((decision or {}).get("final") or "").strip().upper()
+    execution = dict(governance_execution or {})
     handoff_gap = bool(no_trade_reasons) and final_decision in {"BUY", "SELL"}
+    eligible_with_reasons = bool(execution.get("eligible")) and bool(no_trade_reasons)
 
     return {
         "diagnostic_only": True,
@@ -88,6 +96,7 @@ def diagnose_brain_assessment(
             "vote_counts": dict(votes),
             "regime_mean": regime_mean,
             "vote_direction": vote_direction,
+            "structure_direction_using_brain_v1_threshold": structure_direction,
             "mtf_trend_score": mtf_score,
             "score_direction": score_direction,
             "score_vs_regime_vote_disagreement": (
@@ -109,8 +118,12 @@ def diagnose_brain_assessment(
         "no_trade_handoff_audit": {
             "brain_no_trade_reasons": no_trade_reasons,
             "downstream_final_decision": final_decision or "NOT_SUPPLIED",
+            "governance_execution_eligible": execution.get("eligible"),
+            "governance_hard_blocks": list(execution.get("hard_blocks") or []),
+            "governance_needs_review": list(execution.get("needs_review") or []),
+            "eligible_while_brain_reports_no_trade_reasons": eligible_with_reasons,
             "reasons_present_but_directional_decision_returned": handoff_gap,
-            "note": "Flags a review condition only; does not impose a new execution gate.",
+            "note": "Review flag only; V1 reason semantics are not reinterpreted as new hard gates.",
         },
     }
 
