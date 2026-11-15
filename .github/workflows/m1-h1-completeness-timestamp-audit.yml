@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - "tools/audit_m1_h1_completeness_timestamp_v1.py"
+      - "tools/audit_gate3c_event_source_timestamps_v1.py"
       - ".github/workflows/m1-h1-completeness-timestamp-audit.yml"
   push:
     branches:
