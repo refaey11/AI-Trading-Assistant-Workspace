@@ -34,14 +34,42 @@ jobs:
             -o /tmp/GBPUSD_H1_MASTER.zip
           unzip -tq /tmp/GBPUSD_M1_MASTER.zip
           unzip -tq /tmp/GBPUSD_H1_MASTER.zip
+          curl -L --fail --silent --show-error https://content.dropboxapi.com/2/files/download \
+            -H "Authorization: Bearer $DROPBOX_ACCESS_TOKEN" \
+            -H 'Dropbox-API-Arg: {"path":"/MTF_ALIGNMENT_GBPUSD_V1.zip"}' \
+            -o /tmp/MTF_ALIGNMENT_GBPUSD_V1.zip
+          curl -L --fail --silent --show-error https://content.dropboxapi.com/2/files/download \
+            -H "Authorization: Bearer $DROPBOX_ACCESS_TOKEN" \
+            -H 'Dropbox-API-Arg: {"path":"/New 8/MURPHY_HISTORICAL_34_RULE_FANIN_2016_2024.zip"}' \
+            -o /tmp/MURPHY_HISTORICAL_34_RULE_FANIN_2016_2024.zip
+          curl -L --fail --silent --show-error https://content.dropboxapi.com/2/files/download \
+            -H "Authorization: Bearer $DROPBOX_ACCESS_TOKEN" \
+            -H 'Dropbox-API-Arg: {"path":"/New 8/GBPUSD_MARKET_STATE 6.csv"}' \
+            -o /tmp/GBPUSD_MARKET_STATE.csv
+          curl -L --fail --silent --show-error https://content.dropboxapi.com/2/files/download \
+            -H "Authorization: Bearer $DROPBOX_ACCESS_TOKEN" \
+            -H 'Dropbox-API-Arg: {"path":"/New 8/NISON_2016_2024_FULL_EVIDENCE.csv"}' \
+            -o /tmp/NISON_2016_2024_FULL_EVIDENCE.csv
+          unzip -tq /tmp/MTF_ALIGNMENT_GBPUSD_V1.zip
+          unzip -tq /tmp/MURPHY_HISTORICAL_34_RULE_FANIN_2016_2024.zip
       - name: Audit M1 completeness and H1 timestamp alignment
         run: |
           python tools/audit_m1_h1_completeness_timestamp_v1.py \
             --m1-zip /tmp/GBPUSD_M1_MASTER.zip \
             --h1-zip /tmp/GBPUSD_H1_MASTER.zip \
             --output artifacts/m1_h1_completeness_timestamp_audit.json --event-ts 2020-01-03T00:00:00Z
+      - name: Audit Gate3C source timestamp neighborhoods
+        run: |
+          python tools/audit_gate3c_event_source_timestamps_v1.py \
+            --event-ts 2020-01-03T00:00:00Z \
+            --h1-zip /tmp/GBPUSD_H1_MASTER.zip \
+            --mtf-zip /tmp/MTF_ALIGNMENT_GBPUSD_V1.zip \
+            --murphy-zip /tmp/MURPHY_HISTORICAL_34_RULE_FANIN_2016_2024.zip \
+            --market-state /tmp/GBPUSD_MARKET_STATE.csv \
+            --nison /tmp/NISON_2016_2024_FULL_EVIDENCE.csv \
+            --output artifacts/gate3c_event_source_timestamp_audit.json
       - uses: actions/upload-artifact@v4
         with:
           name: m1-h1-completeness-timestamp-audit
-          path: artifacts/m1_h1_completeness_timestamp_audit.json
+          path: artifacts/*.json
           if-no-files-found: error
