@@ -12,6 +12,11 @@ sys.path.insert(0, str(ROOT / "BACKTEST"))
 from GOVERNED_SOURCE_INPUT_PREFLIGHT_V1 import MTF_NUMERIC_FIELDS, run_preflight
 
 
+def read_rows(path: Path) -> list[dict[str, str]]:
+    with path.open("r", encoding="utf-8", newline="") as handle:
+        return list(csv.DictReader(handle))
+
+
 def write_csv(path: Path, columns: list[str], rows: list[dict[str, str]]) -> Path:
     with path.open("w", encoding="utf-8", newline="") as handle:
         writer = csv.DictWriter(handle, fieldnames=columns)
@@ -102,7 +107,7 @@ class GovernedSourceInputPreflightTests(unittest.TestCase):
 
     def test_missing_mtf_numeric_field_blocks(self):
         path = self.inputs["mtf"]
-        rows = list(csv.DictReader(path.open(encoding="utf-8")))
+        rows = read_rows(path)
         columns = ["timestamp", *[x for x in MTF_NUMERIC_FIELDS if x != "D1_trend_regime"]]
         write_csv(path, columns, [{k: row[k] for k in columns} for row in rows])
         report = self.run_gate()
