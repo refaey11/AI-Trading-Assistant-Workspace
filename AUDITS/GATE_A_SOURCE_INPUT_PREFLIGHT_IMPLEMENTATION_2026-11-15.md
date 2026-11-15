@@ -10,7 +10,7 @@ Scope: read-only input validation; no strategy, runtime, risk, or OOS changes.
 - Added deterministic unit tests in tests/test_governed_source_input_preflight_v1.py.
 - Added a pinned Dropbox source manifest in BACKTEST/GOVERNED_SOURCE_INPUT_MANIFEST_2016_2024_2026-11-15.json.
 - Added GitHub Actions workflow .github/workflows/gate-a-governed-source-input-preflight-2016-2024.yml.
-- Final suite of 8 deterministic unit tests passed in PR validation run 43680039709; the initial 7-test suite also passed in run 43679881054.
+- Final suite of 8 deterministic unit tests passed in PR validation run 43680047289; the initial 7-test suite also passed in run 43679881054.
 - The real-source acquisition step was blocked before downloading any source file because the repository Actions secret DROPBOX_ACCESS_TOKEN returned HTTP 401 Unauthorized.
 - No real CSV rows were parsed by this run; no source SHA-256 values are claimed. The pinned Dropbox revision IDs and file sizes were independently confirmed through the connected Dropbox metadata API.
 
@@ -46,7 +46,7 @@ This gate returns PASS_INPUT_PREFLIGHT_ONLY, never a backtest PASS. It does not 
 
 PR #118: https://github.com/refaey11/AI-Trading-Assistant-Workspace/pull/118
 
-Final PR validation run: https://github.com/refaey11/AI-Trading-Assistant-Workspace/actions/runs/43680039709
+Final 8-test PR validation run: https://github.com/refaey11/AI-Trading-Assistant-Workspace/actions/runs/43680047289
 
 Initial push run (unit tests passed, Dropbox acquisition returned 401): https://github.com/refaey11/AI-Trading-Assistant-Workspace/actions/runs/43679881054
 
