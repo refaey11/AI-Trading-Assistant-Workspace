@@ -41,7 +41,7 @@ def find_mtf_csv_for_event(root: Path, event_ts: pd.Timestamp) -> Path:
 
     Never fall back to another year's file or an arbitrary lexicographic match.
     """
-    pattern = re.compile(r"GBPUSD_M5_MTF_ALIGNMENT_(\\d{4})\\.csv$", re.IGNORECASE)
+    pattern = re.compile(r"GBPUSD_M5_MTF_ALIGNMENT_(\d{4})\.csv$", re.IGNORECASE)
     matches = [
         path for path in csv_files(root)
         if (match := pattern.fullmatch(path.name)) and int(match.group(1)) == event_ts.year
