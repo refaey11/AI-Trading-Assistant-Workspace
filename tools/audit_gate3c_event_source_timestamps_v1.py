@@ -113,8 +113,14 @@ def main() -> int:
     if len(mtf_files) != 1:
         raise SystemExit(f"BLOCKED_MTF_SOURCE_CARDINALITY:{len(mtf_files)}")
     murphy_files = csv_candidates(murphy_root, {"timestamp", "source_rule_id"})
-    if len(murphy_files) != 1:
-        raise SystemExit(f"BLOCKED_MURPHY_SOURCE_CARDINALITY:{len(murphy_files)}")
+    scored = [
+        (sum(token in path.name.upper() for token in ("MURPHY", "HISTORICAL", "34", "FANIN", "2016_2024", "EVIDENCE")), path)
+        for path in murphy_files
+    ]
+    scored.sort(key=lambda item: (-item[0], str(item[1])))
+    if not scored or (len(scored) > 1 and scored[0][0] == scored[1][0]):
+        raise SystemExit(f"BLOCKED_MURPHY_SOURCE_CARDINALITY_OR_AMBIGUITY:{[(s, str(p)) for s,p in scored[:5]]}")
+    murphy_file = scored[0][1]
     market_path = a.market_state
     nison_path = a.nison
     report = {
@@ -126,7 +132,7 @@ def main() -> int:
             source_snapshot("MTF_M5", mtf_files[0], event, interval="5min"),
             source_snapshot("MARKET_STATE", market_path, event),
             source_snapshot("NISON", nison_path, event),
-            source_snapshot("MURPHY", murphy_files[0], event),
+            source_snapshot("MURPHY", murphy_file, event),
         ],
         "global_conclusion": "Read-only timestamp-neighborhood inventory. No source is shifted or assigned an availability timestamp without producer/contract evidence.",
         "safety": {"runtime_changed": False, "thresholds_changed": False, "2025_used_for_tuning": False},
