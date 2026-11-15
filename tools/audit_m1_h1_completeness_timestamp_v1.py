@@ -39,7 +39,7 @@ def _timestamps(frame: pd.DataFrame, label: str) -> pd.Series:
     return values
 
 
-def audit(m1_zip: str | Path, h1_zip: str | Path) -> dict:
+def audit(m1_zip: str | Path, h1_zip: str | Path, event_ts: str | None = None) -> dict:
     m1 = _read_csv_from_zip(m1_zip, required={"timestamp", "open", "high", "low", "close", "volume"}, preferred="M1")
     h1 = _read_csv_from_zip(h1_zip, required={"timestamp", "open", "high", "low", "close"}, preferred="H1")
     m1_ts = _timestamps(m1, "M1")
@@ -117,10 +117,52 @@ def audit(m1_zip: str | Path, h1_zip: str | Path) -> dict:
         [f"{col}_match_prior_hour" for col in ("open", "high", "low", "close")]
     ].all(axis=1)
 
+    selected_event = None
+    if event_ts:
+        target = pd.to_datetime(event_ts, utc=True)
+        h1_event = h1.loc[h1["_ts"].eq(target)]
+        m1_event = hourly.loc[hourly["_hour"].eq(target.floor("h"))]
+        if len(h1_event) > 1 or len(m1_event) > 1:
+            raise ValueError("Selected event timestamp is ambiguous in H1 or M1 hourly aggregate")
+        if len(h1_event) == 1:
+            hrow = h1_event.iloc[0]
+            mrow = m1_event.iloc[0] if len(m1_event) == 1 else None
+            event_end = target.floor("h") + pd.Timedelta(hours=1)
+            field_matches = {}
+            for col in ("open", "high", "low", "close"):
+                field_matches[col] = bool(
+                    mrow is not None and
+                    abs(float(hrow[col]) - float(mrow[f"m1_{col}"])) <= 1e-8
+                )
+            selected_event = {
+                "event_timestamp": target.isoformat(),
+                "h1_row_timestamp_equals_event": True,
+                "h1_ohlc": {col: float(hrow[col]) for col in ("open", "high", "low", "close")},
+                "m1_hour_aggregate_present": mrow is not None,
+                "m1_rows": int(mrow["m1_rows"]) if mrow is not None else 0,
+                "m1_unique_minutes": int(mrow["unique_minutes"]) if mrow is not None else 0,
+                "m1_first_timestamp": mrow["first_m1"].isoformat() if mrow is not None else None,
+                "m1_last_timestamp": mrow["last_m1"].isoformat() if mrow is not None else None,
+                "m1_volume_sum": float(mrow["volume_sum"]) if mrow is not None else None,
+                "h1_ohlc_field_matches_same_hour_m1": field_matches,
+                "h1_all_ohlc_matches_same_hour_m1": all(field_matches.values()),
+                "bar_interval_if_hour_start_label": [target.floor("h").isoformat(), event_end.isoformat()],
+                "earliest_full_hour_volume_availability_if_hour_start_label": event_end.isoformat(),
+                "event_label_precedes_full_hour_availability_seconds": 3600,
+            }
+        else:
+            selected_event = {
+                "event_timestamp": target.isoformat(),
+                "h1_row_timestamp_equals_event": False,
+                "m1_hour_aggregate_present": len(m1_event) == 1,
+                "note": "No exact H1 row at the selected event timestamp.",
+            }
+
     # These are descriptive diagnostics only. They do not alter or certify a trading input.
     report = {
         "audit": "READ_ONLY_M1_TO_H1_COMPLETENESS_AND_TIMESTAMP_2016_2024_ONLY",
         "development_year_scope": "2016-2024; 2025 OOS and 2026 rows excluded",
+        "selected_event": selected_event,
         "m1_archive": str(m1_zip),
         "h1_archive": str(h1_zip),
         "m1_csv_member": str(m1["_source_member"].iloc[0]),
@@ -186,8 +228,9 @@ def main() -> int:
     parser.add_argument("--m1-zip", required=True)
     parser.add_argument("--h1-zip", required=True)
     parser.add_argument("--output", required=True)
+    parser.add_argument("--event-ts", default=None)
     args = parser.parse_args()
-    report = audit(args.m1_zip, args.h1_zip)
+    report = audit(args.m1_zip, args.h1_zip, args.event_ts)
     Path(args.output).parent.mkdir(parents=True, exist_ok=True)
     Path(args.output).write_text(json.dumps(report, indent=2), encoding="utf-8")
     print(json.dumps(report, indent=2))
