@@ -7,6 +7,7 @@ on:
   pull_request:
     branches:
       - current-stack-dev-backtest-2016-2024-v3
+      - fix/gate3c-mtf-event-year-source-selection
 
 permissions:
   contents: read
