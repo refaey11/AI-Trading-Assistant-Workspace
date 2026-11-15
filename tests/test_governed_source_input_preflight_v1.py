@@ -116,7 +116,7 @@ class GovernedSourceInputPreflightTests(unittest.TestCase):
 
     def test_duplicate_h1_timestamp_blocks(self):
         path = self.inputs["h1"]
-        rows = list(csv.DictReader(path.open(encoding="utf-8")))
+        rows = read_rows(path)
         rows.append(dict(rows[0]))
         write_csv(path, ["timestamp", "open", "high", "low", "close"], rows)
         report = self.run_gate()
@@ -125,7 +125,7 @@ class GovernedSourceInputPreflightTests(unittest.TestCase):
 
     def test_naive_timestamp_blocks(self):
         path = self.inputs["h1"]
-        rows = list(csv.DictReader(path.open(encoding="utf-8")))
+        rows = read_rows(path)
         rows[0]["timestamp"] = "2016-06-01T12:00:00"
         write_csv(path, ["timestamp", "open", "high", "low", "close"], rows)
         report = self.run_gate()
@@ -134,7 +134,7 @@ class GovernedSourceInputPreflightTests(unittest.TestCase):
 
     def test_timestamp_bounds_are_true_min_and_max_when_unsorted(self):
         path = self.inputs["market_state"]
-        rows = list(csv.DictReader(path.open(encoding="utf-8")))
+        rows = read_rows(path)
         rows.reverse()
         write_csv(path, ["timestamp", "trend"], rows)
         report = self.run_gate()
@@ -146,7 +146,7 @@ class GovernedSourceInputPreflightTests(unittest.TestCase):
 
     def test_invalid_ohlc_blocks(self):
         path = self.inputs["h1"]
-        rows = list(csv.DictReader(path.open(encoding="utf-8")))
+        rows = read_rows(path)
         rows[0]["high"] = "1.20"
         write_csv(path, ["timestamp", "open", "high", "low", "close"], rows)
         report = self.run_gate()
