@@ -72,6 +72,13 @@ def audit(m1_zip: str | Path, h1_zip: str | Path) -> dict:
         m1_low=("low", "min"),
         m1_close=("close", "last"),
     ).reset_index()
+    hourly["minute_span"] = (
+        (hourly["last_m1"] - hourly["first_m1"]).dt.total_seconds().div(60).add(1)
+    )
+    hourly["internal_missing_minutes"] = hourly["minute_span"] - hourly["unique_minutes"]
+    hourly["contiguous_partial_hour"] = (
+        hourly["unique_minutes"].lt(60) & hourly["internal_missing_minutes"].eq(0)
+    )
 
     h1 = h1.copy()
     h1["_ts"] = h1_ts
@@ -128,6 +135,8 @@ def audit(m1_zip: str | Path, h1_zip: str | Path) -> dict:
         "active_hours_with_exactly_60_unique_minutes": int(hourly["unique_minutes"].eq(60).sum()),
         "active_hours_with_less_than_60_unique_minutes": int(hourly["unique_minutes"].lt(60).sum()),
         "active_hours_with_more_than_60_unique_minutes": int(hourly["unique_minutes"].gt(60).sum()),
+        "partial_hours_with_internal_missing_minutes": int(hourly["internal_missing_minutes"].gt(0).sum()),
+        "partial_hours_contiguous_from_first_to_last_observed_minute": int(hourly["contiguous_partial_hour"].sum()),
         "m1_unique_minutes_per_hour_distribution": {
             str(int(k)): int(v) for k, v in hourly["unique_minutes"].value_counts().sort_index().items()
         },
@@ -136,6 +145,12 @@ def audit(m1_zip: str | Path, h1_zip: str | Path) -> dict:
         "h1_rows_where_m1_reaches_minute_59": int(joined["m1_reaches_hour_end"].sum()),
         "h1_rows_where_all_ohlc_matches_same_hour_m1_aggregation": int(joined["h1_ohlc_all_match_current_hour"].sum()),
         "h1_rows_where_all_ohlc_matches_previous_hour_m1_aggregation": int(joined["h1_ohlc_all_match_prior_hour"].sum()),
+        "h1_ohlc_field_matches_same_hour_m1_aggregation": {
+            col: int(joined[f"{col}_match_current_hour"].sum()) for col in ("open", "high", "low", "close")
+        },
+        "h1_rows_with_all_ohlc_matching_same_hour_and_60_m1_minutes": int(
+            (joined["h1_ohlc_all_match_current_hour"] & joined["m1_complete_60"]).sum()
+        ),
         "ohlc_comparison_tolerance": "absolute price difference <= 1e-8 for each OHLC field",
         "h1_timestamp_equals_hour_start_rows": int(joined["timestamp_equals_hour_start"].sum()),
         "h1_timestamp_equals_hour_end_rows": int(joined["timestamp_equals_hour_end"].sum()),
@@ -149,11 +164,15 @@ def audit(m1_zip: str | Path, h1_zip: str | Path) -> dict:
                 "m1_reaches_minute_59": bool(row["m1_reaches_hour_end"]),
                 "h1_ohlc_matches_same_hour_m1": bool(row["h1_ohlc_all_match_current_hour"]),
                 "h1_ohlc_matches_previous_hour_m1": bool(row["h1_ohlc_all_match_prior_hour"]),
+                "same_hour_m1_volume_sum": float(row["volume_sum"]) if pd.notna(row["volume_sum"]) else None,
+                "same_hour_m1_unique_minutes": int(row["unique_minutes"]) if pd.notna(row["unique_minutes"]) else 0,
             }
             for _, row in joined.head(20).iterrows()
         ],
         "interpretation": [
             "A count of 60 unique M1 timestamps is a completeness indicator for an hour, not proof of exchange/session correctness.",
+            "Partial hours are split into contiguous partial spans versus hours with internal missing minutes; do not assume all partial hours are market closures.",
+            "The M1 aggregation bucket starts at the H1 timestamp and its volume is only complete at the following hour boundary; using it at the bucket start is look-ahead.",
             "An H1 timestamp at the hour start cannot be treated as an available completed H1 bar until the corresponding hour has closed.",
             "Same-hour versus prior-hour OHLC matches are source-alignment diagnostics; mismatches do not prove a different timestamp convention unless source OHLC lineage is known.",
             "This report is diagnostic only; it does not change volume calculations, thresholds, runtime behavior, or any 2025/OOS artifact.",
