@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import csv
 import hashlib
 import json
 import re
@@ -25,32 +26,42 @@ def _sha256(path: Path) -> str:
 def inspect_archive(path: Path) -> dict[str, Any]:
     if not path.is_file():
         raise FileNotFoundError(path)
-    members: list[dict[str, Any]] = []
+    all_members: list[dict[str, Any]] = []
     matches: list[dict[str, Any]] = []
+    csv_schemas: list[dict[str, Any]] = []
     candidate_count = 0
     with zipfile.ZipFile(path) as zf:
-        for info in zf.infolist():
-            if info.is_dir():
-                continue
+        infos = [info for info in zf.infolist() if not info.is_dir()]
+        for info in infos:
             name = info.filename
             lower = name.lower()
             suffix = Path(name).suffix.lower()
             name_hits = [term for term in NAME_TERMS if term in lower]
-            item = {
+            all_members.append({
                 "path": name,
                 "size": info.file_size,
                 "compressed_size": info.compress_size,
-                "crc32": f"{info.CRC:08x}",
+                "suffix": suffix,
                 "name_hits": name_hits,
-            }
-            if name_hits:
-                members.append(item)
+            })
+            if suffix == ".csv":
+                try:
+                    with zf.open(info, "r") as raw:
+                        sample = raw.read(128 * 1024).decode("utf-8-sig", errors="replace")
+                    header = next(csv.reader(sample.splitlines()), [])
+                    csv_schemas.append({
+                        "path": name,
+                        "size": info.file_size,
+                        "header": header[:250],
+                        "header_hits": [term for term in CONTENT_TERMS if any(term in str(col).lower() for col in header)],
+                    })
+                except Exception as exc:
+                    csv_schemas.append({"path": name, "size": info.file_size, "error": type(exc).__name__})
             if suffix not in TEXT_SUFFIXES or info.file_size > MAX_TEXT_BYTES:
                 continue
             candidate_count += 1
             try:
-                raw = zf.read(info)
-                text = raw.decode("utf-8-sig")
+                text = zf.read(info).decode("utf-8-sig")
             except (UnicodeDecodeError, RuntimeError, zipfile.BadZipFile):
                 continue
             line_hits = []
@@ -73,11 +84,12 @@ def inspect_archive(path: Path) -> dict[str, Any]:
         "archive": path.name,
         "archive_size": path.stat().st_size,
         "archive_sha256": _sha256(path),
-        "member_count": len(zipfile.ZipFile(path).infolist()),
+        "member_count": len(all_members),
         "text_files_scanned": candidate_count,
-        "name_candidates": members[:500],
+        "all_members": all_members[:1000],
+        "csv_schemas": csv_schemas[:500],
         "source_candidates": matches[:500],
-        "candidate_truncated": len(matches) > 500 or len(members) > 500,
+        "candidate_truncated": len(matches) > 500 or len(all_members) > 1000 or len(csv_schemas) > 500,
     }
 
 
@@ -90,7 +102,7 @@ def main() -> int:
     result = {
         "audit": "MTF_ARCHIVE_PRODUCER_LINEAGE_READ_ONLY_V1",
         "status": "COMPLETED_READ_ONLY",
-        "scope": "Archive inventory and source-text keyword scan only; no runtime or market data changes.",
+        "scope": "Archive inventory, CSV schema inspection, and source-text keyword scan only; no runtime or market data changes.",
         "archives": reports,
         "interpretation": [
             "A matching filename or keyword is a lead, not proof that the file generated the released dataset.",
