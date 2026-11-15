@@ -37,10 +37,12 @@ jobs:
           download() {
             local source_path="$1"
             local output="$2"
+            local dropbox_arg
+            dropbox_arg="$(python -c 'import json,sys; print(json.dumps({"path":sys.argv[1]}))' "$source_path")"
             curl -L --fail --silent --show-error \
               https://content.dropboxapi.com/2/files/download \
               -H "Authorization: Bearer ${TOKEN}" \
-              -H "Dropbox-API-Arg: {\\"path\\":\\"${source_path}\\"}" \
+              -H "Dropbox-API-Arg: ${dropbox_arg}" \
               -o "$output"
           }
           download "/GBPUSD_MARKET_STRUCTURE_ALL_TF_V1.zip" artifacts/source/GBPUSD_MARKET_STRUCTURE_ALL_TF_V1.zip
