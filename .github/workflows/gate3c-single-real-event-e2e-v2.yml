@@ -44,6 +44,9 @@ jobs:
       - name: Install dependencies
         run: python -m pip install --upgrade pip pandas pytest
 
+      - name: Test Murphy directional provenance contract
+        run: python -m pytest tests/evaluation/test_gate3c_murphy_direction_contract_v1.py -q
+
       - name: Verify pre-2025 target only
         env:
           EVENT_TS: ${{ inputs.timestamp }}

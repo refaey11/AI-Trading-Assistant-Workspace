@@ -44,6 +44,27 @@ def _timestamp(value: Any) -> pd.Timestamp:
     return pd.Timestamp(value, tz="UTC")
 
 
+def _murphy_risk_direction_contract(murphy: Mapping[str, Any], risk: Mapping[str, Any], murphy_rows: list[dict[str, Any]]) -> str | None:
+    murphy_direction = str(murphy.get("direction") or "").strip().upper()
+    risk_direction = str(risk.get("direction") or "").strip().upper()
+    if murphy_direction not in {"BUY", "SELL"} or risk_direction not in {"BUY", "SELL"}:
+        return "MISSING_OR_INVALID_DIRECTION"
+    if murphy_direction != risk_direction:
+        return "MURPHY_RISK_DIRECTION_CONFLICT"
+    pass_rule_id = str(murphy.get("pass_rule_id") or "").strip().upper()
+    risk_pass_rule_id = str(risk.get("pass_rule_id") or "").strip().upper()
+    if not pass_rule_id or pass_rule_id != risk_pass_rule_id:
+        return "MURPHY_RISK_PASS_RULE_MISMATCH"
+    source_ids = set(_ids(murphy_rows))
+    if pass_rule_id not in source_ids:
+        return "MURPHY_PASS_RULE_NOT_IN_EVENT_EVIDENCE"
+    expected_source_ids = {x.strip().upper() for x in str(murphy.get("directional_source_rule_id") or "").split("|") if x.strip()}
+    risk_source_ids = {x.strip().upper() for x in str(risk.get("directional_source_rule_id") or "").split("|") if x.strip()}
+    if not expected_source_ids or expected_source_ids != risk_source_ids:
+        return "MURPHY_RISK_DIRECTIONAL_SOURCE_MISMATCH"
+    return None
+
+
 def run(event: Mapping[str, Any]) -> dict[str, Any]:
     ts_text = str(event.get("query_as_of") or "")
     if not ts_text:
@@ -66,6 +87,8 @@ def run(event: Mapping[str, Any]) -> dict[str, Any]:
     nison_ids = sorted(set(_ids(nison_rows)))
     if not murphy_ids:
         return {"gate3c":"BLOCKED","stage":"MURPHY","reason":"NO_SOURCE_BACKED_EVENT_RULES","observed_count":0}
+    if murphy.get("authoritative") is not True or str(murphy.get("status") or "").upper() != "PASS":
+        return {"gate3c":"BLOCKED","stage":"MURPHY","reason":"MURPHY_DIRECTIONAL_EVIDENCE_NOT_AUTHORITATIVE"}
     unknown_murphy = sorted(set(murphy_ids) - MURPHY_IDS)
     if unknown_murphy:
         return {"gate3c":"BLOCKED","stage":"MURPHY","reason":"UNKNOWN_MURPHY_RULE_IDS","observed":unknown_murphy}
@@ -97,6 +120,9 @@ def run(event: Mapping[str, Any]) -> dict[str, Any]:
         return {"gate3c":"BLOCKED","stage":"RISK","reason":"MISSING_AUTHORITATIVE_RISK_INPUTS","missing":missing_risk}
     if risk.get("authoritative") is not True:
         return {"gate3c":"BLOCKED","stage":"RISK","reason":"RISK_NOT_AUTHORITATIVE"}
+    direction_contract_error = _murphy_risk_direction_contract(murphy, risk, murphy_rows)
+    if direction_contract_error:
+        return {"gate3c":"BLOCKED","stage":"MURPHY_RISK_CONTRACT","reason":direction_contract_error}
 
     tiz = dict(event.get("tiz") or {})
     tiz.setdefault("authoritative", False)
@@ -108,7 +134,9 @@ def run(event: Mapping[str, Any]) -> dict[str, Any]:
     result = bridge.run_full_brain_cycle(
         row=dict(event.get("brain_row") or {}),
         query_as_of=ts.isoformat(),
-        murphy_evidence={"status":"PASS","rows":murphy_rows,"authoritative":True,"evidence_set":evidence_set_m},
+        murphy_evidence={"status":"PASS","direction":murphy.get("direction"),"pass_rule_id":murphy.get("pass_rule_id"),
+                         "directional_source_rule_id":murphy.get("directional_source_rule_id"),
+                         "rows":murphy_rows,"authoritative":True,"evidence_set":evidence_set_m},
         nison_evidence={"status":"PASS","rows":nison_rows,"authoritative":True,"confirmation":nison.get("confirmation","ABSENT"),"contradiction":bool(nison.get("contradiction",False)),"evidence_set":evidence_set_n},
         risk_evidence=risk,
         tiz_evidence=tiz,

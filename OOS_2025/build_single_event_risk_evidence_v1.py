@@ -32,7 +32,7 @@ def _find_murphy(root: Path) -> Path:
             cols = set(pd.read_csv(p, nrows=0).columns)
         except Exception:
             continue
-        if {"timestamp", "direction"}.issubset(cols):
+        if {"timestamp", "direction", "status", "source_rule_id", "pass_rule_id"}.issubset(cols):
             score = sum(k in p.name.upper() for k in ("MURPHY", "HISTORICAL", "FANIN", "EVIDENCE"))
             candidates.append((score, p))
     if not candidates:
@@ -49,16 +49,45 @@ def _rows_at(path: Path, ts: pd.Timestamp) -> pd.DataFrame:
     return df.loc[df["timestamp"].eq(ts)].copy()
 
 
-def _one_directional_murphy_row(path: Path, ts: pd.Timestamp) -> pd.Series:
+def _directional_rule_allowlist(registry_path: Path) -> set[str]:
+    registry = pd.read_csv(registry_path, dtype=str).fillna("")
+    required = {"rule_id", "historical_status", "decision_eligible"}
+    if not required.issubset(registry.columns):
+        raise ValueError(f"{registry_path}: Murphy eligibility registry schema mismatch")
+    eligible = registry.loc[
+        registry["decision_eligible"].astype(str).str.upper().str.strip().eq("YES")
+        & registry["historical_status"].astype(str).str.upper().str.strip().eq("SOURCE_BACKED_HISTORICAL_EVALUATION"),
+        "rule_id",
+    ]
+    return {str(value).strip().upper() for value in eligible if str(value).strip()}
+
+
+def _one_directional_murphy_row(path: Path, ts: pd.Timestamp, registry_path: Path | None = None) -> pd.Series:
     part = _rows_at(path, ts)
     if part.empty:
         raise ValueError(f"{path}: no Murphy evidence at {ts.isoformat()}")
-    status = part.get("status", pd.Series(index=part.index, dtype=object)).astype(str).str.upper().str.strip()
-    direction = part.get("direction", pd.Series(index=part.index, dtype=object)).astype(str).str.upper().str.strip()
+    required = {"status", "direction", "source_rule_id", "pass_rule_id"}
+    if not required.issubset(part.columns):
+        raise ValueError(f"{path}: Murphy directional evidence missing {sorted(required - set(part.columns))}")
+    registry = registry_path or (ROOT / "BACKTEST" / "MURPHY_34_SOURCE_BACKED_FANIN_V2_2026-08-28.csv")
+    allowed = _directional_rule_allowlist(registry)
+    status = part["status"].astype(str).str.upper().str.strip()
+    direction = part["direction"].astype(str).str.upper().str.strip()
     candidates = part.loc[status.eq("PASS") & direction.isin({"BUY", "SELL", "BULLISH", "BEARISH"})].copy()
+    if candidates.empty:
+        raise ValueError(f"{path}: no directional PASS row at {ts.isoformat()}")
+    candidates["_pass_rule_id"] = candidates["pass_rule_id"].astype(str).str.strip().str.upper()
+    candidates["_source_rule_ids"] = candidates["source_rule_id"].astype(str).str.upper()
+    candidates = candidates.loc[
+        candidates["_pass_rule_id"].isin(allowed)
+        & candidates.apply(lambda row: row["_pass_rule_id"] in {x.strip() for x in row["_source_rule_ids"].split("|")}, axis=1)
+    ].copy()
     if len(candidates) != 1:
-        raise ValueError(f"{path}: expected exactly one directional PASS row at {ts.isoformat()}, observed={len(candidates)}")
-    return candidates.iloc[0]
+        raise ValueError(
+            f"{path}: expected exactly one registry-eligible directional PASS row at {ts.isoformat()}, "
+            f"observed={len(candidates)}"
+        )
+    return candidates.iloc[0].drop(labels=["_pass_rule_id", "_source_rule_ids"])
 
 
 def _scalar(row: pd.Series, names: tuple[str, ...], label: str) -> float:
@@ -118,7 +147,10 @@ def build(*, timestamp: str, h1: Path, market_state: Path, murphy_root: Path, ou
         raise ValueError(f"CANONICAL_RISK_ENGINE_BLOCKED:{canonical_result.reason}")
 
     fields = {
-        "timestamp": ts.isoformat(), "direction": direction, "equity": equity,
+        "timestamp": ts.isoformat(), "direction": direction,
+        "pass_rule_id": str(murphy_row["pass_rule_id"]).strip().upper(),
+        "directional_source_rule_id": str(murphy_row["source_rule_id"]).strip(),
+        "equity": equity,
         "peak_equity": peak_equity, "prior_loss_streak": prior_loss_streak,
         "entry_price": entry, "atr": atr, "risk_percent": frozen_result.risk_percent,
         "stop_loss": frozen_result.stop_loss, "take_profit": frozen_result.take_profit,
