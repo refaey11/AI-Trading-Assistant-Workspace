@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - current-stack-dev-backtest-2016-2024-v3
+  pull_request:
+    branches:
+      - current-stack-dev-backtest-2016-2024-v3
 
 permissions:
   contents: read
@@ -18,58 +21,170 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: current-stack-dev-backtest-2016-2024-v3
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 1
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Install pandas
-        run: python -m pip install --upgrade pip pandas
+      - name: Install diagnostic test dependencies
+        run: python -m pip install --upgrade pip pandas pytest
+      - name: Test MTF source diagnostics
+        run: python -m pytest -q tests/test_mtf_source_contract_gate_v1.py
       - name: Download exact MTF archive
         shell: bash
         run: |
           set -euo pipefail
           TOKEN="$(printf '%s' "$DROPBOX_ACCESS_TOKEN" | tr -d '\r\n' | sed -E 's/^Bearer[[:space:]]+//; s/^\"//; s/\"$//')"
           test -n "$TOKEN"
-          mkdir -p artifacts/source/mtf
+          mkdir -p artifacts/source/mtf artifacts/mtf_diagnostics
           curl -L --fail --silent --show-error \
             https://content.dropboxapi.com/2/files/download \
             -H "Authorization: Bearer ${TOKEN}" \
             -H 'Dropbox-API-Arg: {"path":"/MTF_ALIGNMENT_GBPUSD_V1.zip"}' \
             -o artifacts/mtf.zip
           unzip -q artifacts/mtf.zip -d artifacts/source/mtf
-      - name: Verify 6-TF annual source files and canonical numeric fields
+      - name: Diagnose all 2016-2024 MTF source fields without repair
         shell: bash
         run: |
           python - <<'PY'
           from pathlib import Path
+          import json
           import pandas as pd
-          root=Path('artifacts/source/mtf')
-          fields=['mtf_trend_score','M5_trend_regime','M15_trend_regime','M30_trend_regime','H1_trend_regime','H4_trend_regime','D1_trend_regime']
-          frames=[]
-          for year in range(2016,2025):
-              matches=sorted(root.rglob(f'GBPUSD_M5_MTF_ALIGNMENT_{year}.csv'))
-              if len(matches)!=1: raise SystemExit(f'MTF_FILE_COUNT_FAIL:{year}:{matches}')
-              p=matches[0]
-              df=pd.read_csv(p,low_memory=False)
-              missing=sorted(set(['timestamp',*fields])-set(df.columns))
-              if missing: raise SystemExit(f'MTF_REQUIRED_COLUMNS_FAIL:{year}:{missing}')
-              for f in fields:
-                  n=pd.to_numeric(df[f],errors='coerce')
-                  if n.isna().any():
-                      bad=df.loc[n.isna(),f].astype('string').dropna().unique().tolist()
-                      raise SystemExit(f'MTF_NON_NUMERIC_FAIL:{year}:{f}:{bad[:10]}')
-                  df[f]=n.astype(float)
-              df['timestamp']=pd.to_datetime(df['timestamp'],utc=True,errors='raise',format='mixed')
-              if df['timestamp'].duplicated().any(): raise SystemExit(f'MTF_TIMESTAMP_DUPLICATE_FAIL:{year}')
-              frames.append(df)
-          combined=pd.concat(frames,ignore_index=True).sort_values('timestamp').reset_index(drop=True)
-          if combined['timestamp'].duplicated().any(): raise SystemExit('MTF_GLOBAL_TIMESTAMP_DUPLICATE_FAIL')
-          combined.to_csv('artifacts/MTF_CURRENT_STACK.csv',index=False)
-          print('MTF_6TF_SOURCE_PASS')
-          print('ROWS',len(combined))
-          print('YEARS',sorted(combined.timestamp.dt.year.unique().tolist()))
+
+          root = Path('artifacts/source/mtf')
+          out = Path('artifacts/mtf_diagnostics')
+          out.mkdir(parents=True, exist_ok=True)
+          fields = ['mtf_trend_score', 'M5_trend_regime', 'M15_trend_regime', 'M30_trend_regime', 'H1_trend_regime', 'H4_trend_regime', 'D1_trend_regime']
+          report = {
+              'scope_years': list(range(2016, 2025)),
+              'source_data_modified': False,
+              'imputation_applied': False,
+              'rows_dropped': False,
+              'categorical_translation_applied': False,
+              'fields': fields,
+              'annual': [],
+              'failures': [],
+          }
+          frames = []
+
+          def context_rows(df, pos):
+              if pos is None:
+                  return []
+              lo = max(0, pos - 2)
+              hi = min(len(df), pos + 3)
+              context = df.iloc[lo:hi][['timestamp', *fields]].copy()
+              context.insert(0, 'row_offset', context.index.astype(int))
+              return context.astype('string').fillna('<NULL>').to_dict('records')
+
+          for year in range(2016, 2025):
+              matches = sorted(root.rglob(f'GBPUSD_M5_MTF_ALIGNMENT_{year}.csv'))
+              if len(matches) != 1:
+                  report['failures'].append({'year': year, 'error': 'MTF_FILE_COUNT_FAIL', 'matches': [str(x) for x in matches]})
+                  continue
+              path = matches[0]
+              df = pd.read_csv(path, low_memory=False)
+              missing_columns = sorted(set(['timestamp', *fields]) - set(df.columns))
+              annual = {'year': year, 'file': str(path), 'rows': int(len(df)), 'missing_columns': missing_columns, 'field_diagnostics': []}
+              if missing_columns:
+                  report['annual'].append(annual)
+                  report['failures'].append({'year': year, 'error': 'MTF_REQUIRED_COLUMNS_FAIL', 'missing_columns': missing_columns})
+                  continue
+
+              for field in fields:
+                  raw = df[field]
+                  stripped = raw.astype('string').str.strip()
+                  missing_mask = raw.isna() | stripped.eq('').fillna(False)
+                  numeric = pd.to_numeric(raw, errors='coerce')
+                  non_numeric_mask = (~missing_mask) & numeric.isna()
+                  diag = {'field': field, 'missing_count': int(missing_mask.sum()), 'non_numeric_count': int(non_numeric_mask.sum())}
+                  annual['field_diagnostics'].append(diag)
+
+                  if missing_mask.any() or non_numeric_mask.any():
+                      bad_mask = missing_mask | non_numeric_mask
+                      positions = [int(x) for x in df.index[bad_mask].tolist()]
+                      bad_set = set(positions)
+                      prefix_only = positions == list(range(len(positions)))
+                      first_valid = len(positions) if prefix_only and positions else next((i for i in range(len(df)) if i not in bad_set), None)
+                      report['failures'].append({
+                          'year': year,
+                          **diag,
+                          'first_bad_row_offset': positions[0] if positions else None,
+                          'last_bad_row_offset': positions[-1] if positions else None,
+                          'bad_rows_are_contiguous_file_prefix': prefix_only,
+                          'first_valid_row_offset': first_valid,
+                          'first_valid_context_rows': context_rows(df, first_valid),
+                          'last_bad_context_rows': context_rows(df, positions[-1] if positions else None),
+                          'examples': [
+                              {
+                                  'bad_row_offset': pos,
+                                  'bad_timestamp': str(df.iloc[pos]['timestamp']),
+                                  'bad_value': None if pd.isna(raw.iloc[pos]) else str(raw.iloc[pos]),
+                              }
+                              for pos in positions[:20]
+                          ],
+                      })
+              report['annual'].append(annual)
+              frames.append((year, df))
+
+          # Audit the exact MTF CSV candidate Gate3C would select and its as-of row.
+          event_ts = pd.Timestamp('2020-01-02T01:00:00Z')
+          candidates = []
+          required = {'timestamp', *fields}
+          for candidate_path in sorted(root.rglob('*.csv')):
+              try:
+                  columns = set(pd.read_csv(candidate_path, nrows=0).columns)
+                  if not required.issubset(columns):
+                      continue
+                  candidate_df = pd.read_csv(candidate_path, usecols=['timestamp', *fields], low_memory=False)
+                  candidate_df['timestamp'] = pd.to_datetime(candidate_df['timestamp'], utc=True, errors='coerce', format='mixed')
+                  candidate_df = candidate_df.dropna(subset=['timestamp']).sort_values('timestamp', kind='stable')
+                  asof = candidate_df.loc[candidate_df['timestamp'].le(event_ts)].tail(1)
+                  score = sum(1 for hint in ('GBPUSD', 'MTF', 'ALIGNMENT') if hint.lower() in candidate_path.name.lower())
+                  row = None
+                  if not asof.empty:
+                      row = asof.iloc[0].astype('string').fillna('<NULL>').to_dict()
+                  candidates.append({
+                      'path': str(candidate_path),
+                      'hint_score': score,
+                      'rows': int(len(candidate_df)),
+                      'min_timestamp': candidate_df['timestamp'].min().isoformat() if not candidate_df.empty else None,
+                      'max_timestamp': candidate_df['timestamp'].max().isoformat() if not candidate_df.empty else None,
+                      'asof_event_timestamp': event_ts.isoformat(),
+                      'selected_asof_row': row,
+                  })
+              except Exception as exc:
+                  report.setdefault('candidate_scan_errors', []).append({'path': str(candidate_path), 'error': repr(exc)})
+          candidates.sort(key=lambda item: (-item['hint_score'], item['path']))
+          report['gate3c_mtf_candidate_inventory'] = candidates
+          report['gate3c_candidate_selected_by_current_sort'] = candidates[0] if candidates else None
+
+          report['failure_count'] = len(report['failures'])
+          report['summary'] = {
+              'annual_files_found': len(frames),
+              'total_rows': sum(len(df) for _, df in frames),
+              'years_with_value_failures': sorted({x['year'] for x in report['failures'] if 'field' in x}),
+              'total_missing_values': sum(x.get('missing_count', 0) for x in report['failures']),
+              'total_nonnumeric_values': sum(x.get('non_numeric_count', 0) for x in report['failures']),
+              'all_missing_values_confined_to_annual_file_prefixes': all(
+                  x.get('bad_rows_are_contiguous_file_prefix', True)
+                  for x in report['failures'] if 'field' in x
+              ),
+          }
+          report_path = out / 'mtf_source_diagnostics_2016_2024.json'
+          report_path.write_text(json.dumps(report, indent=2, ensure_ascii=False, default=str))
+          print(json.dumps(report['summary'], ensure_ascii=False, sort_keys=True))
+          print('DIAGNOSTIC_REPORT', report_path)
+          if report['failures']:
+              raise SystemExit('MTF_SOURCE_DIAGNOSTIC_FAILURES_FOUND')
           PY
+      - name: Upload MTF diagnostic report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mtf-source-diagnostics-2016-2024
+          path: artifacts/mtf_diagnostics/mtf_source_diagnostics_2016_2024.json
+          if-no-files-found: warn
       - name: Run fail-closed contract gate
+        if: success()
         run: python BACKTEST/mtf_source_contract_gate_v1.py --mtf artifacts/MTF_CURRENT_STACK.csv

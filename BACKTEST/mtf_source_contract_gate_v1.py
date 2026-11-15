@@ -8,6 +8,7 @@ no imputation, no scaling, and no direction generation.
 """
 
 import argparse
+import json
 from pathlib import Path
 import pandas as pd
 
@@ -22,11 +23,40 @@ REQUIRED = (
 )
 
 
+def diagnose_field(df: pd.DataFrame, field: str, sample_limit: int = 10) -> dict[str, object]:
+    """Classify source values without modifying or imputing them."""
+    raw = df[field]
+    text = raw.astype("string").str.strip()
+    missing_mask = raw.isna() | text.eq("").fillna(False)
+    numeric = pd.to_numeric(raw, errors="coerce")
+    non_numeric_mask = ~missing_mask & numeric.isna()
+
+    def samples(mask: pd.Series) -> list[dict[str, object]]:
+        columns = [c for c in ("timestamp", field) if c in df.columns]
+        return df.loc[mask, columns].head(sample_limit).astype("string").fillna("<NULL>").to_dict("records")
+
+    return {
+        "field": field,
+        "missing_count": int(missing_mask.sum()),
+        "non_numeric_count": int(non_numeric_mask.sum()),
+        "missing_samples": samples(missing_mask),
+        "non_numeric_samples": samples(non_numeric_mask),
+    }
+
+
 def inspect(path: Path) -> dict[str, object]:
     df = pd.read_csv(path, low_memory=False)
     missing = sorted(set(REQUIRED) - set(df.columns))
     if missing:
         raise SystemExit(f"BLOCKED_MTF_MISSING_REQUIRED_FIELDS:{missing}")
+
+    diagnostics = [diagnose_field(df, field) for field in REQUIRED]
+    failures = [item for item in diagnostics if item["missing_count"] or item["non_numeric_count"]]
+    if failures:
+        raise SystemExit(
+            "BLOCKED_MTF_SOURCE_VALUE_DIAGNOSTICS:"
+            + json.dumps(failures, ensure_ascii=False, sort_keys=True)
+        )
 
     report: dict[str, object] = {
         "status": "PASS",
@@ -38,17 +68,6 @@ def inspect(path: Path) -> dict[str, object]:
         "scaling_applied": False,
         "direction_generated": False,
     }
-
-    for field in REQUIRED:
-        numeric = pd.to_numeric(df[field], errors="coerce")
-        if numeric.isna().any():
-            bad = df.loc[numeric.isna(), field].astype("string").dropna().unique().tolist()
-            raise SystemExit(
-                f"BLOCKED_MTF_NON_NUMERIC_SOURCE_FIELD:{field}:"
-                f"raw_tokens={bad[:20]}"
-            )
-        if numeric.isna().any():
-            raise SystemExit(f"BLOCKED_MTF_NAN_SOURCE_FIELD:{field}")
 
     timestamps = pd.to_datetime(df["timestamp"], utc=True, errors="coerce")
     if timestamps.isna().any():
