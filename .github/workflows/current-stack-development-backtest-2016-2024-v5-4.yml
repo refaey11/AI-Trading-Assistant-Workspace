@@ -25,6 +25,12 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install V5.4 replay dependency
+        run: python -m pip install --upgrade pip pandas
       - name: Run governed V5.4 replay
         run: |
           set -euo pipefail
