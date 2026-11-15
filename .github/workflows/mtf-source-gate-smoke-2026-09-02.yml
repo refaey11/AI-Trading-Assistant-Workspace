@@ -89,7 +89,13 @@ jobs:
                           context=df.iloc[lo:hi][['timestamp',*fields]].copy()
                           context.insert(0,'row_offset',context.index.astype(int))
                           examples.append({'bad_row_offset':pos,'bad_timestamp':str(df.iloc[pos]['timestamp']),'bad_value':None if pd.isna(raw.iloc[pos]) else str(raw.iloc[pos]),'context_rows':context.astype('string').fillna('<NULL>').to_dict('records')})
-                      report['failures'].append({'year':year,**diag,'examples':examples})
+                      def row_context(pos):
+                      if pos is None: return []
+                      lo=max(0,pos-2); hi=min(len(df),pos+3)
+                      context=df.iloc[lo:hi][['timestamp',*fields]].copy()
+                      context.insert(0,'row_offset',context.index.astype(int))
+                      return context.astype('string').fillna('<NULL>').to_dict('records')
+                  report['failures'].append({'year':year,**diag,'first_bad_row_offset':positions[0] if positions else None,'last_bad_row_offset':positions[-1] if positions else None,'bad_rows_are_contiguous_file_prefix':prefix_only,'first_valid_row_offset':first_valid_offset,'first_valid_context_rows':row_context(first_valid_offset),'last_bad_context_rows':row_context(positions[-1] if positions else None),'examples':examples})
               report['annual'].append(annual)
               frames.append((year,df))
           report['failure_count']=len(report['failures'])
