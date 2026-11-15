@@ -40,7 +40,7 @@ jobs:
             curl -L --fail --silent --show-error \
               https://content.dropboxapi.com/2/files/download \
               -H "Authorization: Bearer ${TOKEN}" \
-              -H "Dropbox-API-Arg: {\\"path\\":\\"$${source_path}\\"}" \
+              -H "Dropbox-API-Arg: {\\"path\\":\\"${source_path}\\"}" \
               -o "$output"
           }
           download "/GBPUSD_MARKET_STRUCTURE_ALL_TF_V1.zip" artifacts/source/GBPUSD_MARKET_STRUCTURE_ALL_TF_V1.zip
