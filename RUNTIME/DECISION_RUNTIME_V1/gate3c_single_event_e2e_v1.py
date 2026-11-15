@@ -147,6 +147,18 @@ def run(event: Mapping[str, Any]) -> dict[str, Any]:
         mode="development",
     )
 
+    diagnostic_module = _load_module(
+        ROOT / "evaluation" / "brain_assessment_diagnostics_v1.py",
+        "gate3c_brain_assessment_diagnostics",
+    )
+    governance_result = result.get("governance") or {}
+    brain_diagnostics = diagnostic_module.diagnose_brain_assessment(
+        row=dict(event.get("brain_row") or {}),
+        assessment=governance_result.get("assessment") or {},
+        decision=(result.get("decision") or {}).get("decision") or {},
+        governance_execution=governance_result.get("execution") or {},
+    )
+
     brain_decision = result.get("decision") or {}
     result_status = result.get("status")
     if result_status == "EXECUTABLE":
@@ -171,6 +183,7 @@ def run(event: Mapping[str, Any]) -> dict[str, Any]:
         "brain_execution_result":result,
         "governance":{"brain_v1_unchanged":True,"murphy_primary_context":True,"murphy_registry_intact":True,"nison_direction_generation":False,"tiz_direction_generation":False,"memory_direction_generation":False,"future_data_allowed":False,"oos_tuning":False,"full_fanin_verified":True},
         "decision_trace":brain_decision,
+        "brain_diagnostics":brain_diagnostics,
     }
 
 
