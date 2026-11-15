@@ -40,7 +40,7 @@ def _timestamps(frame: pd.DataFrame, label: str) -> pd.Series:
 
 
 def audit(m1_zip: str | Path, h1_zip: str | Path) -> dict:
-    m1 = _read_csv_from_zip(m1_zip, required={"timestamp", "volume"}, preferred="M1")
+    m1 = _read_csv_from_zip(m1_zip, required={"timestamp", "open", "high", "low", "close", "volume"}, preferred="M1")
     h1 = _read_csv_from_zip(h1_zip, required={"timestamp", "open", "high", "low", "close"}, preferred="H1")
     m1_ts = _timestamps(m1, "M1")
     h1_ts = _timestamps(h1, "H1")
@@ -57,6 +57,9 @@ def audit(m1_zip: str | Path, h1_zip: str | Path) -> dict:
     invalid_volume = int(m1["_volume"].isna().sum())
     duplicate_m1 = int(m1["_ts"].duplicated(keep=False).sum())
     off_minute = int((m1["_ts"] != m1["_ts"].dt.floor("min")).sum())
+    m1 = m1.sort_values("_ts").reset_index(drop=True)
+    for col in ("open", "high", "low", "close"):
+        m1[col] = pd.to_numeric(m1[col], errors="coerce")
     m1["_hour"] = m1["_ts"].dt.floor("h")
     hourly = m1.groupby("_hour").agg(
         m1_rows=("_ts", "size"),
@@ -64,6 +67,10 @@ def audit(m1_zip: str | Path, h1_zip: str | Path) -> dict:
         first_m1=("_ts", "min"),
         last_m1=("_ts", "max"),
         volume_sum=("_volume", "sum"),
+        m1_open=("open", "first"),
+        m1_high=("high", "max"),
+        m1_low=("low", "min"),
+        m1_close=("close", "last"),
     ).reset_index()
 
     h1 = h1.copy()
@@ -78,6 +85,30 @@ def audit(m1_zip: str | Path, h1_zip: str | Path) -> dict:
     joined["m1_reaches_hour_end"] = joined["last_m1"].eq(joined["hour_end_utc"] - pd.Timedelta(minutes=1))
     joined["timestamp_equals_hour_start"] = joined["_ts"].eq(joined["_hour_floor"])
     joined["timestamp_equals_hour_end"] = joined["_ts"].eq(joined["hour_end_utc"])
+
+    # Compare H1 OHLC to M1-derived OHLC for the timestamp's hour and prior hour.
+    # This is diagnostic only and does not rewrite timestamps or trading inputs.
+    for col in ("open", "high", "low", "close"):
+        joined[f"{col}_match_current_hour"] = (
+            pd.to_numeric(joined[col], errors="coerce").sub(joined[f"m1_{col}"]).abs().le(1e-8)
+        )
+    joined["h1_ohlc_all_match_current_hour"] = joined[
+        [f"{col}_match_current_hour" for col in ("open", "high", "low", "close")]
+    ].all(axis=1)
+    prior_hour = hourly.copy()
+    prior_hour["_hour"] = prior_hour["_hour"] + pd.Timedelta(hours=1)
+    prior_hour = prior_hour.rename(columns={f"m1_{col}": f"prior_m1_{col}" for col in ("open", "high", "low", "close")})
+    joined = joined.merge(
+        prior_hour[["_hour", *[f"prior_m1_{col}" for col in ("open", "high", "low", "close")]]],
+        left_on="_hour_floor", right_on="_hour", how="left", suffixes=("", "_prior_map")
+    )
+    for col in ("open", "high", "low", "close"):
+        joined[f"{col}_match_prior_hour"] = (
+            pd.to_numeric(joined[col], errors="coerce").sub(joined[f"prior_m1_{col}"]).abs().le(1e-8)
+        )
+    joined["h1_ohlc_all_match_prior_hour"] = joined[
+        [f"{col}_match_prior_hour" for col in ("open", "high", "low", "close")]
+    ].all(axis=1)
 
     # These are descriptive diagnostics only. They do not alter or certify a trading input.
     report = {
@@ -103,6 +134,9 @@ def audit(m1_zip: str | Path, h1_zip: str | Path) -> dict:
         "h1_rows_with_matching_m1_hour": int(joined["m1_rows"].notna().sum()),
         "h1_rows_with_60_unique_m1_minutes": int(joined["m1_complete_60"].sum()),
         "h1_rows_where_m1_reaches_minute_59": int(joined["m1_reaches_hour_end"].sum()),
+        "h1_rows_where_all_ohlc_matches_same_hour_m1_aggregation": int(joined["h1_ohlc_all_match_current_hour"].sum()),
+        "h1_rows_where_all_ohlc_matches_previous_hour_m1_aggregation": int(joined["h1_ohlc_all_match_prior_hour"].sum()),
+        "ohlc_comparison_tolerance": "absolute price difference <= 1e-8 for each OHLC field",
         "h1_timestamp_equals_hour_start_rows": int(joined["timestamp_equals_hour_start"].sum()),
         "h1_timestamp_equals_hour_end_rows": int(joined["timestamp_equals_hour_end"].sum()),
         "h1_timestamp_sample": [
@@ -113,12 +147,15 @@ def audit(m1_zip: str | Path, h1_zip: str | Path) -> dict:
                 "last_m1": row["last_m1"].isoformat() if pd.notna(row["last_m1"]) else None,
                 "hour_end_utc": row["hour_end_utc"].isoformat(),
                 "m1_reaches_minute_59": bool(row["m1_reaches_hour_end"]),
+                "h1_ohlc_matches_same_hour_m1": bool(row["h1_ohlc_all_match_current_hour"]),
+                "h1_ohlc_matches_previous_hour_m1": bool(row["h1_ohlc_all_match_prior_hour"]),
             }
             for _, row in joined.head(20).iterrows()
         ],
         "interpretation": [
             "A count of 60 unique M1 timestamps is a completeness indicator for an hour, not proof of exchange/session correctness.",
             "An H1 timestamp at the hour start cannot be treated as an available completed H1 bar until the corresponding hour has closed.",
+            "Same-hour versus prior-hour OHLC matches are source-alignment diagnostics; mismatches do not prove a different timestamp convention unless source OHLC lineage is known.",
             "This report is diagnostic only; it does not change volume calculations, thresholds, runtime behavior, or any 2025/OOS artifact.",
         ],
     }
