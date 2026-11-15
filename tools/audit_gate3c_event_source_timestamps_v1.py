@@ -81,6 +81,11 @@ def source_snapshot(label: str, path: Path, event: pd.Timestamp, *, interval: st
         "nearest_following_timestamp": following.iloc[0]["timestamp"].isoformat() if len(following) else None,
         "declared_time_metadata_columns": time_metadata,
         "rows_near_event": records,
+        "exact_event_rows_full_sample": [
+            {k: scalar(row[k]) for k in df.columns}
+            for _, row in exact.head(50).iterrows()
+        ],
+        "exact_event_rows_sample_limit": 50,
         "interpretation_limit": "Timestamp labels alone do not prove whether a row is available at its label or only after its bar closes.",
     }
     if interval:
