@@ -92,3 +92,19 @@ def test_missing_tiz_is_allowed_and_recorded_as_empty_metadata():
     assert result["decision"]["final"] == "BUY"
     assert result["trading_zone"] == {}
     assert result["audit"]["tiz_execution_gate"] == "DISABLED"
+
+
+def test_brain_neutral_is_not_misreported_as_murphy_direction_conflict():
+    args = base_inputs()
+    args["brain_assessment"] = {"directional_bias": "neutral", "confidence": 0.0}
+    result = evaluate_three_book_decision(**args)
+    assert result["decision"]["final"] == "NO_TRADE"
+    assert result["decision"]["reasons_against"] == ["BRAIN_DIRECTION_NOT_EXECUTABLE"]
+
+
+def test_actual_opposing_brain_direction_remains_a_conflict():
+    args = base_inputs()
+    args["brain_assessment"] = {"directional_bias": "bearish", "confidence": 0.8}
+    result = evaluate_three_book_decision(**args)
+    assert result["decision"]["final"] == "NO_TRADE"
+    assert result["decision"]["reasons_against"] == ["MURPHY_BRAIN_DIRECTION_CONFLICT"]

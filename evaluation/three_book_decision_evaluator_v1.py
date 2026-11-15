@@ -48,9 +48,14 @@ def evaluate_three_book_decision(
 
     if murphy_status != "PASS":
         return _no_trade("MURPHY_CONTEXT_NOT_PASS", timestamp, source_rule_ids, tiz_metadata, murphy_evidence, nison_evidence, risk_evidence)
-    if murphy_direction in {"BULL", "BULLISH", "BUY"} and bias != "BULLISH":
+    # A neutral/conflicted Brain assessment is insufficient for execution, but
+    # it is not a directional disagreement with Murphy. Reserve the conflict
+    # reason for an actual opposing bullish/bearish assessment.
+    if bias not in {"BULLISH", "BEARISH"}:
+        return _no_trade("BRAIN_DIRECTION_NOT_EXECUTABLE", timestamp, source_rule_ids, tiz_metadata, murphy_evidence, nison_evidence, risk_evidence)
+    if murphy_direction in {"BULL", "BULLISH", "BUY"} and bias == "BEARISH":
         return _no_trade("MURPHY_BRAIN_DIRECTION_CONFLICT", timestamp, source_rule_ids, tiz_metadata, murphy_evidence, nison_evidence, risk_evidence)
-    if murphy_direction in {"BEAR", "BEARISH", "SELL"} and bias != "BEARISH":
+    if murphy_direction in {"BEAR", "BEARISH", "SELL"} and bias == "BULLISH":
         return _no_trade("MURPHY_BRAIN_DIRECTION_CONFLICT", timestamp, source_rule_ids, tiz_metadata, murphy_evidence, nison_evidence, risk_evidence)
 
     if not bool(risk_evidence.get("risk_pass", False)):
