@@ -83,3 +83,38 @@ def test_no_trade_reasons_are_not_a_gap_when_final_decision_is_no_trade():
     assessment = {"no_trade_reasons": ["Volume confirmation is unavailable."]}
     result = MODULE.diagnose_brain_assessment(_row(), assessment, {"final": "NO_TRADE"})
     assert result["no_trade_handoff_audit"]["reasons_present_but_directional_decision_returned"] is False
+
+
+def test_reproduces_brain_v1_structure_mean_and_flags_volume_no_trade_reason():
+    row = {
+        "mtf_trend_score": 1,
+        "M5_trend_regime": -1,
+        "M15_trend_regime": -1,
+        "M30_trend_regime": 0,
+        "H1_trend_regime": 1,
+        "H4_trend_regime": 1,
+        "D1_trend_regime": 1,
+    }
+    assessment = {
+        "directional_bias": "bullish",
+        "confidence": 1.0,
+        "evidence": [
+            {"module": "MTF", "direction": "bullish", "strength": 1.0},
+            {"module": "Structure", "direction": "bullish", "strength": 1.0 / 3.0},
+            {"module": "Volume", "direction": "neutral", "strength": 0.0},
+        ],
+        "no_trade_reasons": [
+            "Volume confirmation is unavailable for this historical regime."
+        ],
+    }
+    result = MODULE.diagnose_brain_assessment(
+        row,
+        assessment,
+        {"final": "NO_TRADE"},
+        {"eligible": True, "hard_blocks": [], "needs_review": []},
+    )
+    assert result["mtf"]["regime_mean"] == 1.0 / 3.0
+    assert result["mtf"]["structure_direction_using_brain_v1_threshold"] == "bullish"
+    assert result["confidence_audit"]["reproduced_directional_confidence"] == 1.0
+    assert result["no_trade_handoff_audit"]["eligible_while_brain_reports_no_trade_reasons"] is True
+    assert result["no_trade_handoff_audit"]["reasons_present_but_directional_decision_returned"] is False
