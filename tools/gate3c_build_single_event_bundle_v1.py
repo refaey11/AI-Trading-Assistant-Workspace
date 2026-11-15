@@ -11,7 +11,7 @@ import pandas as pd
 MURPHY_IDS = {f"MURPHY_{i:04d}" for i in [3,4,6,7,18,19,21,22,23,25,26,28,29,30,31,32,33,34,35,36,37,38,39,40,41,42,43,44,45,47,48,49,50,51]}
 NISON_IDS = {f"NISON_{i:04d}" for i in range(1,45)}
 MTF_FIELDS = ["mtf_trend_score","M5_trend_regime","M15_trend_regime","M30_trend_regime","H1_trend_regime","H4_trend_regime","D1_trend_regime"]
-RISK_FIELDS = ["equity","peak_equity","prior_loss_streak","entry_price","stop_loss","take_profit","atr"]
+RISK_FIELDS = ["equity","peak_equity","prior_loss_streak","entry_price","stop_loss","take_profit","atr","direction","pass_rule_id","directional_source_rule_id","authority_scope"]
 
 
 def csv_files(root: Path) -> list[Path]:
@@ -164,6 +164,18 @@ def build(event_ts: str, h1: Path, market_state: Path, nison: Path, murphy_root:
     risk["authoritative"] = True
     if "risk_pass" not in risk:
         raise ValueError("BLOCKED_RISK_RESULT_NOT_PRESENT")
+    if risk.get("authority_scope") != "evaluation_single_event":
+        raise ValueError("BLOCKED_RISK_AUTHORITY_SCOPE_MISMATCH")
+    risk_direction = str(risk.get("direction") or "").strip().upper()
+    if risk_direction not in {"BUY", "SELL"}:
+        raise ValueError("BLOCKED_RISK_DIRECTION_MISSING_OR_INVALID")
+    pass_rule_id = str(risk.get("pass_rule_id") or "").strip().upper()
+    directional_source_rule_id = str(risk.get("directional_source_rule_id") or "").strip().upper()
+    murphy_source_ids = {rid.upper() for row in mrows for rid in split_rule_ids(row.get("source_rule_id"))}
+    if not pass_rule_id or pass_rule_id not in murphy_source_ids:
+        raise ValueError("BLOCKED_MURPHY_DIRECTIONAL_PROVENANCE_MISMATCH")
+    if not directional_source_rule_id or not set(split_rule_ids(directional_source_rule_id)).issubset(murphy_source_ids):
+        raise ValueError("BLOCKED_MURPHY_DIRECTIONAL_SOURCE_MISMATCH")
 
     market = dict(market_row[0])
     h1v = dict(h1_row[0])
@@ -176,7 +188,9 @@ def build(event_ts: str, h1: Path, market_state: Path, nison: Path, murphy_root:
     return {
         "symbol":"GBPUSD", "query_as_of":ts.isoformat(), "h1":h1v, "market":market,
         "mtf":mtf, "brain_row":brain_row,
-        "murphy":{"status":"PASS","rows":mrows,"authoritative":True,
+        "murphy":{"status":"PASS","direction":risk_direction,"pass_rule_id":pass_rule_id,
+                  "directional_source_rule_id":directional_source_rule_id,
+                  "rows":mrows,"authoritative":True,
                   "governed_registry_count":len(MURPHY_IDS),"event_rule_count":len(mids)},
         "nison":{"status":"PASS","rows":nrows,"authoritative":True},
         "historical_context":historical_context,"historical_outcome":historical_outcome,
@@ -185,6 +199,7 @@ def build(event_ts: str, h1: Path, market_state: Path, nison: Path, murphy_root:
         "risk":risk,"entry_price":risk.get("entry_price"),"atr":risk.get("atr"),
         "provenance":{"builder":"gate3c_build_single_event_bundle_v1","source_backed_only":True,
                        "murphy_governed_registry_count":len(MURPHY_IDS),"murphy_event_rule_count":len(mids),
+                       "murphy_direction_source_rule_id":pass_rule_id,
                        "nison_rule_count":len(nids),"mtf_fields":sorted(MTF_FIELDS),"oos_tuning":False,
                        "similarity_future_context_excluded":True}
     }
