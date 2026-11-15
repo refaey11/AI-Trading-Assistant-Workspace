@@ -172,8 +172,10 @@ def inspect_source(key: str, path: Path) -> dict[str, Any]:
 
     seen_timestamps: set[str] = set()
     years: Counter[int] = Counter()
-    first_timestamp: datetime | None = None
-    last_timestamp: datetime | None = None
+    min_timestamp: datetime | None = None
+    max_timestamp: datetime | None = None
+    min_order_key: datetime | None = None
+    max_order_key: datetime | None = None
     previous_order_key: datetime | None = None
     first_bad_timestamps: list[str] = []
     first_bad_numeric: list[str] = []
@@ -202,11 +204,11 @@ def inspect_source(key: str, path: Path) -> dict[str, Any]:
 
                 if ts.tzinfo is None:
                     report["timezone_naive_timestamps"] += 1
-                if first_timestamp is None:
-                    first_timestamp = ts
-                last_timestamp = ts
-
                 order_key = utc_order_key(ts)
+                if min_order_key is None or order_key < min_order_key:
+                    min_timestamp, min_order_key = ts, order_key
+                if max_order_key is None or order_key > max_order_key:
+                    max_timestamp, max_order_key = ts, order_key
                 if previous_order_key is not None and order_key < previous_order_key:
                     report["out_of_order_rows"] += 1
                 previous_order_key = order_key
@@ -250,8 +252,8 @@ def inspect_source(key: str, path: Path) -> dict[str, Any]:
     report["year_counts"] = {str(y): years[y] for y in sorted(years)}
     report["development_years_present"] = [y for y in DEV_YEARS if years[y] > 0]
     report["development_years_missing"] = [y for y in DEV_YEARS if years[y] == 0]
-    report["min_timestamp"] = first_timestamp.isoformat() if first_timestamp else None
-    report["max_timestamp"] = last_timestamp.isoformat() if last_timestamp else None
+    report["min_timestamp"] = min_timestamp.isoformat() if min_timestamp else None
+    report["max_timestamp"] = max_timestamp.isoformat() if max_timestamp else None
 
     if report["rows_total"] == 0:
         report["errors"].append("NO_DATA_ROWS")
