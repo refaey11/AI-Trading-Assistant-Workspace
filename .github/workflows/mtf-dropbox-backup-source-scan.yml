@@ -1,0 +1,65 @@
+name: MTF Producer Source Scan - Dropbox Full Backup
+
+on:
+  push:
+    branches:
+      - audit/mtf-archive-producer-lineage
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  scan-backup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      DROPBOX_ACCESS_TOKEN: ${{ secrets.DROPBOX_ACCESS_TOKEN }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: audit/mtf-archive-producer-lineage
+          fetch-depth: 1
+
+      - name: Acquire original Dropbox backup parts
+        shell: bash
+        run: |
+          set -euo pipefail
+          TOKEN="$(printf '%s' "$DROPBOX_ACCESS_TOKEN" | tr -d '\r\n' | sed -E 's/^Bearer[[:space:]]+//; s/^"//; s/"$//')"
+          test -n "$TOKEN"
+          mkdir -p parts backup
+          download() {
+            local source_path="$1"
+            local output="$2"
+            local dropbox_arg
+            dropbox_arg="$(python -c 'import json,sys; print(json.dumps({"path":sys.argv[1]}))' "$source_path")"
+            curl -L --fail --silent --show-error \
+              https://content.dropboxapi.com/2/files/download \
+              -H "Authorization: Bearer ${TOKEN}" \
+              -H "Dropbox-API-Arg: ${dropbox_arg}" \
+              -o "$output"
+          }
+          download "/AI_TRADING_ASSISTANT_BACKUP_PART_01_OF_03.zip.part" parts/part01
+          download "/AI_TRADING_ASSISTANT_BACKUP_PART_02_OF_03.zip.part" parts/part02
+          download "/AI_TRADING_ASSISTANT_BACKUP_PART_03_OF_03.zip.part" parts/part03
+          ls -lh parts
+
+      - name: Reassemble and extract backup
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat parts/part01 parts/part02 parts/part03 > backup/AI_TRADING_ASSISTANT_BACKUP.zip
+          unzip -tq backup/AI_TRADING_ASSISTANT_BACKUP.zip
+          unzip -q backup/AI_TRADING_ASSISTANT_BACKUP.zip -d backup/extracted
+          find backup/extracted -type f | wc -l
+
+      - name: Scan backup for original MTF and Market Structure source code
+        run: python tools/audit_dropbox_backup_mtf_sources_v1.py --root backup/extracted --output backup/MTF_DROPBOX_BACKUP_SOURCE_SCAN.json
+
+      - name: Upload read-only source scan
+        uses: actions/upload-artifact@v4
+        with:
+          name: mtf-dropbox-backup-source-scan
+          path: backup/MTF_DROPBOX_BACKUP_SOURCE_SCAN.json
+          retention-days: 14

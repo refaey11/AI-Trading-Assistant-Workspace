@@ -1,0 +1,98 @@
+name: MTF Producer Lineage - Recovered Workspace Archive
+
+on:
+  push:
+    branches:
+      - audit/mtf-archive-producer-lineage
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inspect-recovered-workspace:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: audit/mtf-archive-producer-lineage
+          fetch-depth: 1
+
+      - name: Download original split workspace backup
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p parts workspace
+          gh release download workspace-v1 --repo "$GITHUB_REPOSITORY" --pattern 'GBPUSD_RULE_EVALUATOR_V2_WORKSPACE_PART_*_OF_03.zip.part' --dir parts
+          test "$(find parts -type f -name 'GBPUSD_RULE_EVALUATOR_V2_WORKSPACE_PART_*_OF_03.zip.part' | wc -l)" -eq 3
+          ls -lh parts
+
+      - name: Reassemble and extract original workspace
+        shell: bash
+        run: |
+          set -euo pipefail
+          cat parts/GBPUSD_RULE_EVALUATOR_V2_WORKSPACE_PART_01_OF_03.zip.part parts/GBPUSD_RULE_EVALUATOR_V2_WORKSPACE_PART_02_OF_03.zip.part parts/GBPUSD_RULE_EVALUATOR_V2_WORKSPACE_PART_03_OF_03.zip.part > workspace.zip
+          unzip -tq workspace.zip
+          unzip -q workspace.zip -d workspace
+          find workspace -type f | wc -l
+
+      - name: Search original workspace for M1 conversion and MTF producer source
+        shell: bash
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import json, re, hashlib
+          root=Path('workspace')
+          text_ext={'.md','.txt','.json','.jsonl','.yaml','.yml','.csv','.tsv','.sql','.py','.js','.ts','.tsx','.jsx','.mjs','.cjs','.toml','.ini','.cfg','.xml','.html','.css','.sh','.bat','.ps1','.r','.ipynb'}
+          patterns=[
+            'resample','resampling','resample_rule','timeframe_converter','m1_to_m5','m1_to_mtf',
+            'mtf_trend_score','trend_regime','market_structure','ohlcv','aggregate','closed_bar',
+            'M1','M5','M15','M30','H1','H4','D1'
+          ]
+          records=[]
+          candidates=[]
+          for p in sorted(root.rglob('*')):
+            if not p.is_file(): continue
+            rel=str(p.relative_to(root))
+            size=p.stat().st_size
+            rec={'path':rel,'size':size,'suffix':p.suffix.lower()}
+            if p.suffix.lower() in text_ext and size <= 5*1024*1024:
+              try: text=p.read_text(encoding='utf-8-sig',errors='replace')
+              except Exception: text=''
+              lines=text.splitlines()
+              hits=[]
+              for n,line in enumerate(lines,1):
+                terms=[term for term in patterns if re.search(r'(?<![A-Za-z0-9_])'+re.escape(term)+r'(?![A-Za-z0-9_])',line,re.I)]
+                if terms:
+                  hits.append({'line':n,'terms':terms,'text':line[:600]})
+                  if len(hits)>=120: break
+              if hits or any(k in rel.lower() for k in ('mtf','market_structure','timeframe','resampl','ohlcv','trend_regime')):
+                candidates.append({'path':rel,'size':size,'line_count':len(lines),'hits':hits})
+            records.append(rec)
+          result={
+            'audit':'RECOVERED_WORKSPACE_MTF_PRODUCER_LINEAGE_READ_ONLY_V1',
+            'file_count':len(records),
+            'text_candidates_scanned':sum(1 for x in records if x['suffix'] in text_ext and x['size']<=5*1024*1024),
+            'candidate_count':len(candidates),
+            'files':records[:2000],
+            'candidates':candidates[:1000],
+            'interpretation':[
+              'Search results are leads; source provenance requires matching the producer to released outputs.',
+              'No runtime code or market data was modified.',
+              '2025 was not used for tuning or calibration.'
+            ]
+          }
+          Path('workspace-mtf-producer-lineage.json').write_text(json.dumps(result,indent=2),encoding='utf-8')
+          print(json.dumps({'file_count':result['file_count'],'text_candidates_scanned':result['text_candidates_scanned'],'candidate_count':result['candidate_count'],'candidate_paths':[x['path'] for x in candidates]},indent=2))
+          PY
+
+      - name: Upload read-only source lineage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: recovered-workspace-mtf-producer-lineage
+          path: workspace-mtf-producer-lineage.json
+          retention-days: 14
