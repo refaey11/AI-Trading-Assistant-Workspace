@@ -20,7 +20,7 @@ permissions:
 
 jobs:
   current_stack_v5_4:
-    if: ${{ github.event_name == 'push' || inputs.confirm == 'RUN_CURRENT_STACK_BACKTEST' }}
+    if: ${{ github.event_name == 'push' || github.event_name == 'pull_request' || inputs.confirm == 'RUN_CURRENT_STACK_BACKTEST' }}
     runs-on: ubuntu-latest
     timeout-minutes: 120
     env:
