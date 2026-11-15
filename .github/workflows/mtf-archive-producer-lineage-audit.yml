@@ -1,0 +1,63 @@
+name: MTF Archive Producer Lineage Audit
+
+on:
+  push:
+    branches:
+      - audit/mtf-archive-producer-lineage
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  archive-lineage:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      DROPBOX_ACCESS_TOKEN: ${{ secrets.DROPBOX_ACCESS_TOKEN }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: audit/mtf-archive-producer-lineage
+          fetch-depth: 1
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Acquire original MTF archives from Dropbox
+        shell: bash
+        run: |
+          set -euo pipefail
+          TOKEN="$(printf '%s' "$DROPBOX_ACCESS_TOKEN" | tr -d '\r\n' | sed -E 's/^Bearer[[:space:]]+//; s/^"//; s/"$//')"
+          test -n "$TOKEN"
+          mkdir -p artifacts/source
+          download() {
+            local source_path="$1"
+            local output="$2"
+            curl -L --fail --silent --show-error \
+              https://content.dropboxapi.com/2/files/download \
+              -H "Authorization: Bearer ${TOKEN}" \
+              -H "Dropbox-API-Arg: {\\"path\\":\\"$${source_path}\\"}" \
+              -o "$output"
+          }
+          download "/GBPUSD_MARKET_STRUCTURE_ALL_TF_V1.zip" artifacts/source/GBPUSD_MARKET_STRUCTURE_ALL_TF_V1.zip
+          download "/MTF_ALIGNMENT_GBPUSD_V1.zip" artifacts/source/MTF_ALIGNMENT_GBPUSD_V1.zip
+          ls -lh artifacts/source
+
+      - name: Scan archive manifests and producer candidates
+        run: |
+          python tools/audit_mtf_archive_producer_lineage_v1.py \
+            --archive artifacts/source/GBPUSD_MARKET_STRUCTURE_ALL_TF_V1.zip \
+            --archive artifacts/source/MTF_ALIGNMENT_GBPUSD_V1.zip \
+            --output artifacts/MTF_ARCHIVE_PRODUCER_LINEAGE_AUDIT.json
+
+      - name: Upload read-only audit report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mtf-archive-producer-lineage-audit
+          path: artifacts/MTF_ARCHIVE_PRODUCER_LINEAGE_AUDIT.json
+          if-no-files-found: error
