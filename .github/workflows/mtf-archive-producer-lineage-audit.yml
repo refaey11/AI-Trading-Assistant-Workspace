@@ -47,6 +47,7 @@ jobs:
           }
           download "/GBPUSD_MARKET_STRUCTURE_ALL_TF_V1.zip" artifacts/source/GBPUSD_MARKET_STRUCTURE_ALL_TF_V1.zip
           download "/MTF_ALIGNMENT_GBPUSD_V1.zip" artifacts/source/MTF_ALIGNMENT_GBPUSD_V1.zip
+          download "/GBPUSD_M1_MASTER_2016_2026_V1.zip" artifacts/source/GBPUSD_M1_MASTER_2016_2026_V1.zip
           ls -lh artifacts/source
 
       - name: Scan archive manifests and producer candidates
