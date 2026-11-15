@@ -92,12 +92,12 @@ jobs:
           for z in h1 murphy mtf hc ho similarity retrieval; do unzip -q "/tmp/gate3c/source/${z}.zip" -d "/tmp/gate3c/unpacked/${z}"; done
 
           if [[ "$INPUT_EVENT_TS" == "AUTO" ]]; then
-            EVENT_TS=$(python tools/gate3c_select_valid_event_candidate_v1.py \\
-              --murphy-root /tmp/gate3c/unpacked/murphy \\
-              --registry BACKTEST/MURPHY_34_SOURCE_BACKED_FANIN_V2_2026-08-28.csv \\
-              --h1 /tmp/gate3c/unpacked/h1/GBPUSD_H1_2016_2025_MASTER.csv \\
-              --market-state "/tmp/gate3c/source/market_state.csv" \\
-              --nison /tmp/gate3c/source/nison.csv \\
+            EVENT_TS=$(python tools/gate3c_select_valid_event_candidate_v1.py \
+              --murphy-root /tmp/gate3c/unpacked/murphy \
+              --registry BACKTEST/MURPHY_34_SOURCE_BACKED_FANIN_V2_2026-08-28.csv \
+              --h1 /tmp/gate3c/unpacked/h1/GBPUSD_H1_2016_2025_MASTER.csv \
+              --market-state "/tmp/gate3c/source/market_state.csv" \
+              --nison /tmp/gate3c/source/nison.csv \
               --mtf-root /tmp/gate3c/unpacked/mtf | tail -n 1)
           else
             EVENT_TS="$INPUT_EVENT_TS"
