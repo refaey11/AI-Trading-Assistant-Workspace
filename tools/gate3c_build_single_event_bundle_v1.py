@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 from pathlib import Path
 from typing import Any
 
@@ -32,6 +33,67 @@ def find_csv(root: Path, required: set[str], hints: tuple[str, ...] = ()) -> Pat
         raise FileNotFoundError(f"No CSV under {root} provides {sorted(required)}")
     candidates.sort(key=lambda x: (-x[0], str(x[1])))
     return candidates[0][1]
+
+
+
+def find_mtf_csv_for_event(root: Path, event_ts: pd.Timestamp) -> Path:
+    """Select only the annual GBPUSD MTF file matching the event year.
+
+    Never fall back to another year's file or an arbitrary lexicographic match.
+    """
+    pattern = re.compile(r"GBPUSD_M5_MTF_ALIGNMENT_(\\d{4})\\.csv$", re.IGNORECASE)
+    matches = [
+        path for path in csv_files(root)
+        if (match := pattern.fullmatch(path.name)) and int(match.group(1)) == event_ts.year
+    ]
+    if len(matches) != 1:
+        raise ValueError(
+            f"BLOCKED_MTF_ANNUAL_SOURCE_CARDINALITY: year={event_ts.year} "
+            f"expected=1 observed={len(matches)}"
+        )
+    path = matches[0]
+    try:
+        columns = set(pd.read_csv(path, nrows=0).columns)
+    except Exception as exc:
+        raise ValueError(f"BLOCKED_MTF_SOURCE_UNREADABLE:{path.name}:{exc}") from exc
+    required = {"timestamp", *MTF_FIELDS}
+    if not required.issubset(columns):
+        raise ValueError(
+            f"BLOCKED_MTF_SOURCE_SCHEMA:{path.name}:missing={sorted(required - columns)}"
+        )
+    return path
+
+
+def read_mtf_row_asof(root: Path, event_ts: pd.Timestamp) -> tuple[Path, dict[str, Any], pd.Timestamp]:
+    """Read one fresh M5 MTF row as-of the event, preserving fail-closed missingness."""
+    path = find_mtf_csv_for_event(root, event_ts)
+    df = pd.read_csv(path)
+    df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True, errors="coerce", format="mixed")
+    eligible = df.loc[df["timestamp"].notna() & df["timestamp"].le(event_ts)].copy()
+    if eligible.empty:
+        raise ValueError(f"BLOCKED_MTF_NOT_AVAILABLE_AS_OF_EVENT:{event_ts.isoformat()}")
+    selected_ts = eligible["timestamp"].max()
+    age = event_ts - selected_ts
+    # The source is M5-based: do not carry a prior row across a missing 5-minute slot.
+    if age > pd.Timedelta(minutes=5):
+        raise ValueError(
+            f"BLOCKED_MTF_STALE_AS_OF_EVENT:row={selected_ts.isoformat()}:"
+            f"event={event_ts.isoformat()}:age_seconds={age.total_seconds()}"
+        )
+    selected = eligible.loc[eligible["timestamp"].eq(selected_ts)]
+    if len(selected) != 1:
+        raise ValueError(
+            f"BLOCKED_MTF_AMBIGUOUS_AS_OF_ROW:timestamp={selected_ts.isoformat()}:count={len(selected)}"
+        )
+    raw = selected.iloc[0]
+    missing = [
+        field for field in MTF_FIELDS
+        if pd.isna(raw[field]) or (isinstance(raw[field], str) and not raw[field].strip())
+    ]
+    if missing:
+        raise ValueError(f"BLOCKED_MTF_FIELDS:{missing}")
+    row = raw.drop(labels=["timestamp"]).to_dict()
+    return path, row, selected_ts
 
 
 def read_rows_at(path: Path, ts: pd.Timestamp, *, exact: bool = True) -> list[dict[str, Any]]:
@@ -95,14 +157,7 @@ def build(event_ts: str, h1: Path, market_state: Path, nison: Path, murphy_root:
     if not h1_row:
         raise ValueError("BLOCKED_H1_NOT_AVAILABLE_AS_OF_EVENT")
 
-    mtf_csv = find_csv(mtf_root, {"timestamp", *MTF_FIELDS}, hints=("GBPUSD","MTF","ALIGNMENT"))
-    mtf_rows = read_rows_at(mtf_csv, ts, exact=False)
-    if not mtf_rows:
-        raise ValueError("BLOCKED_MTF_NOT_AVAILABLE_AS_OF_EVENT")
-    mtf = dict(mtf_rows[0])
-    missing = [k for k in MTF_FIELDS if mtf.get(k) in (None, "")]
-    if missing:
-        raise ValueError(f"BLOCKED_MTF_FIELDS:{missing}")
+    mtf_csv, mtf, mtf_row_ts = read_mtf_row_asof(mtf_root, ts)
 
     ndf = pd.read_csv(nison)
     if "timestamp" not in ndf.columns:
@@ -188,6 +243,8 @@ def build(event_ts: str, h1: Path, market_state: Path, nison: Path, murphy_root:
     return {
         "symbol":"GBPUSD", "query_as_of":ts.isoformat(), "h1":h1v, "market":market,
         "mtf":mtf, "brain_row":brain_row,
+        "mtf_source":{"path":str(mtf_csv),"row_timestamp":mtf_row_ts.isoformat(),
+                      "asof_age_seconds":(ts-mtf_row_ts).total_seconds()},
         "murphy":{"status":"PASS","direction":risk_direction,"pass_rule_id":pass_rule_id,
                   "directional_source_rule_id":directional_source_rule_id,
                   "rows":mrows,"authoritative":True,
@@ -200,7 +257,9 @@ def build(event_ts: str, h1: Path, market_state: Path, nison: Path, murphy_root:
         "provenance":{"builder":"gate3c_build_single_event_bundle_v1","source_backed_only":True,
                        "murphy_governed_registry_count":len(MURPHY_IDS),"murphy_event_rule_count":len(mids),
                        "murphy_direction_source_rule_id":pass_rule_id,
-                       "nison_rule_count":len(nids),"mtf_fields":sorted(MTF_FIELDS),"oos_tuning":False,
+                       "nison_rule_count":len(nids),"mtf_fields":sorted(MTF_FIELDS),
+                       "mtf_source_path":str(mtf_csv),"mtf_source_row_timestamp":mtf_row_ts.isoformat(),
+                       "oos_tuning":False,
                        "similarity_future_context_excluded":True}
     }
 
