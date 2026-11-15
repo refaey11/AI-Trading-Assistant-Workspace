@@ -3,7 +3,8 @@ name: Gate3C MTF Source Selection Tests
 on:
   push:
     branches:
-      - current-stack-dev-backtest-2016-2024-v3\n      - fix/gate3c-auto-select-valid-event
+      - current-stack-dev-backtest-2016-2024-v3
+      - fix/gate3c-auto-select-valid-event
   pull_request:
     branches:
       - current-stack-dev-backtest-2016-2024-v3
