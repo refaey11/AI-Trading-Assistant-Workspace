@@ -127,6 +127,38 @@ jobs:
               report['annual'].append(annual)
               frames.append((year, df))
 
+          # Audit the exact MTF CSV candidate Gate3C would select and its as-of row.
+          event_ts = pd.Timestamp('2020-01-02T01:00:00Z')
+          candidates = []
+          required = {'timestamp', *fields}
+          for candidate_path in sorted(root.rglob('*.csv')):
+              try:
+                  columns = set(pd.read_csv(candidate_path, nrows=0).columns)
+                  if not required.issubset(columns):
+                      continue
+                  candidate_df = pd.read_csv(candidate_path, usecols=['timestamp', *fields], low_memory=False)
+                  candidate_df['timestamp'] = pd.to_datetime(candidate_df['timestamp'], utc=True, errors='coerce', format='mixed')
+                  candidate_df = candidate_df.dropna(subset=['timestamp']).sort_values('timestamp', kind='stable')
+                  asof = candidate_df.loc[candidate_df['timestamp'].le(event_ts)].tail(1)
+                  score = sum(1 for hint in ('GBPUSD', 'MTF', 'ALIGNMENT') if hint.lower() in candidate_path.name.lower())
+                  row = None
+                  if not asof.empty:
+                      row = asof.iloc[0].astype('string').fillna('<NULL>').to_dict()
+                  candidates.append({
+                      'path': str(candidate_path),
+                      'hint_score': score,
+                      'rows': int(len(candidate_df)),
+                      'min_timestamp': candidate_df['timestamp'].min().isoformat() if not candidate_df.empty else None,
+                      'max_timestamp': candidate_df['timestamp'].max().isoformat() if not candidate_df.empty else None,
+                      'asof_event_timestamp': event_ts.isoformat(),
+                      'selected_asof_row': row,
+                  })
+              except Exception as exc:
+                  report.setdefault('candidate_scan_errors', []).append({'path': str(candidate_path), 'error': repr(exc)})
+          candidates.sort(key=lambda item: (-item['hint_score'], item['path']))
+          report['gate3c_mtf_candidate_inventory'] = candidates
+          report['gate3c_candidate_selected_by_current_sort'] = candidates[0] if candidates else None
+
           report['failure_count'] = len(report['failures'])
           report['summary'] = {
               'annual_files_found': len(frames),
