@@ -45,7 +45,7 @@ def write_inputs(root: Path, *, first_event_mtf_missing: bool = True):
     for index, ts in enumerate(TIMES):
         row = {"timestamp": ts}
         for field in MTF_FIELDS:
-            row[field] = None if index == 0 and first_event_mtf_missing and field == "D1_trend_regime" else 1
+            row[field] = float("nan") if index == 0 and first_event_mtf_missing and field == "D1_trend_regime" else 1
         mtf_rows.append(row)
     pd.DataFrame(mtf_rows).to_csv(mtf / "GBPUSD_M5_MTF_ALIGNMENT_2020.csv", index=False)
     return {
@@ -67,7 +67,7 @@ def test_selector_skips_earlier_murphy_pass_with_incomplete_mtf_and_selects_next
 def test_selector_fails_closed_when_every_candidate_has_missing_mtf(tmp_path):
     kwargs = write_inputs(tmp_path)
     frame = pd.read_csv(kwargs["mtf_root"] / "GBPUSD_M5_MTF_ALIGNMENT_2020.csv")
-    frame.loc[:, "D1_trend_regime"] = float("nan")
+    frame["D1_trend_regime"] = pd.Series([float("nan")] * len(frame), dtype="float64")
     frame.to_csv(kwargs["mtf_root"] / "GBPUSD_M5_MTF_ALIGNMENT_2020.csv", index=False)
 
     with pytest.raises(ValueError, match="BLOCKED_NO_COMPLETE_EVENT_CANDIDATE"):
@@ -77,7 +77,7 @@ def test_selector_fails_closed_when_every_candidate_has_missing_mtf(tmp_path):
 def test_selector_does_not_promote_noneligible_murphy_rule(tmp_path):
     kwargs = write_inputs(tmp_path)
     registry = pd.read_csv(kwargs["registry_path"])
-    registry.loc[:, "decision_eligible"] = "NO"
+    registry["decision_eligible"] = "NO"
     registry.to_csv(kwargs["registry_path"], index=False)
 
     with pytest.raises(ValueError, match="BLOCKED_NO_ELIGIBLE_MURPHY_DIRECTIONAL_PASS"):
