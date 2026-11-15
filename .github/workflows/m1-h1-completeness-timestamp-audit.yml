@@ -39,8 +39,7 @@ jobs:
           python tools/audit_m1_h1_completeness_timestamp_v1.py \
             --m1-zip /tmp/GBPUSD_M1_MASTER.zip \
             --h1-zip /tmp/GBPUSD_H1_MASTER.zip \
-            --output artifacts/m1_h1_completeness_timestamp_audit.json \\
-            --event-ts 2020-01-03T00:00:00Z
+            --output artifacts/m1_h1_completeness_timestamp_audit.json --event-ts 2020-01-03T00:00:00Z
       - uses: actions/upload-artifact@v4
         with:
           name: m1-h1-completeness-timestamp-audit
