@@ -45,6 +45,12 @@ def audit(m1_zip: str | Path, h1_zip: str | Path) -> dict:
     m1_ts = _timestamps(m1, "M1")
     h1_ts = _timestamps(h1, "H1")
 
+    # Restrict all measured source rows to the development period; frozen 2025 OOS is excluded.
+    m1 = m1.loc[m1_ts.dt.year.between(2016, 2024)].copy().reset_index(drop=True)
+    m1_ts = m1_ts.loc[m1_ts.dt.year.between(2016, 2024)].reset_index(drop=True)
+    h1 = h1.loc[h1_ts.dt.year.between(2016, 2024)].copy().reset_index(drop=True)
+    h1_ts = h1_ts.loc[h1_ts.dt.year.between(2016, 2024)].reset_index(drop=True)
+
     m1 = m1.copy()
     m1["_ts"] = m1_ts
     m1["_volume"] = pd.to_numeric(m1["volume"], errors="coerce")
@@ -75,7 +81,8 @@ def audit(m1_zip: str | Path, h1_zip: str | Path) -> dict:
 
     # These are descriptive diagnostics only. They do not alter or certify a trading input.
     report = {
-        "audit": "READ_ONLY_M1_TO_H1_COMPLETENESS_AND_TIMESTAMP",
+        "audit": "READ_ONLY_M1_TO_H1_COMPLETENESS_AND_TIMESTAMP_2016_2024_ONLY",
+        "development_year_scope": "2016-2024; 2025 OOS and 2026 rows excluded",
         "m1_archive": str(m1_zip),
         "h1_archive": str(h1_zip),
         "m1_csv_member": str(m1["_source_member"].iloc[0]),
