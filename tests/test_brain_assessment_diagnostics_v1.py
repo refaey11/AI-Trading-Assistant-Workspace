@@ -100,7 +100,7 @@ def test_reproduces_brain_v1_structure_mean_and_flags_volume_no_trade_reason():
         "confidence": 1.0,
         "evidence": [
             {"module": "MTF", "direction": "bullish", "strength": 1.0},
-            {"module": "Structure", "direction": "bullish", "strength": 1.0 / 3.0},
+            {"module": "Structure", "direction": "neutral", "strength": 0.35},
             {"module": "Volume", "direction": "neutral", "strength": 0.0},
         ],
         "no_trade_reasons": [
@@ -113,8 +113,8 @@ def test_reproduces_brain_v1_structure_mean_and_flags_volume_no_trade_reason():
         {"final": "NO_TRADE"},
         {"eligible": True, "hard_blocks": [], "needs_review": []},
     )
-    assert result["mtf"]["regime_mean"] == 1.0 / 3.0
-    assert result["mtf"]["structure_direction_using_brain_v1_threshold"] == "bullish"
+    assert result["mtf"]["regime_mean"] == 1.0 / 6.0
+    assert result["mtf"]["structure_direction_using_brain_v1_threshold"] == "neutral"
     assert result["confidence_audit"]["reproduced_directional_confidence"] == 1.0
     assert result["no_trade_handoff_audit"]["eligible_while_brain_reports_no_trade_reasons"] is True
     assert result["no_trade_handoff_audit"]["reasons_present_but_directional_decision_returned"] is False
