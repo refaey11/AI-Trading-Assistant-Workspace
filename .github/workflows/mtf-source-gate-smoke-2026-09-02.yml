@@ -37,57 +37,82 @@ jobs:
           set -euo pipefail
           TOKEN="$(printf '%s' "$DROPBOX_ACCESS_TOKEN" | tr -d '\r\n' | sed -E 's/^Bearer[[:space:]]+//; s/^\"//; s/\"$//')"
           test -n "$TOKEN"
-          mkdir -p artifacts/source/mtf
+          mkdir -p artifacts/source/mtf artifacts/mtf_diagnostics
           curl -L --fail --silent --show-error \
             https://content.dropboxapi.com/2/files/download \
             -H "Authorization: Bearer ${TOKEN}" \
             -H 'Dropbox-API-Arg: {"path":"/MTF_ALIGNMENT_GBPUSD_V1.zip"}' \
             -o artifacts/mtf.zip
           unzip -q artifacts/mtf.zip -d artifacts/source/mtf
-      - name: Verify 6-TF annual source files and canonical numeric fields
+      - name: Diagnose all 2016-2024 MTF source fields without repair
+        id: diagnose
         shell: bash
         run: |
           python - <<'PY'
           from pathlib import Path
           import json
           import pandas as pd
+
           root=Path('artifacts/source/mtf')
+          out=Path('artifacts/mtf_diagnostics')
+          out.mkdir(parents=True,exist_ok=True)
           fields=['mtf_trend_score','M5_trend_regime','M15_trend_regime','M30_trend_regime','H1_trend_regime','H4_trend_regime','D1_trend_regime']
+          report={'scope_years':list(range(2016,2025)),'source_data_modified':False,'imputation_applied':False,'rows_dropped':False,'categorical_translation_applied':False,'fields':fields,'annual':[],'failures':[]}
           frames=[]
           for year in range(2016,2025):
               matches=sorted(root.rglob(f'GBPUSD_M5_MTF_ALIGNMENT_{year}.csv'))
-              if len(matches)!=1: raise SystemExit(f'MTF_FILE_COUNT_FAIL:{year}:{matches}')
+              if len(matches)!=1:
+                  report['failures'].append({'year':year,'error':'MTF_FILE_COUNT_FAIL','matches':[str(x) for x in matches]})
+                  continue
               p=matches[0]
               df=pd.read_csv(p,low_memory=False)
-              missing=sorted(set(['timestamp',*fields])-set(df.columns))
-              if missing: raise SystemExit(f'MTF_REQUIRED_COLUMNS_FAIL:{year}:{missing}')
-              for f in fields:
-                  raw=df[f]
+              missing_columns=sorted(set(['timestamp',*fields])-set(df.columns))
+              annual={'year':year,'file':str(p),'rows':int(len(df)),'missing_columns':missing_columns,'field_diagnostics':[]}
+              if missing_columns:
+                  report['annual'].append(annual)
+                  report['failures'].append({'year':year,'error':'MTF_REQUIRED_COLUMNS_FAIL','missing_columns':missing_columns})
+                  continue
+              for field in fields:
+                  raw=df[field]
                   text=raw.astype('string').str.strip()
                   missing_mask=raw.isna() | text.eq('').fillna(False)
                   numeric=pd.to_numeric(raw,errors='coerce')
                   non_numeric_mask=(~missing_mask) & numeric.isna()
+                  diag={'field':field,'missing_count':int(missing_mask.sum()),'non_numeric_count':int(non_numeric_mask.sum())}
+                  annual['field_diagnostics'].append(diag)
                   if missing_mask.any() or non_numeric_mask.any():
-                      def sample(mask):
-                          return df.loc[mask,['timestamp',f]].head(10).astype('string').fillna('<NULL>').to_dict('records')
-                      diagnostic={
-                          'year':year,'field':f,
-                          'missing_count':int(missing_mask.sum()),
-                          'non_numeric_count':int(non_numeric_mask.sum()),
-                          'missing_samples':sample(missing_mask),
-                          'non_numeric_samples':sample(non_numeric_mask),
-                      }
-                      raise SystemExit('MTF_SOURCE_VALUE_DIAGNOSTIC_FAIL:'+json.dumps(diagnostic,ensure_ascii=False,sort_keys=True))
-                  df[f]=numeric.astype(float)
-              df['timestamp']=pd.to_datetime(df['timestamp'],utc=True,errors='raise',format='mixed')
-              if df['timestamp'].duplicated().any(): raise SystemExit(f'MTF_TIMESTAMP_DUPLICATE_FAIL:{year}')
-              frames.append(df)
-          combined=pd.concat(frames,ignore_index=True).sort_values('timestamp').reset_index(drop=True)
-          if combined['timestamp'].duplicated().any(): raise SystemExit('MTF_GLOBAL_TIMESTAMP_DUPLICATE_FAIL')
-          combined.to_csv('artifacts/MTF_CURRENT_STACK.csv',index=False)
-          print('MTF_6TF_SOURCE_PASS')
-          print('ROWS',len(combined))
-          print('YEARS',sorted(combined.timestamp.dt.year.unique().tolist()))
+                      bad=missing_mask | non_numeric_mask
+                      positions=[int(x) for x in df.index[bad].tolist()]
+                      examples=[]
+                      for pos in positions[:20]:
+                          lo=max(0,pos-2); hi=min(len(df),pos+3)
+                          context=df.iloc[lo:hi][['timestamp',*fields]].copy()
+                          context.insert(0,'row_offset',context.index.astype(int))
+                          examples.append({'bad_row_offset':pos,'bad_timestamp':str(df.iloc[pos]['timestamp']),'bad_value':None if pd.isna(raw.iloc[pos]) else str(raw.iloc[pos]),'context_rows':context.astype('string').fillna('<NULL>').to_dict('records')})
+                      report['failures'].append({'year':year,**diag,'examples':examples})
+              report['annual'].append(annual)
+              frames.append((year,df))
+          report['failure_count']=len(report['failures'])
+          report['summary']={
+              'annual_files_found':len(frames),
+              'total_rows':sum(len(df) for _,df in frames),
+              'years_with_value_failures':sorted({x['year'] for x in report['failures'] if 'field' in x}),
+              'total_missing_values':sum(x.get('missing_count',0) for x in report['failures']),
+              'total_nonnumeric_values':sum(x.get('non_numeric_count',0) for x in report['failures']),
+          }
+          (out/'mtf_source_diagnostics_2016_2024.json').write_text(json.dumps(report,indent=2,ensure_ascii=False,default=str))
+          print(json.dumps(report['summary'],ensure_ascii=False,sort_keys=True))
+          print('DIAGNOSTIC_REPORT',out/'mtf_source_diagnostics_2016_2024.json')
+          if report['failures']:
+              raise SystemExit('MTF_SOURCE_DIAGNOSTIC_FAILURES_FOUND')
           PY
+      - name: Upload MTF diagnostic report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mtf-source-diagnostics-2016-2024
+          path: artifacts/mtf_diagnostics/mtf_source_diagnostics_2016_2024.json
+          if-no-files-found: warn
       - name: Run fail-closed contract gate
+        if: success()
         run: python BACKTEST/mtf_source_contract_gate_v1.py --mtf artifacts/MTF_CURRENT_STACK.csv
