@@ -4,6 +4,9 @@ on:
   push:
     branches:
       - current-stack-dev-backtest-2016-2024-v3
+  pull_request:
+    branches:
+      - current-stack-dev-backtest-2016-2024-v3
 
 permissions:
   contents: read
@@ -18,14 +21,16 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: current-stack-dev-backtest-2016-2024-v3
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 1
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Install pandas
-        run: python -m pip install --upgrade pip pandas
+      - name: Install diagnostic test dependencies
+        run: python -m pip install --upgrade pip pandas pytest
+      - name: Test MTF source diagnostics
+        run: python -m pytest -q tests/test_mtf_source_contract_gate_v1.py
       - name: Download exact MTF archive
         shell: bash
         run: |
