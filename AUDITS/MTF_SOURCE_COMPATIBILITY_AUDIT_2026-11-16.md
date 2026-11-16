@@ -106,3 +106,8 @@ H1, Nison, Market State, Historical Context, and Historical Outcome passed the i
 - No auto BUY/SELL enablement.
 - No full backtest or profitability claim.
 - No PR merge authorized by this audit.
+
+
+### Search-scope caveat
+
+The full-project archive search inspected top-level source/documentation files and inventoried nested ZIP names; it did not recursively unpack the nested legacy reader ZIP. The repository's existing provenance blocker and reader audit identify that legacy reader as H4/H1-only and research-only. It is not evidence for the six-timeframe M5/M15/M30/H1/H4/D1 producer. The canonical MTF archive itself was directly inspected across all 2016-2024 annual data files and contained no producer code files.
