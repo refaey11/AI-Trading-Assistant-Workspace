@@ -46,3 +46,12 @@ Required checks at the next gate:
 
 ## Resume rule
 Do not reopen the Timeframe/MTF alignment gate without a specific downstream failure. Continue directly to the Market State / Market Reader runtime gate.
+
+
+## Scope clarification — 2026-11-16
+
+The PASS recorded above is an **artifact-existence / declared-structure checkpoint only**. It does not close producer formula lineage, timestamp timezone provenance, or annual-boundary missing-value behavior.
+
+A full read-only scan of the pinned 2016-2024 source found 671,601 naive timestamps and 2,512 blank higher-timeframe trend-regime cells. The MTF archive contains no producer code. The observed -1/0/1 regime values and -6..+6 aggregate score are not sufficient to reconstruct or certify the producer formula.
+
+Accordingly, the source artifact remains available, but its direct Decision Brain input path is BLOCKED until the missing contracts are recovered. No UTC assumption, imputation, recoding, or 2025 OOS use is allowed. See `AUDITS/MTF_SOURCE_COMPATIBILITY_AUDIT_2026-11-16.md`.
