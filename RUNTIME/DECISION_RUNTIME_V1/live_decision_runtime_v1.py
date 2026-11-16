@@ -148,8 +148,6 @@ def run_live_event(event: Mapping[str, Any]) -> dict[str, Any]:
         normalized_row = dict(row)
         for field in MTF_FIELDS:
             normalized_row[field] = _finite_number(normalized_row.get(field), f"brain_row.{field}")
-            if not -1.0 <= normalized_row[field] <= 1.0:
-                raise ValueError(f"brain_row.{field}:OUTSIDE_SIGNED_REGIME_RANGE")
         if not isinstance(normalized_row.get("volume_available"), bool):
             raise ValueError("BRAIN_ROW.volume_available_MUST_BE_EXPLICIT_BOOLEAN")
         if normalized_row["volume_available"]:
