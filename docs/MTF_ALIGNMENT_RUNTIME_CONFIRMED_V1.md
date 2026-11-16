@@ -69,3 +69,16 @@ Before declaring a component missing, limited, or unsupported:
 3. Distinguish component-level limitations from project-level capabilities.
 4. Record the conclusion with provenance.
 5. Do not infer missing runtime support from a different component's contract.
+
+
+## Scope clarification — 2026-11-16
+
+"CONFIRMED" above refers to the existence and declared six-timeframe structure of the historical MTF artifact. It does not establish that the six-timeframe producer code or its complete serialization contract is available.
+
+The exact 2016-2024 artifact was re-inspected on 2026-11-16:
+- 671,601 rows; all timestamps are naive and have no timezone provenance in the archive README.
+- 2,512 higher-timeframe trend-regime cells are blank, clustered at annual-file starts.
+- Observed serialized values are -1/0/1 for regime fields and -6..+6 for `mtf_trend_score`; producer semantics/formulas remain unverified.
+- No producer source code was found inside the MTF archive.
+
+Therefore the historical artifact and six-timeframe architecture remain confirmed, but the MTF-to-Decision-Brain input path is **BLOCKED / NOT EVALUABLE** until timezone provenance, producer encoding/formula, and warm-up/missing-value behavior are proven. Do not interpret blanks as zero, recode values, or assume UTC. See `AUDITS/MTF_SOURCE_COMPATIBILITY_AUDIT_2026-11-16.md`.
