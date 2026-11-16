@@ -30,7 +30,29 @@ jobs:
 
       - name: Verify Dropbox access
         if: github.event_name != 'pull_request'
-        run: test -n "$DROPBOX_ACCESS_TOKEN"
+        run: |
+          python - <<'PY'
+          import json, os, urllib.error, urllib.request
+          token = os.environ.get("DROPBOX_ACCESS_TOKEN", "")
+          if not token:
+              raise SystemExit("DROPBOX_TOKEN_MISSING: repository secret is empty or unavailable to this workflow")
+          req = urllib.request.Request(
+              "https://api.dropboxapi.com/2/users/get_current_account",
+              data=b"",
+              method="POST",
+              headers={"Authorization": f"Bearer {token}"},
+          )
+          try:
+              with urllib.request.urlopen(req, timeout=30) as response:
+                  account = json.loads(response.read().decode())
+                  print("DROPBOX_AUTH_OK")
+                  print("Dropbox account type:", account.get("account_type", {}).get(".tag", "unknown"))
+          except urllib.error.HTTPError as exc:
+              detail = exc.read().decode("utf-8", errors="replace")
+              print(f"DROPBOX_AUTH_FAILED: HTTP {exc.code}")
+              print("Dropbox response:", detail[:1500])
+              raise SystemExit(1)
+          PY
 
       - name: Acquire exact pinned source revisions
         if: github.event_name != 'pull_request'
