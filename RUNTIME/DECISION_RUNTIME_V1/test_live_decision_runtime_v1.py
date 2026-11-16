@@ -98,6 +98,14 @@ def test_live_event_uses_existing_brain_and_returns_signal_only():
     assert result["historical_memory"]["passed_to_brain_for_direction"] is False
 
 
+def test_live_runtime_does_not_rescale_aggregate_mtf_score():
+    event = valid_event()
+    event["brain_row"]["mtf_trend_score"] = 6.0
+    event["mtf_evidence"]["fields"]["mtf_trend_score"] = 6.0
+    result = run_live_event(event)
+    assert result["status"] == "SIGNAL_READY"
+
+
 def test_live_runtime_rejects_naive_timestamp():
     event = valid_event()
     event["query_as_of"] = "2026-11-16T02:00:00"
