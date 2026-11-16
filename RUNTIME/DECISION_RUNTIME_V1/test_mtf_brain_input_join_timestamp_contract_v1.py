@@ -92,3 +92,160 @@ def test_gate3c_builder_rejects_mixed_naive_and_aware_source_rows(tmp_path: Path
     )
     with pytest.raises(ValueError, match="BLOCKED_TIMEZONE_PROVENANCE_UNRESOLVED"):
         BUILDER.read_rows_at(source, pd.Timestamp("2024-01-02T08:00:00Z"), exact=False)
+
+
+GATE3C_PATH = MODULE_PATH.with_name("gate3c_single_event_e2e_v1.py")
+GATE3C_SPEC = importlib.util.spec_from_file_location("gate3c_single_event_e2e_v1", GATE3C_PATH)
+assert GATE3C_SPEC is not None and GATE3C_SPEC.loader is not None
+GATE3C = importlib.util.module_from_spec(GATE3C_SPEC)
+GATE3C_SPEC.loader.exec_module(GATE3C)
+
+
+def test_gate3c_event_timestamp_rejects_naive_values() -> None:
+    with pytest.raises(ValueError, match="BLOCKED_TIMEZONE_PROVENANCE_UNRESOLVED"):
+        GATE3C._timestamp("2024-01-02 10:00:00")
+
+
+def test_gate3c_event_timestamp_normalizes_explicit_offset_to_utc() -> None:
+    parsed = GATE3C._timestamp("2024-01-02T10:00:00+02:00")
+    assert parsed == pd.Timestamp("2024-01-02T08:00:00Z")
+
+
+def test_gate3c_rule_timestamp_series_rejects_naive_values() -> None:
+    values = pd.Series(["2024-01-02T10:00:00+02:00", "2024-01-02 09:00:00"])
+    with pytest.raises(ValueError, match="BLOCKED_TIMEZONE_PROVENANCE_UNRESOLVED"):
+        GATE3C._parse_aware_timestamp_series(values, label="murphy")
+
+
+def test_gate3c_rule_timestamp_series_normalizes_offsets_to_utc() -> None:
+    values = pd.Series(["2024-01-02T10:00:00+02:00", "2024-01-02T09:00:00Z"])
+    parsed = GATE3C._parse_aware_timestamp_series(values, label="nison")
+    assert str(parsed.dtype) == "datetime64[ns, UTC]"
+    assert parsed.iloc[0] == pd.Timestamp("2024-01-02T08:00:00Z")
+    assert parsed.iloc[1] == pd.Timestamp("2024-01-02T09:00:00Z")
+
+
+MTF_GATE_PATH = MODULE_PATH.parents[2] / "BACKTEST" / "mtf_source_contract_gate_v1.py"
+MTF_GATE_SPEC = importlib.util.spec_from_file_location("mtf_source_contract_gate_v1", MTF_GATE_PATH)
+assert MTF_GATE_SPEC is not None and MTF_GATE_SPEC.loader is not None
+MTF_GATE = importlib.util.module_from_spec(MTF_GATE_SPEC)
+MTF_GATE_SPEC.loader.exec_module(MTF_GATE)
+
+
+def _write_mtf_source(path: Path, timestamps: list[str]) -> Path:
+    rows = {
+        "timestamp": timestamps,
+        **{field: [1.0] * len(timestamps) for field in MTF_GATE.REQUIRED},
+    }
+    pd.DataFrame(rows).to_csv(path, index=False)
+    return path
+
+
+def test_mtf_gate_normalizes_explicit_offsets_to_utc(tmp_path: Path) -> None:
+    source = _write_mtf_source(tmp_path / "aware.csv", ["2024-01-02T10:00:00+02:00"])
+    report = MTF_GATE.inspect(source)
+    assert report["status"] == "PASS"
+    assert report["min_timestamp"] == "2024-01-02T08:00:00+00:00"
+    assert report["max_timestamp"] == "2024-01-02T08:00:00+00:00"
+
+
+def test_mtf_gate_rejects_naive_timestamp(tmp_path: Path) -> None:
+    source = _write_mtf_source(tmp_path / "naive.csv", ["2024-01-02 10:00:00"])
+    with pytest.raises(SystemExit, match="BLOCKED_MTF_TIMEZONE_PROVENANCE_UNRESOLVED"):
+        MTF_GATE.inspect(source)
+
+
+def test_mtf_gate_rejects_mixed_aware_and_naive_timestamps(tmp_path: Path) -> None:
+    source = _write_mtf_source(
+        tmp_path / "mixed.csv",
+        ["2024-01-02T10:00:00+02:00", "2024-01-02 09:00:00"],
+    )
+    with pytest.raises(SystemExit, match="BLOCKED_MTF_TIMEZONE_PROVENANCE_UNRESOLVED"):
+        MTF_GATE.inspect(source)
+
+
+def test_mtf_gate_rejects_invalid_timestamp(tmp_path: Path) -> None:
+    source = _write_mtf_source(tmp_path / "invalid.csv", ["not-a-timestamp"])
+    with pytest.raises(SystemExit, match="BLOCKED_MTF_INVALID_TIMESTAMP"):
+        MTF_GATE.inspect(source)
+
+
+def test_mtf_gate_rejects_duplicate_instants_after_utc_normalization(tmp_path: Path) -> None:
+    source = _write_mtf_source(
+        tmp_path / "duplicate.csv",
+        ["2024-01-02T10:00:00+02:00", "2024-01-02T08:00:00Z"],
+    )
+    with pytest.raises(SystemExit, match="BLOCKED_MTF_DUPLICATE_TIMESTAMP"):
+        MTF_GATE.inspect(source)
+
+
+def test_mtf_source_workflow_uses_the_same_fail_closed_timestamp_parser() -> None:
+    root = MODULE_PATH.parents[2]
+    workflow = (root / ".github" / "workflows" / "mtf-source-gate-smoke-2026-09-02.yml").read_text(encoding="utf-8")
+    assert "parse_aware_timestamps(df['timestamp']" in workflow
+    assert "pd.to_datetime(df['timestamp'],utc=True" not in workflow
+
+
+from RUNTIME.DECISION_RUNTIME_V1.full_brain_runtime_bridge_v1 import (
+    _enforce_development_risk_contract,
+)
+
+
+def _canonical_risk(**overrides):
+    values = {"rr": 3.0, "stop_loss": 98.0, "take_profit": 106.0}
+    values.update(overrides)
+    return values
+
+
+def _execution_result(stop_loss=98.5, take_profit=103.0):
+    return {
+        "status": "EXECUTABLE",
+        "execution_plan": {
+            "status": "EXECUTABLE",
+            "stop_loss": stop_loss,
+            "take_profit": take_profit,
+        },
+        "audit": {},
+    }
+
+
+def test_development_mode_blocks_candidate_2r_levels_against_canonical_3r_risk() -> None:
+    result = _enforce_development_risk_contract(
+        _execution_result(stop_loss=98.5, take_profit=103.0),
+        _canonical_risk(),
+        mode="development",
+    )
+    assert result["status"] == "NOT_EXECUTABLE"
+    assert result["reason"] == "EXECUTION_PLAN_DIFFERS_FROM_CANONICAL_RISK_LEVELS"
+    assert result["execution_plan"]["status"] == "NOT_EXECUTABLE"
+    assert result["audit"]["canonical_risk_execution_match"] is False
+
+
+def test_development_mode_accepts_only_levels_returned_by_canonical_risk() -> None:
+    result = _enforce_development_risk_contract(
+        _execution_result(stop_loss=98.0, take_profit=106.0),
+        _canonical_risk(),
+        mode="development",
+    )
+    assert result["status"] == "EXECUTABLE"
+    assert result["audit"]["canonical_risk_execution_match"] is True
+
+
+def test_development_mode_fails_closed_when_canonical_rr_is_missing() -> None:
+    result = _enforce_development_risk_contract(
+        _execution_result(stop_loss=98.0, take_profit=106.0),
+        _canonical_risk(rr=None),
+        mode="development",
+    )
+    assert result["status"] == "NOT_EXECUTABLE"
+    assert result["reason"] == "CANONICAL_RISK_PLAN_INPUTS_MISSING"
+
+
+def test_oos_candidate_mode_preserves_its_separate_frozen_adapter_contract() -> None:
+    original = _execution_result()
+    returned = _enforce_development_risk_contract(
+        original,
+        _canonical_risk(),
+        mode="oos_evaluation",
+    )
+    assert returned is original

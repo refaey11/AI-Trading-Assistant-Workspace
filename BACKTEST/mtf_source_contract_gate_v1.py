@@ -22,11 +22,31 @@ REQUIRED = (
 )
 
 
+def parse_aware_timestamps(values: pd.Series, *, label: str) -> pd.Series:
+    """Normalize source timestamps to UTC without assigning a timezone to naive values."""
+    normalized: list[pd.Timestamp] = []
+    for index, value in values.items():
+        try:
+            parsed = pd.Timestamp(value)
+        except (TypeError, ValueError, OverflowError) as exc:
+            raise ValueError(f"BLOCKED_MTF_INVALID_TIMESTAMP:{label}:row={index}:{value!r}") from exc
+        if pd.isna(parsed):
+            raise ValueError(f"BLOCKED_MTF_INVALID_TIMESTAMP:{label}:row={index}:{value!r}")
+        if parsed.tzinfo is None or parsed.utcoffset() is None:
+            raise ValueError(
+                f"BLOCKED_MTF_TIMEZONE_PROVENANCE_UNRESOLVED:{label}:row={index}:{value!r}"
+            )
+        normalized.append(parsed.tz_convert("UTC"))
+    return pd.Series(pd.DatetimeIndex(normalized), index=values.index, name=values.name)
+
+
 def inspect(path: Path) -> dict[str, object]:
     df = pd.read_csv(path, low_memory=False)
     missing = sorted(set(REQUIRED) - set(df.columns))
     if missing:
         raise SystemExit(f"BLOCKED_MTF_MISSING_REQUIRED_FIELDS:{missing}")
+    if "timestamp" not in df.columns:
+        raise SystemExit("BLOCKED_MTF_MISSING_TIMESTAMP_COLUMN")
 
     report: dict[str, object] = {
         "status": "PASS",
@@ -50,9 +70,10 @@ def inspect(path: Path) -> dict[str, object]:
         if numeric.isna().any():
             raise SystemExit(f"BLOCKED_MTF_NAN_SOURCE_FIELD:{field}")
 
-    timestamps = pd.to_datetime(df["timestamp"], utc=True, errors="coerce")
-    if timestamps.isna().any():
-        raise SystemExit("BLOCKED_MTF_INVALID_TIMESTAMP")
+    try:
+        timestamps = parse_aware_timestamps(df["timestamp"], label=str(path))
+    except ValueError as exc:
+        raise SystemExit(str(exc)) from exc
     if timestamps.duplicated().any():
         raise SystemExit("BLOCKED_MTF_DUPLICATE_TIMESTAMP")
 

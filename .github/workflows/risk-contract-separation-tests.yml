@@ -31,4 +31,5 @@ jobs:
           python -m pytest -q \
             RUNTIME/RISK_ENGINE_INTEGRATION_V1/test_risk_engine_contract_reconciliation_v1.py \
             tests/risk_engine/test_risk_contract_separation_v1.py \
-            DEVELOPMENT_2016_2024/test_v5_4_contract.py
+            DEVELOPMENT_2016_2024/test_v5_4_contract.py \
+            RUNTIME/DECISION_RUNTIME_V1/test_mtf_brain_input_join_timestamp_contract_v1.py

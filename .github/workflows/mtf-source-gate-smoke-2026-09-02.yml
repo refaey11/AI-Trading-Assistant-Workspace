@@ -39,12 +39,13 @@ jobs:
             -H 'Dropbox-API-Arg: {"path":"/MTF_ALIGNMENT_GBPUSD_V1.zip"}' \
             -o artifacts/mtf.zip
           unzip -q artifacts/mtf.zip -d artifacts/source/mtf
-      - name: Verify 6-TF annual source files and canonical numeric fields
+      - name: Verify 6-TF annual source files, explicit timezone provenance, and canonical numeric fields
         shell: bash
         run: |
           python - <<'PY'
           from pathlib import Path
           import pandas as pd
+          from BACKTEST.mtf_source_contract_gate_v1 import parse_aware_timestamps
           root=Path('artifacts/source/mtf')
           fields=['mtf_trend_score','M5_trend_regime','M15_trend_regime','M30_trend_regime','H1_trend_regime','H4_trend_regime','D1_trend_regime']
           frames=[]
@@ -61,7 +62,7 @@ jobs:
                       bad=df.loc[n.isna(),f].astype('string').dropna().unique().tolist()
                       raise SystemExit(f'MTF_NON_NUMERIC_FAIL:{year}:{f}:{bad[:10]}')
                   df[f]=n.astype(float)
-              df['timestamp']=pd.to_datetime(df['timestamp'],utc=True,errors='raise',format='mixed')
+              df['timestamp']=parse_aware_timestamps(df['timestamp'],label=f'MTF_SOURCE:{year}')
               if df['timestamp'].duplicated().any(): raise SystemExit(f'MTF_TIMESTAMP_DUPLICATE_FAIL:{year}')
               frames.append(df)
           combined=pd.concat(frames,ignore_index=True).sort_values('timestamp').reset_index(drop=True)
