@@ -1,0 +1,107 @@
+name: MTF Producer Source Archive Search 2026-11-16
+
+on:
+  push:
+    branches:
+      - mtf-producer-search-2026-11-16
+
+permissions:
+  contents: read
+
+jobs:
+  search-original-project-archive:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      DROPBOX_ACCESS_TOKEN: ${{ secrets.DROPBOX_ACCESS_TOKEN }}
+      PYTHONUNBUFFERED: "1"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Run source-search unit tests
+        run: python -m unittest discover -s tests -p "test_mtf_producer_source_archive_search_v1.py" -v
+
+      - name: Download exact pinned full-project archive
+        run: |
+          python - <<'PY'
+          import hashlib, json, os, urllib.request
+          from pathlib import Path
+
+          token = os.environ.get("DROPBOX_ACCESS_TOKEN", "")
+          if not token:
+              raise SystemExit("DROPBOX_TOKEN_MISSING")
+          path = "/AI_Trading_Assistant_FULL_PROJECT_V1.zip"
+          expected_revision = "0165966394fea0c00000003796dcfe3"
+          expected_size = 134687505
+
+          def post(url, payload=None, headers=None):
+              body = b"" if payload is None else json.dumps(payload).encode()
+              request = urllib.request.Request(
+                  url, data=body, method="POST",
+                  headers={
+                      "Authorization": f"Bearer {token}",
+                      "Content-Type": "application/json",
+                      **(headers or {}),
+                  },
+              )
+              return urllib.request.urlopen(request, timeout=120)
+
+          with post("https://api.dropboxapi.com/2/files/get_metadata", {"path": path}) as response:
+              metadata = json.loads(response.read().decode())
+          if metadata.get("rev") != expected_revision:
+              raise SystemExit(f"PROJECT_ARCHIVE_REVISION_CHANGED:{metadata.get('rev')}")
+          if int(metadata.get("size", -1)) != expected_size:
+              raise SystemExit(f"PROJECT_ARCHIVE_SIZE_CHANGED:{metadata.get('size')}")
+
+          target = Path("artifacts/AI_Trading_Assistant_FULL_PROJECT_V1.zip")
+          target.parent.mkdir(parents=True, exist_ok=True)
+          request = urllib.request.Request(
+              "https://content.dropboxapi.com/2/files/download",
+              data=b"",
+              method="POST",
+              headers={
+                  "Authorization": f"Bearer {token}",
+                  "Dropbox-API-Arg": json.dumps({"path": path}),
+              },
+          )
+          with urllib.request.urlopen(request, timeout=900) as response, target.open("wb") as handle:
+              while True:
+                  chunk = response.read(4 * 1024 * 1024)
+                  if not chunk:
+                      break
+                  handle.write(chunk)
+          if target.stat().st_size != expected_size:
+              raise SystemExit(f"PROJECT_ARCHIVE_DOWNLOADED_SIZE_MISMATCH:{target.stat().st_size}")
+          digest = hashlib.sha256()
+          with target.open("rb") as handle:
+              for chunk in iter(lambda: handle.read(4 * 1024 * 1024), b""):
+                  digest.update(chunk)
+          print(json.dumps({
+              "path": path,
+              "revision": expected_revision,
+              "size_bytes": target.stat().st_size,
+              "sha256": digest.hexdigest(),
+              "source_data_rows_read": False,
+              "2025_data_read_or_used": False,
+          }, indent=2))
+          PY
+
+      - name: Search code and documentation only
+        run: |
+          python BACKTEST/MTF_PRODUCER_SOURCE_ARCHIVE_SEARCH_V1.py \
+            --archive artifacts/AI_Trading_Assistant_FULL_PROJECT_V1.zip \
+            --output artifacts/mtf_producer_source_search_report.json
+
+      - name: Upload MTF producer source search report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: mtf-producer-source-search-2026-11-16
+          path: artifacts/mtf_producer_source_search_report.json
+          if-no-files-found: warn
