@@ -3,8 +3,8 @@
 //| Data export only: NO trade requests, NO indicators, NO signals.  |
 //+------------------------------------------------------------------+
 #property strict
-#property version   "1.10"
-#property description "Exports last closed Market Watch bars only. Never trades."
+#property version   "1.11"
+#property description "Exports last closed MT5 bars only. Never trades."
 
 input int    CaptureIntervalSeconds = 10;
 input string OutputFileName = "mt5_raw_capture_v1.csv";
@@ -54,9 +54,10 @@ void AppendClosedBar(const string symbol, const ENUM_TIMEFRAMES tf, const string
    if(!IsNewBarForKey(key, rates[0].time))
       return;
 
-   datetime server_now = TimeTradeServer();
-   datetime gmt_observed = TimeGMT();
-   datetime local_now = TimeLocal();
+   datetime server_estimate = TimeTradeServer();
+   datetime server_last_quote = TimeCurrent();
+   datetime host_gmt_estimate = TimeGMT();
+   datetime host_local_observed = TimeLocal();
    string broker_server = AccountInfoString(ACCOUNT_SERVER);
    string terminal_name = TerminalInfoString(TERMINAL_NAME);
    string source_id = terminal_name + "|" + TerminalInfoString(TERMINAL_PATH);
@@ -82,24 +83,25 @@ void AppendClosedBar(const string symbol, const ENUM_TIMEFRAMES tf, const string
    FileSeek(file, 0, SEEK_END);
    if(write_header)
    {
-      FileWrite(file, "symbol", "timeframe", "bar_time_server",
-                "terminal_time_server", "terminal_gmt_observed_utc",
-                "terminal_local_time_observed", "capture_time_utc",
+      FileWrite(file, "symbol", "timeframe", "bar_time_mt5_utc",
+                "terminal_time_server", "terminal_time_current_server",
+                "host_gmt_estimate_utc", "host_local_time_observed",
                 "broker_server_id", "source_id", "capture_version",
                 "is_closed", "open", "high", "low", "close",
                 "tick_volume", "real_volume", "spread_points", "volume_type",
-                "observed_server_minus_gmt_seconds");
+                "observed_server_minus_host_gmt_seconds");
    }
 
-   long observed_offset = (long)server_now - (long)gmt_observed;
+   // This offset is a capture-time observation only; never apply it to history.
+   long observed_offset = (long)server_estimate - (long)host_gmt_estimate;
    FileWrite(file,
       symbol, tf_name,
-      TimeToString(rates[0].time, TIME_DATE|TIME_SECONDS),
-      TimeToString(server_now, TIME_DATE|TIME_SECONDS),
-      IsoUtc(gmt_observed),
-      TimeToString(local_now, TIME_DATE|TIME_SECONDS),
-      IsoUtc(gmt_observed),
-      broker_server, source_id, "1.1.0",
+      IsoUtc(rates[0].time),
+      TimeToString(server_estimate, TIME_DATE|TIME_SECONDS),
+      TimeToString(server_last_quote, TIME_DATE|TIME_SECONDS),
+      IsoUtc(host_gmt_estimate),
+      TimeToString(host_local_observed, TIME_DATE|TIME_SECONDS),
+      broker_server, source_id, "1.1.1",
       "true",
       DoubleToString(rates[0].open, 10),
       DoubleToString(rates[0].high, 10),
