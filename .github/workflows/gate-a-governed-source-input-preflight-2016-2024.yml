@@ -29,7 +29,7 @@ jobs:
           python-version: "3.12"
 
       - name: Run deterministic preflight unit tests
-        run: python -m unittest discover -s tests -p "test_governed_source_input_preflight_v1.py" -v
+        run: python -m unittest discover -s tests -p "test_governed_source_input_preflight_v1.py" -v\n          python -m unittest discover -s tests -p "test_mtf_yearly_source_assembler_v1.py" -v
 
       - name: Verify Dropbox access
         if: github.event_name != 'pull_request'
@@ -155,33 +155,13 @@ jobs:
           h1 = find_exact(unpacked / "h1", "GBPUSD_H1_2016_2025_MASTER.csv")
           murphy = find_exact(unpacked / "murphy", "MURPHY_2016_2024_FULL_EVIDENCE.csv")
 
-          required_mtf = {"timestamp", *MTF_NUMERIC_FIELDS}
-          mtf_candidates = []
-          for candidate in (unpacked / "mtf").rglob("*.csv"):
-              with candidate.open("r", encoding="utf-8-sig", newline="") as handle:
-                  import csv
-                  header = next(csv.reader(handle), [])
-              if required_mtf.issubset(set(header)):
-                  mtf_candidates.append(candidate)
+          from BACKTEST.MTF_YEARLY_SOURCE_ASSEMBLER_V1 import assemble_yearly_mtf
 
-          # Reuse the exact canonical filename already declared by the
-          # repository's legacy governed-source acquisition contract.
-          # Never select an arbitrary schema-compatible CSV from the archive.
-          canonical_mtf = [
-              candidate for candidate in mtf_candidates
-              if candidate.name == "GBPUSD_MTF_H4_H1.csv"
-          ]
-          if len(canonical_mtf) != 1:
-              details = [
-                  {"path": str(candidate.relative_to(unpacked / "mtf")),
-                   "size_bytes": candidate.stat().st_size}
-                  for candidate in mtf_candidates
-              ]
-              raise RuntimeError(
-                  "EXPECTED_ONE_CANONICAL_MTF_FILE_GBPUSD_MTF_H4_H1.csv:"
-                  f"found={len(canonical_mtf)}; schema_matching_candidates={details}"
-              )
-          mtf = canonical_mtf[0]
+          mtf = unpacked / "mtf" / "GBPUSD_MTF_ALIGNMENT_2016_2024_GOVERNED.csv"
+          mtf_report = out / "mtf_yearly_assembly_report.json"
+          assembly = assemble_yearly_mtf(unpacked / "mtf", mtf, mtf_report)
+          print("MTF_YEARLY_ASSEMBLY_PASS")
+          print(json.dumps(assembly, indent=2))
 
           source_paths = {
               "h1": h1,
