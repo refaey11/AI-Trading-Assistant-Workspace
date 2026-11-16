@@ -7,10 +7,10 @@ from mt5_raw_capture_contract_v1 import (
 def sample(**overrides):
     row = {
         "symbol": "GBPUSD", "timeframe": "M5",
-        "bar_time_server": "2026.11.16 10:00:00",
+        "bar_time_mt5_utc": "2026-11-16T08:00:00Z",
         "terminal_time_server": "2026.11.16 10:05:02",
-        "terminal_gmt_observed_utc": "2026-11-16T08:05:02Z",
-        "capture_time_utc": "2026-11-16T08:05:02Z",
+        "terminal_time_current_server": "2026.11.16 10:05:01",
+        "host_gmt_estimate_utc": "2026-11-16T08:05:02Z",
         "source_id": "mt5-terminal-01", "broker_server_id": "Broker-Demo-01",
         "capture_version": "1.1.0", "is_closed": True,
         "open": 1.25, "high": 1.251, "low": 1.249, "close": 1.2505,
@@ -22,10 +22,10 @@ def sample(**overrides):
 
 
 class RawCaptureContractTests(unittest.TestCase):
-    def test_accepts_raw_server_time_without_timezone_conversion(self):
+    def test_accepts_mt5_utc_bar_time_and_separate_clock_observations(self):
         result = validate_raw_bar(sample())
         self.assertEqual(result.timeframe, "M5")
-        self.assertEqual(result.bar_time_server, "2026.11.16 10:00:00")
+        self.assertEqual(result.bar_time_mt5_utc.isoformat(), "2026-11-16T08:00:00+00:00")
         self.assertEqual(len(result.payload_hash), 64)
 
     def test_all_six_timeframes_are_supported(self):
@@ -36,21 +36,17 @@ class RawCaptureContractTests(unittest.TestCase):
         with self.assertRaisesRegex(CaptureValidationError, "UNSUPPORTED_TIMEFRAME"):
             validate_raw_bar(sample(timeframe="W1"))
 
-    def test_rejects_missing_raw_server_time(self):
-        with self.assertRaisesRegex(CaptureValidationError, "bar_time_server:MISSING"):
-            validate_raw_bar(sample(bar_time_server=" "))
-
-    def test_rejects_naive_capture_timestamp(self):
+    def test_rejects_naive_bar_timestamp(self):
         with self.assertRaisesRegex(CaptureValidationError, "NAIVE_TIMESTAMP_REJECTED"):
-            validate_raw_bar(sample(capture_time_utc="2026-11-16 08:05:02"))
+            validate_raw_bar(sample(bar_time_mt5_utc="2026-11-16 08:00:00"))
+
+    def test_rejects_naive_host_clock_observation(self):
+        with self.assertRaisesRegex(CaptureValidationError, "NAIVE_TIMESTAMP_REJECTED"):
+            validate_raw_bar(sample(host_gmt_estimate_utc="2026-11-16 08:05:02"))
 
     def test_rejects_unfinished_bar(self):
         with self.assertRaisesRegex(CaptureValidationError, "UNFINISHED_BAR_REJECTED"):
             validate_raw_bar(sample(is_closed=False))
-
-    def test_rejects_capture_after_query_as_of(self):
-        with self.assertRaisesRegex(CaptureValidationError, "CAPTURE_AFTER_QUERY_AS_OF"):
-            validate_raw_bar(sample(), query_as_of="2026-11-16T08:05:01Z")
 
     def test_rejects_invalid_ohlc_geometry(self):
         with self.assertRaisesRegex(CaptureValidationError, "OHLC_GEOMETRY_INVALID"):
