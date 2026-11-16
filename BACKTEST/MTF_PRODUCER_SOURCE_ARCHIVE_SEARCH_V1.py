@@ -29,6 +29,14 @@ def sha256_bytes(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
+def sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(4 * 1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
 def _safe_excerpt(line: str) -> str:
     if re.search(r"(token|password|secret|api[_-]?key)\s*[:=]", line, re.I):
         return "[REDACTED_SENSITIVE_ASSIGNMENT]"
@@ -90,7 +98,7 @@ def search_archive(archive_path: Path, output_path: Path) -> dict[str, Any]:
         "scope": "SOURCE_CODE_AND_DOCUMENT_SEARCH_ONLY",
         "archive": archive_path.name,
         "archive_size_bytes": archive_path.stat().st_size,
-        "archive_sha256": sha256_bytes(archive_path.read_bytes()),
+        "archive_sha256": sha256_file(archive_path),
         "zip_entry_count": len(infos),
         "mtf_timeframe_alignment_named_entries": entries,
         "producer_candidates": [item for item in candidates if item["producer_candidate"]],
