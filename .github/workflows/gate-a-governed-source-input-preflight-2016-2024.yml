@@ -163,9 +163,25 @@ jobs:
                   header = next(csv.reader(handle), [])
               if required_mtf.issubset(set(header)):
                   mtf_candidates.append(candidate)
-          if len(mtf_candidates) != 1:
-              raise RuntimeError(f"EXPECTED_ONE_CANONICAL_MTF_CSV:found={len(mtf_candidates)}")
-          mtf = mtf_candidates[0]
+
+          # Reuse the exact canonical filename already declared by the
+          # repository's legacy governed-source acquisition contract.
+          # Never select an arbitrary schema-compatible CSV from the archive.
+          canonical_mtf = [
+              candidate for candidate in mtf_candidates
+              if candidate.name == "GBPUSD_MTF_H4_H1.csv"
+          ]
+          if len(canonical_mtf) != 1:
+              details = [
+                  {"path": str(candidate.relative_to(unpacked / "mtf")),
+                   "size_bytes": candidate.stat().st_size}
+                  for candidate in mtf_candidates
+              ]
+              raise RuntimeError(
+                  "EXPECTED_ONE_CANONICAL_MTF_FILE_GBPUSD_MTF_H4_H1.csv:"
+                  f"found={len(canonical_mtf)}; schema_matching_candidates={details}"
+              )
+          mtf = canonical_mtf[0]
 
           source_paths = {
               "h1": h1,
