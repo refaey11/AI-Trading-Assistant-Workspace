@@ -1,8 +1,9 @@
-"""Fail-closed validation boundary for raw MT5 bars.
+"""Fail-closed validation for raw MT5 bars without guessed timezone conversion.
 
-This module does not connect to a terminal and does not calculate indicators,
-trend regimes, MTF scores, trading direction, risk, or orders. It validates
-source-captured records before storage/forwarding.
+This contract deliberately stores broker/server bar time as opaque source text.
+It records clock observations made at capture time, but does not infer historical
+UTC timestamps or turn a current server/GMT offset into a historical timezone.
+No indicators, signals, risk decisions, or orders are produced here.
 """
 from __future__ import annotations
 
@@ -16,10 +17,10 @@ from typing import Any, Iterable, Mapping
 TIMEFRAMES = {"M5", "M15", "M30", "H1", "H4", "D1"}
 REQUIRED_NUMERIC = ("open", "high", "low", "close", "tick_volume", "real_volume", "spread_points")
 REQUIRED_TEXT = (
-    "symbol", "timeframe", "bar_time_server", "source_id",
-    "broker_server_id", "timezone_policy_id", "capture_version",
+    "symbol", "timeframe", "bar_time_server", "terminal_time_server",
+    "broker_server_id", "source_id", "capture_version",
 )
-REQUIRED_UTC = ("bar_time_utc", "bar_close_time_utc", "retrieved_at_utc")
+REQUIRED_UTC = ("capture_time_utc", "terminal_gmt_observed_utc")
 
 
 class CaptureValidationError(ValueError):
@@ -60,9 +61,8 @@ def canonical_payload_hash(record: Mapping[str, Any]) -> str:
 class ValidatedBar:
     symbol: str
     timeframe: str
-    bar_time_utc: datetime
-    bar_close_time_utc: datetime
-    retrieved_at_utc: datetime
+    bar_time_server: str
+    capture_time_utc: datetime
     payload_hash: str
 
 
@@ -78,26 +78,19 @@ def validate_raw_bar(record: Mapping[str, Any], *, query_as_of: str | None = Non
     timeframe = record["timeframe"].strip().upper()
     if timeframe not in TIMEFRAMES:
         raise CaptureValidationError("UNSUPPORTED_TIMEFRAME")
+    # Keep the source's server wall-clock representation untouched.
     if not isinstance(record.get("bar_time_server"), str) or not record["bar_time_server"].strip():
         raise CaptureValidationError("bar_time_server:MISSING_RAW_SERVER_TIME")
-
-    if record.get("timezone_conversion_confirmed") is not True:
-        raise CaptureValidationError("TIMEZONE_CONVERSION_NOT_CONFIRMED")
-    if record.get("is_closed") is not True:
+    if not isinstance(record.get("is_closed"), bool) or record["is_closed"] is not True:
         raise CaptureValidationError("UNFINISHED_BAR_REJECTED")
 
     times = {field: _aware_utc(record.get(field), field) for field in REQUIRED_UTC}
-    bar_time = times["bar_time_utc"]
-    close_time = times["bar_close_time_utc"]
-    retrieved_at = times["retrieved_at_utc"]
-    if close_time < bar_time:
-        raise CaptureValidationError("BAR_CLOSE_BEFORE_BAR_TIME")
-    if close_time > retrieved_at:
-        raise CaptureValidationError("BAR_NOT_CLOSED_AT_RETRIEVAL")
+    capture_time = times["capture_time_utc"]
+    # This is an observation from the terminal clock, not a converted bar time.
     if query_as_of is not None:
         as_of = _aware_utc(query_as_of, "query_as_of")
-        if close_time > as_of:
-            raise CaptureValidationError("FUTURE_BAR_NOT_AVAILABLE_AS_OF")
+        if capture_time > as_of:
+            raise CaptureValidationError("CAPTURE_AFTER_QUERY_AS_OF")
 
     for field in REQUIRED_NUMERIC:
         _number(record.get(field), field)
@@ -122,24 +115,23 @@ def validate_raw_bar(record: Mapping[str, Any], *, query_as_of: str | None = Non
     return ValidatedBar(
         symbol=symbol,
         timeframe=timeframe,
-        bar_time_utc=bar_time,
-        bar_close_time_utc=close_time,
-        retrieved_at_utc=retrieved_at,
+        bar_time_server=record["bar_time_server"],
+        capture_time_utc=capture_time,
         payload_hash=expected_hash,
     )
 
 
 def validate_batch(records: Iterable[Mapping[str, Any]]) -> list[ValidatedBar]:
     validated: list[ValidatedBar] = []
-    seen: dict[tuple[str, str, datetime], str] = {}
+    seen: dict[tuple[str, str, str], str] = {}
     for record in records:
         bar = validate_raw_bar(record)
-        key = (bar.symbol, bar.timeframe, bar.bar_time_utc)
+        key = (bar.symbol, bar.timeframe, bar.bar_time_server)
         prior_hash = seen.get(key)
         if prior_hash is not None:
             if prior_hash != bar.payload_hash:
                 raise CaptureValidationError("CONFLICTING_DUPLICATE_BAR")
-            continue  # deterministic idempotent replay
+            continue
         seen[key] = bar.payload_hash
         validated.append(bar)
     return validated
