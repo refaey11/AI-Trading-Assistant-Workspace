@@ -2,23 +2,30 @@
 
 ## Purpose and safety boundary
 
-This Expert Advisor exports the latest **closed** bars for the six approved source timeframes:
+This Expert Advisor exports the latest **closed** bars for six timeframes:
 M5, M15, M30, H1, H4, and D1. It scans symbols currently visible in Market Watch.
 
 It is data-capture only. It contains no trade request functions, no position management,
 no indicators, no feature formulas, no BUY/SELL logic, and no risk sizing.
 
-## Time policy — intentionally unresolved
+## Timestamp provenance
 
-- `bar_time_server` is copied from the MT5 bar timestamp and written as raw server-clock text.
-- `terminal_time_server`, `terminal_gmt_observed_utc`, and
-  `terminal_local_time_observed` are clock observations made during capture.
-- `observed_server_minus_gmt_seconds` is only a contemporaneous observed difference.
-  It is not a historical timezone rule and must not be applied retrospectively.
-- The EA does not convert historical bar times to UTC and does not claim that the
-  broker's timezone or DST policy has been identified.
-- The UTC-labelled capture observation relies on the terminal host's GMT clock being
-  correctly configured. Preserve the raw server clock even if this observation is suspect.
+- `bar_time_mt5_utc` is the UTC timestamp returned by the MT5 `MqlRates.time`
+  field. The MT5 Python integration documentation states that terminal bar/tick
+  timestamps are stored in UTC. This field is not a broker-server wall-clock string.
+- `terminal_time_server` is `TimeTradeServer()`, an estimated current server time
+  calculated by the client terminal and dependent on the computer's time settings.
+- `terminal_time_current_server` is `TimeCurrent()`, the last known server quote time.
+- `host_gmt_estimate_utc` is `TimeGMT()`, calculated using the local computer's
+  clock and timezone settings. It is an observation, not an independently verified
+  UTC clock.
+- `host_local_time_observed` is `TimeLocal()`.
+- `observed_server_minus_host_gmt_seconds` is a contemporaneous diagnostic only.
+  It is not a historical timezone/DST rule and must never be applied retrospectively.
+
+The EA does not convert bar timestamps to a broker timezone or infer the broker's
+historical timezone/DST policy. Keep the original MT5 UTC bar timestamp and the
+separate clock observations.
 
 ## Installation
 
@@ -35,12 +42,14 @@ no indicators, no feature formulas, no BUY/SELL logic, and no risk sizing.
 
 ## Validation before feature production
 
-- Verify the broker server identity and symbol naming/suffixes.
-- Compare raw bar times against the MT5 chart for each timeframe.
+- Verify broker server identity and symbol naming/suffixes.
+- Compare UTC bar times against the MT5 terminal/history for each timeframe.
 - Check that all six timeframe streams appear for every intended FX pair.
 - Check gaps, duplicate rows, volume availability, spread, and OHLC geometry.
-- Observe server/GMT differences across time and DST transitions; do not infer a
-  timezone until the evidence supports a documented policy.
+- Verify the host computer clock is synchronized. Treat TimeGMT as a host-derived
+  estimate until independently checked.
+- Observe server/GMT differences over time and across DST transitions; do not infer
+  a timezone until the evidence supports a documented policy.
 - Keep 2025 OOS sealed. Do not tune, calibrate, or validate formulas on 2025.
 - Do not derive `trend_regime` or `mtf_trend_score` until their original semantics
   are recovered or a separately approved, versioned replacement contract exists.
@@ -48,5 +57,5 @@ no indicators, no feature formulas, no BUY/SELL logic, and no risk sizing.
 ## Current limitation
 
 This EA source is committed for review; it has not been compiled in MetaEditor or run
-against a live MT5 terminal in this environment. It does not prove broker connectivity,
-history completeness, or timezone correctness.
+against an MT5 terminal in this environment. It does not prove broker connectivity,
+history completeness, symbol coverage, host clock accuracy, or timezone correctness.
