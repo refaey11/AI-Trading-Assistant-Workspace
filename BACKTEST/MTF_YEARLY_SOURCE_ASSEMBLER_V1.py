@@ -28,7 +28,7 @@ REQUIRED_FIELDS = (
     "H4_trend_regime",
     "D1_trend_regime",
 )
-FILENAME_RE = re.compile(r"^GBPUSD_M5_MTF_ALIGNMENT_(\\d{4})\\.csv$")
+FILENAME_RE = re.compile(r"^GBPUSD_M5_MTF_ALIGNMENT_(\d{4})\.csv$")
 
 
 def parse_aware_timestamp(raw: str, *, path: Path, row_number: int) -> datetime:
@@ -100,7 +100,7 @@ def assemble_yearly_mtf(source_root: Path, output_path: Path, report_path: Path 
                     raise ValueError(f"MTF_REQUIRED_FIELDS_MISSING:{source_path.name}:{missing_fields}")
                 if canonical_header is None:
                     canonical_header = header
-                    writer = csv.writer(output_handle, lineterminator="\\n")
+                    writer = csv.writer(output_handle, lineterminator="\n")
                     writer.writerow(canonical_header)
                 elif header != canonical_header:
                     raise ValueError(f"MTF_HEADER_MISMATCH:{source_path.name}")
