@@ -30,9 +30,13 @@ def _load_timestamped(path: Path, required: set[str]) -> pd.DataFrame:
     missing = sorted(required - set(df.columns))
     if missing:
         raise ValueError(f"{path}: missing required columns {missing}")
-    df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True, errors="coerce")
-    if df["timestamp"].isna().any():
+    parsed = pd.to_datetime(df["timestamp"], errors="coerce", format="mixed")
+    if parsed.isna().any():
         raise ValueError(f"{path}: invalid timestamp values")
+    # Never let utc=True silently reinterpret naive source timestamps as UTC.
+    if not isinstance(parsed.dtype, pd.DatetimeTZDtype):
+        raise ValueError(f"{path}: TIMEZONE_PROVENANCE_UNRESOLVED_NAIVE_OR_MIXED_TIMESTAMPS")
+    df["timestamp"] = parsed.dt.tz_convert("UTC")
     if df["timestamp"].duplicated().any():
         raise ValueError(f"{path}: duplicate timestamps")
     return df.sort_values("timestamp").reset_index(drop=True)
