@@ -1,9 +1,9 @@
-"""Fail-closed validation for raw MT5 bars without guessed timezone conversion.
+"""Fail-closed validation for MT5 raw bars with explicit clock provenance.
 
-This contract deliberately stores broker/server bar time as opaque source text.
-It records clock observations made at capture time, but does not infer historical
-UTC timestamps or turn a current server/GMT offset into a historical timezone.
-No indicators, signals, risk decisions, or orders are produced here.
+CopyRates/MqlRates bar timestamps are represented as UTC timestamps by MT5's
+Python integration contract. They are retained as such; no broker-server
+timezone conversion is attempted. Server and host clock values are separate
+observations and are never used as historical conversion rules.
 """
 from __future__ import annotations
 
@@ -17,10 +17,10 @@ from typing import Any, Iterable, Mapping
 TIMEFRAMES = {"M5", "M15", "M30", "H1", "H4", "D1"}
 REQUIRED_NUMERIC = ("open", "high", "low", "close", "tick_volume", "real_volume", "spread_points")
 REQUIRED_TEXT = (
-    "symbol", "timeframe", "bar_time_server", "terminal_time_server",
+    "symbol", "timeframe", "terminal_time_server", "terminal_time_current_server",
     "broker_server_id", "source_id", "capture_version",
 )
-REQUIRED_UTC = ("capture_time_utc", "terminal_gmt_observed_utc")
+REQUIRED_UTC = ("bar_time_mt5_utc", "host_gmt_estimate_utc")
 
 
 class CaptureValidationError(ValueError):
@@ -61,12 +61,12 @@ def canonical_payload_hash(record: Mapping[str, Any]) -> str:
 class ValidatedBar:
     symbol: str
     timeframe: str
-    bar_time_server: str
-    capture_time_utc: datetime
+    bar_time_mt5_utc: datetime
+    host_gmt_estimate_utc: datetime
     payload_hash: str
 
 
-def validate_raw_bar(record: Mapping[str, Any], *, query_as_of: str | None = None) -> ValidatedBar:
+def validate_raw_bar(record: Mapping[str, Any]) -> ValidatedBar:
     if not isinstance(record, Mapping):
         raise CaptureValidationError("RECORD_NOT_MAPPING")
 
@@ -78,19 +78,12 @@ def validate_raw_bar(record: Mapping[str, Any], *, query_as_of: str | None = Non
     timeframe = record["timeframe"].strip().upper()
     if timeframe not in TIMEFRAMES:
         raise CaptureValidationError("UNSUPPORTED_TIMEFRAME")
-    # Keep the source's server wall-clock representation untouched.
-    if not isinstance(record.get("bar_time_server"), str) or not record["bar_time_server"].strip():
-        raise CaptureValidationError("bar_time_server:MISSING_RAW_SERVER_TIME")
     if not isinstance(record.get("is_closed"), bool) or record["is_closed"] is not True:
         raise CaptureValidationError("UNFINISHED_BAR_REJECTED")
 
     times = {field: _aware_utc(record.get(field), field) for field in REQUIRED_UTC}
-    capture_time = times["capture_time_utc"]
-    # This is an observation from the terminal clock, not a converted bar time.
-    if query_as_of is not None:
-        as_of = _aware_utc(query_as_of, "query_as_of")
-        if capture_time > as_of:
-            raise CaptureValidationError("CAPTURE_AFTER_QUERY_AS_OF")
+    bar_time = times["bar_time_mt5_utc"]
+    host_gmt_estimate = times["host_gmt_estimate_utc"]
 
     for field in REQUIRED_NUMERIC:
         _number(record.get(field), field)
@@ -115,18 +108,18 @@ def validate_raw_bar(record: Mapping[str, Any], *, query_as_of: str | None = Non
     return ValidatedBar(
         symbol=symbol,
         timeframe=timeframe,
-        bar_time_server=record["bar_time_server"],
-        capture_time_utc=capture_time,
+        bar_time_mt5_utc=bar_time,
+        host_gmt_estimate_utc=host_gmt_estimate,
         payload_hash=expected_hash,
     )
 
 
 def validate_batch(records: Iterable[Mapping[str, Any]]) -> list[ValidatedBar]:
     validated: list[ValidatedBar] = []
-    seen: dict[tuple[str, str, str], str] = {}
+    seen: dict[tuple[str, str, datetime], str] = {}
     for record in records:
         bar = validate_raw_bar(record)
-        key = (bar.symbol, bar.timeframe, bar.bar_time_server)
+        key = (bar.symbol, bar.timeframe, bar.bar_time_mt5_utc)
         prior_hash = seen.get(key)
         if prior_hash is not None:
             if prior_hash != bar.payload_hash:
