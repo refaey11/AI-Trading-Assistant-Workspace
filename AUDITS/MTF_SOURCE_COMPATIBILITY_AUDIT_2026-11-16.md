@@ -111,3 +111,13 @@ H1, Nison, Market State, Historical Context, and Historical Outcome passed the i
 ### Search-scope caveat
 
 The full-project archive search inspected top-level source/documentation files and inventoried nested ZIP names; it did not recursively unpack the nested legacy reader ZIP. The repository's existing provenance blocker and reader audit identify that legacy reader as H4/H1-only and research-only. It is not evidence for the six-timeframe M5/M15/M30/H1/H4/D1 producer. The canonical MTF archive itself was directly inspected across all 2016-2024 annual data files and contained no producer code files.
+
+
+## Cross-check against existing MTF lineage records
+
+Two existing Dropbox records were also inspected:
+
+- `MTF_57D_DEEP_LINEAGE_FINDINGS_2026-08-29.md` explicitly says raw producer lineage remains open. It distinguishes the Similarity V2 standardized 57D candidate/index matrix from the Decision Brain's semantic numeric MTF inputs. The 57D matrix, its scaler/imputer metadata, and its feature order must not be injected into the Brain as a substitute for the raw MTF fields.
+- `MTF_BRAIN_INPUT_JOIN_EXECUTION_CHECKPOINT_2026-08-29.md` records the existing strict non-directional join adapter and its tests. The adapter uses backward `merge_asof`, rejects missing/duplicate/future-only inputs, and does not generate direction or risk. Its historical "MTF source provenance PASS/CLOSED" is now scoped to artifact identity and declared six-timeframe structure; it does not resolve the newly measured naive timestamp provenance or annual-start blanks.
+
+The repository already contains `RUNTIME/DECISION_RUNTIME_V1/mtf_brain_input_join_v1.py`. The correct engineering path is to reuse and validate this existing strict adapter after source contracts are proven, not create a new MTF scoring layer or rebuild the 57D similarity matrix.
