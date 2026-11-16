@@ -77,13 +77,13 @@ class MTFYearlyAssemblerTests(unittest.TestCase):
             assemble_yearly_mtf(self.source, self.output)
 
     def test_naive_timestamp_is_preserved_and_marked_unresolved(self):
-        self.seed_all_dev_years()
-        write_year(self.source, 2018, timestamps=["2018-01-01T00:00:00"])
+        for year in range(2016, 2025):
+            write_year(self.source, year, timestamps=[f"{year}-01-01T00:00:00"])
         report = assemble_yearly_mtf(self.source, self.output)
         self.assertEqual(report["status"], "PASS_MTF_YEARLY_ASSEMBLY_ONLY")
         self.assertFalse(report["timezone_provenance_resolved"])
         self.assertEqual(report["timestamp_mode"], "NAIVE_UNRESOLVED")
-        self.assertEqual(report["naive_timestamp_rows"], 1)
+        self.assertEqual(report["naive_timestamp_rows"], 9)
 
     def test_duplicate_timestamp_across_year_files_blocks(self):
         self.seed_all_dev_years()
