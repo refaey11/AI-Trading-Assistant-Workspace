@@ -32,6 +32,7 @@ jobs:
         run: |
           python -m unittest discover -s tests -p "test_governed_source_input_preflight_v1.py" -v
           python -m unittest discover -s tests -p "test_mtf_yearly_source_assembler_v1.py" -v
+          python -m unittest discover -s tests -p "test_governed_source_scope_projector_v1.py" -v
 
       - name: Verify Dropbox access
         if: github.event_name != 'pull_request'
@@ -177,6 +178,23 @@ jobs:
           for key, path in source_paths.items():
               if not path.is_file() or path.stat().st_size == 0:
                   raise RuntimeError(f"ACQUIRED_SOURCE_MISSING_OR_EMPTY:{key}:{path}")
+
+          from BACKTEST.GOVERNED_SOURCE_SCOPE_PROJECTOR_V1 import project_all
+          projection_report = out / "governed_scope_projection_report.json"
+          projection_dir = unpacked / "governed_scope"
+          projected = project_all(
+              {
+                  "market_state": source_paths["market_state"],
+                  "historical_context": source_paths["historical_context"],
+                  "historical_outcome": source_paths["historical_outcome"],
+              },
+              projection_dir,
+              projection_report,
+          )
+          for key in ("market_state", "historical_context", "historical_outcome"):
+              source_paths[key] = projection_dir / f"{key}_2016_2024_GOVERNED.csv"
+          print("GOVERNED_SCOPE_PROJECTION_PASS")
+          print(json.dumps(projected, indent=2))
 
           acquired = {
               "manifest_id": manifest["manifest_id"],
