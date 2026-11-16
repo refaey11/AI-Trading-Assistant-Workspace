@@ -26,20 +26,26 @@ bool IsNewBarForKey(const string key, const datetime bar_time)
 {
    int n = ArraySize(g_seen_keys);
    for(int i = 0; i < n; i++)
+      if(g_seen_keys[i] == key)
+         return (g_seen_bar_times[i] != bar_time);
+   return true;
+}
+
+void MarkBarWritten(const string key, const datetime bar_time)
+{
+   int n = ArraySize(g_seen_keys);
+   for(int i = 0; i < n; i++)
    {
       if(g_seen_keys[i] == key)
       {
-         if(g_seen_bar_times[i] == bar_time)
-            return false;
          g_seen_bar_times[i] = bar_time;
-         return true;
+         return;
       }
    }
    ArrayResize(g_seen_keys, n + 1);
    ArrayResize(g_seen_bar_times, n + 1);
    g_seen_keys[n] = key;
    g_seen_bar_times[n] = bar_time;
-   return true;
 }
 
 void AppendClosedBar(const string symbol, const ENUM_TIMEFRAMES tf, const string tf_name)
@@ -58,6 +64,11 @@ void AppendClosedBar(const string symbol, const ENUM_TIMEFRAMES tf, const string
    datetime server_last_quote = TimeCurrent();
    datetime host_gmt_estimate = TimeGMT();
    datetime host_local_observed = TimeLocal();
+   if(server_estimate <= 0 || server_last_quote <= 0 || host_gmt_estimate <= 0)
+   {
+      Print("Raw capture: clock observation unavailable; retrying next timer.");
+      return;
+   }
    string broker_server = AccountInfoString(ACCOUNT_SERVER);
    string terminal_name = TerminalInfoString(TERMINAL_NAME);
    string source_id = terminal_name + "|" + TerminalInfoString(TERMINAL_PATH);
@@ -94,14 +105,14 @@ void AppendClosedBar(const string symbol, const ENUM_TIMEFRAMES tf, const string
 
    // This offset is a capture-time observation only; never apply it to history.
    long observed_offset = (long)server_estimate - (long)host_gmt_estimate;
-   FileWrite(file,
+   uint bytes_written = FileWrite(file,
       symbol, tf_name,
       IsoUtc(rates[0].time),
       TimeToString(server_estimate, TIME_DATE|TIME_SECONDS),
       TimeToString(server_last_quote, TIME_DATE|TIME_SECONDS),
       IsoUtc(host_gmt_estimate),
       TimeToString(host_local_observed, TIME_DATE|TIME_SECONDS),
-      broker_server, source_id, "1.1.1",
+      broker_server, source_id, "1.1.2",
       "true",
       DoubleToString(rates[0].open, 10),
       DoubleToString(rates[0].high, 10),
@@ -115,6 +126,12 @@ void AppendClosedBar(const string symbol, const ENUM_TIMEFRAMES tf, const string
    );
    FileFlush(file);
    FileClose(file);
+   if(bytes_written == 0)
+   {
+      Print("Raw capture: row write failed; bar will be retried.");
+      return;
+   }
+   MarkBarWritten(key, rates[0].time);
 }
 
 void CaptureMarketWatch()
