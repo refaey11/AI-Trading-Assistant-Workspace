@@ -152,6 +152,19 @@ def run_live_event(event: Mapping[str, Any]) -> dict[str, Any]:
             for field in VOLUME_FIELDS:
                 normalized_row[field] = _finite_number(normalized_row.get(field), f"brain_row.{field}")
 
+        mtf_fields = mtf.get("fields")
+        if not isinstance(mtf_fields, Mapping):
+            raise ValueError("MTF_SOURCE_FIELDS_MISSING")
+        for field in MTF_FIELDS:
+            source_value = _finite_number(mtf_fields.get(field), f"mtf_evidence.fields.{field}")
+            if source_value != normalized_row[field]:
+                raise ValueError(f"MTF_BRAIN_ROW_SOURCE_MISMATCH:{field}")
+        if normalized_row["volume_available"]:
+            for field in VOLUME_FIELDS:
+                source_value = _finite_number(mtf_fields.get(field), f"mtf_evidence.fields.{field}")
+                if source_value != normalized_row[field]:
+                    raise ValueError(f"MTF_BRAIN_ROW_SOURCE_MISMATCH:{field}")
+
         murphy_direction = str(murphy.get("direction") or "").strip().upper()
         if murphy.get("status") != "PASS" or murphy_direction not in VALID_DIRECTIONS:
             raise ValueError("MURPHY_DIRECTIONAL_CONTEXT_NOT_PASS")
