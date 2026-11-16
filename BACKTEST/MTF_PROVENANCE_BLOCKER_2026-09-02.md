@@ -33,3 +33,12 @@ If the exact producer contract is found and compatible, wire by selection/rename
 
 ## Guardrail
 No change to Decision Brain V1. No change to Murphy/Nison semantics. No tuning. 2025 remains OOS and locked.
+
+
+## Evidence update — 2026-11-16
+
+The exact pinned MTF archive and the full-project backup were searched read-only. No six-timeframe producer code was recovered. The 2016-2024 data scan confirms 671,601 naive timestamps and 2,512 blank higher-timeframe trend-regime cells. Regime values (-1/0/1) and aggregate score range (-6..+6) are observations, not proof of the producer formula.
+
+The current `DEV_BACKTEST_RUNNER_V1.py` also remains incompatible with the serialized source: it assumes naive timestamps are UTC, defaults MTF inputs to zero, and reads legacy `trend`/`h4_trend` fields rather than directly binding the canonical six-timeframe fields. Do not use this runner for a canonical backtest.
+
+See `AUDITS/MTF_SOURCE_COMPATIBILITY_AUDIT_2026-11-16.md` for the exact hashes, workflow runs, field counts, and remediation order.
