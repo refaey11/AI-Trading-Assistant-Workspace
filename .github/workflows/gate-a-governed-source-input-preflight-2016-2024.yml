@@ -38,6 +38,7 @@ jobs:
           python -m unittest discover -s tests -p "test_mtf_yearly_source_assembler_v1.py" -v
           python -m unittest discover -s tests -p "test_governed_source_scope_projector_v1.py" -v
           python -m unittest discover -s tests -p "test_mtf_brain_input_join_timezone_v1.py" -v
+          python -m unittest discover -s tests -p "test_mtf_source_forensics_v1.py" -v
 
       - name: Verify Dropbox access
         if: github.event_name != 'pull_request'
@@ -153,6 +154,11 @@ jobs:
           safe_extract(raw / "h1.zip", unpacked / "h1")
           safe_extract(raw / "murphy.zip", unpacked / "murphy")
           safe_extract(raw / "mtf.zip", unpacked / "mtf")
+
+          from BACKTEST.MTF_SOURCE_FORENSICS_V1 import run_forensics
+          mtf_forensics = run_forensics(unpacked / "mtf", out / "mtf_source_forensics.json")
+          print("MTF_SOURCE_FORENSICS_COMPLETE")
+          print(json.dumps(mtf_forensics, indent=2))
 
           def find_exact(root, filename):
               matches = list(root.rglob(filename))
