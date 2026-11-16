@@ -76,11 +76,14 @@ class MTFYearlyAssemblerTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "MTF_YEAR_CONTENT_MISMATCH"):
             assemble_yearly_mtf(self.source, self.output)
 
-    def test_naive_timestamp_blocks(self):
+    def test_naive_timestamp_is_preserved_and_marked_unresolved(self):
         self.seed_all_dev_years()
         write_year(self.source, 2018, timestamps=["2018-01-01T00:00:00"])
-        with self.assertRaisesRegex(ValueError, "MTF_NAIVE_TIMESTAMP"):
-            assemble_yearly_mtf(self.source, self.output)
+        report = assemble_yearly_mtf(self.source, self.output)
+        self.assertEqual(report["status"], "PASS_MTF_YEARLY_ASSEMBLY_ONLY")
+        self.assertFalse(report["timezone_provenance_resolved"])
+        self.assertEqual(report["timestamp_mode"], "NAIVE_UNRESOLVED")
+        self.assertEqual(report["naive_timestamp_rows"], 1)
 
     def test_duplicate_timestamp_across_year_files_blocks(self):
         self.seed_all_dev_years()
