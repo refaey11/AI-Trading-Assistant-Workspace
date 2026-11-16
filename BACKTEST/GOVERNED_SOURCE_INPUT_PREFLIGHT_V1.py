@@ -151,6 +151,12 @@ def inspect_source(key: str, path: Path) -> dict[str, Any]:
         "invalid_numeric_values": 0,
         "ohlc_violations": 0,
         "year_counts": {},
+        "outside_allowed_year_counts": {},
+        "invalid_numeric_by_field": {},
+        "first_bad_numeric_values": [],
+        "first_bad_timestamps": [],
+        "first_out_of_order_rows": [],
+        "first_outside_allowed_rows": [],
         "development_years_present": [],
         "development_years_missing": DEV_YEARS.copy(),
         "min_timestamp": None,
@@ -172,7 +178,10 @@ def inspect_source(key: str, path: Path) -> dict[str, Any]:
 
     seen_timestamps: set[str] = set()
     years: Counter[int] = Counter()
+    outside_years: Counter[int] = Counter()
+    invalid_numeric_by_field: Counter[str] = Counter()
     min_timestamp: datetime | None = None
+    previous_timestamp: datetime | None = None
     max_timestamp: datetime | None = None
     min_order_key: datetime | None = None
     max_order_key: datetime | None = None
@@ -211,7 +220,14 @@ def inspect_source(key: str, path: Path) -> dict[str, Any]:
                     max_timestamp, max_order_key = ts, order_key
                 if previous_order_key is not None and order_key < previous_order_key:
                     report["out_of_order_rows"] += 1
+                    if len(report["first_out_of_order_rows"]) < 10:
+                        report["first_out_of_order_rows"].append({
+                            "row": row_number,
+                            "timestamp": ts.isoformat(),
+                            "previous_timestamp": previous_timestamp.isoformat() if previous_timestamp else None,
+                        })
                 previous_order_key = order_key
+                previous_timestamp = ts
 
                 if contract["unique_timestamp"]:
                     key_value = normalized_timestamp_key(ts)
@@ -227,6 +243,12 @@ def inspect_source(key: str, path: Path) -> dict[str, Any]:
                     report["rows_excluded_oos_2025"] += 1
                 else:
                     report["rows_outside_allowed_window"] += 1
+                    outside_years[ts.year] += 1
+                    if len(report["first_outside_allowed_rows"]) < 10:
+                        report["first_outside_allowed_rows"].append({
+                            "row": row_number,
+                            "timestamp": ts.isoformat(),
+                        })
 
                 numeric_values: dict[str, float] = {}
                 for field in contract["numeric_fields"]:
@@ -238,7 +260,8 @@ def inspect_source(key: str, path: Path) -> dict[str, Any]:
                         numeric_values[field] = value
                     except (TypeError, ValueError):
                         report["invalid_numeric_values"] += 1
-                        if len(first_bad_numeric) < 10:
+                        invalid_numeric_by_field[field] += 1
+                        if len(first_bad_numeric) < 20:
                             first_bad_numeric.append(f"row={row_number}:{field}={raw_value[:80]}")
 
                 if key == "h1" and len(numeric_values) == 4:
@@ -250,6 +273,15 @@ def inspect_source(key: str, path: Path) -> dict[str, Any]:
         return report
 
     report["year_counts"] = {str(y): years[y] for y in sorted(years)}
+    report["outside_allowed_year_counts"] = {
+        str(y): outside_years[y] for y in sorted(outside_years)
+    }
+    report["invalid_numeric_by_field"] = {
+        field: invalid_numeric_by_field[field]
+        for field in sorted(invalid_numeric_by_field)
+    }
+    report["first_bad_numeric_values"] = first_bad_numeric
+    report["first_bad_timestamps"] = first_bad_timestamps
     report["development_years_present"] = [y for y in DEV_YEARS if years[y] > 0]
     report["development_years_missing"] = [y for y in DEV_YEARS if years[y] == 0]
     report["min_timestamp"] = min_timestamp.isoformat() if min_timestamp else None
