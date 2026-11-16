@@ -43,9 +43,23 @@ def main() -> None:
         required = {"timestamp", "source_rule_id"}
         if not required.issubset(df.columns):
             continue
-        ts = pd.to_datetime(df["timestamp"], utc=True, errors="coerce", format="mixed")
+        parsed = df["timestamp"].map(lambda value: pd.Timestamp(value) if pd.notna(value) else pd.NaT)
+        if parsed.isna().any():
+            bad_count = int(parsed.isna().sum())
+            raise SystemExit(f"BLOCKED_MURPHY_INVALID_TIMESTAMPS:{p}:count={bad_count}")
+        naive_mask = parsed.map(
+            lambda value: value is pd.NaT or value.tzinfo is None or value.utcoffset() is None
+        )
+        if naive_mask.any():
+            sample = df.loc[naive_mask, "timestamp"].head(5).astype(str).tolist()
+            raise SystemExit(
+                f"BLOCKED_MURPHY_TIMEZONE_PROVENANCE_UNRESOLVED:{p}:"
+                f"naive_count={int(naive_mask.sum())}:samples={sample}"
+            )
+        # UTC normalization is safe only after every source timestamp is proven offset-aware.
+        ts = pd.to_datetime(parsed, utc=True, errors="coerce", format="mixed")
         if ts.isna().any():
-            continue
+            raise SystemExit(f"BLOCKED_MURPHY_TIMESTAMP_NORMALIZATION_FAILED:{p}")
         in_window = ts.dt.year.between(2016, 2024)
         if not in_window.any():
             continue
