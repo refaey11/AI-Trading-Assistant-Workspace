@@ -69,3 +69,18 @@ Recovered yearly artifacts show the MTF Alignment dataset family spanning histor
 
 ## Correction to prior audit position
 Any prior note stating that the source of the six timeframe inputs was still unproven is superseded by this evidence record. The remaining open work is not discovery of the six-timeframe source; it is runtime execution/validation and separate recovery of any independent Time/Session or Dynamic Timeframe Context contracts.
+
+
+## Scope clarification and superseding findings — 2026-11-16
+
+The 2026-08-21 closure establishes the identity of the recovered six-timeframe dataset family and its field-name family. It must not be interpreted as proof that the original six-timeframe producer implementation, numeric encoding formula, missing-value policy, or timezone contract was recovered.
+
+The read-only 2026-11-16 audit of the exact pinned `MTF_ALIGNMENT_GBPUSD_V1.zip` found:
+- all 671,601 timestamps in 2016-2024 are naive (no timezone offset);
+- 2,512 blank cells exist across the five higher-timeframe `*_trend_regime` fields;
+- serialized regime values are observed as -1/0/1 and `mtf_trend_score` as -6..+6, but the producer formula/semantic contract remains unverified;
+- no producer code files were present in the MTF archive.
+
+The blanks cluster at annual-file starts and may represent warm-up gaps, but this remains a hypothesis until the producer contract is recovered. No imputation, recoding, timestamp conversion, or row deletion is authorized.
+
+**Current status:** six-timeframe data artifact identity = CONFIRMED; producer formula/timezone/missing-value contract = UNRESOLVED; MTF-to-Decision-Brain input = BLOCKED. See `AUDITS/MTF_SOURCE_COMPATIBILITY_AUDIT_2026-11-16.md`. 2025 remains locked OOS.
