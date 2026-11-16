@@ -29,7 +29,8 @@ jobs:
           python-version: "3.12"
 
       - name: Run deterministic preflight unit tests
-        run: python -m unittest discover -s tests -p "test_governed_source_input_preflight_v1.py" -v\n          python -m unittest discover -s tests -p "test_mtf_yearly_source_assembler_v1.py" -v
+        run: python -m unittest discover -s tests -p "test_governed_source_input_preflight_v1.py" -v
+          python -m unittest discover -s tests -p "test_mtf_yearly_source_assembler_v1.py" -v
 
       - name: Verify Dropbox access
         if: github.event_name != 'pull_request'
