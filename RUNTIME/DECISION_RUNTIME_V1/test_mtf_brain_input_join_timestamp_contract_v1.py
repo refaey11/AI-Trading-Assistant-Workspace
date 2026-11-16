@@ -52,6 +52,21 @@ def test_different_offsets_that_resolve_to_same_instant_are_detected_as_duplicat
         MODULE.join_mtf_to_events(events, mtf)
 
 
+def test_asof_join_uses_latest_non_future_mtf_row() -> None:
+    events = pd.DataFrame(
+        {"timestamp": ["2024-01-02T08:30:00Z", "2024-01-02T09:30:00Z"]}
+    )
+    mtf = pd.DataFrame(
+        {
+            "timestamp": ["2024-01-02T08:00:00Z", "2024-01-02T09:00:00Z"],
+            **{field: [1, 2] for field in MODULE.REQUIRED_MTF_FIELDS},
+        }
+    )
+    joined = MODULE.join_mtf_to_events(events, mtf)
+    assert joined["mtf_trend_score"].tolist() == [1, 2]
+    assert joined["M5_trend_regime"].tolist() == [1, 2]
+
+
 BUILDER_PATH = MODULE_PATH.parents[2] / "tools" / "gate3c_build_single_event_bundle_v1.py"
 BUILDER_SPEC = importlib.util.spec_from_file_location("gate3c_build_single_event_bundle_v1", BUILDER_PATH)
 assert BUILDER_SPEC is not None and BUILDER_SPEC.loader is not None
@@ -72,7 +87,7 @@ def test_gate3c_builder_normalizes_explicit_offset_to_utc() -> None:
 def test_gate3c_builder_rejects_mixed_naive_and_aware_source_rows(tmp_path: Path) -> None:
     source = tmp_path / "mixed.csv"
     source.write_text(
-        "timestamp,value\n2024-01-02T10:00:00+02:00,1\n2024-01-02 09:00:00,2\n",
+        "timestamp,value\\n2024-01-02T10:00:00+02:00,1\\n2024-01-02 09:00:00,2\\n",
         encoding="utf-8",
     )
     with pytest.raises(ValueError, match="BLOCKED_TIMEZONE_PROVENANCE_UNRESOLVED"):
