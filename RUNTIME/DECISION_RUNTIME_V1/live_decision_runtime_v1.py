@@ -11,7 +11,7 @@ from __future__ import annotations
 import importlib.util
 import math
 import sys
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Mapping
 
@@ -128,6 +128,8 @@ def run_live_event(event: Mapping[str, Any]) -> dict[str, Any]:
         # events; historical 2016-2024 work remains on its separate governed path.
         if as_of.year <= 2025:
             raise ValueError("HISTORICAL_OR_2025_OOS_EVENT_NOT_ALLOWED_IN_LIVE_MODE")
+        if as_of > datetime.now(timezone.utc) + timedelta(minutes=5):
+            raise ValueError("FUTURE_DECISION_TIMESTAMP_REJECTED")
 
         mtf = event.get("mtf_evidence")
         murphy = event.get("murphy_evidence")
@@ -146,6 +148,8 @@ def run_live_event(event: Mapping[str, Any]) -> dict[str, Any]:
         normalized_row = dict(row)
         for field in MTF_FIELDS:
             normalized_row[field] = _finite_number(normalized_row.get(field), f"brain_row.{field}")
+            if not -1.0 <= normalized_row[field] <= 1.0:
+                raise ValueError(f"brain_row.{field}:OUTSIDE_SIGNED_REGIME_RANGE")
         if not isinstance(normalized_row.get("volume_available"), bool):
             raise ValueError("BRAIN_ROW.volume_available_MUST_BE_EXPLICIT_BOOLEAN")
         if normalized_row["volume_available"]:
@@ -155,6 +159,10 @@ def run_live_event(event: Mapping[str, Any]) -> dict[str, Any]:
         mtf_fields = mtf.get("fields")
         if not isinstance(mtf_fields, Mapping):
             raise ValueError("MTF_SOURCE_FIELDS_MISSING")
+        if not isinstance(mtf_fields.get("volume_available"), bool):
+            raise ValueError("MTF_SOURCE_VOLUME_AVAILABILITY_MISSING")
+        if mtf_fields["volume_available"] is not normalized_row["volume_available"]:
+            raise ValueError("MTF_VOLUME_AVAILABILITY_SOURCE_MISMATCH")
         for field in MTF_FIELDS:
             source_value = _finite_number(mtf_fields.get(field), f"mtf_evidence.fields.{field}")
             if source_value != normalized_row[field]:
@@ -180,8 +188,9 @@ def run_live_event(event: Mapping[str, Any]) -> dict[str, Any]:
         if not directional_ids or not directional_ids.issubset(murphy_ids):
             raise ValueError("MURPHY_DIRECTIONAL_SOURCE_PROVENANCE_MISMATCH")
 
-        nison_ids = _row_rule_ids(nison.get("rows"), "NISON")
-        if nison_ids != NISON_IDS:
+        nison_rows = nison.get("rows")
+        nison_ids = _row_rule_ids(nison_rows, "NISON")
+        if not isinstance(nison_rows, list) or len(nison_rows) != 44 or nison_ids != NISON_IDS:
             raise ValueError("NISON_44_RULE_ENVELOPE_REQUIRED")
         nison_confirmation = str(nison.get("confirmation") or "ABSENT").strip().upper()
         if nison_confirmation not in {"CONFIRMED", "ABSENT", "CONTRADICTED", "CONTRADICTION"}:
@@ -202,7 +211,13 @@ def run_live_event(event: Mapping[str, Any]) -> dict[str, Any]:
         atr = _finite_number(risk_input.get("atr"), "risk.atr")
         equity = _finite_number(risk_input.get("equity"), "risk.equity")
         peak_equity = _finite_number(risk_input.get("peak_equity"), "risk.peak_equity")
-        prior_loss_streak = int(risk_input.get("prior_loss_streak", -1))
+        raw_loss_streak = risk_input.get("prior_loss_streak")
+        if isinstance(raw_loss_streak, bool) or not isinstance(raw_loss_streak, int) or raw_loss_streak < 0:
+            raise ValueError("RISK_PRIOR_LOSS_STREAK_INVALID")
+        prior_loss_streak = raw_loss_streak
+        risk_budget_pct = risk_input.get("risk_budget_pct")
+        if risk_budget_pct is not None:
+            risk_budget_pct = _finite_number(risk_budget_pct, "risk.risk_budget_pct")
         if risk_direction == "BUY" and not (stop_loss < entry < take_profit):
             raise ValueError("BUY_STOP_TARGET_GEOMETRY_INVALID")
         if risk_direction == "SELL" and not (take_profit < entry < stop_loss):
@@ -216,7 +231,7 @@ def run_live_event(event: Mapping[str, Any]) -> dict[str, Any]:
             atr=atr,
             prior_loss_streak=prior_loss_streak,
             peak_equity=peak_equity,
-            risk_budget_pct=risk_input.get("risk_budget_pct"),
+            risk_budget_pct=risk_budget_pct,
         )
         risk_payload = {
             "risk_pass": risk_result.risk_pass,
