@@ -144,6 +144,25 @@ class GovernedSourceInputPreflightTests(unittest.TestCase):
         self.assertTrue(source["min_timestamp"].startswith("2016-"))
         self.assertTrue(source["max_timestamp"].startswith("2024-"))
 
+    def test_report_exposes_outside_year_counts_and_examples(self):
+        path = self.inputs["market_state"]
+        with path.open("a", encoding="utf-8") as handle:
+            handle.write("2025-01-02T12:00:00+00:00,BULL_TREND\\n")
+        report = self.run_gate()
+        source = report["sources"]["market_state"]
+        self.assertEqual(source["outside_allowed_year_counts"], {"2025": 1})
+        self.assertEqual(source["first_outside_allowed_rows"][0]["timestamp"], "2025-01-02T12:00:00+00:00")
+
+    def test_report_exposes_invalid_numeric_field_and_sample(self):
+        path = self.inputs["mtf"]
+        rows = read_rows(path)
+        rows[0]["M5_trend_regime"] = "NOT_NUMERIC"
+        write_csv(path, ["timestamp", *MTF_NUMERIC_FIELDS], rows)
+        report = self.run_gate()
+        source = report["sources"]["mtf"]
+        self.assertEqual(source["invalid_numeric_by_field"]["M5_trend_regime"], 1)
+        self.assertTrue(any("M5_trend_regime=NOT_NUMERIC" in x for x in source["first_bad_numeric_values"]))
+
     def test_invalid_ohlc_blocks(self):
         path = self.inputs["h1"]
         rows = read_rows(path)
