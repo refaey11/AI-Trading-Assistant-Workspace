@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - audit/gate-a-input-preflight-2026-11-15
+      - gate-a-execution-2026-11-16
   pull_request:
     branches:
       - current-stack-dev-backtest-2016-2024-v3
