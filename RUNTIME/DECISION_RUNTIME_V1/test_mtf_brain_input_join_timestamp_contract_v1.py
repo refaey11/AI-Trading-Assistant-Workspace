@@ -87,7 +87,7 @@ def test_gate3c_builder_normalizes_explicit_offset_to_utc() -> None:
 def test_gate3c_builder_rejects_mixed_naive_and_aware_source_rows(tmp_path: Path) -> None:
     source = tmp_path / "mixed.csv"
     source.write_text(
-        "timestamp,value\\n2024-01-02T10:00:00+02:00,1\\n2024-01-02 09:00:00,2\\n",
+        "timestamp,value\n2024-01-02T10:00:00+02:00,1\n2024-01-02 09:00:00,2\n",
         encoding="utf-8",
     )
     with pytest.raises(ValueError, match="BLOCKED_TIMEZONE_PROVENANCE_UNRESOLVED"):
