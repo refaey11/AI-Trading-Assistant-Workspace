@@ -34,12 +34,30 @@ def find_csv(root: Path, required: set[str], hints: tuple[str, ...] = ()) -> Pat
     return candidates[0][1]
 
 
+def parse_aware_timestamp(value: Any, *, source: str) -> pd.Timestamp:
+    """Parse a timestamp only when its source explicitly carries a timezone."""
+    try:
+        parsed = pd.Timestamp(value)
+    except (TypeError, ValueError, OverflowError) as exc:
+        raise ValueError(f"BLOCKED_INVALID_TIMESTAMP:{source}:{value!r}") from exc
+    if pd.isna(parsed):
+        raise ValueError(f"BLOCKED_INVALID_TIMESTAMP:{source}:{value!r}")
+    if parsed.tzinfo is None or parsed.utcoffset() is None:
+        raise ValueError(f"BLOCKED_TIMEZONE_PROVENANCE_UNRESOLVED:{source}:{value!r}")
+    return parsed.tz_convert("UTC")
+
+
+def parse_aware_timestamp_series(values: pd.Series, *, source: str) -> pd.Series:
+    parsed = [parse_aware_timestamp(value, source=f"{source}:row={index}") for index, value in values.items()]
+    return pd.Series(pd.DatetimeIndex(parsed), index=values.index, name=values.name)
+
+
 def read_rows_at(path: Path, ts: pd.Timestamp, *, exact: bool = True) -> list[dict[str, Any]]:
     df = pd.read_csv(path)
     if "timestamp" not in df.columns:
         raise ValueError(f"{path}: missing timestamp")
-    df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True, errors="coerce", format="mixed")
-    df = df.dropna(subset=["timestamp"]).sort_values("timestamp", kind="stable")
+    df["timestamp"] = parse_aware_timestamp_series(df["timestamp"], source=str(path))
+    df = df.sort_values("timestamp", kind="stable")
     part = df.loc[df["timestamp"].eq(ts)] if exact else df.loc[df["timestamp"].le(ts)].tail(1)
     return part.drop(columns=["timestamp"]).to_dict("records")
 
@@ -65,9 +83,9 @@ def similarity_json_asof(root: Path, ts: pd.Timestamp) -> dict[str, Any]:
             if not isinstance(row, dict) or "timestamp" not in row:
                 continue
             try:
-                rts = pd.Timestamp(row["timestamp"], tz="UTC")
-            except Exception:
-                continue
+                rts = parse_aware_timestamp(row["timestamp"], source=f"{path.name}:similarity_context")
+            except ValueError:
+                raise
             if rts <= ts:
                 historical.append(dict(row))
     historical.sort(key=lambda r: float(r.get("similarity", float("inf"))))
@@ -84,7 +102,7 @@ def similarity_json_asof(root: Path, ts: pd.Timestamp) -> dict[str, Any]:
 def build(event_ts: str, h1: Path, market_state: Path, nison: Path, murphy_root: Path,
           mtf_root: Path, historical_context_root: Path, historical_outcome_root: Path,
           similarity_root: Path, retrieval_root: Path) -> dict[str, Any]:
-    ts = pd.Timestamp(event_ts, tz="UTC")
+    ts = parse_aware_timestamp(event_ts, source="event_ts")
     if not (2016 <= ts.year <= 2024):
         raise ValueError("Gate 3C is restricted to 2016-2024")
 
@@ -112,7 +130,7 @@ def build(event_ts: str, h1: Path, market_state: Path, nison: Path, murphy_root:
             ndf = ndf.rename(columns={"rule_id":"source_rule_id"})
         else:
             raise ValueError("BLOCKED_NISON_SCHEMA")
-    ndf["timestamp"] = pd.to_datetime(ndf["timestamp"], utc=True, errors="coerce", format="mixed")
+    ndf["timestamp"] = parse_aware_timestamp_series(ndf["timestamp"], source=str(nison))
     nrows = ndf.loc[ndf["timestamp"].eq(ts)].drop(columns=["timestamp"]).to_dict("records")
     nids = sorted({rid for r in nrows for rid in split_rule_ids(r.get("source_rule_id"))})
     if set(nids) != NISON_IDS:
@@ -122,7 +140,7 @@ def build(event_ts: str, h1: Path, market_state: Path, nison: Path, murphy_root:
     mdf = pd.read_csv(m_csv)
     if "timestamp" not in mdf.columns or "source_rule_id" not in mdf.columns:
         raise ValueError("BLOCKED_MURPHY_SCHEMA")
-    mdf["timestamp"] = pd.to_datetime(mdf["timestamp"], utc=True, errors="coerce", format="mixed")
+    mdf["timestamp"] = parse_aware_timestamp_series(mdf["timestamp"], source=str(m_csv))
     mrows = mdf.loc[mdf["timestamp"].eq(ts)].drop(columns=["timestamp"]).to_dict("records")
     mids = sorted({rid for r in mrows for rid in split_rule_ids(r.get("source_rule_id"))})
     if not mids:
