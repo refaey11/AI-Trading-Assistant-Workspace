@@ -31,16 +31,15 @@ REQUIRED_FIELDS = (
 FILENAME_RE = re.compile(r"^GBPUSD_M5_MTF_ALIGNMENT_(\d{4})\.csv$")
 
 
-def parse_aware_timestamp(raw: str, *, path: Path, row_number: int) -> datetime:
+def parse_source_timestamp(raw: str, *, path: Path, row_number: int) -> datetime:
     value = (raw or "").strip()
     candidate = value[:-1] + "+00:00" if value.endswith(("Z", "z")) else value
     try:
         parsed = datetime.fromisoformat(candidate)
     except ValueError as exc:
         raise ValueError(f"MTF_INVALID_TIMESTAMP:{path.name}:row={row_number}:{value[:80]}") from exc
-    if parsed.tzinfo is None:
-        raise ValueError(f"MTF_NAIVE_TIMESTAMP:{path.name}:row={row_number}")
-    return parsed.astimezone(timezone.utc)
+    # Preserve naive source timestamps as naive. Do not assume UTC or local time.
+    return parsed.astimezone(timezone.utc) if parsed.tzinfo is not None else parsed
 
 
 def sha256_file(path: Path) -> str:
@@ -80,6 +79,8 @@ def assemble_yearly_mtf(source_root: Path, output_path: Path, report_path: Path 
     previous_timestamp: datetime | None = None
     seen_timestamps: set[datetime] = set()
     canonical_header: list[str] | None = None
+    timezone_mode: str | None = None
+    naive_timestamp_rows = 0
     year_reports: list[dict[str, Any]] = []
 
     with output_path.open("w", encoding="utf-8", newline="") as output_handle:
@@ -110,7 +111,15 @@ def assemble_yearly_mtf(source_root: Path, output_path: Path, report_path: Path 
                     if len(row) != len(header):
                         raise ValueError(f"MTF_ROW_WIDTH_MISMATCH:{source_path.name}:row={row_number}")
                     record = dict(zip(header, row))
-                    timestamp = parse_aware_timestamp(record.get("timestamp", ""), path=source_path, row_number=row_number)
+                    raw_timestamp = (record.get("timestamp") or "").strip()
+                    timestamp = parse_source_timestamp(raw_timestamp, path=source_path, row_number=row_number)
+                    row_timezone_mode = "AWARE_NORMALIZED_UTC" if timestamp.tzinfo is not None else "NAIVE_UNRESOLVED"
+                    if timezone_mode is None:
+                        timezone_mode = row_timezone_mode
+                    elif timezone_mode != row_timezone_mode:
+                        raise ValueError(f"MTF_MIXED_AWARE_AND_NAIVE_TIMESTAMPS:{source_path.name}:row={row_number}")
+                    if row_timezone_mode == "NAIVE_UNRESOLVED":
+                        naive_timestamp_rows += 1
                     if timestamp.year != year:
                         raise ValueError(f"MTF_YEAR_CONTENT_MISMATCH:{source_path.name}:row={row_number}:timestamp_year={timestamp.year}")
                     if previous_timestamp is not None and timestamp <= previous_timestamp:
@@ -148,6 +157,9 @@ def assemble_yearly_mtf(source_root: Path, output_path: Path, report_path: Path 
         "output_sha256": sha256_file(output_path),
         "source_years": year_reports,
         "excluded_oos_files": sorted(excluded_oos, key=lambda item: item["year"]),
+        "timestamp_mode": timezone_mode,
+        "naive_timestamp_rows": naive_timestamp_rows,
+        "timezone_provenance_resolved": naive_timestamp_rows == 0,
         "source_rows_rewritten_or_transformed": False,
         "categorical_translation_applied": False,
         "imputation_applied": False,
