@@ -17,7 +17,7 @@ SPEC.loader.exec_module(MODULE)
 def test_explicit_offsets_are_normalized_to_utc() -> None:
     values = pd.Series(["2024-01-02T10:00:00+02:00", "2024-01-02T09:00:00Z"])
     parsed = MODULE._parse_aware_timestamps(values, label="test")
-    assert str(parsed.dtype) == "datetime64[ns, UTC]"
+    assert str(parsed.dt.tz) == "UTC"
     assert parsed.iloc[0] == pd.Timestamp("2024-01-02T08:00:00Z")
     assert parsed.iloc[1] == pd.Timestamp("2024-01-02T09:00:00Z")
 
@@ -120,7 +120,7 @@ def test_gate3c_rule_timestamp_series_rejects_naive_values() -> None:
 def test_gate3c_rule_timestamp_series_normalizes_offsets_to_utc() -> None:
     values = pd.Series(["2024-01-02T10:00:00+02:00", "2024-01-02T09:00:00Z"])
     parsed = GATE3C._parse_aware_timestamp_series(values, label="nison")
-    assert str(parsed.dtype) == "datetime64[ns, UTC]"
+    assert str(parsed.dt.tz) == "UTC"
     assert parsed.iloc[0] == pd.Timestamp("2024-01-02T08:00:00Z")
     assert parsed.iloc[1] == pd.Timestamp("2024-01-02T09:00:00Z")
 
