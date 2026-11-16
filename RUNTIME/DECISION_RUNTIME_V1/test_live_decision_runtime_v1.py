@@ -21,7 +21,7 @@ def valid_event():
         "D1_trend_regime": 1.0,
         "volume_available": False,
     }
-    mtf_fields = {key: value for key, value in brain_row.items() if key != "volume_available"}
+    mtf_fields = dict(brain_row)
     murphy_rows = [{"source_rule_id": "MURPHY_0021", "status": "PASS"}]
     nison_rows = [{"source_rule_id": rule_id, "status": "PASS"} for rule_id in NISON_IDS]
     return {
