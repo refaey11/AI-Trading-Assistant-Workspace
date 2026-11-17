@@ -1,3 +1,5 @@
+import pytest
+
 from RUNTIME.RISK_ENGINE_INTEGRATION_V1.risk_engine_integration_v1 import evaluate_risk as evaluate_canonical_risk
 from risk_engine.risk_execution_runtime_v1 import RiskRequest, evaluate_risk as evaluate_candidate_risk
 
@@ -49,3 +51,32 @@ def test_candidate_evaluation_runtime_accepts_its_frozen_2r_profile():
     assert result.risk_pass is True
     assert result.stop_loss == 1.2485
     assert result.take_profit == 1.253
+
+
+
+@pytest.mark.parametrize(
+    "overrides,expected_reason",
+    [
+        ({"equity": float("nan")}, "INVALID_EQUITY_OR_ENTRY"),
+        ({"entry": float("inf")}, "INVALID_EQUITY_OR_ENTRY"),
+        ({"peak_equity": float("nan")}, "INVALID_EQUITY_OR_ENTRY"),
+        ({"risk_budget_pct": float("nan")}, "RISK_BUDGET_INVALID"),
+        ({"stop_loss": float("nan")}, "NON_FINITE_EXECUTION_INPUT"),
+        ({"take_profit": float("inf")}, "NON_FINITE_EXECUTION_INPUT"),
+        ({"atr": float("nan")}, "NON_FINITE_EXECUTION_INPUT"),
+    ],
+)
+def test_canonical_risk_fails_closed_for_non_finite_inputs(overrides, expected_reason):
+    common = dict(
+        equity=10000.0,
+        entry=1.25,
+        stop_loss=1.2485,
+        take_profit=1.2545,
+        atr=0.002,
+        prior_loss_streak=0,
+        peak_equity=10000.0,
+    )
+    result = evaluate_canonical_risk(**{**common, **overrides})
+    assert result.risk_pass is False
+    assert result.reason == expected_reason
+    assert result.position_size is None
