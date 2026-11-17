@@ -12,6 +12,7 @@ import json
 from pathlib import Path
 from typing import Any
 
+import numpy as np
 import pandas as pd
 
 REQUIRED_MTF_FIELDS = (
@@ -77,6 +78,8 @@ def join_mtf_to_events(events: pd.DataFrame, mtf: pd.DataFrame) -> pd.DataFrame:
         values = pd.to_numeric(mtf[field], errors="coerce")
         if values.isna().any():
             raise ValueError(f"mtf: non-numeric/NaN values in {field}")
+        if not np.isfinite(values.to_numpy(dtype=float)).all():
+            raise ValueError(f"mtf: non-finite values in {field}")
         mtf[field] = values
 
     events = events.sort_values("timestamp").reset_index(drop=True).copy()

@@ -3,7 +3,7 @@ from __future__ import annotations
 
 import importlib.util
 import sys
-from math import isclose
+from math import isclose, isfinite
 from pathlib import Path
 from typing import Any, Mapping
 
@@ -49,6 +49,8 @@ def _canonical_risk_plan_mismatch(
     except (KeyError, TypeError, ValueError, OverflowError):
         return "CANONICAL_RISK_PLAN_INPUTS_MISSING"
 
+    if not all(isfinite(value) for value in (canonical_rr, canonical_stop, canonical_target, execution_stop, execution_target)):
+        return "CANONICAL_RISK_PLAN_INPUTS_NON_FINITE"
     if canonical_rr < CURRENT_CANONICAL_MIN_RR - RR_BOUNDARY_TOLERANCE:
         return "CANONICAL_RISK_RR_BELOW_MINIMUM"
     if not isclose(execution_stop, canonical_stop, rel_tol=0.0, abs_tol=RR_BOUNDARY_TOLERANCE):

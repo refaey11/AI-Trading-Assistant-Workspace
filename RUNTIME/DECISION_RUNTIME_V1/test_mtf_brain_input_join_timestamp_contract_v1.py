@@ -52,6 +52,19 @@ def test_different_offsets_that_resolve_to_same_instant_are_detected_as_duplicat
         MODULE.join_mtf_to_events(events, mtf)
 
 
+def test_asof_join_rejects_non_finite_mtf_source_values() -> None:
+    events = pd.DataFrame({"timestamp": ["2024-01-02T08:30:00Z"]})
+    mtf = pd.DataFrame(
+        {
+            "timestamp": ["2024-01-02T08:00:00Z"],
+            **{field: [1.0] for field in MODULE.REQUIRED_MTF_FIELDS},
+        }
+    )
+    mtf.loc[0, "mtf_trend_score"] = float("inf")
+    with pytest.raises(ValueError, match="non-finite values in mtf_trend_score"):
+        MODULE.join_mtf_to_events(events, mtf)
+
+
 def test_asof_join_uses_latest_non_future_mtf_row() -> None:
     events = pd.DataFrame(
         {"timestamp": ["2024-01-02T08:30:00Z", "2024-01-02T09:30:00Z"]}
@@ -149,6 +162,15 @@ def test_mtf_gate_normalizes_explicit_offsets_to_utc(tmp_path: Path) -> None:
     assert report["max_timestamp"] == "2024-01-02T08:00:00+00:00"
 
 
+def test_mtf_gate_rejects_infinite_numeric_source_field(tmp_path: Path) -> None:
+    source = _write_mtf_source(tmp_path / "infinite.csv", ["2024-01-02T10:00:00+02:00"])
+    frame = pd.read_csv(source)
+    frame.loc[0, "H4_trend_regime"] = float("inf")
+    frame.to_csv(source, index=False)
+    with pytest.raises(SystemExit, match="BLOCKED_MTF_NON_FINITE_SOURCE_FIELD:H4_trend_regime"):
+        MTF_GATE.inspect(source)
+
+
 def test_mtf_gate_rejects_naive_timestamp(tmp_path: Path) -> None:
     source = _write_mtf_source(tmp_path / "naive.csv", ["2024-01-02 10:00:00"])
     with pytest.raises(SystemExit, match="BLOCKED_MTF_TIMEZONE_PROVENANCE_UNRESOLVED"):
@@ -229,6 +251,27 @@ def test_development_mode_accepts_only_levels_returned_by_canonical_risk() -> No
     )
     assert result["status"] == "EXECUTABLE"
     assert result["audit"]["canonical_risk_execution_match"] is True
+
+
+@pytest.mark.parametrize(
+    "risk_overrides,execution_overrides",
+    [
+        ({"rr": float("nan")}, {}),
+        ({"stop_loss": float("inf")}, {}),
+        ({}, {"take_profit": float("nan")}),
+    ],
+)
+def test_development_mode_blocks_non_finite_canonical_risk_values(
+    risk_overrides: dict,
+    execution_overrides: dict,
+) -> None:
+    result = _enforce_development_risk_contract(
+        _execution_result(**execution_overrides),
+        _canonical_risk(**risk_overrides),
+        mode="development",
+    )
+    assert result["status"] == "NOT_EXECUTABLE"
+    assert result["reason"] == "CANONICAL_RISK_PLAN_INPUTS_NON_FINITE"
 
 
 def test_development_mode_fails_closed_when_canonical_rr_is_missing() -> None:

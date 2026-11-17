@@ -9,6 +9,7 @@ no imputation, no scaling, and no direction generation.
 
 import argparse
 from pathlib import Path
+import numpy as np
 import pandas as pd
 
 REQUIRED = (
@@ -67,8 +68,8 @@ def inspect(path: Path) -> dict[str, object]:
                 f"BLOCKED_MTF_NON_NUMERIC_SOURCE_FIELD:{field}:"
                 f"raw_tokens={bad[:20]}"
             )
-        if numeric.isna().any():
-            raise SystemExit(f"BLOCKED_MTF_NAN_SOURCE_FIELD:{field}")
+        if not np.isfinite(numeric.to_numpy(dtype=float)).all():
+            raise SystemExit(f"BLOCKED_MTF_NON_FINITE_SOURCE_FIELD:{field}")
 
     try:
         timestamps = parse_aware_timestamps(df["timestamp"], label=str(path))
