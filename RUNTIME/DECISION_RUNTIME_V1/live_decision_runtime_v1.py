@@ -91,6 +91,9 @@ def _require_source_envelope(evidence: Mapping[str, Any], label: str, as_of: dat
 
 
 REQUIRED_CLOCK_TIMEFRAMES = ("M5", "M15", "M30", "H1", "H4", "D1")
+# Intentionally empty until an authoritative MT5 clock policy is reviewed and approved.
+# A caller-provided status or evidence URL is not itself an approval.
+APPROVED_TIMEZONE_POLICY_IDS: frozenset[str] = frozenset()
 
 
 def _require_verified_mtf_clock_provenance(
@@ -128,6 +131,8 @@ def _require_verified_mtf_clock_provenance(
             lineage = verify_bar_clock_lineage(item)
         except ClockProvenanceError as exc:
             raise ValueError(f"MTF_CLOCK_PROVENANCE_INVALID:{timeframe}:{exc}") from exc
+        if lineage.timezone_policy_id not in APPROVED_TIMEZONE_POLICY_IDS:
+            raise ValueError(f"MTF_CLOCK_TIMEZONE_POLICY_NOT_APPROVED:{timeframe}:{lineage.timezone_policy_id}")
         if lineage.bar_time_utc.year <= 2025:
             raise ValueError(f"MTF_CLOCK_HISTORICAL_OR_2025_OOS_BAR_REJECTED:{timeframe}")
         if lineage.bar_time_utc > as_of:
@@ -389,9 +394,9 @@ def run_live_event(event: Mapping[str, Any]) -> dict[str, Any]:
             "take_profit": take_profit,
             "atr": atr,
             "mtf_clock_provenance": {
-                "status": "VERIFIED",
+                "status": "PASS_POLICY_ALLOWLIST",
                 "timeframes": verified_mtf_clock,
-                "evidence_authentication": "EXTERNAL_REVIEW_REQUIRED",
+                "policy_approval": "REQUIRES_REVIEWED_REPOSITORY_ALLOWLIST",
             },
             "dynamic_mtf": {
                 "status": dynamic_binding.status,
