@@ -23,6 +23,10 @@ from RUNTIME.RISK_ENGINE_INTEGRATION_V1.risk_engine_integration_v1 import evalua
 from RUNTIME.TIZ_PROCESS_GATE_V1.tiz_process_gate_v1 import evaluate_tiz_gate
 from evaluation.three_book_decision_evaluator_v1 import evaluate_three_book_decision
 from compatibility.dynamic_mtf_binding_adapter_v1 import bind_dynamic_mtf
+from RUNTIME.MTF_PRODUCER_V1.mt5_clock_provenance_gate_v1 import (
+    ClockProvenanceError,
+    verify_bar_clock_lineage,
+)
 
 MTF_FIELDS = (
     "mtf_trend_score",
@@ -85,6 +89,59 @@ def _require_source_envelope(evidence: Mapping[str, Any], label: str, as_of: dat
         raise ValueError(f"{label}:FUTURE_EVIDENCE_NOT_AVAILABLE")
 
 
+
+REQUIRED_CLOCK_TIMEFRAMES = ("M5", "M15", "M30", "H1", "H4", "D1")
+
+
+def _require_verified_mtf_clock_provenance(
+    mtf: Mapping[str, Any], as_of: datetime
+) -> dict[str, dict[str, str]]:
+    """Require verified per-timeframe clock lineage before any MTF field is trusted."""
+    clock = mtf.get("clock_provenance")
+    if not isinstance(clock, Mapping):
+        raise ValueError("MTF_CLOCK_PROVENANCE_MISSING")
+    if clock.get("status") != "VERIFIED":
+        raise ValueError("MTF_CLOCK_PROVENANCE_NOT_VERIFIED")
+    by_timeframe = clock.get("by_timeframe")
+    if not isinstance(by_timeframe, Mapping):
+        raise ValueError("MTF_CLOCK_PROVENANCE_TIMEFRAMES_INVALID")
+    if set(by_timeframe) != set(REQUIRED_CLOCK_TIMEFRAMES):
+        raise ValueError("MTF_CLOCK_PROVENANCE_REQUIRES_ALL_SIX_TIMEFRAMES")
+
+    accepted: dict[str, dict[str, str]] = {}
+    source_id = str(mtf.get("source") or "").strip()
+    producer_id = str(mtf.get("producer") or "").strip()
+    for timeframe in REQUIRED_CLOCK_TIMEFRAMES:
+        item = by_timeframe.get(timeframe)
+        if not isinstance(item, Mapping):
+            raise ValueError(f"MTF_CLOCK_PROVENANCE_ROW_INVALID:{timeframe}")
+        if item.get("timeframe") != timeframe:
+            raise ValueError(f"MTF_CLOCK_PROVENANCE_TIMEFRAME_MISMATCH:{timeframe}")
+        if item.get("source") != source_id or item.get("producer") != producer_id:
+            raise ValueError(f"MTF_CLOCK_PROVENANCE_SOURCE_MISMATCH:{timeframe}")
+        payload_digest = item.get("payload_hash")
+        if not isinstance(payload_digest, str) or len(payload_digest) != 64 or any(
+            ch not in "0123456789abcdef" for ch in payload_digest.lower()
+        ):
+            raise ValueError(f"MTF_CLOCK_PROVENANCE_PAYLOAD_HASH_INVALID:{timeframe}")
+        try:
+            lineage = verify_bar_clock_lineage(item)
+        except ClockProvenanceError as exc:
+            raise ValueError(f"MTF_CLOCK_PROVENANCE_INVALID:{timeframe}:{exc}") from exc
+        if lineage.bar_time_utc.year <= 2025:
+            raise ValueError(f"MTF_CLOCK_HISTORICAL_OR_2025_OOS_BAR_REJECTED:{timeframe}")
+        if lineage.bar_time_utc > as_of:
+            raise ValueError(f"MTF_CLOCK_FUTURE_BAR_REJECTED:{timeframe}")
+        if lineage.observed_at_utc > as_of:
+            raise ValueError(f"MTF_CLOCK_FUTURE_OBSERVATION_REJECTED:{timeframe}")
+        accepted[timeframe] = {
+            "bar_time_utc": lineage.bar_time_utc.isoformat().replace("+00:00", "Z"),
+            "timezone_policy_id": lineage.timezone_policy_id,
+            "payload_hash": payload_digest.lower(),
+        }
+    return accepted
+
+
 def _row_rule_ids(rows: Any, label: str) -> set[str]:
     if not isinstance(rows, list) or not rows:
         raise ValueError(f"{label}:SOURCE_ROWS_MISSING")
@@ -142,6 +199,9 @@ def run_live_event(event: Mapping[str, Any]) -> dict[str, Any]:
             if not isinstance(item, Mapping):
                 raise ValueError(f"{name.upper()}_EVIDENCE_MISSING")
             _require_source_envelope(item, name.upper(), as_of)
+
+        # Unverified V1.3 raw-clock rows cannot reach the Brain or role binder.
+        verified_mtf_clock = _require_verified_mtf_clock_provenance(mtf, as_of)
 
         dynamic_mtf = mtf.get("dynamic_mtf")
         if not isinstance(dynamic_mtf, Mapping):
@@ -328,6 +388,11 @@ def run_live_event(event: Mapping[str, Any]) -> dict[str, Any]:
             "stop_loss": stop_loss,
             "take_profit": take_profit,
             "atr": atr,
+            "mtf_clock_provenance": {
+                "status": "VERIFIED",
+                "timeframes": verified_mtf_clock,
+                "evidence_authentication": "EXTERNAL_REVIEW_REQUIRED",
+            },
             "dynamic_mtf": {
                 "status": dynamic_binding.status,
                 "role_timeframes": dict(dynamic_binding.role_timeframes),
