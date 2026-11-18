@@ -100,6 +100,14 @@ void MarkBarWritten(const string key, const datetime bar_time)
    g_seen_bar_times[n] = bar_time;
 }
 
+string IsoUtc(const datetime value)
+{
+   MqlDateTime t;
+   TimeToStruct(value, t);
+   return StringFormat("%04d-%02d-%02dT%02d:%02d:%02dZ",
+                       t.year, t.mon, t.day, t.hour, t.min, t.sec);
+}
+
 void AppendClosedBar(const string symbol, const ENUM_TIMEFRAMES tf, const string tf_name)
 {
    MqlRates rates[];
@@ -198,14 +206,6 @@ void CaptureMarketWatch()
       for(int t = 0; t < ArraySize(g_timeframes); t++)
          AppendClosedBar(symbol, g_timeframes[t], g_tf_names[t]);
    }
-}
-
-string IsoUtc(const datetime value)
-{
-   MqlDateTime t;
-   TimeToStruct(value, t);
-   return StringFormat("%04d-%02d-%02dT%02d:%02d:%02dZ",
-                       t.year, t.mon, t.day, t.hour, t.min, t.sec);
 }
 
 int OnInit()
