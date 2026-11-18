@@ -1,0 +1,24 @@
+name: MTF Producer Feature Lineage Contract V1
+on:
+  push:
+    paths:
+      - "RUNTIME/MTF_PRODUCER_V1/producer_feature_lineage_contract_v1.py"
+      - "RUNTIME/MTF_PRODUCER_V1/test_producer_feature_lineage_contract_v1.py"
+      - ".github/workflows/mtf-producer-feature-lineage-v1.yml"
+  pull_request:
+    paths:
+      - "RUNTIME/MTF_PRODUCER_V1/producer_feature_lineage_contract_v1.py"
+      - "RUNTIME/MTF_PRODUCER_V1/test_producer_feature_lineage_contract_v1.py"
+      - ".github/workflows/mtf-producer-feature-lineage-v1.yml"
+permissions:
+  contents: read
+jobs:
+  producer-feature-lineage:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Run producer-to-feature lineage tests
+        run: python -m pytest -q RUNTIME/MTF_PRODUCER_V1/test_producer_feature_lineage_contract_v1.py
