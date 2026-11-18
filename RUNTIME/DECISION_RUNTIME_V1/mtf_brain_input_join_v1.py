@@ -9,6 +9,7 @@ point-in-time (as-of) join and fails closed on missing/ambiguous inputs.
 
 import argparse
 import json
+import math
 from pathlib import Path
 from typing import Any
 
@@ -77,6 +78,8 @@ def join_mtf_to_events(events: pd.DataFrame, mtf: pd.DataFrame) -> pd.DataFrame:
         values = pd.to_numeric(mtf[field], errors="coerce")
         if values.isna().any():
             raise ValueError(f"mtf: non-numeric/NaN values in {field}")
+        if not values.map(math.isfinite).all():
+            raise ValueError(f"mtf: non-finite values in {field}")
         mtf[field] = values
 
     events = events.sort_values("timestamp").reset_index(drop=True).copy()
