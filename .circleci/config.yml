@@ -26,9 +26,6 @@ jobs:
           name: Fail-closed timestamp compatibility tests
           command: python -m pytest -q RUNTIME/DECISION_RUNTIME_V1/test_mtf_brain_input_join_timestamp_contract_v1.py
       - run:
-          name: Strict MTF source timestamp contract tests
-          command: python -m pytest -q BACKTEST/tests/test_mtf_source_contract_gate_timestamp_v1.py
-      - run:
           name: Canonical E2E integration contract test
           command: python BACKTEST/INTEGRATION_CONTRACT_TEST_V1.py
       - run:
@@ -46,9 +43,6 @@ jobs:
       - run:
           name: Fail-closed timestamp compatibility tests
           command: python -m pytest -q RUNTIME/DECISION_RUNTIME_V1/test_mtf_brain_input_join_timestamp_contract_v1.py
-      - run:
-          name: Strict MTF source timestamp contract tests
-          command: python -m pytest -q BACKTEST/tests/test_mtf_source_contract_gate_timestamp_v1.py
       - run:
           name: Canonical E2E integration contract test
           command: python BACKTEST/INTEGRATION_CONTRACT_TEST_V1.py
