@@ -49,4 +49,5 @@ jobs:
         run: >-
           python -m pytest -q
           RUNTIME/DECISION_RUNTIME_V1/test_live_decision_runtime_v1.py
+          RUNTIME/MTF_PRODUCER_V1/test_mt5_clock_provenance_gate_v1.py
           RUNTIME/RISK_ENGINE_INTEGRATION_V1/test_risk_engine_contract_reconciliation_v1.py
