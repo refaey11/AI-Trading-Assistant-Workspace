@@ -1,6 +1,6 @@
 # MTF Producer-to-Feature Lineage Contract V1
 
-Status: Contract specification and reference validator only. Not yet wired into Stage C or Live Decision Runtime.
+Status: Contract specification and reference validator only. Not wired into Stage C or Live Decision Runtime. Repository audit confirms the existing mtf_brain_input_join_v1.py is a non-directional as-of join adapter, not a feature producer; Stage C remains unauthorized because the seven field formulas/semantics are not recovered.
 
 ## Purpose
 A SHA-256-shaped string is not proof that a feature was calculated from the referenced bars. This contract recomputes hashes over canonical payload bytes and binds each derived feature row to exact raw-bar payload hashes.
@@ -28,7 +28,7 @@ Every reference must resolve to exactly one supplied raw record. Raw hashes are 
 ## Explicit non-goals
 This validator does not calculate MTF features, verify formula correctness, prove the producer executable ran, authenticate broker identity or timezone evidence, infer UTC/DST/offsets/close times, authorize Stage C/live decisions/orders, or change book/risk/direction semantics or the 2025 OOS boundary.
 
-## Integration still required
+## Repository compatibility finding\nThe existing RUNTIME/DECISION_RUNTIME_V1/mtf_brain_input_join_v1.py only joins timestamped MTF rows to events; it does not calculate the seven Brain MTF fields. The governed MTF Producer V1 design and Stage A matrix explicitly block Stage C until authoritative field formulas, timestamp semantics, and missing-value behavior are recovered. Therefore this PR deliberately does not connect the reference validator to a nonexistent/unauthorized feature producer and does not invent a producer schema as if it were already deployed.\n\n## Integration still required
 1. Audit the actual Stage C/MTF producer and output schema.
 2. Make the producer emit complete raw payload references and transform identity.
 3. Invoke this validator at producer-to-feature and trusted runtime boundaries.
