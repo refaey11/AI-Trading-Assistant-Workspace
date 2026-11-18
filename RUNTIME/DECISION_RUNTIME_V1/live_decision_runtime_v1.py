@@ -22,6 +22,7 @@ if str(ROOT) not in sys.path:
 from RUNTIME.RISK_ENGINE_INTEGRATION_V1.risk_engine_integration_v1 import evaluate_risk
 from RUNTIME.TIZ_PROCESS_GATE_V1.tiz_process_gate_v1 import evaluate_tiz_gate
 from evaluation.three_book_decision_evaluator_v1 import evaluate_three_book_decision
+from compatibility.dynamic_mtf_binding_adapter_v1 import bind_dynamic_mtf
 
 MTF_FIELDS = (
     "mtf_trend_score",
@@ -141,6 +142,26 @@ def run_live_event(event: Mapping[str, Any]) -> dict[str, Any]:
             if not isinstance(item, Mapping):
                 raise ValueError(f"{name.upper()}_EVIDENCE_MISSING")
             _require_source_envelope(item, name.upper(), as_of)
+
+        dynamic_mtf = mtf.get("dynamic_mtf")
+        if not isinstance(dynamic_mtf, Mapping):
+            raise ValueError("MTF_DYNAMIC_ROLE_ASSIGNMENTS_MISSING")
+        available_timeframes = dynamic_mtf.get("available_timeframes")
+        role_assignments = dynamic_mtf.get("role_assignments")
+        evidence_trace = dynamic_mtf.get("evidence_trace", [])
+        if not isinstance(available_timeframes, (list, tuple)):
+            raise ValueError("MTF_DYNAMIC_AVAILABLE_TIMEFRAMES_INVALID")
+        if not isinstance(role_assignments, Mapping):
+            raise ValueError("MTF_DYNAMIC_ROLE_ASSIGNMENTS_INVALID")
+        if not isinstance(evidence_trace, (list, tuple)):
+            raise ValueError("MTF_DYNAMIC_EVIDENCE_TRACE_INVALID")
+        dynamic_binding = bind_dynamic_mtf(
+            available_timeframes=available_timeframes,
+            role_assignments=role_assignments,
+            evidence_trace=evidence_trace,
+        )
+        if dynamic_binding.status != "PASS":
+            raise ValueError("MTF_DYNAMIC_ROLE_BINDING_NOT_EVALUABLE")
 
         row = event.get("brain_row")
         if not isinstance(row, Mapping):
@@ -307,6 +328,11 @@ def run_live_event(event: Mapping[str, Any]) -> dict[str, Any]:
             "stop_loss": stop_loss,
             "take_profit": take_profit,
             "atr": atr,
+            "dynamic_mtf": {
+                "status": dynamic_binding.status,
+                "role_timeframes": dict(dynamic_binding.role_timeframes),
+                "evidence_trace": list(dynamic_binding.evidence_trace),
+            },
             "risk": risk_payload,
             "brain": brain_assessment,
             "murphy": {"direction": murphy_direction, "pass_rule_id": pass_rule_id},

@@ -5,6 +5,8 @@ on:
     paths:
       - "RUNTIME/DECISION_RUNTIME_V1/live_decision_runtime_v1.py"
       - "RUNTIME/DECISION_RUNTIME_V1/test_live_decision_runtime_v1.py"
+      - "compatibility/dynamic_mtf_binding_adapter_v1.py"
+      - "tests/compatibility/test_dynamic_mtf_binding_adapter_v1.py"
       - "RUNTIME/RISK_ENGINE_INTEGRATION_V1/**"
       - "RUNTIME/TIZ_PROCESS_GATE_V1/**"
       - "evaluation/three_book_decision_evaluator_v1.py"
@@ -17,6 +19,8 @@ on:
     paths:
       - "RUNTIME/DECISION_RUNTIME_V1/live_decision_runtime_v1.py"
       - "RUNTIME/DECISION_RUNTIME_V1/test_live_decision_runtime_v1.py"
+      - "compatibility/dynamic_mtf_binding_adapter_v1.py"
+      - "tests/compatibility/test_dynamic_mtf_binding_adapter_v1.py"
       - "RUNTIME/RISK_ENGINE_INTEGRATION_V1/**"
       - "RUNTIME/TIZ_PROCESS_GATE_V1/**"
       - "evaluation/three_book_decision_evaluator_v1.py"

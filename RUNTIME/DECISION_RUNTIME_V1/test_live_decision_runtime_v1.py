@@ -34,6 +34,17 @@ def valid_event():
             "producer": "governed-six-timeframe-producer-v1",
             "available_at": AVAILABLE,
             "fields": mtf_fields,
+            "dynamic_mtf": {
+                "available_timeframes": ["M5", "M15", "M30", "H1", "H4", "D1"],
+                "role_assignments": {
+                    "macro_context": "D1",
+                    "context": "H4",
+                    "setup": "H1",
+                    "confirmation": "M30",
+                    "execution": "M15",
+                },
+                "evidence_trace": ["source-backed six-timeframe role assignment"],
+            },
         },
         "murphy_evidence": {
             "authoritative": True,
@@ -177,3 +188,36 @@ def test_live_runtime_rejects_murphy_risk_direction_conflict():
     result = run_live_event(event)
     assert result["status"] == "BLOCKED"
     assert result["reason"] == "MURPHY_RISK_DIRECTION_CONFLICT"
+
+def test_live_runtime_requires_dynamic_mtf_role_binding():
+    event = valid_event()
+    del event["mtf_evidence"]["dynamic_mtf"]
+    result = run_live_event(event)
+    assert result["status"] == "BLOCKED"
+    assert result["reason"] == "MTF_DYNAMIC_ROLE_ASSIGNMENTS_MISSING"
+
+
+def test_live_runtime_rejects_inverted_dynamic_mtf_role_order():
+    event = valid_event()
+    event["mtf_evidence"]["dynamic_mtf"]["role_assignments"]["macro_context"] = "H4"
+    event["mtf_evidence"]["dynamic_mtf"]["role_assignments"]["context"] = "D1"
+    result = run_live_event(event)
+    assert result["status"] == "BLOCKED"
+    assert result["reason"] == "MTF_DYNAMIC_ROLE_BINDING_NOT_EVALUABLE"
+
+
+def test_live_runtime_rejects_unsupported_dynamic_mtf_timeframe():
+    event = valid_event()
+    event["mtf_evidence"]["dynamic_mtf"]["role_assignments"]["setup"] = "H2"
+    result = run_live_event(event)
+    assert result["status"] == "BLOCKED"
+    assert result["reason"] == "MTF_DYNAMIC_ROLE_BINDING_NOT_EVALUABLE"
+
+
+def test_live_runtime_exposes_dynamic_mtf_role_trace_without_direction_authority():
+    result = run_live_event(valid_event())
+    assert result["status"] == "SIGNAL_READY"
+    assert result["dynamic_mtf"]["status"] == "PASS"
+    assert result["dynamic_mtf"]["role_timeframes"]["macro_context"] == "D1"
+    assert result["dynamic_mtf"]["role_timeframes"]["execution"] == "M15"
+    assert result["execution"]["orders_enabled"] is False

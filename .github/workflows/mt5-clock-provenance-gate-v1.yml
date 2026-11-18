@@ -1,0 +1,27 @@
+name: MT5 Clock Provenance Gate V1
+
+on:
+  push:
+    paths:
+      - "RUNTIME/MTF_PRODUCER_V1/mt5_clock_provenance_gate_v1.py"
+      - "RUNTIME/MTF_PRODUCER_V1/test_mt5_clock_provenance_gate_v1.py"
+      - ".github/workflows/mt5-clock-provenance-gate-v1.yml"
+  pull_request:
+    paths:
+      - "RUNTIME/MTF_PRODUCER_V1/mt5_clock_provenance_gate_v1.py"
+      - "RUNTIME/MTF_PRODUCER_V1/test_mt5_clock_provenance_gate_v1.py"
+      - ".github/workflows/mt5-clock-provenance-gate-v1.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  mt5-clock-provenance-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Run MT5 clock provenance tests
+        run: python -m unittest discover -s RUNTIME/MTF_PRODUCER_V1 -p "test_mt5_clock_provenance_gate_v1.py" -v
