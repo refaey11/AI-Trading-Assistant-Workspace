@@ -2,7 +2,11 @@ from __future__ import annotations
 
 from copy import deepcopy
 
+import RUNTIME.DECISION_RUNTIME_V1.live_decision_runtime_v1 as runtime_module
 from RUNTIME.DECISION_RUNTIME_V1.live_decision_runtime_v1 import run_live_event
+
+# Test-only approved fixture policy. Production runtime keeps its allowlist empty.
+runtime_module.APPROVED_TIMEZONE_POLICY_IDS = frozenset({"TEST_POLICY_ONLY"})
 
 
 AS_OF = "2026-11-16T02:00:00Z"
@@ -176,12 +180,21 @@ def test_live_runtime_rejects_clock_source_mismatch():
     assert "MTF_CLOCK_PROVENANCE_SOURCE_MISMATCH:M30" in result["reason"]
 
 
+
+def test_live_runtime_rejects_unapproved_timezone_policy_even_if_claimed_verified():
+    event = valid_event()
+    event["mtf_evidence"]["clock_provenance"]["by_timeframe"]["D1"]["timezone_policy_id"] = "UNREVIEWED_POLICY"
+    result = run_live_event(event)
+    assert result["status"] == "BLOCKED"
+    assert "MTF_CLOCK_TIMEZONE_POLICY_NOT_APPROVED:D1:UNREVIEWED_POLICY" in result["reason"]
+
+
 def test_live_runtime_returns_clock_provenance_trace():
     result = run_live_event(valid_event())
     assert result["status"] == "SIGNAL_READY"
-    assert result["mtf_clock_provenance"]["status"] == "VERIFIED"
+    assert result["mtf_clock_provenance"]["status"] == "PASS_POLICY_ALLOWLIST"
     assert set(result["mtf_clock_provenance"]["timeframes"]) == {"M5", "M15", "M30", "H1", "H4", "D1"}
-    assert result["mtf_clock_provenance"]["evidence_authentication"] == "EXTERNAL_REVIEW_REQUIRED"
+    assert result["mtf_clock_provenance"]["policy_approval"] == "REQUIRES_REVIEWED_REPOSITORY_ALLOWLIST"
 
 
 def test_live_event_uses_existing_brain_and_returns_signal_only():
