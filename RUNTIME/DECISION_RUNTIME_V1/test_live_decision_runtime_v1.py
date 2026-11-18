@@ -2,12 +2,43 @@ from __future__ import annotations
 
 from copy import deepcopy
 
+import RUNTIME.DECISION_RUNTIME_V1.live_decision_runtime_v1 as runtime_module
 from RUNTIME.DECISION_RUNTIME_V1.live_decision_runtime_v1 import run_live_event
+
+# Test-only approved fixture policy. Production runtime keeps its allowlist empty.
+runtime_module.APPROVED_TIMEZONE_POLICY_IDS = frozenset({"TEST_POLICY_ONLY"})
 
 
 AS_OF = "2026-11-16T02:00:00Z"
 AVAILABLE = "2026-11-16T01:59:00Z"
 NISON_IDS = [f"NISON_{i:04d}" for i in range(1, 45)]
+
+
+
+def clock_record(timeframe):
+    return {
+        "timeframe": timeframe,
+        "bar_time_source_clock": "BROKER_SERVER",
+        "bar_time_server": "2026-11-16T01:55:00",
+        "bar_time_utc": "2026-11-16T01:55:00Z",
+        "observed_at_utc": "2026-11-16T01:59:00Z",
+        "timezone_offset_seconds": 0,
+        "timezone_policy_id": "TEST_POLICY_ONLY",
+        "timezone_evidence_ref": "fixture://synthetic-clock-evidence",
+        "source": "live-mtf-feed-001",
+        "producer": "governed-six-timeframe-producer-v1",
+        "payload_hash": "a" * 64,
+    }
+
+
+def valid_clock_provenance():
+    return {
+        "status": "VERIFIED",
+        "by_timeframe": {
+            timeframe: clock_record(timeframe)
+            for timeframe in ("M5", "M15", "M30", "H1", "H4", "D1")
+        },
+    }
 
 
 def valid_event():
@@ -33,6 +64,7 @@ def valid_event():
             "source": "live-mtf-feed-001",
             "producer": "governed-six-timeframe-producer-v1",
             "available_at": AVAILABLE,
+            "clock_provenance": valid_clock_provenance(),
             "fields": mtf_fields,
             "dynamic_mtf": {
                 "available_timeframes": ["M5", "M15", "M30", "H1", "H4", "D1"],
@@ -97,6 +129,80 @@ def valid_event():
             "memory_role": "EVIDENCE_ONLY",
         },
     }
+
+
+
+def test_live_runtime_blocks_missing_clock_provenance():
+    event = valid_event()
+    del event["mtf_evidence"]["clock_provenance"]
+    result = run_live_event(event)
+    assert result["status"] == "BLOCKED"
+    assert result["reason"] == "MTF_CLOCK_PROVENANCE_MISSING"
+
+
+def test_live_runtime_blocks_unverified_v1_3_raw_clock():
+    event = valid_event()
+    event["mtf_evidence"]["clock_provenance"]["status"] = "UNVERIFIED"
+    result = run_live_event(event)
+    assert result["status"] == "BLOCKED"
+    assert result["reason"] == "MTF_CLOCK_PROVENANCE_NOT_VERIFIED"
+
+
+def test_live_runtime_requires_clock_lineage_for_all_six_timeframes():
+    event = valid_event()
+    del event["mtf_evidence"]["clock_provenance"]["by_timeframe"]["D1"]
+    result = run_live_event(event)
+    assert result["status"] == "BLOCKED"
+    assert result["reason"] == "MTF_CLOCK_PROVENANCE_REQUIRES_ALL_SIX_TIMEFRAMES"
+
+
+def test_live_runtime_rejects_clock_offset_arithmetic_mismatch():
+    event = valid_event()
+    event["mtf_evidence"]["clock_provenance"]["by_timeframe"]["H1"]["timezone_offset_seconds"] = 3600
+    result = run_live_event(event)
+    assert result["status"] == "BLOCKED"
+    assert "BAR_TIME_UTC_OFFSET_MISMATCH" in result["reason"]
+
+
+def test_live_runtime_rejects_future_clock_observation():
+    event = valid_event()
+    event["mtf_evidence"]["clock_provenance"]["by_timeframe"]["M5"]["observed_at_utc"] = "2026-11-16T02:01:00Z"
+    result = run_live_event(event)
+    assert result["status"] == "BLOCKED"
+    assert "MTF_CLOCK_FUTURE_OBSERVATION_REJECTED:M5" in result["reason"]
+
+
+def test_live_runtime_rejects_clock_source_mismatch():
+    event = valid_event()
+    event["mtf_evidence"]["clock_provenance"]["by_timeframe"]["M30"]["source"] = "other-feed"
+    result = run_live_event(event)
+    assert result["status"] == "BLOCKED"
+    assert "MTF_CLOCK_PROVENANCE_SOURCE_MISMATCH:M30" in result["reason"]
+
+
+
+
+def test_live_runtime_blocks_all_clock_policies_when_approval_registry_is_empty(monkeypatch):
+    monkeypatch.setattr(runtime_module, "APPROVED_TIMEZONE_POLICY_IDS", frozenset())
+    result = run_live_event(valid_event())
+    assert result["status"] == "BLOCKED"
+    assert "MTF_CLOCK_TIMEZONE_POLICY_NOT_APPROVED" in result["reason"]
+
+
+def test_live_runtime_rejects_unapproved_timezone_policy_even_if_claimed_verified():
+    event = valid_event()
+    event["mtf_evidence"]["clock_provenance"]["by_timeframe"]["D1"]["timezone_policy_id"] = "UNREVIEWED_POLICY"
+    result = run_live_event(event)
+    assert result["status"] == "BLOCKED"
+    assert "MTF_CLOCK_TIMEZONE_POLICY_NOT_APPROVED:D1:UNREVIEWED_POLICY" in result["reason"]
+
+
+def test_live_runtime_returns_clock_provenance_trace():
+    result = run_live_event(valid_event())
+    assert result["status"] == "SIGNAL_READY"
+    assert result["mtf_clock_provenance"]["status"] == "PASS_POLICY_ALLOWLIST"
+    assert set(result["mtf_clock_provenance"]["timeframes"]) == {"M5", "M15", "M30", "H1", "H4", "D1"}
+    assert result["mtf_clock_provenance"]["policy_approval"] == "REQUIRES_REVIEWED_REPOSITORY_ALLOWLIST"
 
 
 def test_live_event_uses_existing_brain_and_returns_signal_only():
