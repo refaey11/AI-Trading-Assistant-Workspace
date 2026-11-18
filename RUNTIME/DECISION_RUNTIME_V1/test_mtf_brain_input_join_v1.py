@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-import pandas as pd
+import pandas as pd  # pandas is installed by the GitHub Actions workflow
 import pytest
 
 from RUNTIME.DECISION_RUNTIME_V1.mtf_brain_input_join_v1 import (
