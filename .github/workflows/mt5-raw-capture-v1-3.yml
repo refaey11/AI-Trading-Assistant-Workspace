@@ -1,0 +1,22 @@
+name: MT5 Raw Capture V1.3 Contract
+on:
+  push:
+    paths:
+      - "RUNTIME/MT5_RAW_CAPTURE_V1_3/**"
+      - ".github/workflows/mt5-raw-capture-v1-3.yml"
+  pull_request:
+    paths:
+      - "RUNTIME/MT5_RAW_CAPTURE_V1_3/**"
+      - ".github/workflows/mt5-raw-capture-v1-3.yml"
+permissions:
+  contents: read
+jobs:
+  raw-capture-v1-3-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Run V1.3 raw capture contract and ingest tests
+        run: python -m unittest discover -s RUNTIME/MT5_RAW_CAPTURE_V1_3 -p "test_*.py" -v
