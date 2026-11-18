@@ -107,7 +107,7 @@ def verify_mtf_feature_lineage(feature_record: Mapping[str, Any],
             raise FeatureLineageError("RAW_BAR_PAYLOAD_HASH_DUPLICATE")
         raw_by_hash[actual] = raw
 
-    expected = {k: fp[k] for k in ("symbol", "source", "producer", "timeframe")}
+    expected = {k: fp[k] for k in ("symbol", "source", "timeframe")}
     latest_input = None
     for digest in hashes:
         raw = raw_by_hash.get(digest)
@@ -118,7 +118,7 @@ def verify_mtf_feature_lineage(feature_record: Mapping[str, Any],
             if rp.get(field) != value:
                 raise FeatureLineageError(f"FEATURE_INPUT_{field.upper()}_MISMATCH")
         ref = next(r for r in refs if r["raw_payload_hash"].lower() == digest)
-        if any(ref.get(k) != raw.get(k) for k in ("symbol", "timeframe", "bar_time_utc")):
+        if any(ref.get(k) != raw.get(k) for k in ("symbol", "timeframe", "bar_time_utc", "source", "producer")):
             raise FeatureLineageError("FEATURE_INPUT_REF_IDENTITY_MISMATCH")
         bar_time = _utc(raw["bar_time_utc"], "RAW_BAR_TIME_UTC")
         if bar_time > as_of:
