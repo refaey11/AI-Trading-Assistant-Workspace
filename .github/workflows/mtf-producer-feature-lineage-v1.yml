@@ -21,4 +21,4 @@ jobs:
         with:
           python-version: "3.11"
       - name: Run producer-to-feature lineage tests
-        run: python -m pytest -q RUNTIME/MTF_PRODUCER_V1/test_producer_feature_lineage_contract_v1.py
+        run: python -m unittest discover -s RUNTIME/MTF_PRODUCER_V1 -p 'test_producer_feature_lineage_contract_v1.py' -v
