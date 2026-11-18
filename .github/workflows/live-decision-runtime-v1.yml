@@ -1,0 +1,44 @@
+name: Live Decision Runtime V1
+
+on:
+  pull_request:
+    paths:
+      - "RUNTIME/DECISION_RUNTIME_V1/live_decision_runtime_v1.py"
+      - "RUNTIME/DECISION_RUNTIME_V1/test_live_decision_runtime_v1.py"
+      - "RUNTIME/RISK_ENGINE_INTEGRATION_V1/**"
+      - "RUNTIME/TIZ_PROCESS_GATE_V1/**"
+      - "evaluation/three_book_decision_evaluator_v1.py"
+      - "RECOVERED_SOURCES/DECISION_BRAIN_V1/**"
+      - "governance/DECISION_BRAIN_RULE_ALLOWLIST_V1.json"
+      - ".github/workflows/live-decision-runtime-v1.yml"
+  push:
+    branches:
+      - "feature/live-decision-runtime-v1"
+    paths:
+      - "RUNTIME/DECISION_RUNTIME_V1/live_decision_runtime_v1.py"
+      - "RUNTIME/DECISION_RUNTIME_V1/test_live_decision_runtime_v1.py"
+      - "RUNTIME/RISK_ENGINE_INTEGRATION_V1/**"
+      - "RUNTIME/TIZ_PROCESS_GATE_V1/**"
+      - "evaluation/three_book_decision_evaluator_v1.py"
+      - "RECOVERED_SOURCES/DECISION_BRAIN_V1/**"
+      - "governance/DECISION_BRAIN_RULE_ALLOWLIST_V1.json"
+      - ".github/workflows/live-decision-runtime-v1.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  live-decision-runtime-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install test runner
+        run: python -m pip install --upgrade pip pytest
+      - name: Test live runtime and canonical risk contract
+        run: >-
+          python -m pytest -q
+          RUNTIME/DECISION_RUNTIME_V1/test_live_decision_runtime_v1.py
+          RUNTIME/RISK_ENGINE_INTEGRATION_V1/test_risk_engine_contract_reconciliation_v1.py
