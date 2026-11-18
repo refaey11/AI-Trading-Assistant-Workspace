@@ -181,6 +181,14 @@ def test_live_runtime_rejects_clock_source_mismatch():
 
 
 
+
+def test_live_runtime_blocks_all_clock_policies_when_approval_registry_is_empty(monkeypatch):
+    monkeypatch.setattr(runtime_module, "APPROVED_TIMEZONE_POLICY_IDS", frozenset())
+    result = run_live_event(valid_event())
+    assert result["status"] == "BLOCKED"
+    assert "MTF_CLOCK_TIMEZONE_POLICY_NOT_APPROVED" in result["reason"]
+
+
 def test_live_runtime_rejects_unapproved_timezone_policy_even_if_claimed_verified():
     event = valid_event()
     event["mtf_evidence"]["clock_provenance"]["by_timeframe"]["D1"]["timezone_policy_id"] = "UNREVIEWED_POLICY"
