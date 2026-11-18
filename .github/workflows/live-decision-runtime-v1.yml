@@ -5,6 +5,8 @@ on:
     paths:
       - "RUNTIME/DECISION_RUNTIME_V1/live_decision_runtime_v1.py"
       - "RUNTIME/DECISION_RUNTIME_V1/test_live_decision_runtime_v1.py"
+      - "RUNTIME/DECISION_RUNTIME_V1/mtf_brain_input_join_v1.py"
+      - "RUNTIME/DECISION_RUNTIME_V1/test_mtf_brain_input_join_v1.py"
       - "RUNTIME/RISK_ENGINE_INTEGRATION_V1/**"
       - "RUNTIME/TIZ_PROCESS_GATE_V1/**"
       - "evaluation/three_book_decision_evaluator_v1.py"
@@ -36,9 +38,10 @@ jobs:
         with:
           python-version: "3.11"
       - name: Install test runner
-        run: python -m pip install --upgrade pip pytest
+        run: python -m pip install --upgrade pip pytest pandas
       - name: Test live runtime and canonical risk contract
         run: >-
           python -m pytest -q
           RUNTIME/DECISION_RUNTIME_V1/test_live_decision_runtime_v1.py
+          RUNTIME/DECISION_RUNTIME_V1/test_mtf_brain_input_join_v1.py
           RUNTIME/RISK_ENGINE_INTEGRATION_V1/test_risk_engine_contract_reconciliation_v1.py
