@@ -1,6 +1,9 @@
 name: Overnight 0006-0007 Smoke Test
 
-on: push
+on:
+  push:
+  pull_request:
+    types: [opened, synchronize, reopened]
 
 permissions:
   contents: read
