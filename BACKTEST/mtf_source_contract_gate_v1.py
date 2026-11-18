@@ -9,6 +9,8 @@ no imputation, no scaling, and no direction generation.
 
 import argparse
 from pathlib import Path
+
+import numpy as np
 import pandas as pd
 
 REQUIRED = (
@@ -63,6 +65,8 @@ def inspect(path: Path) -> dict[str, object]:
         raise SystemExit(f"BLOCKED_MTF_MISSING_REQUIRED_FIELDS:{missing}")
     if "timestamp" not in df.columns:
         raise SystemExit("BLOCKED_MTF_MISSING_TIMESTAMP")
+    if df.empty:
+        raise SystemExit("BLOCKED_MTF_EMPTY_SOURCE")
 
     report: dict[str, object] = {
         "status": "PASS",
@@ -83,15 +87,15 @@ def inspect(path: Path) -> dict[str, object]:
                 f"BLOCKED_MTF_NON_NUMERIC_SOURCE_FIELD:{field}:"
                 f"raw_tokens={bad[:20]}"
             )
-        if numeric.isna().any():
-            raise SystemExit(f"BLOCKED_MTF_NAN_SOURCE_FIELD:{field}")
+        if not np.isfinite(numeric.to_numpy(dtype="float64")).all():
+            raise SystemExit(f"BLOCKED_MTF_NON_FINITE_SOURCE_FIELD:{field}")
 
     timestamps = _parse_aware_timestamps(df["timestamp"])
     if timestamps.duplicated().any():
         raise SystemExit("BLOCKED_MTF_DUPLICATE_TIMESTAMP")
 
-    report["min_timestamp"] = timestamps.min().isoformat() if len(timestamps) else None
-    report["max_timestamp"] = timestamps.max().isoformat() if len(timestamps) else None
+    report["min_timestamp"] = timestamps.min().isoformat()
+    report["max_timestamp"] = timestamps.max().isoformat()
     return report
 
 
