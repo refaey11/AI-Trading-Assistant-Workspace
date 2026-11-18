@@ -93,3 +93,20 @@ def test_non_numeric_mtf_field_remains_blocked(tmp_path: Path) -> None:
     )
     with pytest.raises(SystemExit, match="BLOCKED_MTF_NON_NUMERIC_SOURCE_FIELD:M5_trend_regime"):
         GATE.inspect(path)
+
+
+@pytest.mark.parametrize("value", ["inf", "-inf"])
+def test_non_finite_mtf_value_is_blocked(tmp_path: Path, value: str) -> None:
+    path = _write_source(
+        tmp_path,
+        ["2024-01-02T08:00:00Z"],
+        M5_trend_regime=[value],
+    )
+    with pytest.raises(SystemExit, match="BLOCKED_MTF_NON_FINITE_SOURCE_FIELD:M5_trend_regime"):
+        GATE.inspect(path)
+
+
+def test_empty_source_is_blocked(tmp_path: Path) -> None:
+    path = _write_source(tmp_path, [])
+    with pytest.raises(SystemExit, match="BLOCKED_MTF_EMPTY_SOURCE"):
+        GATE.inspect(path)
