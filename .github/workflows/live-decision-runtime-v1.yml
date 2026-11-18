@@ -5,6 +5,8 @@ on:
     paths:
       - "RUNTIME/DECISION_RUNTIME_V1/live_decision_runtime_v1.py"
       - "RUNTIME/DECISION_RUNTIME_V1/test_live_decision_runtime_v1.py"
+      - "RUNTIME/MTF_PRODUCER_V1/mt5_clock_provenance_gate_v1.py"
+      - "RUNTIME/MTF_PRODUCER_V1/test_mt5_clock_provenance_gate_v1.py"
       - "compatibility/dynamic_mtf_binding_adapter_v1.py"
       - "tests/compatibility/test_dynamic_mtf_binding_adapter_v1.py"
       - "RUNTIME/RISK_ENGINE_INTEGRATION_V1/**"
@@ -19,6 +21,8 @@ on:
     paths:
       - "RUNTIME/DECISION_RUNTIME_V1/live_decision_runtime_v1.py"
       - "RUNTIME/DECISION_RUNTIME_V1/test_live_decision_runtime_v1.py"
+      - "RUNTIME/MTF_PRODUCER_V1/mt5_clock_provenance_gate_v1.py"
+      - "RUNTIME/MTF_PRODUCER_V1/test_mt5_clock_provenance_gate_v1.py"
       - "compatibility/dynamic_mtf_binding_adapter_v1.py"
       - "tests/compatibility/test_dynamic_mtf_binding_adapter_v1.py"
       - "RUNTIME/RISK_ENGINE_INTEGRATION_V1/**"
