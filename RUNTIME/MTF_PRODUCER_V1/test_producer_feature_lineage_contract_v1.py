@@ -23,7 +23,7 @@ def feature(raws):
        "computed_at_utc":"2026-11-18T11:51:00Z","payload":p,
        "payload_hash":canonical_payload_hash(p),
        "input_refs":[{"raw_payload_hash":r["payload_hash"],"symbol":r["symbol"],
-          "timeframe":r["timeframe"],"bar_time_utc":r["bar_time_utc"]} for r in raws]}
+          "timeframe":r["timeframe"],"bar_time_utc":r["bar_time_utc"],"source":r["source"],"producer":r["producer"]} for r in raws]}
 
 class LineageTests(unittest.TestCase):
     def test_accepts_valid_lineage(self):
@@ -46,13 +46,13 @@ class LineageTests(unittest.TestCase):
     def test_rejects_cross_symbol_input(self):
         r=raw_bar(); other=raw_bar(symbol="GBPUSD"); f=feature([r])
         f["input_refs"].append({"raw_payload_hash":other["payload_hash"],"symbol":"GBPUSD",
-          "timeframe":"M5","bar_time_utc":other["bar_time_utc"]})
+          "timeframe":"M5","bar_time_utc":other["bar_time_utc"],"source":other["source"],"producer":other["producer"]})
         with self.assertRaisesRegex(FeatureLineageError,"FEATURE_INPUT_SYMBOL_MISMATCH"):
             verify_mtf_feature_lineage(f,[r,other],decision_as_of=AS_OF)
     def test_rejects_cross_timeframe_input(self):
         r=raw_bar(); other=raw_bar(timeframe="H1"); f=feature([r])
         f["input_refs"].append({"raw_payload_hash":other["payload_hash"],"symbol":"EURUSD",
-          "timeframe":"H1","bar_time_utc":other["bar_time_utc"]})
+          "timeframe":"H1","bar_time_utc":other["bar_time_utc"],"source":other["source"],"producer":other["producer"]})
         with self.assertRaisesRegex(FeatureLineageError,"FEATURE_INPUT_TIMEFRAME_MISMATCH"):
             verify_mtf_feature_lineage(f,[r,other],decision_as_of=AS_OF)
     def test_rejects_duplicate_refs(self):
