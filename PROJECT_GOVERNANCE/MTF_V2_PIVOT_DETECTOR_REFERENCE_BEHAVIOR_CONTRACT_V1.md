@@ -8,7 +8,7 @@
 
 This document translates the user-approved conservative policy baseline into an implementation-independent behavioral contract. It is a test oracle design, not a detector implementation. It does not choose numeric L/R settings, identity serialization, lifecycle rules, or production eligibility.
 
-The 180-fixture corpus currently checks fixture structure and scenario coverage. Its CI success must not be described as proof that a pivot detector is correct. A future implementation must be tested against semantic assertions in this document, not merely against fixture counts.
+The 288-fixture corpus currently checks fixture structure and scenario coverage. Its CI success must not be described as proof that a pivot detector is correct. A future implementation must be tested against semantic assertions in this document, not merely against fixture counts.
 
 ## 2. Input contract
 
