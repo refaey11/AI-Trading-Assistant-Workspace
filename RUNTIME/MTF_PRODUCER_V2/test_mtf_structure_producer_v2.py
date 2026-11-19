@@ -61,7 +61,7 @@ class ProducerV2Tests(unittest.TestCase):
 
     def test_unverified_clock_is_not_claimed_available(self):
         out = produce_structure_v2(bars(3), [], symbol="GBPUSD", timeframe="M5")
-        self.assertEqual(out["rows"][0]["availability_status"], "CLOCK_UNVERIFIED")
+        self.assertEqual(out["rows"][0]["availability_status"], "PROVENANCE_UNVALIDATED")
 
     def test_rejects_unclosed_bars(self):
         data = bars(3)
@@ -99,6 +99,14 @@ class ProducerV2Tests(unittest.TestCase):
         data = bars(8) + [Bar(8, 9, 12, 8, 11)]
         out = produce_structure_v2(data, ps, symbol="GBPUSD", timeframe="M5")
         self.assertEqual(out["rows"][8]["event"]["event_type"], "CHOCH_UP")
+
+
+    def test_break_event_is_emitted_on_crossing_not_every_bar_beyond_level(self):
+        data = bars(8) + [Bar(8, 12, 14, 11, 13), Bar(9, 13, 15, 12, 14)]
+        out = produce_structure_v2(data, self.bullish_pivots(),
+                                   symbol="GBPUSD", timeframe="M5")
+        self.assertEqual(len(out["events"]), 1)
+        self.assertIsNone(out["rows"][9]["event"])
 
 
 if __name__ == "__main__":
