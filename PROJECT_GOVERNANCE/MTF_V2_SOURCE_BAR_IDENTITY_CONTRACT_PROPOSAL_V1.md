@@ -148,3 +148,16 @@ This proposal does not select L/R values and does not implement either model. No
 - No 2025 data/tuning.
 - No Decision Brain integration, signal generation, or order execution.
 - No PR merge and no main-branch change.
+
+
+## 9. User decision — priority A, conditional B fallback
+
+**Decision approved by the user on 2026-11-19:**
+
+1. Prefer **Model A** whenever an authoritative upstream-native immutable per-bar identifier is available and passes the evidence and conformance requirements in this proposal.
+2. Permit **Model B only as a conditional fallback** when repository/source evidence establishes that no suitable native identifier exists, and only after the source namespace, canonical symbol/timeframe, verified UTC clock lineage, uniqueness, duplicate/revision semantics, canonical serialization, and six-timeframe conformance requirements are separately specified, reviewed, tested, and approved.
+3. Model C remains rejected as a source identity model.
+4. This decision approves the priority/fallback policy only. It does not approve a concrete composite key implementation, promote the current MT5 raw epoch to UTC, authenticate any caller-supplied clock flag, or authorize production identity generation.
+5. The approved Pivot V1 encoder remains reference-only until a verified source_bar_id contract and the configuration fingerprint schema are available.
+
+**Current execution status:** source identity remains BLOCKED / NOT PRODUCTION-ELIGIBLE. No detector implementation, L/R selection, Brain integration, 2025 use, merge, or order path is authorized by this decision.
