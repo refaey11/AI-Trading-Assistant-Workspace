@@ -161,3 +161,80 @@ Do not assume the 57D vector is identical to the Brain input contract, or that a
 The historical Decision Brain compatibility audit also records that the existing Brain implementation does not itself provide complete volatility, knowledge, Nison, TIZ, and Risk integration. The correct approach remains a narrow compatibility boundary around existing components, not rebuilding them. Nison is confirmation/contradiction only; TIZ is process-only and cannot generate direction; Risk remains a hard gate; missing authoritative evidence must remain NOT_EVALUABLE.
 
 The full MTF Reader architecture includes W1, but W1 is not part of the six-TF serialized alignment vector. Preserve that distinction in all mappings and tests.
+
+
+## 10. Expanded historical lineage recovery findings (2026-11-15 / 2026-11-16)
+
+A read-only lineage audit on the historical `audit/mtf-archive-producer-lineage` branch and the `mtf-source-audit-report-2026-11-16` branch adds the following source-backed corrections and boundaries.
+
+### 10.1 Candle aggregation is already closed for GBPUSD 2016–2024
+
+The raw GBPUSD M1 master was reconciled against the existing `MULTI_TF_MARKET_DATA_V1.zip` output for M5, M15, M30, H1, H4, and D1. The audit records 100% agreement for OHLC, M1 row counts, volume-availability flags, and available-volume sums, with no missing or extra output bars. Do not rebuild this conversion.
+
+### 10.2 Existing output archives are not producer source
+
+The historical audit records separate Market Structure and MTF Alignment output archives for EURUSD, GBPUSD, USDJPY, USDCAD, and XAUUSD. It explicitly states that the executable feature-producer source was not present in the recovered archive inventory.
+
+The MTF Architecture V2 files (`MTF_READER_SPEC_V2.json`, `READER_LOGIC.md`, `DATA_REQUIREMENTS.md`, `NEXT_STEP.md`) describe a seven-timeframe reader and intended roles/features. They are architecture/specification material, not executable proof of the existing six-timeframe numeric producer or its formulas.
+
+### 10.3 Existing adapters are consumers/validators, not producers
+
+The audited components have distinct non-generative responsibilities:
+- `MTF_SIX_TF_SOURCE_ADAPTER_V1.py`: validates/loads existing MTF files.
+- `mtf_brain_input_join_v1.py`: performs strict point-in-time/as-of joining of already-produced fields.
+- Dynamic MTF binding/resolver: validates/selects explicit timeframe roles.
+- Market pipeline evidence adapter: normalizes existing outputs into governed evidence.
+- Similarity V2 boundary: enforces evidence-only retrieval policy.
+
+None of these is evidence of the missing Market Structure feature producer or the six-TF `mtf_trend_score` producer. Reuse them only within their existing contracts; do not relabel them as producers.
+
+### 10.4 Similarity 57D is explicitly separate from Decision Brain semantic MTF fields
+
+The 2026-11-15 lineage audit states that Similarity V2's standardized 57D candidate/index representation has a distinct feature lineage. It records a feature order and persisted scaler/imputer metadata in a separate historical audit, but the exact raw/current-query vector producer lineage remains open.
+
+Therefore:
+- The 57D standardized matrix is not the six-TF Brain input vector.
+- Do not inject standardized Similarity dimensions into Brain fields.
+- Do not rename any of the 57 dimensions into `*_trend_regime`, `mtf_trend_score`, volatility, or volume fields without exact raw-field mapping and producer proof.
+- The Similarity current/query raw-vector builder and its full preprocessing lineage remain a separate recovery task.
+- Similarity V3's 71-feature schema and referenced `v3_shared_builder.py` are also separate; the builder was not located in the audited inventories.
+- Feature Engineering V2's 22 descriptive/memory features and Regime Engine V2's diagnostic scores are not substitutes for the six-TF MTF producer.
+
+### 10.5 Serialized MTF artifact has unresolved timestamp and missingness contracts
+
+The 2026-11-16 source compatibility audit records:
+- 671,601 rows across 2016–2024, nine annual files, 106 columns with identical headers.
+- All serialized timestamps are naive; source README does not define timezone, broker/server clock, DST, or epoch interpretation.
+- Observed regime values `-1, 0, 1` and `mtf_trend_score` range `-6..+6`; these observations do not prove encoding or formula.
+- 2,512 blank cells across the seven Brain trend/score fields. The audit counts 26 M15, 53 M30, 107 H1, 371 H4, and 1,955 D1 blanks. The repeated annual-start pattern is consistent with HTF warm-up, but remains unproven without producer semantics.
+- The archive itself contains no `.py`, `.ipynb`, or `.sql` producer files.
+- A separate full-project archive search found the older H4/H1 research-only reader and MTF Architecture V2 docs, but no six-timeframe producer-code candidate in the inspected top-level source/documentation scope. Nested legacy ZIP contents were not recursively unpacked in that pass.
+
+These findings reinforce P1/P2/P4 blockers. No naive timestamp may be treated as UTC, no warm-up assumption may be promoted to fact, and no blank may be replaced with zero/neutral.
+
+### 10.6 Runner compatibility must be re-audited against the active branch
+
+The 2026-11-16 historical audit identified defects in the runner version it inspected: naive timestamps coerced to UTC, MTF fields defaulted to zero, legacy trend-token mapping, failure to copy canonical MTF fields directly, and an unsupported ATR lookup from the MTF schema. The strict as-of join adapter is safer but cannot pass this source while timestamp provenance and missingness remain unresolved.
+
+Before any future runner wiring, compare the exact active branch/commit with these findings and prove the defects are absent. Do not assume a historical runner finding describes the current head, and do not bypass the strict join adapter.
+
+## 11. Reconciled recovery status after the expanded search
+
+**Recovered / confirmed**
+- GBPUSD M1-to-six-timeframe candle aggregation output for 2016–2024 is reconciled; do not rebuild it.
+- Five-symbol Market Structure and MTF Alignment serialized output archives are recorded as existing.
+- MTF Architecture V2 and Dynamic MTF binding contracts are specification/architecture sources.
+- Strict source adapter, as-of join, role resolver, and Similarity evidence boundary exist as separate non-generative components.
+
+**Not recovered / still blocked**
+- Executable Market Structure feature producer (including trend/pivot/BOS/candle features).
+- Executable six-timeframe alignment numeric producer and exact `mtf_trend_score` formula.
+- Authoritative timezone/broker-clock mapping for naive MTF timestamps.
+- Proven warm-up/missing-value semantics for the 2,512 blank Brain-field cells.
+- Exact raw/current-query Similarity V2 57D vector producer, despite the separately documented feature order and scaler/imputer metadata.
+- Similarity V3 shared builder source.
+
+**Next safe action**
+Recover the original producer from the source execution environment that generated the serialized archives, or recover the exact pre-standardized feature matrix together with its authoritative manifest, raw-field mapping, imputer/scaler artifacts, and golden fixtures. Do not reverse-engineer approximate formulas from output columns, substitute Regime V2 or Similarity dimensions, or rebuild the existing candle aggregation.
+
+Until source provenance and semantics are proven, affected Brain inputs remain `NOT_EVALUABLE`; full canonical backtest/E2E cannot be declared ready from schema, archive identity, alignment, or adapter tests alone.
