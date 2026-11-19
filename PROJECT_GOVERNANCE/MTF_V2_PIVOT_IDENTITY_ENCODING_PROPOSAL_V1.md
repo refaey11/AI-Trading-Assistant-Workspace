@@ -1,6 +1,6 @@
 # MTF Pivot Detector V2 — Pivot Identity Encoding Proposal V1
 
-**Status:** PROPOSAL ONLY — NOT APPROVED — NO PRODUCTION ID CODE  
+**Status:** ENCODING METHOD APPROVED BY USER (2026-11-19) — REFERENCE IMPLEMENTATION ONLY — NOT PRODUCTION INTEGRATED  
 **Parent:** PR #141  
 **Scope:** deterministic identity for one independently confirmed HIGH or LOW pivot
 
@@ -92,7 +92,7 @@ User review is required for:
 - exact configuration document schema and fingerprint lifecycle;
 - authoritative canonical symbol/timeframe/source_bar_id upstream contracts.
 
-No production ID code may be written until these choices are approved and test vectors are specified.
+No production integration is authorized by this reference implementation.
 
 ## 9. Safety
 
