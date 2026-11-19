@@ -65,7 +65,11 @@ class PivotFixtureCorpusTests(unittest.TestCase):
         for fixture in self.fixtures:
             bars = fixture["bars"]
             self.assertEqual([bar["index"] for bar in bars], list(range(len(bars))))
-            self.assertTrue(all(bar["closed"] for bar in bars))
+            if fixture["id"].endswith("UNFINISHED_CONFIRMING_BAR"):
+                self.assertTrue(all(bar["closed"] for bar in bars[:-1]))
+                self.assertFalse(bars[-1]["closed"])
+            else:
+                self.assertTrue(all(bar["closed"] for bar in bars))
 
     def test_confirmation_boundary_is_explicit(self):
         for fixture in self.fixtures:
@@ -79,10 +83,17 @@ class PivotFixtureCorpusTests(unittest.TestCase):
                     len(fixture["bars"]) - 1, expected["available_bar_index"]
                 )
             elif expected["status"] == "PENDING":
-                self.assertLess(
-                    len(fixture["bars"]) - 1,
-                    expected["candidate_index"] + fixture["window"]["right"],
-                )
+                if expected.get("reason") == "CONFIRMING_BAR_NOT_COMPLETED":
+                    self.assertEqual(
+                        len(fixture["bars"]) - 1,
+                        expected["candidate_index"] + fixture["window"]["right"],
+                    )
+                    self.assertFalse(fixture["bars"][-1]["closed"])
+                else:
+                    self.assertLess(
+                        len(fixture["bars"]) - 1,
+                        expected["candidate_index"] + fixture["window"]["right"],
+                    )
 
     def test_candidate_windows_are_test_only(self):
         self.assertTrue(
