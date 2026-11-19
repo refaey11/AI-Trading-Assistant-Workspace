@@ -130,9 +130,9 @@ The pivot ID continues to include:
 
 The source-bar ID must not be replaced with the MT5 terminal `source_id`, raw UNVERIFIED epoch, row number, dataframe index, file position, OHLC, or payload hash.
 
-## 7. User decision required
+## 7. Approved source identity priority and fallback
 
-Please choose the intended source identity basis:
+The user decision is recorded in Section 9: Model A is preferred; Model B is permitted only as a conditional fallback after all evidence and approval gates pass. The following definitions remain the design alternatives:
 
 - **A — upstream-native ID only:** block until an authoritative source-native per-bar identifier is available.
 - **B — conditional composite ID:** allow a separately versioned composite based on source namespace + canonical symbol + native timeframe + verified UTC bar-open time, but only after the clock/source/revision contracts are approved and tested.
