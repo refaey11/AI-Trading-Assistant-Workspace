@@ -13,6 +13,12 @@ assert SPEC and SPEC.loader
 runner = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(runner)
 
+GATE_PATH = ROOT / "BACKTEST" / "mtf_source_contract_gate_v1.py"
+GATE_SPEC = importlib.util.spec_from_file_location("mtf_source_contract_gate_v1", GATE_PATH)
+assert GATE_SPEC and GATE_SPEC.loader
+gate = importlib.util.module_from_spec(GATE_SPEC)
+GATE_SPEC.loader.exec_module(gate)
+
 
 def valid_mtf(**overrides):
     row = {
@@ -26,6 +32,15 @@ def valid_mtf(**overrides):
     }
     row.update(overrides)
     return row
+
+
+def valid_gate_frame(**overrides):
+    row = {
+        "timestamp": "2024-01-02T12:00:00+02:00",
+        **valid_mtf(),
+    }
+    row.update(overrides)
+    return pd.DataFrame([row])
 
 
 def test_timestamp_parser_rejects_naive_values():
@@ -89,3 +104,42 @@ def test_build_row_rejects_legacy_alias_only_input():
 def test_build_row_rejects_missing_asof_source_row():
     with pytest.raises(ValueError, match="NO_ASOF_SOURCE_ROW"):
         runner.build_row({}, {})
+
+
+def test_source_gate_rejects_naive_timestamp_instead_of_assuming_utc(tmp_path):
+    path = tmp_path / "mtf.csv"
+    valid_gate_frame(timestamp="2024-01-02 12:00:00").to_csv(path, index=False)
+    with pytest.raises(SystemExit, match="TIMEZONE_PROVENANCE_UNRESOLVED_NAIVE_TIMESTAMP"):
+        gate.inspect(path)
+
+
+def test_source_gate_accepts_explicit_offset_but_does_not_claim_broker_truth(tmp_path):
+    path = tmp_path / "mtf.csv"
+    valid_gate_frame().to_csv(path, index=False)
+    report = gate.inspect(path)
+    assert report["status"] == "PASS_SCHEMA_AND_AWARE_TIMESTAMP_ONLY"
+    assert report["min_timestamp_utc"] == "2024-01-02T10:00:00+00:00"
+    assert report["broker_timezone_truth_verified"] is False
+    assert report["producer_formula_verified"] is False
+
+
+def test_source_gate_rejects_blank_required_feature(tmp_path):
+    path = tmp_path / "mtf.csv"
+    valid_gate_frame(D1_trend_regime="").to_csv(path, index=False)
+    with pytest.raises(SystemExit, match="MISSING_OR_NON_NUMERIC_SOURCE_FIELD:D1_trend_regime"):
+        gate.inspect(path)
+
+
+def test_source_gate_rejects_non_finite_required_feature(tmp_path):
+    path = tmp_path / "mtf.csv"
+    valid_gate_frame(M5_trend_regime="inf").to_csv(path, index=False)
+    with pytest.raises(SystemExit, match="NON_FINITE_SOURCE_FIELD:M5_trend_regime"):
+        gate.inspect(path)
+
+
+def test_source_gate_rejects_duplicate_timestamps(tmp_path):
+    path = tmp_path / "mtf.csv"
+    frame = valid_gate_frame()
+    pd.concat([frame, frame], ignore_index=True).to_csv(path, index=False)
+    with pytest.raises(SystemExit, match="DUPLICATE_TIMESTAMP"):
+        gate.inspect(path)
