@@ -127,3 +127,37 @@ The GitHub-only source search recorded in PR #137 did not recover the original e
 ## 8. Approval required to proceed
 
 Implementation may begin only after an authorized source/algorithm and its provenance are identified, compatibility-audited against the existing Brain contract, and golden fixtures are available. Any implementation proposal must be isolated on a feature branch and remain Draft until explicit user approval. No changes to `main` or merges are part of this specification.
+
+
+## 9. Expanded Decision Brain input scope and Similarity V2 recovery route
+
+A further historical compatibility audit was inspected after this specification was drafted. It clarifies that the seven fields above are only the unresolved six-TF trend/score subset, not the complete Decision Brain market-input contract.
+
+The recovered `DECISION_BRAIN_V1_SPEC.json` declares these additional inputs:
+
+- MTF context: `mtf_bullish_count`, `mtf_bearish_count`, `mtf_neutral_count`, `mtf_context_code` in addition to `mtf_trend_score`.
+- Volatility: `M5_volatility_regime`, `M15_volatility_regime`, `M30_volatility_regime`, `H1_volatility_regime`, `H4_volatility_regime`, `D1_volatility_regime`.
+- Volume: `*_relative_volume_20` and `*_volume_regime`, conditionally active only when `volume_available=true`; unavailable volume is not zero.
+- Historical memory: Similarity V2 is evidence only, not a directional source.
+
+Accordingly, P5 compatibility must audit the complete actual input contract and not close on the seven trend/score fields alone. Each additional field requires its own authoritative producer lineage, semantics, availability, and timestamp proof. No field may be synthesized merely because it is named in the Brain specification.
+
+### Similarity V2 is a separate recovery lead, not an assumed MTF producer
+
+The 2026-08-29 MTF-to-Brain compatibility record explicitly directs recovery of the exact producer or serialized feature matrix used for the Similarity V2 57D representation, including:
+- exact feature order and schema/version;
+- current/query vector producer lineage;
+- raw-to-feature mapping;
+- missing-value handling, imputation and scaling;
+- source timestamps and as-of lineage;
+- proof whether any of those 57 dimensions map to the Decision Brain's required fields.
+
+The GitHub branch inspected contains the Similarity V2 evidence-only boundary and compatibility audit, but does not contain the named historical run JSON artifacts or the original Similarity V2 archive/feature-matrix producer. The boundary preserves top_k=20 and blocks 2025/future retrieval; it is not a vector producer and cannot prove current-query feature generation.
+
+Do not assume the 57D vector is identical to the Brain input contract, or that any dimension can be renamed into a trend-regime field without exact mapping evidence. Similarity remains historical memory only and must never influence direction through a predicted-return shortcut.
+
+### Additional integration constraints recovered
+
+The historical Decision Brain compatibility audit also records that the existing Brain implementation does not itself provide complete volatility, knowledge, Nison, TIZ, and Risk integration. The correct approach remains a narrow compatibility boundary around existing components, not rebuilding them. Nison is confirmation/contradiction only; TIZ is process-only and cannot generate direction; Risk remains a hard gate; missing authoritative evidence must remain NOT_EVALUABLE.
+
+The full MTF Reader architecture includes W1, but W1 is not part of the six-TF serialized alignment vector. Preserve that distinction in all mappings and tests.
