@@ -188,3 +188,35 @@ Until then:
 ## 13. Explicit unresolved questions for review
 
 Please review the ten approval items in Section 12. If you want the safest first implementation path, the key architectural choice is whether to keep searching for the canonical producer or formally approve an independently versioned detector. All numeric and tie-handling choices remain open until separately approved.
+
+
+## 14. User direction and conservative implementation recommendations (2026-11-19)
+
+The user has agreed to proceed with an independently versioned MTF Pivot Detector V2. This approves the architectural path only. It does not approve numeric windows or the unresolved detection policies below.
+
+The following are recommendations for explicit review, not frozen rules:
+
+| Topic | Conservative recommendation | Why it is proposed | Approval still required |
+| --- | --- | --- | --- |
+| Detector architecture | New independent V2 detector; keep legacy PIVOT_SEQUENCE_V2 namespace untouched | Original executable producer and six-TF contract remain unrecovered | Architectural path approved by user; implementation still waits on detailed contract |
+| Window model | Symmetric left/right windows, with explicit per-timeframe configuration | Easier to reason about and test causally; avoids hidden asymmetry | Yes; numeric L/R values for each timeframe remain open |
+| Extremum comparison | Strict comparison against neighboring highs/lows | Avoids silently resolving ties as unique pivots | Yes |
+| Equal-price plateau | Mark ambiguous plateau NOT_EVALUABLE rather than arbitrarily selecting first/last/center | Avoids invented ordering and hidden tie-breaking | Yes |
+| Same-bar high and low | Preserve both candidate observations but mark sequence/order unresolved; do not infer intrabar path | OHLC cannot reveal which extreme occurred first | Yes |
+| Confirmation | Completed right-side bars only; availability is the verified availability of the final required confirming bar | Prevents look-ahead and visual-pivot-time leakage | Yes; confirm this rule and the selected R values |
+| Separation / alternation | No minimum distance, no forced alternation, no clustering; expose independently confirmed pivots | Avoids introducing ungrounded filtering or replacement behavior | Yes |
+| Price precision | Use trusted instrument metadata; no arbitrary rounding/tolerance; otherwise equality-sensitive cases NOT_EVALUABLE | Avoids false equality or separation | Yes |
+| Data gaps | A gap inside the confirmation window blocks confirmation unless upstream source/session evidence explicitly proves continuity | Prevents treating missing data as ordinary adjacent bars | Yes |
+| Warm-up | Allow pre-window context only with original source identity, verified availability and full provenance; never synthesize a seed pivot | Supports deterministic replay without look-ahead | Yes |
+| Output identity | Deterministic ID from symbol, timeframe, source-bar identity, pivot kind, detector version and configuration fingerprint | Reproducible lineage and auditability | Yes; exact serialization/hash contract |
+
+### Recommended implementation sequence after approval
+
+1. Freeze the detector contract and six per-timeframe configurations.
+2. Write literal synthetic golden fixtures before detector code.
+3. Implement a pure deterministic detector isolated from the existing structure producer.
+4. Run no-lookahead, future-perturbation, gap, tie, warm-start and replay-determinism tests.
+5. Validate each timeframe independently; an unverified timeframe remains unavailable.
+6. Only then consider a separate compatibility adapter review. No Decision Brain integration is implied.
+
+No detector implementation is authorized by this recommendation table. The two-bar H1 historical report remains H1-only evidence and is not generalized to the other five timeframes.
