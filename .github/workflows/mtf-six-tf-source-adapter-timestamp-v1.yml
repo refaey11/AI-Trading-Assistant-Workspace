@@ -1,0 +1,32 @@
+name: MTF Six-Timeframe Source Adapter Timestamp Contract
+
+on:
+  pull_request:
+    paths:
+      - "BACKTEST/MTF_SIX_TF_SOURCE_ADAPTER_V1.py"
+      - "BACKTEST/test_mtf_six_tf_source_adapter_timestamp_v1.py"
+      - ".github/workflows/mtf-six-tf-source-adapter-timestamp-v1.yml"
+  push:
+    branches:
+      - "fix/mtf-source-adapter-timestamp-provenance-v1"
+    paths:
+      - "BACKTEST/MTF_SIX_TF_SOURCE_ADAPTER_V1.py"
+      - "BACKTEST/test_mtf_six_tf_source_adapter_timestamp_v1.py"
+      - ".github/workflows/mtf-six-tf-source-adapter-timestamp-v1.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  timestamp-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install test dependencies
+        run: python -m pip install --upgrade pip pandas pytest
+      - name: Run timestamp contract tests
+        run: pytest -q BACKTEST/test_mtf_six_tf_source_adapter_timestamp_v1.py

@@ -1,6 +1,10 @@
 from __future__ import annotations
 
-"""Strict adapter/inspector for the canonical six-timeframe source package."""
+"""Strict adapter/inspector for the canonical six-timeframe source package.
+
+This adapter inventories raw OHLC sources only. It does not produce MTF features.
+Timezone-naive values are rejected rather than silently interpreted as UTC.
+"""
 
 import argparse
 import hashlib
@@ -49,14 +53,36 @@ def sha256(path: Path, block_size: int = 4 * 1024 * 1024) -> str:
     return digest.hexdigest()
 
 
+def _parse_explicitly_aware(values: pd.Series, *, label: str) -> pd.Series:
+    normalized: list[pd.Timestamp] = []
+    for index, value in values.items():
+        try:
+            parsed = pd.Timestamp(value)
+        except (TypeError, ValueError, OverflowError) as exc:
+            raise ValueError(f"{label}: INVALID_TIMESTAMP row={index} value={value!r}") from exc
+        if pd.isna(parsed):
+            raise ValueError(f"{label}: INVALID_TIMESTAMP row={index} value={value!r}")
+        if parsed.tzinfo is None or parsed.utcoffset() is None:
+            raise ValueError(
+                f"{label}: TIMEZONE_PROVENANCE_UNRESOLVED_NAIVE_TIMESTAMP row={index}"
+            )
+        normalized.append(parsed.tz_convert("UTC"))
+    return pd.Series(pd.DatetimeIndex(normalized), index=values.index, name=values.name)
+
+
 def timestamp_series(frame: pd.DataFrame) -> tuple[pd.Series, str]:
     lower = {str(c).strip().lower(): c for c in frame.columns}
     for name in TIMESTAMP_COLUMNS:
         if name in lower:
-            return pd.to_datetime(frame[lower[name]], utc=True, errors="coerce", format="mixed"), str(lower[name])
+            column = lower[name]
+            return _parse_explicitly_aware(frame[column], label=str(column)), str(column)
     if "date" in lower and "time" in lower:
-        combined = frame[lower["date"]].astype(str).str.strip() + " " + frame[lower["time"]].astype(str).str.strip()
-        return pd.to_datetime(combined, utc=True, errors="coerce", format="mixed"), f"{lower['date']}+{lower['time']}"
+        combined = (
+            frame[lower["date"]].astype(str).str.strip()
+            + " "
+            + frame[lower["time"]].astype(str).str.strip()
+        )
+        return _parse_explicitly_aware(combined, label="date+time"), f"{lower['date']}+{lower['time']}"
     raise ValueError("no supported timestamp/datetime or date+time columns")
 
 
@@ -69,8 +95,6 @@ def inspect_csv(path: Path, max_rows: int) -> dict[str, Any]:
 
     sampled = pd.read_csv(path, nrows=max_rows, low_memory=False)
     ts, ts_col = timestamp_series(sampled)
-    if ts.isna().any():
-        raise ValueError(f"{path}: invalid timestamp/date-time in sampled rows")
     if ts.duplicated().any():
         raise ValueError(f"{path}: duplicate timestamp in sampled rows")
 
@@ -190,7 +214,7 @@ def main() -> int:
             "Exactly one canonical GBPUSD source is required for each of M5, M15, M30, H1, H4, D1.",
             "Multiple competing GBPUSD sources for one timeframe remain blocked rather than silently selected.",
             "Native source presence is proven from CSV content headers and sampled rows, not filename presence alone.",
-            "Bare time columns are not accepted; date+time requires explicit combined parsing.",
+            "Naive timestamps are rejected; explicit offsets are normalized to UTC without inferring broker clock truth.",
             "No trend/setup/confirmation/direction is inferred from OHLC by this adapter.",
             "A source containing 2025 remains a source artifact; development consumers must explicitly exclude 2025 rows.",
         ],
