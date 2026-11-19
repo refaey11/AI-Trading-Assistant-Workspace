@@ -100,3 +100,31 @@ The correct next source-recovery input is the original project notebook/script o
 - No feature formulas, thresholds, weights, or encodings invented.
 - 2025 remains locked OOS and unused.
 - No PR merge, no live trading, and no order execution authorized.
+
+
+## 8. Historical evidence reconciliation — important distinction
+
+A second pass on older GitHub branch `fix/xauusd-confirmed-pivots-no-lookahead` located earlier evidence records that must be reconciled with the later producer-recovery audits:
+
+- `audits/evidence/MTF_ALIGNMENT_6_TIMEFRAME_SOURCE_CLOSURE_2026-08-21.md`
+- `audits/evidence/MTF_ALIGNMENT_GBPUSD_V1_EVIDENCE_2026-08-21.md`
+- `RUNTIME/MTF/CANONICAL_MTF_ROLE_CONTRACT_V1.md`
+- `RUNTIME/DECISION_RUNTIME_V1/MTF_BRAIN_PROVENANCE_CLARIFICATION_2026-08-29.md`
+
+These older records establish that the **serialized six-timeframe MTF Alignment artifact exists** and contains the expected field family:
+- M5/M15/M30/H1/H4/D1 trend-regime columns;
+- aggregate `mtf_trend_score`, bullish/bearish/neutral counts, and context fields;
+- higher-timeframe alignment intended to occur only after the source candle closes.
+
+They do **not** establish the exact executable producer that calculated those fields. The 2026-08-29 provenance clarification explicitly separates six-timeframe AS-OF alignment PASS from numeric Brain producer PASS and warns against inventing UP=+1/DOWN=-1 encoding, averaging categorical states, or zero-filling missing values.
+
+The 2026-08-23 `GBPUSD_2025_MARKET_STATE_PRODUCER_RECOVERY_GATE` further records that the Market State archive contains contracts and historical outputs but no executable raw-OHLC producer, and that downstream adapters consume precomputed rows rather than generating those calculations.
+
+### Corrected terminology
+
+- **MTF output/source artifact:** FOUND / EXISTS.
+- **Six-timeframe alignment and field schema:** previously evidenced; separate AS-OF/runtime gates still apply.
+- **Original numeric feature-producer implementation and exact formula semantics:** NOT RECOVERED in the inspected GitHub files.
+- **Seven Decision Brain numeric fields:** remain UNRESOLVED / NOT_EVALUABLE until producer lineage and semantics are proven.
+
+This resolves an apparent contradiction in older audit wording: “source found/closed” refers to the serialized MTF data artifact and field family, not proof that the executable producer source code or exact formulas were recovered. No existing artifact is being discarded or rebuilt.
