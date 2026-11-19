@@ -114,3 +114,64 @@ This audit is complete as a forensic classification, not as feature recovery. Th
 - No 2025 OOS data used.
 - No backtest profitability claim or trading authorization.
 - No live order execution.
+
+
+## Addendum — historical lineage reconciliation (2026-11-19)
+
+A further GitHub-only review located the earlier repository audit:
+`AUDITS/MTF_MARKET_STRUCTURE_SIMILARITY_PRODUCER_LINEAGE_RECOVERY_2026-11-15.md`
+on branch `audit/mtf-archive-producer-lineage`. This is important prior evidence and narrows the remaining work.
+
+### What is already recovered and must not be rebuilt
+
+- GBPUSD M1-to-M5/M15/M30/H1/H4/D1 candle aggregation was reconciled against existing output for 2016–2024 with 100% row/OHLC matching in the prior audit.
+- The documented aggregation contract tested there is open=first, high=max, low=min, close=last, volume=sum, with M1 counts and volume-availability flags checked.
+- This is candle aggregation lineage only. It does **not** establish the Market Structure feature formulas or the six-timeframe MTF regime/score producer.
+- Existing five-symbol Market Structure and MTF Alignment output archives were recorded by the prior audit. Their output existence does not imply that their original executable feature builder was recovered.
+- MTF Architecture V2 is a reader plan/specification, not the producer for the existing six-timeframe trend regimes/score.
+- Similarity V2 (57D), Similarity V3 (71 features), Feature Engineering V2 (22 descriptive features), and Regime Engine V2 diagnostic scores are separate lineages. None is authorized as a replacement for the seven semantic MTF Brain inputs.
+
+### Current code-level compatibility confirmation
+
+The current PR #134 head was inspected directly (not inferred from the older audit branch):
+
+1. `BACKTEST/DEV_BACKTEST_RUNNER_V1.py` still:
+   - parses all timestamps using `pd.to_datetime(..., utc=True)`;
+   - initializes all seven MTF Brain fields to `0.0`;
+   - maps legacy `trend` / `h4_trend` labels instead of direct canonical seven-field mapping;
+   - reads `atr` from the MTF row even though the audited canonical 106-column schema does not contain `atr`.
+   This runner is **not authorized for a performance evaluation** until these issues and its upstream source contracts are repaired.
+
+2. `BACKTEST/mtf_source_contract_gate_v1.py` also uses `utc=True` on source timestamps. It therefore cannot be treated as authoritative timezone-provenance validation for naive inputs.
+
+3. The current `RUNTIME/DECISION_RUNTIME_V1/mtf_brain_input_join_v1.py` has a stricter timestamp parser that rejects naive timestamps and requires explicit timezone-aware values. This is the safer boundary, but it cannot make the source timestamps trustworthy by itself.
+
+4. PR #133's producer-to-feature hash contract validates declared payload lineage; it does not recover or define the missing feature formulas.
+
+### Corrected work breakdown
+
+| Layer | Evidence/status | Decision |
+|---|---|---|
+| Raw M1 to six OHLCV timeframe candles (GBPUSD, 2016–2024) | Prior reconciliation reported 100% match | Closed; preserve, do not rebuild |
+| Market Structure feature producer (per-TF regimes, pivots, breaks, candle features) | Original executable producer not recovered | Blocked |
+| Six-TF MTF alignment/score producer | Serialized archive exists; exact producer and score semantics not recovered | Blocked |
+| MTF timestamp provenance | Serialized timestamps are naive; authoritative clock policy unresolved | Blocked |
+| Strict as-of join | Existing adapter rejects naive timestamps and missing fields | Reuse only after source contracts are proven |
+| Similarity feature pipeline | Separate 57D/71D lineages; raw builder unresolved | Do not substitute for MTF |
+
+### Immediate next engineering gate
+
+The next valid implementation is **not** a replacement trend formula. It is a runner-safety remediation isolated from producer recovery:
+
+- prohibit silent UTC localization of naive timestamps;
+- preserve missing MTF fields as unavailable and return `NOT_EVALUABLE` / abstain rather than zero;
+- stop consuming legacy `trend` / `h4_trend` aliases as if they were the canonical seven fields;
+- remove the unsupported assumption that `atr` is present in the MTF archive; source ATR from its own independently verified contract or leave risk sizing not evaluable;
+- require the strict clock-provenance gate before any MTF as-of join;
+- add regression tests proving each failure mode remains fail-closed.
+
+This remediation must not alter Decision Brain formulas or generate substitute MTF values. It is a separate safety patch and should be reviewed before any diagnostic backtest is rerun.
+
+### Governance correction
+
+The statement “candle producer not recovered” must be scoped precisely: the GBPUSD raw candle aggregation output is already reconciled for 2016–2024. The missing producer is the downstream Market Structure / MTF feature and score computation. 2025 remains locked and unused; no live trading or profitability claim is authorized.
