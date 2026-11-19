@@ -41,10 +41,16 @@ class PivotFixtureCorpusTests(unittest.TestCase):
             "FUTURE_PERTURBATION",
             "DETERMINISTIC_REPLAY",
             "LEFT_WINDOW_INCOMPLETE",
+            "INVALID_OHLC",
+            "UNFINISHED_CONFIRMING_BAR",
+            "MISSING_PRECISION_METADATA",
+            "MISSING_CLOCK_PROVENANCE",
+            "WARMUP_WITH_ORIGINAL_PROVENANCE",
+            "WARMUP_WITHOUT_ORIGINAL_PROVENANCE",
         }
         ids = [fixture["id"] for fixture in self.fixtures]
         self.assertEqual(len(ids), len(set(ids)))
-        self.assertEqual(len(self.fixtures), 180)
+        self.assertEqual(len(self.fixtures), 288)
         for timeframe in self.payload["timeframes"]:
             for window in (2, 3, 5):
                 prefix = f"{timeframe}_W{window}_"
@@ -116,6 +122,38 @@ class PivotFixtureCorpusTests(unittest.TestCase):
                 self.assertEqual(fixture["expected"]["replay_count"], 2)
                 self.assertEqual(
                     fixture["expected"]["identity_encoding"], "NOT_YET_FROZEN"
+                )
+
+
+    def test_invalid_input_and_untrusted_metadata_are_explicit(self):
+        for fixture in self.fixtures:
+            suffix = fixture["id"].split("_W", 1)[-1].split("_", 1)[1]
+            expected = fixture["expected"]
+            if suffix == "INVALID_OHLC":
+                self.assertEqual(expected["reason"], "INVALID_OHLC")
+            elif suffix == "UNFINISHED_CONFIRMING_BAR":
+                self.assertFalse(fixture["bars"][-1]["closed"])
+                self.assertEqual(expected["status"], "PENDING")
+            elif suffix == "MISSING_PRECISION_METADATA":
+                self.assertIsNone(fixture["metadata"]["instrument_precision"])
+                self.assertEqual(expected["status"], "NOT_EVALUABLE")
+            elif suffix == "MISSING_CLOCK_PROVENANCE":
+                self.assertIsNone(fixture["metadata"]["clock_evidence"])
+                self.assertEqual(expected["status"], "UNAVAILABLE")
+
+    def test_warmup_requires_original_identity_and_provenance(self):
+        for fixture in self.fixtures:
+            if fixture["id"].endswith("WARMUP_WITH_ORIGINAL_PROVENANCE"):
+                warmup = fixture["metadata"]["warmup"]
+                self.assertTrue(warmup["source_bar_id"])
+                self.assertTrue(warmup["available_at"])
+                self.assertTrue(warmup["provenance_ref"])
+            elif fixture["id"].endswith("WARMUP_WITHOUT_ORIGINAL_PROVENANCE"):
+                warmup = fixture["metadata"]["warmup"]
+                self.assertIsNone(warmup["source_bar_id"])
+                self.assertEqual(
+                    fixture["expected"]["reason"],
+                    "WARMUP_SOURCE_IDENTITY_OR_PROVENANCE_MISSING",
                 )
 
 
