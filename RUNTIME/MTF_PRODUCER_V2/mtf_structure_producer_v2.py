@@ -107,6 +107,7 @@ def produce_structure_v2(
         raise ValueError("symbol and timeframe are required")
     rows, events = [], []
     prior_state = "INSUFFICIENT_PIVOT_HISTORY"
+    previous_close = None
     for bar in bars:
         before = [p for p in pivots if p.available_bar_index < bar.index]
         state_pivots = [p for p in pivots if p.available_bar_index <= bar.index]
@@ -115,13 +116,13 @@ def produce_structure_v2(
         before_lows = sorted((p for p in before if p.kind == "LOW"),
                              key=lambda p: (p.available_bar_index, p.source_bar_index, p.pivot_id))
         event = None
-        if prior_state == "BULLISH_STRUCTURE" and before_lows and bar.close < before_lows[-1].price:
+        if prior_state == "BULLISH_STRUCTURE" and before_lows and previous_close is not None and previous_close >= before_lows[-1].price and bar.close < before_lows[-1].price:
             event = ("CHOCH_DOWN", before_lows[-1])
-        elif prior_state == "BEARISH_STRUCTURE" and before_highs and bar.close > before_highs[-1].price:
+        elif prior_state == "BEARISH_STRUCTURE" and before_highs and previous_close is not None and previous_close <= before_highs[-1].price and bar.close > before_highs[-1].price:
             event = ("CHOCH_UP", before_highs[-1])
-        elif prior_state == "BULLISH_STRUCTURE" and before_highs and bar.close > before_highs[-1].price:
+        elif prior_state == "BULLISH_STRUCTURE" and before_highs and previous_close is not None and previous_close <= before_highs[-1].price and bar.close > before_highs[-1].price:
             event = ("BOS_UP", before_highs[-1])
-        elif prior_state == "BEARISH_STRUCTURE" and before_lows and bar.close < before_lows[-1].price:
+        elif prior_state == "BEARISH_STRUCTURE" and before_lows and previous_close is not None and previous_close >= before_lows[-1].price and bar.close < before_lows[-1].price:
             event = ("BOS_DOWN", before_lows[-1])
         if event:
             kind, pivot = event
@@ -141,9 +142,10 @@ def produce_structure_v2(
             "producer_version": producer_version, "schema_version": schema_version,
             "source_payload_hash": source_payload_hash,
             "clock_policy_id": clock_policy_id,
-            "availability_status": "AVAILABLE" if clock_policy_id != "UNVERIFIED" else "CLOCK_UNVERIFIED",
+            "availability_status": "PROVENANCE_UNVALIDATED",
         })
         prior_state = current_state
+        previous_close = bar.close
     return {
         "symbol": symbol, "timeframe": timeframe, "producer_version": producer_version,
         "schema_version": schema_version, "source_payload_hash": source_payload_hash,
