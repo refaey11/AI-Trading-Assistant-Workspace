@@ -238,3 +238,27 @@ Before any future runner wiring, compare the exact active branch/commit with the
 Recover the original producer from the source execution environment that generated the serialized archives, or recover the exact pre-standardized feature matrix together with its authoritative manifest, raw-field mapping, imputer/scaler artifacts, and golden fixtures. Do not reverse-engineer approximate formulas from output columns, substitute Regime V2 or Similarity dimensions, or rebuild the existing candle aggregation.
 
 Until source provenance and semantics are proven, affected Brain inputs remain `NOT_EVALUABLE`; full canonical backtest/E2E cannot be declared ready from schema, archive identity, alignment, or adapter tests alone.
+
+
+## 12. GitHub Actions archive-search artifact verification (2026-11-19)
+
+The GitHub Actions run `43798060902` and its retained artifact `14194444128` were fetched from GitHub and inspected read-only.
+
+Artifact facts:
+- Workflow conclusion: SUCCESS.
+- Exact full-project archive identity recorded in the artifact: 134,687,505 bytes; SHA-256 `f3f2b2452970a9a2afc13943a70f6c319bb0d14dc5cbd37a24d1cb184556ae26`.
+- ZIP entries inventoried: 67.
+- Producer-code candidates: ZERO.
+- Unread text candidates: ZERO.
+- Search scope: source-code/documentation text only; no CSV/Parquet/HDF5/Feather/XLSX market data rows were read; 2025 was not read or used.
+- The inventory includes the nested `AI_Trading_Assistant_MULTI_TIMEFRAME_READER_V1.zip` and MTF Architecture V2 documentation. The nested reader ZIP was inventoried by name but was not recursively unpacked by this search.
+
+Interpretation: this successful workflow proves only that the bounded archive text search completed and found no producer candidate in its declared scope. It does not prove that every nested archive or the original producer execution environment was exhaustively inspected. The nested reader remains a separately documented H4/H1 research-only component, not the six-timeframe producer.
+
+The Gate A artifact `14195058191` was also fetched from GitHub. Its machine-readable preflight confirms:
+- MTF: 671,601 rows; all 671,601 timestamps naive; 2,512 invalid/blank values across required trend/score fields; status BLOCKED.
+- Murphy: 87,225 rows; 32,400 naive timestamps; status BLOCKED.
+- H1, Market State, Historical Context, Historical Outcome, and Nison passed their respective source input preflight checks.
+- The full governed backtest authorization flag is false; 2025 remains locked and unused.
+
+These artifacts reinforce that successful archive search and successful annual-file assembly are not source-producer approval, and that the current MTF-to-Brain input path remains blocked by unresolved provenance/missingness.
