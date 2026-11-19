@@ -234,7 +234,8 @@ def run(*, h1:Path, market:Path, mtf:Path, murphy:Path, nison:Path, historical_c
         sim=memory_similarity_shadow(hc,c,ts)
         retrieval={"status":"CONNECTED_METADATA_ONLY","reason":"Current retrieval package is 2025 snapshot and is locked from dev consumption","direction":None,"final_trade_decision":None}
         risk_status="NOT_EVALUABLE"; risk_reason="NOT_A_DIRECTION_SOURCE"; sl=tp=None; exec_res={}
-        # Canonical MTF schema has no ATR field; do not infer or synthesize one.\n        atr=None
+        # Canonical MTF schema has no ATR field; do not infer or synthesize one.
+        atr=None
         if direction_ready and pd.notna(atr) and float(atr)>0:
             d="BUY" if mur_dir=="BULLISH" else "SELL"; entry=float(b.close); sl,tp=execution_plan(entry,float(atr),d)
             rr=evaluate_risk(equity=100000.0,entry=entry,stop_loss=sl,take_profit=tp,atr=float(atr),prior_loss_streak=0,peak_equity=100000.0)
