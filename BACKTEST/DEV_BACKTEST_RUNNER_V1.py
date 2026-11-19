@@ -10,6 +10,7 @@ it is never converted to PASS. Risk remains a real hard gate.
 import argparse
 import importlib.util
 import json
+import math
 import sys
 from pathlib import Path
 from typing import Any
@@ -19,6 +20,35 @@ import pandas as pd
 ROOT = Path(__file__).resolve().parents[1]
 ALLOWLIST = ROOT / "governance/DECISION_BRAIN_RULE_ALLOWLIST_V1.json"
 BRAIN_PATH = ROOT / "RECOVERED_SOURCES/DECISION_BRAIN_V1/decision_brain.py"
+
+
+REQUIRED_MTF_FIELDS = (
+    "mtf_trend_score",
+    "M5_trend_regime",
+    "M15_trend_regime",
+    "M30_trend_regime",
+    "H1_trend_regime",
+    "H4_trend_regime",
+    "D1_trend_regime",
+)
+
+
+def _parse_aware_timestamps(values: pd.Series, *, label: str) -> pd.Series:
+    """Reject naive timestamps; never infer UTC or broker/local clock semantics."""
+    normalized: list[pd.Timestamp] = []
+    for index, value in values.items():
+        try:
+            parsed = pd.Timestamp(value)
+        except (TypeError, ValueError, OverflowError) as exc:
+            raise ValueError(f"{label}: INVALID_TIMESTAMP at row {index}") from exc
+        if pd.isna(parsed):
+            raise ValueError(f"{label}: INVALID_TIMESTAMP at row {index}")
+        if parsed.tzinfo is None or parsed.utcoffset() is None:
+            raise ValueError(
+                f"{label}: TIMEZONE_PROVENANCE_UNRESOLVED_NAIVE_TIMESTAMP at row {index}"
+            )
+        normalized.append(parsed.tz_convert("UTC"))
+    return pd.Series(pd.DatetimeIndex(normalized), index=values.index, name=values.name)
 
 
 def read_csv(path: Path, required: set[str], *, chunksize: int | None = None) -> pd.DataFrame:
@@ -35,9 +65,9 @@ def read_csv(path: Path, required: set[str], *, chunksize: int | None = None) ->
     miss = sorted(required - set(df.columns))
     if miss:
         raise ValueError(f"{path}: missing {miss}")
-    df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True, errors="coerce", format="mixed")
-    if df["timestamp"].isna().any():
-        raise ValueError(f"{path}: invalid timestamp")
+    df["timestamp"] = _parse_aware_timestamps(df["timestamp"], label=str(path))
+    if df["timestamp"].duplicated().any():
+        raise ValueError(f"{path}: duplicate timestamps")
     return df.sort_values("timestamp").reset_index(drop=True)
 
 
@@ -107,18 +137,30 @@ def memory_similarity_shadow(hc: pd.DataFrame, query: dict[str, Any], ts: pd.Tim
 
 
 def build_row(market: dict[str,Any], mtf: dict[str,Any]) -> dict[str,Any]:
-    trend_map={"BULL_TREND":1.0,"BEAR_TREND":-1.0,"TRANSITION":0.0,"UNKNOWN":0.0}
-    out={k:0.0 for k in ["mtf_trend_score","M5_trend_regime","M15_trend_regime","M30_trend_regime","H1_trend_regime","H4_trend_regime","D1_trend_regime"]}
-    out.update({k:0.0 for k in ["M5_volume_regime","M15_volume_regime","M30_volume_regime","H1_volume_regime","H4_volume_regime","D1_volume_regime"]})
-    out["volume_available"]=False
-    if market:
-        if "trend" in market: out["H1_trend_regime"]=trend_map.get(str(market["trend"]).upper(),0.0)
-        for k in list(out):
-            if k in market and pd.notna(market[k]): out[k]=market[k]
-    if mtf:
-        out["mtf_trend_score"]=trend_map.get(str(mtf.get("trend","UNKNOWN")).upper(),0.0)
-        out["H4_trend_regime"]=trend_map.get(str(mtf.get("h4_trend","UNKNOWN")).upper(),0.0)
-        # Historical H1 source has volume=0, so never claim volume is available.
+    """Pass canonical source fields through unchanged; missing evidence is not zero."""
+    if not mtf:
+        raise ValueError("MTF_INPUT_NOT_EVALUABLE:NO_ASOF_SOURCE_ROW")
+    out: dict[str, Any] = {}
+    for field in REQUIRED_MTF_FIELDS:
+        raw = mtf.get(field)
+        if raw is None or (isinstance(raw, str) and not raw.strip()):
+            raise ValueError(f"MTF_INPUT_NOT_EVALUABLE:MISSING_OR_BLANK:{field}")
+        try:
+            value = float(raw)
+        except (TypeError, ValueError, OverflowError) as exc:
+            if pd.isna(raw):
+                raise ValueError(f"MTF_INPUT_NOT_EVALUABLE:MISSING_OR_BLANK:{field}") from exc
+            raise ValueError(f"MTF_INPUT_NOT_EVALUABLE:NON_NUMERIC:{field}") from exc
+        if not math.isfinite(value):
+            raise ValueError(f"MTF_INPUT_NOT_EVALUABLE:NON_FINITE:{field}")
+        out[field] = value
+
+    # Volume remains explicitly unavailable until its own source contract is integrated.
+    out.update({k: 0.0 for k in [
+        "M5_volume_regime", "M15_volume_regime", "M30_volume_regime",
+        "H1_volume_regime", "H4_volume_regime", "D1_volume_regime"
+    ]})
+    out["volume_available"] = False
     return out
 
 
@@ -144,7 +186,7 @@ def run(*, h1:Path, market:Path, mtf:Path, murphy:Path, nison:Path, historical_c
     bars=read_csv(h1,{"timestamp","open","high","low","close"})
     bars=bars[(bars.timestamp.dt.year>=2016)&(bars.timestamp.dt.year<=2024)].copy().reset_index(drop=True)
     ms=read_csv(market,{"timestamp"})
-    mtf_df=read_csv(mtf,{"timestamp"})
+    mtf_df=read_csv(mtf,{"timestamp", *REQUIRED_MTF_FIELDS})
     murphy_raw=read_csv(murphy,{"timestamp","status","direction","source_rule_id"})
     nison_raw=read_csv(nison,{"timestamp","status","direction","rule_id"},chunksize=400000)
     hc=read_csv(historical_context,{"timestamp","context_signature"})
@@ -165,7 +207,27 @@ def run(*, h1:Path, market:Path, mtf:Path, murphy:Path, nison:Path, historical_c
     for _,b in bars.iterrows():
         ts=b.timestamp
         market=asof_row(ms,ts); mtf=asof_row(mtf_df,ts); m=asof_row(am,ts); n=asof_row(an,ts); c=asof_row(hc,ts); o=asof_row(ho,ts)
-        row=build_row(market,mtf)
+        try:
+            row=build_row(market,mtf)
+        except ValueError as exc:
+            events.append({
+                "timestamp":ts,"market_state_asof":bool(market),"mtf_asof":bool(mtf),
+                "mtf_status":"NOT_EVALUABLE","mtf_reason":str(exc),
+                "murphy_direction":m.get("murphy_direction"),
+                "murphy_rule_count":int(m.get("murphy_rule_count",0) or 0),
+                "nison_confirmation":str(n.get("nison_confirmation") or "ABSENT"),
+                "nison_contradiction":bool(n.get("nison_contradiction",False)),
+                "nison_rule_count":int(n.get("nison_rule_count",0) or 0),
+                "historical_context_asof":bool(c),"historical_outcome_asof":bool(o),
+                "similarity_status":"NOT_EVALUABLE","similarity_candidates":0,
+                "retrieval_status":"NOT_EVALUABLE","tiz_status":"UNRESOLVED_OPTIONAL",
+                "brain_bias":None,"brain_confidence":None,
+                "handoff_routing":"ABSTAIN","handoff_abstain":True,
+                "direction_ready":False,"entry_price":float(b.close),"atr":None,
+                "risk_status":"NOT_EVALUABLE","risk_reason":"MTF_INPUT_NOT_EVALUABLE",
+                "stop_loss":None,"take_profit":None,"execution_outcome":None,"r_multiple":None,
+            })
+            continue
         assessment=brain.assess(row,similarity=None)
         mur_dir=m.get("murphy_direction"); ncontra=bool(n.get("nison_contradiction",False)); nconf=str(n.get("nison_confirmation") or "ABSENT")
         direction_ready=mur_dir in {"BULLISH","BEARISH"} and assessment.directional_bias==str(mur_dir).lower() and not ncontra
@@ -174,13 +236,14 @@ def run(*, h1:Path, market:Path, mtf:Path, murphy:Path, nison:Path, historical_c
         sim=memory_similarity_shadow(hc,c,ts)
         retrieval={"status":"CONNECTED_METADATA_ONLY","reason":"Current retrieval package is 2025 snapshot and is locked from dev consumption","direction":None,"final_trade_decision":None}
         risk_status="NOT_EVALUABLE"; risk_reason="NOT_A_DIRECTION_SOURCE"; sl=tp=None; exec_res={}
-        atr=mtf.get("atr") if mtf else None
+        # Canonical MTF schema has no ATR field; do not infer or synthesize one.
+        atr=None
         if direction_ready and pd.notna(atr) and float(atr)>0:
             d="BUY" if mur_dir=="BULLISH" else "SELL"; entry=float(b.close); sl,tp=execution_plan(entry,float(atr),d)
             rr=evaluate_risk(equity=100000.0,entry=entry,stop_loss=sl,take_profit=tp,atr=float(atr),prior_loss_streak=0,peak_equity=100000.0)
             risk_status="PASS" if rr.risk_pass else "FAIL"; risk_reason=rr.reason
             if rr.risk_pass and ts in bars_pos: exec_res=simulate(bars,bars_pos[ts],d,entry,sl,tp)
-        events.append({"timestamp":ts,"market_state_asof":bool(market),"mtf_asof":bool(mtf),"murphy_direction":mur_dir,"murphy_rule_count":int(m.get("murphy_rule_count",0) or 0),"nison_confirmation":nconf,"nison_contradiction":ncontra,"nison_rule_count":int(n.get("nison_rule_count",0) or 0),"historical_context_asof":bool(c),"historical_outcome_asof":bool(o),"similarity_status":sim["status"],"similarity_candidates":sim.get("candidate_count",0),"retrieval_status":retrieval["status"],"tiz_status":"UNRESOLVED_OPTIONAL","brain_bias":assessment.directional_bias,"brain_confidence":assessment.confidence,"handoff_routing":handoff["routing"],"handoff_abstain":handoff["gates"]["abstain"],"direction_ready":direction_ready,"entry_price":float(b.close),"atr":(float(atr) if pd.notna(atr) else None),"risk_status":risk_status,"risk_reason":risk_reason,"stop_loss":sl,"take_profit":tp,"execution_outcome":exec_res.get("outcome"),"r_multiple":exec_res.get("r_multiple")})
+        events.append({"timestamp":ts,"market_state_asof":bool(market),"mtf_asof":bool(mtf),"murphy_direction":mur_dir,"murphy_rule_count":int(m.get("murphy_rule_count",0) or 0),"nison_confirmation":nconf,"nison_contradiction":ncontra,"nison_rule_count":int(n.get("nison_rule_count",0) or 0),"historical_context_asof":bool(c),"historical_outcome_asof":bool(o),"similarity_status":sim["status"],"similarity_candidates":sim.get("candidate_count",0),"retrieval_status":retrieval["status"],"tiz_status":"UNRESOLVED_OPTIONAL","mtf_status":"PASS","mtf_reason":None,"brain_bias":assessment.directional_bias,"brain_confidence":assessment.confidence,"handoff_routing":handoff["routing"],"handoff_abstain":handoff["gates"]["abstain"],"direction_ready":direction_ready,"entry_price":float(b.close),"atr":(float(atr) if pd.notna(atr) else None),"risk_status":risk_status,"risk_reason":risk_reason,"stop_loss":sl,"take_profit":tp,"execution_outcome":exec_res.get("outcome"),"r_multiple":exec_res.get("r_multiple")})
         if exec_res: trades.append({"timestamp":ts,"direction":"BUY" if mur_dir=="BULLISH" else "SELL","entry_price":float(b.close),"atr":float(atr),"stop_loss":sl,"take_profit":tp,**exec_res})
     ev=pd.DataFrame(events); tr=pd.DataFrame(trades)
     output.mkdir(parents=True,exist_ok=True)
