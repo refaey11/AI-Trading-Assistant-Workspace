@@ -1,0 +1,27 @@
+name: MTF Producer V2 Prototype Tests
+
+on:
+  pull_request:
+    paths:
+      - "RUNTIME/MTF_PRODUCER_V2/**"
+      - ".github/workflows/mtf-producer-v2-tests.yml"
+  push:
+    branches:
+      - "design/mtf-producer-v2-alternative-contract-v1"
+    paths:
+      - "RUNTIME/MTF_PRODUCER_V2/**"
+      - ".github/workflows/mtf-producer-v2-tests.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  synthetic-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Run isolated deterministic tests
+        run: python -m unittest discover -s RUNTIME/MTF_PRODUCER_V2 -p "test_*.py" -v
