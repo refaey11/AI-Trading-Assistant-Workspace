@@ -202,10 +202,11 @@ These are evidence labels, not trade directions. A transition from one state to 
 
 ### 10.3 BOS and CHOCH event candidates
 
-- `BOS_UP`: a completed source-timeframe close is strictly above the latest confirmed swing high that was already available before that bar.
-- `BOS_DOWN`: a completed close is strictly below the latest confirmed swing low that was already available before that bar.
-- `CHOCH_DOWN`: while the last established structure state is `BULLISH_STRUCTURE`, a completed close is strictly below the latest confirmed swing low available before that bar.
-- `CHOCH_UP`: while the last established structure state is `BEARISH_STRUCTURE`, a completed close is strictly above the latest confirmed swing high available before that bar.
+- `BOS_UP`: while the prior established state is `BULLISH_STRUCTURE`, the completed close crosses from at/below to strictly above the latest confirmed swing high that was available before the break bar.
+- `BOS_DOWN`: while the prior established state is `BEARISH_STRUCTURE`, the completed close crosses from at/above to strictly below the latest confirmed swing low that was available before the break bar.
+- `CHOCH_DOWN`: while the prior established state is `BULLISH_STRUCTURE`, the completed close crosses from at/above to strictly below the latest confirmed swing low available before the break bar.
+- `CHOCH_UP`: while the prior established state is `BEARISH_STRUCTURE`, the completed close crosses from at/below to strictly above the latest confirmed swing high available before the break bar.
+- These four event types are mutually exclusive by the prior established state. A crossing is emitted once; remaining beyond the same boundary on later bars does not create repeated events.
 - Wick-only breaches are recorded, if desired, as a separate descriptive observation; they do not satisfy these close-confirmed event definitions.
 - Event `available_at` is the verified availability time of the completed break bar, and must be later than the pivot's own availability. No event may use a pivot that became confirmed on the same or a later bar unless its availability ordering is explicitly proven.
 - Event de-duplication, gap handling, event expiry, and repeated closes beyond the same level require a separate deterministic policy before code. Until then, emit raw event identity/evidence or mark the derived event unavailable; do not invent an expiry window.
@@ -267,3 +268,21 @@ The proposed semantic baseline is now concrete enough for review, but it is not 
 5. Confirm Dynamic MTF role selection consumes only validated evidence and resolve its documented context-role questions without changing the frozen resolver by assumption.
 
 Until those items are closed, PR #139 remains documentation-only and no producer code, runtime wiring, backtest, live decision, or order is authorized.
+
+
+## 13. User approval and isolated prototype implementation (2026-11-19)
+
+The user explicitly approved the proposed V2 semantic baseline. Approval applies to the new, independently versioned semantics described in this document; it does not assert historical equivalence to the missing legacy producer.
+
+An isolated deterministic prototype has now been added under `RUNTIME/MTF_PRODUCER_V2/`:
+- `mtf_structure_producer_v2.py`: consumes completed OHLC bars and already-confirmed pivots; emits per-bar categorical structure evidence and close-crossing BOS/CHOCH event candidates.
+- `test_mtf_structure_producer_v2.py`: synthetic tests for confirmation delay, HH/HL and LH/LL, mixed/equal pivots, insufficient history, BOS, CHOCH, wick-only rejection, crossing-only event emission, future-bar perturbation, MTF conflict, unvalidated provenance, unclosed bars, and invalid early confirmation.
+- `README.md`: isolated prototype scope and limitations.
+- `.github/workflows/mtf-producer-v2-tests.yml`: GitHub Actions workflow for the synthetic test suite.
+
+Important implementation boundaries:
+1. The prototype consumes pivot events; it does not implement or replace PIVOT_SEQUENCE_V2.
+2. It enforces the minimum two-bar confirmation delay reported by the inspected H1 audit, but that does not prove the canonical pivot producer/schema for all six TFs.
+3. All rows explicitly remain `PROVENANCE_UNVALIDATED`; a caller-supplied clock policy identifier is not treated as proof.
+4. No market-data backtest, 2025 data, Decision Brain adapter, legacy-field alias, runtime wiring, trade direction, or order path is included.
+5. The synthetic suite must pass in GitHub Actions before this prototype can be called test-verified. Even after passing, the six-TF producer and independent provenance/as-of validation gates remain open.
