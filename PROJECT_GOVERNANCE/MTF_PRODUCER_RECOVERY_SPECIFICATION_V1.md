@@ -262,3 +262,38 @@ The Gate A artifact `14195058191` was also fetched from GitHub. Its machine-read
 - The full governed backtest authorization flag is false; 2025 remains locked and unused.
 
 These artifacts reinforce that successful archive search and successful annual-file assembly are not source-producer approval, and that the current MTF-to-Brain input path remains blocked by unresolved provenance/missingness.
+
+## 13. GitHub-only search boundary and archive-search coverage limitation (2026-11-19)
+
+A further read-only inspection of the historical mtf-producer-search-2026-11-16 branch identified an important limitation in the prior archive-search workflow.
+
+### 13.1 Historical workflow dependency
+
+The workflow .github/workflows/mtf-producer-source-search-2026-11-16.yml downloads /AI_Trading_Assistant_FULL_PROJECT_V1.zip using a DROPBOX_ACCESS_TOKEN GitHub Actions secret before running the source-search script. Its historical run 43798060902 completed successfully, and the job log metadata confirms the Dropbox download step ran successfully.
+
+This is historical provenance only. The current recovery work is constrained to GitHub repository content and GitHub Actions metadata already available in GitHub. Do not rerun this workflow, request/use Dropbox credentials, or retrieve the original archive through Dropbox as part of the GitHub-only recovery path.
+
+### 13.2 Search implementation coverage
+
+The checked-in BACKTEST/MTF_PRODUCER_SOURCE_ARCHIVE_SEARCH_V1.py:
+- inventories ZIP entries and searches eligible text/code files;
+- does not recursively open nested ZIP archives;
+- does not inspect non-text binary members as producer source;
+- skips eligible text files larger than its 2 MiB limit and records them as unread candidates;
+- reports source-code candidates based on lexical term matches only, not producer authority.
+
+Therefore, the prior zero-candidate result is bounded to the files actually inspected. It is not an exhaustive proof that every nested archive or binary payload lacks source code. The nested AI_Trading_Assistant_MULTI_TIMEFRAME_READER_V1.zip was inventoried by name but not recursively inspected by that workflow.
+
+### 13.3 GitHub-only follow-up scope
+
+Continue with GitHub-hosted evidence only:
+1. inspect repository trees and commits for tracked archive objects, manifests, source snapshots, notebooks, and producer-related code across relevant historical branches;
+2. inspect any GitHub-hosted nested archive only if it is actually present as a repository object and can be accessed through GitHub;
+3. inspect existing GitHub Actions logs/artifacts as historical evidence, while clearly preserving their recorded source provenance;
+4. keep Similarity 57D current/query vector lineage separate from MTF numeric producer recovery.
+
+If the required archive/source exists only in Dropbox or an unavailable external execution environment, record that as an external source dependency and stop. Do not silently cross the GitHub-only boundary.
+
+### 13.4 Current conclusion
+
+The original six-timeframe MTF numeric producer remains NOT RECOVERED. The previous successful archive-search workflow is not a basis for closing the search because it used an external Dropbox download and did not recursively inspect nested ZIP contents. No formula reconstruction, replacement producer, imputation, or runtime change is authorized by this finding.
