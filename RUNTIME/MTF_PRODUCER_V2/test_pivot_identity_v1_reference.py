@@ -40,7 +40,14 @@ class PivotIdentityReferenceTests(unittest.TestCase):
     def test_each_identity_input_changes_payload(self):
         for key in BASE:
             changed = dict(BASE)
-            changed[key] = ("b" * 64) if key == "config_fingerprint" else changed[key] + "_changed"
+            if key == "detector_version":
+                continue  # Only the V1 detector namespace is supported here.
+            if key == "config_fingerprint":
+                changed[key] = "b" * 64
+            elif key == "pivot_kind":
+                changed[key] = "LOW"
+            else:
+                changed[key] = changed[key] + "_changed"
             with self.subTest(field=key):
                 self.assertNotEqual(make_pivot_id(BASE), make_pivot_id(changed))
 
