@@ -1,0 +1,29 @@
+name: MTF Pivot V2 Fixture Corpus
+
+on:
+  pull_request:
+    paths:
+      - "RUNTIME/MTF_PRODUCER_V2/fixtures/pivot_detector_v2_synthetic_golden_fixtures_v1.json"
+      - "RUNTIME/MTF_PRODUCER_V2/test_pivot_detector_v2_fixture_corpus.py"
+      - ".github/workflows/mtf-pivot-v2-fixtures.yml"
+  push:
+    branches:
+      - "spec/mtf-v2-pivot-detector-proposal-v1"
+    paths:
+      - "RUNTIME/MTF_PRODUCER_V2/fixtures/pivot_detector_v2_synthetic_golden_fixtures_v1.json"
+      - "RUNTIME/MTF_PRODUCER_V2/test_pivot_detector_v2_fixture_corpus.py"
+      - ".github/workflows/mtf-pivot-v2-fixtures.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  fixture-corpus:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Validate synthetic fixture corpus
+        run: python -m unittest RUNTIME.MTF_PRODUCER_V2.test_pivot_detector_v2_fixture_corpus -v
