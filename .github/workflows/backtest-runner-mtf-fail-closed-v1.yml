@@ -4,6 +4,7 @@ on:
   pull_request:
     paths:
       - "BACKTEST/DEV_BACKTEST_RUNNER_V1.py"
+      - "BACKTEST/mtf_source_contract_gate_v1.py"
       - "BACKTEST/test_dev_backtest_runner_mtf_safety_v1.py"
       - ".github/workflows/backtest-runner-mtf-fail-closed-v1.yml"
   push:
@@ -11,6 +12,7 @@ on:
       - "fix/backtest-runner-mtf-fail-closed-v1"
     paths:
       - "BACKTEST/DEV_BACKTEST_RUNNER_V1.py"
+      - "BACKTEST/mtf_source_contract_gate_v1.py"
       - "BACKTEST/test_dev_backtest_runner_mtf_safety_v1.py"
       - ".github/workflows/backtest-runner-mtf-fail-closed-v1.yml"
 
