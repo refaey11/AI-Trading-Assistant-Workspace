@@ -312,6 +312,58 @@
       }
     },
     {
+      "id": "D1_W2_INVALID_OHLC",
+      "timeframe": "D1",
+      "window": {
+        "left": 2,
+        "right": 2
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 4,
+          "low": 8,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {},
+      "expected": {
+        "candidate_index": 2,
+        "status": "UNAVAILABLE",
+        "reason": "INVALID_OHLC"
+      }
+    },
+    {
       "id": "D1_W2_ISOLATED_HIGH",
       "timeframe": "D1",
       "window": {
@@ -451,6 +503,115 @@
       }
     },
     {
+      "id": "D1_W2_MISSING_CLOCK_PROVENANCE",
+      "timeframe": "D1",
+      "window": {
+        "left": 2,
+        "right": 2
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 20,
+          "low": 5,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {
+        "clock_evidence": null,
+        "source_payload_sha256": "synthetic-placeholder-not-authentic"
+      },
+      "expected": {
+        "candidate_index": 2,
+        "status": "UNAVAILABLE",
+        "reason": "VERIFIED_AVAILABILITY_MISSING"
+      }
+    },
+    {
+      "id": "D1_W2_MISSING_PRECISION_METADATA",
+      "timeframe": "D1",
+      "window": {
+        "left": 2,
+        "right": 2
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 20,
+          "low": 5,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {
+        "instrument_precision": null
+      },
+      "expected": {
+        "candidate_index": 2,
+        "status": "NOT_EVALUABLE",
+        "reason": "TRUSTED_PRICE_PRECISION_MISSING"
+      }
+    },
+    {
       "id": "D1_W2_RIGHT_WINDOW_INCOMPLETE",
       "timeframe": "D1",
       "window": {
@@ -544,6 +705,174 @@
         "status": "BOTH_CANDIDATES_ORDER_UNRESOLVED",
         "high_candidate": true,
         "low_candidate": true
+      }
+    },
+    {
+      "id": "D1_W2_UNFINISHED_CONFIRMING_BAR",
+      "timeframe": "D1",
+      "window": {
+        "left": 2,
+        "right": 2
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 20,
+          "low": 5,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": false,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {},
+      "expected": {
+        "candidate_index": 2,
+        "status": "PENDING",
+        "reason": "CONFIRMING_BAR_NOT_COMPLETED"
+      }
+    },
+    {
+      "id": "D1_W2_WARMUP_WITH_ORIGINAL_PROVENANCE",
+      "timeframe": "D1",
+      "window": {
+        "left": 2,
+        "right": 2
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 20,
+          "low": 5,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {
+        "warmup": {
+          "source_bar_id": "source-bar-original-001",
+          "available_at": "2030-01-01T00:00:00Z",
+          "provenance_ref": "synthetic-fixture-reference"
+        }
+      },
+      "expected": {
+        "candidate_index": 2,
+        "status": "WARMUP_CONTEXT_ACCEPTABLE_ONLY_IF_VERIFIED",
+        "seed_pivot_consumable": true
+      }
+    },
+    {
+      "id": "D1_W2_WARMUP_WITHOUT_ORIGINAL_PROVENANCE",
+      "timeframe": "D1",
+      "window": {
+        "left": 2,
+        "right": 2
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 20,
+          "low": 5,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {
+        "warmup": {
+          "source_bar_id": null,
+          "available_at": null,
+          "provenance_ref": null
+        }
+      },
+      "expected": {
+        "candidate_index": 2,
+        "status": "NOT_EVALUABLE",
+        "reason": "WARMUP_SOURCE_IDENTITY_OR_PROVENANCE_MISSING"
       }
     },
     {
@@ -890,6 +1219,72 @@
       }
     },
     {
+      "id": "D1_W3_INVALID_OHLC",
+      "timeframe": "D1",
+      "window": {
+        "left": 3,
+        "right": 3
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 4,
+          "low": 8,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 5,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 6,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {},
+      "expected": {
+        "candidate_index": 3,
+        "status": "UNAVAILABLE",
+        "reason": "INVALID_OHLC"
+      }
+    },
+    {
       "id": "D1_W3_ISOLATED_HIGH",
       "timeframe": "D1",
       "window": {
@@ -1064,6 +1459,143 @@
       }
     },
     {
+      "id": "D1_W3_MISSING_CLOCK_PROVENANCE",
+      "timeframe": "D1",
+      "window": {
+        "left": 3,
+        "right": 3
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 20,
+          "low": 5,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 5,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 6,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {
+        "clock_evidence": null,
+        "source_payload_sha256": "synthetic-placeholder-not-authentic"
+      },
+      "expected": {
+        "candidate_index": 3,
+        "status": "UNAVAILABLE",
+        "reason": "VERIFIED_AVAILABILITY_MISSING"
+      }
+    },
+    {
+      "id": "D1_W3_MISSING_PRECISION_METADATA",
+      "timeframe": "D1",
+      "window": {
+        "left": 3,
+        "right": 3
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 20,
+          "low": 5,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 5,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 6,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {
+        "instrument_precision": null
+      },
+      "expected": {
+        "candidate_index": 3,
+        "status": "NOT_EVALUABLE",
+        "reason": "TRUSTED_PRICE_PRECISION_MISSING"
+      }
+    },
+    {
       "id": "D1_W3_RIGHT_WINDOW_INCOMPLETE",
       "timeframe": "D1",
       "window": {
@@ -1185,6 +1717,216 @@
         "status": "BOTH_CANDIDATES_ORDER_UNRESOLVED",
         "high_candidate": true,
         "low_candidate": true
+      }
+    },
+    {
+      "id": "D1_W3_UNFINISHED_CONFIRMING_BAR",
+      "timeframe": "D1",
+      "window": {
+        "left": 3,
+        "right": 3
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 20,
+          "low": 5,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 5,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 6,
+          "high": 10,
+          "low": 9,
+          "closed": false,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {},
+      "expected": {
+        "candidate_index": 3,
+        "status": "PENDING",
+        "reason": "CONFIRMING_BAR_NOT_COMPLETED"
+      }
+    },
+    {
+      "id": "D1_W3_WARMUP_WITH_ORIGINAL_PROVENANCE",
+      "timeframe": "D1",
+      "window": {
+        "left": 3,
+        "right": 3
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 20,
+          "low": 5,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 5,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 6,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {
+        "warmup": {
+          "source_bar_id": "source-bar-original-001",
+          "available_at": "2030-01-01T00:00:00Z",
+          "provenance_ref": "synthetic-fixture-reference"
+        }
+      },
+      "expected": {
+        "candidate_index": 3,
+        "status": "WARMUP_CONTEXT_ACCEPTABLE_ONLY_IF_VERIFIED",
+        "seed_pivot_consumable": true
+      }
+    },
+    {
+      "id": "D1_W3_WARMUP_WITHOUT_ORIGINAL_PROVENANCE",
+      "timeframe": "D1",
+      "window": {
+        "left": 3,
+        "right": 3
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 20,
+          "low": 5,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 5,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 6,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {
+        "warmup": {
+          "source_bar_id": null,
+          "available_at": null,
+          "provenance_ref": null
+        }
+      },
+      "expected": {
+        "candidate_index": 3,
+        "status": "NOT_EVALUABLE",
+        "reason": "WARMUP_SOURCE_IDENTITY_OR_PROVENANCE_MISSING"
       }
     },
     {
@@ -1671,6 +2413,100 @@
       }
     },
     {
+      "id": "D1_W5_INVALID_OHLC",
+      "timeframe": "D1",
+      "window": {
+        "left": 5,
+        "right": 5
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 5,
+          "high": 4,
+          "low": 8,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 6,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 7,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 8,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 9,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 10,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {},
+      "expected": {
+        "candidate_index": 5,
+        "status": "UNAVAILABLE",
+        "reason": "INVALID_OHLC"
+      }
+    },
+    {
       "id": "D1_W5_ISOLATED_HIGH",
       "timeframe": "D1",
       "window": {
@@ -1915,6 +2751,199 @@
       }
     },
     {
+      "id": "D1_W5_MISSING_CLOCK_PROVENANCE",
+      "timeframe": "D1",
+      "window": {
+        "left": 5,
+        "right": 5
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 5,
+          "high": 20,
+          "low": 5,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 6,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 7,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 8,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 9,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 10,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {
+        "clock_evidence": null,
+        "source_payload_sha256": "synthetic-placeholder-not-authentic"
+      },
+      "expected": {
+        "candidate_index": 5,
+        "status": "UNAVAILABLE",
+        "reason": "VERIFIED_AVAILABILITY_MISSING"
+      }
+    },
+    {
+      "id": "D1_W5_MISSING_PRECISION_METADATA",
+      "timeframe": "D1",
+      "window": {
+        "left": 5,
+        "right": 5
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 5,
+          "high": 20,
+          "low": 5,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 6,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 7,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 8,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 9,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 10,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {
+        "instrument_precision": null
+      },
+      "expected": {
+        "candidate_index": 5,
+        "status": "NOT_EVALUABLE",
+        "reason": "TRUSTED_PRICE_PRECISION_MISSING"
+      }
+    },
+    {
       "id": "D1_W5_RIGHT_WINDOW_INCOMPLETE",
       "timeframe": "D1",
       "window": {
@@ -2092,6 +3121,300 @@
         "status": "BOTH_CANDIDATES_ORDER_UNRESOLVED",
         "high_candidate": true,
         "low_candidate": true
+      }
+    },
+    {
+      "id": "D1_W5_UNFINISHED_CONFIRMING_BAR",
+      "timeframe": "D1",
+      "window": {
+        "left": 5,
+        "right": 5
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 5,
+          "high": 20,
+          "low": 5,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 6,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 7,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 8,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 9,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 10,
+          "high": 10,
+          "low": 9,
+          "closed": false,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {},
+      "expected": {
+        "candidate_index": 5,
+        "status": "PENDING",
+        "reason": "CONFIRMING_BAR_NOT_COMPLETED"
+      }
+    },
+    {
+      "id": "D1_W5_WARMUP_WITH_ORIGINAL_PROVENANCE",
+      "timeframe": "D1",
+      "window": {
+        "left": 5,
+        "right": 5
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 5,
+          "high": 20,
+          "low": 5,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 6,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 7,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 8,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 9,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 10,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {
+        "warmup": {
+          "source_bar_id": "source-bar-original-001",
+          "available_at": "2030-01-01T00:00:00Z",
+          "provenance_ref": "synthetic-fixture-reference"
+        }
+      },
+      "expected": {
+        "candidate_index": 5,
+        "status": "WARMUP_CONTEXT_ACCEPTABLE_ONLY_IF_VERIFIED",
+        "seed_pivot_consumable": true
+      }
+    },
+    {
+      "id": "D1_W5_WARMUP_WITHOUT_ORIGINAL_PROVENANCE",
+      "timeframe": "D1",
+      "window": {
+        "left": 5,
+        "right": 5
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 5,
+          "high": 20,
+          "low": 5,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 6,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 7,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 8,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 9,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 10,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {
+        "warmup": {
+          "source_bar_id": null,
+          "available_at": null,
+          "provenance_ref": null
+        }
+      },
+      "expected": {
+        "candidate_index": 5,
+        "status": "NOT_EVALUABLE",
+        "reason": "WARMUP_SOURCE_IDENTITY_OR_PROVENANCE_MISSING"
       }
     },
     {
@@ -2368,6 +3691,58 @@
       }
     },
     {
+      "id": "H1_W2_INVALID_OHLC",
+      "timeframe": "H1",
+      "window": {
+        "left": 2,
+        "right": 2
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 4,
+          "low": 8,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {},
+      "expected": {
+        "candidate_index": 2,
+        "status": "UNAVAILABLE",
+        "reason": "INVALID_OHLC"
+      }
+    },
+    {
       "id": "H1_W2_ISOLATED_HIGH",
       "timeframe": "H1",
       "window": {
@@ -2507,6 +3882,115 @@
       }
     },
     {
+      "id": "H1_W2_MISSING_CLOCK_PROVENANCE",
+      "timeframe": "H1",
+      "window": {
+        "left": 2,
+        "right": 2
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 20,
+          "low": 5,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {
+        "clock_evidence": null,
+        "source_payload_sha256": "synthetic-placeholder-not-authentic"
+      },
+      "expected": {
+        "candidate_index": 2,
+        "status": "UNAVAILABLE",
+        "reason": "VERIFIED_AVAILABILITY_MISSING"
+      }
+    },
+    {
+      "id": "H1_W2_MISSING_PRECISION_METADATA",
+      "timeframe": "H1",
+      "window": {
+        "left": 2,
+        "right": 2
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 20,
+          "low": 5,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {
+        "instrument_precision": null
+      },
+      "expected": {
+        "candidate_index": 2,
+        "status": "NOT_EVALUABLE",
+        "reason": "TRUSTED_PRICE_PRECISION_MISSING"
+      }
+    },
+    {
       "id": "H1_W2_RIGHT_WINDOW_INCOMPLETE",
       "timeframe": "H1",
       "window": {
@@ -2600,6 +4084,174 @@
         "status": "BOTH_CANDIDATES_ORDER_UNRESOLVED",
         "high_candidate": true,
         "low_candidate": true
+      }
+    },
+    {
+      "id": "H1_W2_UNFINISHED_CONFIRMING_BAR",
+      "timeframe": "H1",
+      "window": {
+        "left": 2,
+        "right": 2
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 20,
+          "low": 5,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": false,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {},
+      "expected": {
+        "candidate_index": 2,
+        "status": "PENDING",
+        "reason": "CONFIRMING_BAR_NOT_COMPLETED"
+      }
+    },
+    {
+      "id": "H1_W2_WARMUP_WITH_ORIGINAL_PROVENANCE",
+      "timeframe": "H1",
+      "window": {
+        "left": 2,
+        "right": 2
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 20,
+          "low": 5,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {
+        "warmup": {
+          "source_bar_id": "source-bar-original-001",
+          "available_at": "2030-01-01T00:00:00Z",
+          "provenance_ref": "synthetic-fixture-reference"
+        }
+      },
+      "expected": {
+        "candidate_index": 2,
+        "status": "WARMUP_CONTEXT_ACCEPTABLE_ONLY_IF_VERIFIED",
+        "seed_pivot_consumable": true
+      }
+    },
+    {
+      "id": "H1_W2_WARMUP_WITHOUT_ORIGINAL_PROVENANCE",
+      "timeframe": "H1",
+      "window": {
+        "left": 2,
+        "right": 2
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 20,
+          "low": 5,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {
+        "warmup": {
+          "source_bar_id": null,
+          "available_at": null,
+          "provenance_ref": null
+        }
+      },
+      "expected": {
+        "candidate_index": 2,
+        "status": "NOT_EVALUABLE",
+        "reason": "WARMUP_SOURCE_IDENTITY_OR_PROVENANCE_MISSING"
       }
     },
     {
@@ -2946,6 +4598,72 @@
       }
     },
     {
+      "id": "H1_W3_INVALID_OHLC",
+      "timeframe": "H1",
+      "window": {
+        "left": 3,
+        "right": 3
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 4,
+          "low": 8,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 5,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 6,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {},
+      "expected": {
+        "candidate_index": 3,
+        "status": "UNAVAILABLE",
+        "reason": "INVALID_OHLC"
+      }
+    },
+    {
       "id": "H1_W3_ISOLATED_HIGH",
       "timeframe": "H1",
       "window": {
@@ -3120,6 +4838,143 @@
       }
     },
     {
+      "id": "H1_W3_MISSING_CLOCK_PROVENANCE",
+      "timeframe": "H1",
+      "window": {
+        "left": 3,
+        "right": 3
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 20,
+          "low": 5,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 5,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 6,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {
+        "clock_evidence": null,
+        "source_payload_sha256": "synthetic-placeholder-not-authentic"
+      },
+      "expected": {
+        "candidate_index": 3,
+        "status": "UNAVAILABLE",
+        "reason": "VERIFIED_AVAILABILITY_MISSING"
+      }
+    },
+    {
+      "id": "H1_W3_MISSING_PRECISION_METADATA",
+      "timeframe": "H1",
+      "window": {
+        "left": 3,
+        "right": 3
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 20,
+          "low": 5,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 5,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 6,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {
+        "instrument_precision": null
+      },
+      "expected": {
+        "candidate_index": 3,
+        "status": "NOT_EVALUABLE",
+        "reason": "TRUSTED_PRICE_PRECISION_MISSING"
+      }
+    },
+    {
       "id": "H1_W3_RIGHT_WINDOW_INCOMPLETE",
       "timeframe": "H1",
       "window": {
@@ -3241,6 +5096,216 @@
         "status": "BOTH_CANDIDATES_ORDER_UNRESOLVED",
         "high_candidate": true,
         "low_candidate": true
+      }
+    },
+    {
+      "id": "H1_W3_UNFINISHED_CONFIRMING_BAR",
+      "timeframe": "H1",
+      "window": {
+        "left": 3,
+        "right": 3
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 20,
+          "low": 5,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 5,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 6,
+          "high": 10,
+          "low": 9,
+          "closed": false,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {},
+      "expected": {
+        "candidate_index": 3,
+        "status": "PENDING",
+        "reason": "CONFIRMING_BAR_NOT_COMPLETED"
+      }
+    },
+    {
+      "id": "H1_W3_WARMUP_WITH_ORIGINAL_PROVENANCE",
+      "timeframe": "H1",
+      "window": {
+        "left": 3,
+        "right": 3
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 20,
+          "low": 5,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 5,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 6,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {
+        "warmup": {
+          "source_bar_id": "source-bar-original-001",
+          "available_at": "2030-01-01T00:00:00Z",
+          "provenance_ref": "synthetic-fixture-reference"
+        }
+      },
+      "expected": {
+        "candidate_index": 3,
+        "status": "WARMUP_CONTEXT_ACCEPTABLE_ONLY_IF_VERIFIED",
+        "seed_pivot_consumable": true
+      }
+    },
+    {
+      "id": "H1_W3_WARMUP_WITHOUT_ORIGINAL_PROVENANCE",
+      "timeframe": "H1",
+      "window": {
+        "left": 3,
+        "right": 3
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 20,
+          "low": 5,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 5,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 6,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {
+        "warmup": {
+          "source_bar_id": null,
+          "available_at": null,
+          "provenance_ref": null
+        }
+      },
+      "expected": {
+        "candidate_index": 3,
+        "status": "NOT_EVALUABLE",
+        "reason": "WARMUP_SOURCE_IDENTITY_OR_PROVENANCE_MISSING"
       }
     },
     {
@@ -3727,6 +5792,100 @@
       }
     },
     {
+      "id": "H1_W5_INVALID_OHLC",
+      "timeframe": "H1",
+      "window": {
+        "left": 5,
+        "right": 5
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 5,
+          "high": 4,
+          "low": 8,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 6,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 7,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 8,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 9,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 10,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {},
+      "expected": {
+        "candidate_index": 5,
+        "status": "UNAVAILABLE",
+        "reason": "INVALID_OHLC"
+      }
+    },
+    {
       "id": "H1_W5_ISOLATED_HIGH",
       "timeframe": "H1",
       "window": {
@@ -3971,6 +6130,199 @@
       }
     },
     {
+      "id": "H1_W5_MISSING_CLOCK_PROVENANCE",
+      "timeframe": "H1",
+      "window": {
+        "left": 5,
+        "right": 5
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 5,
+          "high": 20,
+          "low": 5,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 6,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 7,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 8,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 9,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 10,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {
+        "clock_evidence": null,
+        "source_payload_sha256": "synthetic-placeholder-not-authentic"
+      },
+      "expected": {
+        "candidate_index": 5,
+        "status": "UNAVAILABLE",
+        "reason": "VERIFIED_AVAILABILITY_MISSING"
+      }
+    },
+    {
+      "id": "H1_W5_MISSING_PRECISION_METADATA",
+      "timeframe": "H1",
+      "window": {
+        "left": 5,
+        "right": 5
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 5,
+          "high": 20,
+          "low": 5,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 6,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 7,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 8,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 9,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 10,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {
+        "instrument_precision": null
+      },
+      "expected": {
+        "candidate_index": 5,
+        "status": "NOT_EVALUABLE",
+        "reason": "TRUSTED_PRICE_PRECISION_MISSING"
+      }
+    },
+    {
       "id": "H1_W5_RIGHT_WINDOW_INCOMPLETE",
       "timeframe": "H1",
       "window": {
@@ -4148,6 +6500,300 @@
         "status": "BOTH_CANDIDATES_ORDER_UNRESOLVED",
         "high_candidate": true,
         "low_candidate": true
+      }
+    },
+    {
+      "id": "H1_W5_UNFINISHED_CONFIRMING_BAR",
+      "timeframe": "H1",
+      "window": {
+        "left": 5,
+        "right": 5
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 5,
+          "high": 20,
+          "low": 5,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 6,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 7,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 8,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 9,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 10,
+          "high": 10,
+          "low": 9,
+          "closed": false,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {},
+      "expected": {
+        "candidate_index": 5,
+        "status": "PENDING",
+        "reason": "CONFIRMING_BAR_NOT_COMPLETED"
+      }
+    },
+    {
+      "id": "H1_W5_WARMUP_WITH_ORIGINAL_PROVENANCE",
+      "timeframe": "H1",
+      "window": {
+        "left": 5,
+        "right": 5
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 5,
+          "high": 20,
+          "low": 5,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 6,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 7,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 8,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 9,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 10,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {
+        "warmup": {
+          "source_bar_id": "source-bar-original-001",
+          "available_at": "2030-01-01T00:00:00Z",
+          "provenance_ref": "synthetic-fixture-reference"
+        }
+      },
+      "expected": {
+        "candidate_index": 5,
+        "status": "WARMUP_CONTEXT_ACCEPTABLE_ONLY_IF_VERIFIED",
+        "seed_pivot_consumable": true
+      }
+    },
+    {
+      "id": "H1_W5_WARMUP_WITHOUT_ORIGINAL_PROVENANCE",
+      "timeframe": "H1",
+      "window": {
+        "left": 5,
+        "right": 5
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 5,
+          "high": 20,
+          "low": 5,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 6,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 7,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 8,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 9,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 10,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {
+        "warmup": {
+          "source_bar_id": null,
+          "available_at": null,
+          "provenance_ref": null
+        }
+      },
+      "expected": {
+        "candidate_index": 5,
+        "status": "NOT_EVALUABLE",
+        "reason": "WARMUP_SOURCE_IDENTITY_OR_PROVENANCE_MISSING"
       }
     },
     {
@@ -4424,6 +7070,58 @@
       }
     },
     {
+      "id": "H4_W2_INVALID_OHLC",
+      "timeframe": "H4",
+      "window": {
+        "left": 2,
+        "right": 2
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 4,
+          "low": 8,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {},
+      "expected": {
+        "candidate_index": 2,
+        "status": "UNAVAILABLE",
+        "reason": "INVALID_OHLC"
+      }
+    },
+    {
       "id": "H4_W2_ISOLATED_HIGH",
       "timeframe": "H4",
       "window": {
@@ -4563,6 +7261,115 @@
       }
     },
     {
+      "id": "H4_W2_MISSING_CLOCK_PROVENANCE",
+      "timeframe": "H4",
+      "window": {
+        "left": 2,
+        "right": 2
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 20,
+          "low": 5,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {
+        "clock_evidence": null,
+        "source_payload_sha256": "synthetic-placeholder-not-authentic"
+      },
+      "expected": {
+        "candidate_index": 2,
+        "status": "UNAVAILABLE",
+        "reason": "VERIFIED_AVAILABILITY_MISSING"
+      }
+    },
+    {
+      "id": "H4_W2_MISSING_PRECISION_METADATA",
+      "timeframe": "H4",
+      "window": {
+        "left": 2,
+        "right": 2
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 20,
+          "low": 5,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {
+        "instrument_precision": null
+      },
+      "expected": {
+        "candidate_index": 2,
+        "status": "NOT_EVALUABLE",
+        "reason": "TRUSTED_PRICE_PRECISION_MISSING"
+      }
+    },
+    {
       "id": "H4_W2_RIGHT_WINDOW_INCOMPLETE",
       "timeframe": "H4",
       "window": {
@@ -4656,6 +7463,174 @@
         "status": "BOTH_CANDIDATES_ORDER_UNRESOLVED",
         "high_candidate": true,
         "low_candidate": true
+      }
+    },
+    {
+      "id": "H4_W2_UNFINISHED_CONFIRMING_BAR",
+      "timeframe": "H4",
+      "window": {
+        "left": 2,
+        "right": 2
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 20,
+          "low": 5,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": false,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {},
+      "expected": {
+        "candidate_index": 2,
+        "status": "PENDING",
+        "reason": "CONFIRMING_BAR_NOT_COMPLETED"
+      }
+    },
+    {
+      "id": "H4_W2_WARMUP_WITH_ORIGINAL_PROVENANCE",
+      "timeframe": "H4",
+      "window": {
+        "left": 2,
+        "right": 2
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 20,
+          "low": 5,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {
+        "warmup": {
+          "source_bar_id": "source-bar-original-001",
+          "available_at": "2030-01-01T00:00:00Z",
+          "provenance_ref": "synthetic-fixture-reference"
+        }
+      },
+      "expected": {
+        "candidate_index": 2,
+        "status": "WARMUP_CONTEXT_ACCEPTABLE_ONLY_IF_VERIFIED",
+        "seed_pivot_consumable": true
+      }
+    },
+    {
+      "id": "H4_W2_WARMUP_WITHOUT_ORIGINAL_PROVENANCE",
+      "timeframe": "H4",
+      "window": {
+        "left": 2,
+        "right": 2
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 20,
+          "low": 5,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {
+        "warmup": {
+          "source_bar_id": null,
+          "available_at": null,
+          "provenance_ref": null
+        }
+      },
+      "expected": {
+        "candidate_index": 2,
+        "status": "NOT_EVALUABLE",
+        "reason": "WARMUP_SOURCE_IDENTITY_OR_PROVENANCE_MISSING"
       }
     },
     {
@@ -5002,6 +7977,72 @@
       }
     },
     {
+      "id": "H4_W3_INVALID_OHLC",
+      "timeframe": "H4",
+      "window": {
+        "left": 3,
+        "right": 3
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 4,
+          "low": 8,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 5,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 6,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {},
+      "expected": {
+        "candidate_index": 3,
+        "status": "UNAVAILABLE",
+        "reason": "INVALID_OHLC"
+      }
+    },
+    {
       "id": "H4_W3_ISOLATED_HIGH",
       "timeframe": "H4",
       "window": {
@@ -5176,6 +8217,143 @@
       }
     },
     {
+      "id": "H4_W3_MISSING_CLOCK_PROVENANCE",
+      "timeframe": "H4",
+      "window": {
+        "left": 3,
+        "right": 3
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 20,
+          "low": 5,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 5,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 6,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {
+        "clock_evidence": null,
+        "source_payload_sha256": "synthetic-placeholder-not-authentic"
+      },
+      "expected": {
+        "candidate_index": 3,
+        "status": "UNAVAILABLE",
+        "reason": "VERIFIED_AVAILABILITY_MISSING"
+      }
+    },
+    {
+      "id": "H4_W3_MISSING_PRECISION_METADATA",
+      "timeframe": "H4",
+      "window": {
+        "left": 3,
+        "right": 3
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 20,
+          "low": 5,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 5,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 6,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {
+        "instrument_precision": null
+      },
+      "expected": {
+        "candidate_index": 3,
+        "status": "NOT_EVALUABLE",
+        "reason": "TRUSTED_PRICE_PRECISION_MISSING"
+      }
+    },
+    {
       "id": "H4_W3_RIGHT_WINDOW_INCOMPLETE",
       "timeframe": "H4",
       "window": {
@@ -5297,6 +8475,216 @@
         "status": "BOTH_CANDIDATES_ORDER_UNRESOLVED",
         "high_candidate": true,
         "low_candidate": true
+      }
+    },
+    {
+      "id": "H4_W3_UNFINISHED_CONFIRMING_BAR",
+      "timeframe": "H4",
+      "window": {
+        "left": 3,
+        "right": 3
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 20,
+          "low": 5,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 5,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 6,
+          "high": 10,
+          "low": 9,
+          "closed": false,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {},
+      "expected": {
+        "candidate_index": 3,
+        "status": "PENDING",
+        "reason": "CONFIRMING_BAR_NOT_COMPLETED"
+      }
+    },
+    {
+      "id": "H4_W3_WARMUP_WITH_ORIGINAL_PROVENANCE",
+      "timeframe": "H4",
+      "window": {
+        "left": 3,
+        "right": 3
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 20,
+          "low": 5,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 5,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 6,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {
+        "warmup": {
+          "source_bar_id": "source-bar-original-001",
+          "available_at": "2030-01-01T00:00:00Z",
+          "provenance_ref": "synthetic-fixture-reference"
+        }
+      },
+      "expected": {
+        "candidate_index": 3,
+        "status": "WARMUP_CONTEXT_ACCEPTABLE_ONLY_IF_VERIFIED",
+        "seed_pivot_consumable": true
+      }
+    },
+    {
+      "id": "H4_W3_WARMUP_WITHOUT_ORIGINAL_PROVENANCE",
+      "timeframe": "H4",
+      "window": {
+        "left": 3,
+        "right": 3
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 20,
+          "low": 5,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 5,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 6,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {
+        "warmup": {
+          "source_bar_id": null,
+          "available_at": null,
+          "provenance_ref": null
+        }
+      },
+      "expected": {
+        "candidate_index": 3,
+        "status": "NOT_EVALUABLE",
+        "reason": "WARMUP_SOURCE_IDENTITY_OR_PROVENANCE_MISSING"
       }
     },
     {
@@ -5783,6 +9171,100 @@
       }
     },
     {
+      "id": "H4_W5_INVALID_OHLC",
+      "timeframe": "H4",
+      "window": {
+        "left": 5,
+        "right": 5
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 5,
+          "high": 4,
+          "low": 8,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 6,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 7,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 8,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 9,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 10,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {},
+      "expected": {
+        "candidate_index": 5,
+        "status": "UNAVAILABLE",
+        "reason": "INVALID_OHLC"
+      }
+    },
+    {
       "id": "H4_W5_ISOLATED_HIGH",
       "timeframe": "H4",
       "window": {
@@ -6027,6 +9509,199 @@
       }
     },
     {
+      "id": "H4_W5_MISSING_CLOCK_PROVENANCE",
+      "timeframe": "H4",
+      "window": {
+        "left": 5,
+        "right": 5
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 5,
+          "high": 20,
+          "low": 5,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 6,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 7,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 8,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 9,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 10,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {
+        "clock_evidence": null,
+        "source_payload_sha256": "synthetic-placeholder-not-authentic"
+      },
+      "expected": {
+        "candidate_index": 5,
+        "status": "UNAVAILABLE",
+        "reason": "VERIFIED_AVAILABILITY_MISSING"
+      }
+    },
+    {
+      "id": "H4_W5_MISSING_PRECISION_METADATA",
+      "timeframe": "H4",
+      "window": {
+        "left": 5,
+        "right": 5
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 5,
+          "high": 20,
+          "low": 5,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 6,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 7,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 8,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 9,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 10,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {
+        "instrument_precision": null
+      },
+      "expected": {
+        "candidate_index": 5,
+        "status": "NOT_EVALUABLE",
+        "reason": "TRUSTED_PRICE_PRECISION_MISSING"
+      }
+    },
+    {
       "id": "H4_W5_RIGHT_WINDOW_INCOMPLETE",
       "timeframe": "H4",
       "window": {
@@ -6204,6 +9879,300 @@
         "status": "BOTH_CANDIDATES_ORDER_UNRESOLVED",
         "high_candidate": true,
         "low_candidate": true
+      }
+    },
+    {
+      "id": "H4_W5_UNFINISHED_CONFIRMING_BAR",
+      "timeframe": "H4",
+      "window": {
+        "left": 5,
+        "right": 5
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 5,
+          "high": 20,
+          "low": 5,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 6,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 7,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 8,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 9,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 10,
+          "high": 10,
+          "low": 9,
+          "closed": false,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {},
+      "expected": {
+        "candidate_index": 5,
+        "status": "PENDING",
+        "reason": "CONFIRMING_BAR_NOT_COMPLETED"
+      }
+    },
+    {
+      "id": "H4_W5_WARMUP_WITH_ORIGINAL_PROVENANCE",
+      "timeframe": "H4",
+      "window": {
+        "left": 5,
+        "right": 5
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 5,
+          "high": 20,
+          "low": 5,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 6,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 7,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 8,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 9,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 10,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {
+        "warmup": {
+          "source_bar_id": "source-bar-original-001",
+          "available_at": "2030-01-01T00:00:00Z",
+          "provenance_ref": "synthetic-fixture-reference"
+        }
+      },
+      "expected": {
+        "candidate_index": 5,
+        "status": "WARMUP_CONTEXT_ACCEPTABLE_ONLY_IF_VERIFIED",
+        "seed_pivot_consumable": true
+      }
+    },
+    {
+      "id": "H4_W5_WARMUP_WITHOUT_ORIGINAL_PROVENANCE",
+      "timeframe": "H4",
+      "window": {
+        "left": 5,
+        "right": 5
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 5,
+          "high": 20,
+          "low": 5,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 6,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 7,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 8,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 9,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 10,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {
+        "warmup": {
+          "source_bar_id": null,
+          "available_at": null,
+          "provenance_ref": null
+        }
+      },
+      "expected": {
+        "candidate_index": 5,
+        "status": "NOT_EVALUABLE",
+        "reason": "WARMUP_SOURCE_IDENTITY_OR_PROVENANCE_MISSING"
       }
     },
     {
@@ -6480,6 +10449,58 @@
       }
     },
     {
+      "id": "M15_W2_INVALID_OHLC",
+      "timeframe": "M15",
+      "window": {
+        "left": 2,
+        "right": 2
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 4,
+          "low": 8,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {},
+      "expected": {
+        "candidate_index": 2,
+        "status": "UNAVAILABLE",
+        "reason": "INVALID_OHLC"
+      }
+    },
+    {
       "id": "M15_W2_ISOLATED_HIGH",
       "timeframe": "M15",
       "window": {
@@ -6619,6 +10640,115 @@
       }
     },
     {
+      "id": "M15_W2_MISSING_CLOCK_PROVENANCE",
+      "timeframe": "M15",
+      "window": {
+        "left": 2,
+        "right": 2
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 20,
+          "low": 5,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {
+        "clock_evidence": null,
+        "source_payload_sha256": "synthetic-placeholder-not-authentic"
+      },
+      "expected": {
+        "candidate_index": 2,
+        "status": "UNAVAILABLE",
+        "reason": "VERIFIED_AVAILABILITY_MISSING"
+      }
+    },
+    {
+      "id": "M15_W2_MISSING_PRECISION_METADATA",
+      "timeframe": "M15",
+      "window": {
+        "left": 2,
+        "right": 2
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 20,
+          "low": 5,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {
+        "instrument_precision": null
+      },
+      "expected": {
+        "candidate_index": 2,
+        "status": "NOT_EVALUABLE",
+        "reason": "TRUSTED_PRICE_PRECISION_MISSING"
+      }
+    },
+    {
       "id": "M15_W2_RIGHT_WINDOW_INCOMPLETE",
       "timeframe": "M15",
       "window": {
@@ -6712,6 +10842,174 @@
         "status": "BOTH_CANDIDATES_ORDER_UNRESOLVED",
         "high_candidate": true,
         "low_candidate": true
+      }
+    },
+    {
+      "id": "M15_W2_UNFINISHED_CONFIRMING_BAR",
+      "timeframe": "M15",
+      "window": {
+        "left": 2,
+        "right": 2
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 20,
+          "low": 5,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": false,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {},
+      "expected": {
+        "candidate_index": 2,
+        "status": "PENDING",
+        "reason": "CONFIRMING_BAR_NOT_COMPLETED"
+      }
+    },
+    {
+      "id": "M15_W2_WARMUP_WITH_ORIGINAL_PROVENANCE",
+      "timeframe": "M15",
+      "window": {
+        "left": 2,
+        "right": 2
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 20,
+          "low": 5,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {
+        "warmup": {
+          "source_bar_id": "source-bar-original-001",
+          "available_at": "2030-01-01T00:00:00Z",
+          "provenance_ref": "synthetic-fixture-reference"
+        }
+      },
+      "expected": {
+        "candidate_index": 2,
+        "status": "WARMUP_CONTEXT_ACCEPTABLE_ONLY_IF_VERIFIED",
+        "seed_pivot_consumable": true
+      }
+    },
+    {
+      "id": "M15_W2_WARMUP_WITHOUT_ORIGINAL_PROVENANCE",
+      "timeframe": "M15",
+      "window": {
+        "left": 2,
+        "right": 2
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 20,
+          "low": 5,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {
+        "warmup": {
+          "source_bar_id": null,
+          "available_at": null,
+          "provenance_ref": null
+        }
+      },
+      "expected": {
+        "candidate_index": 2,
+        "status": "NOT_EVALUABLE",
+        "reason": "WARMUP_SOURCE_IDENTITY_OR_PROVENANCE_MISSING"
       }
     },
     {
@@ -7058,6 +11356,72 @@
       }
     },
     {
+      "id": "M15_W3_INVALID_OHLC",
+      "timeframe": "M15",
+      "window": {
+        "left": 3,
+        "right": 3
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 4,
+          "low": 8,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 5,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 6,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {},
+      "expected": {
+        "candidate_index": 3,
+        "status": "UNAVAILABLE",
+        "reason": "INVALID_OHLC"
+      }
+    },
+    {
       "id": "M15_W3_ISOLATED_HIGH",
       "timeframe": "M15",
       "window": {
@@ -7232,6 +11596,143 @@
       }
     },
     {
+      "id": "M15_W3_MISSING_CLOCK_PROVENANCE",
+      "timeframe": "M15",
+      "window": {
+        "left": 3,
+        "right": 3
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 20,
+          "low": 5,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 5,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 6,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {
+        "clock_evidence": null,
+        "source_payload_sha256": "synthetic-placeholder-not-authentic"
+      },
+      "expected": {
+        "candidate_index": 3,
+        "status": "UNAVAILABLE",
+        "reason": "VERIFIED_AVAILABILITY_MISSING"
+      }
+    },
+    {
+      "id": "M15_W3_MISSING_PRECISION_METADATA",
+      "timeframe": "M15",
+      "window": {
+        "left": 3,
+        "right": 3
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 20,
+          "low": 5,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 5,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 6,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {
+        "instrument_precision": null
+      },
+      "expected": {
+        "candidate_index": 3,
+        "status": "NOT_EVALUABLE",
+        "reason": "TRUSTED_PRICE_PRECISION_MISSING"
+      }
+    },
+    {
       "id": "M15_W3_RIGHT_WINDOW_INCOMPLETE",
       "timeframe": "M15",
       "window": {
@@ -7353,6 +11854,216 @@
         "status": "BOTH_CANDIDATES_ORDER_UNRESOLVED",
         "high_candidate": true,
         "low_candidate": true
+      }
+    },
+    {
+      "id": "M15_W3_UNFINISHED_CONFIRMING_BAR",
+      "timeframe": "M15",
+      "window": {
+        "left": 3,
+        "right": 3
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 20,
+          "low": 5,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 5,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 6,
+          "high": 10,
+          "low": 9,
+          "closed": false,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {},
+      "expected": {
+        "candidate_index": 3,
+        "status": "PENDING",
+        "reason": "CONFIRMING_BAR_NOT_COMPLETED"
+      }
+    },
+    {
+      "id": "M15_W3_WARMUP_WITH_ORIGINAL_PROVENANCE",
+      "timeframe": "M15",
+      "window": {
+        "left": 3,
+        "right": 3
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 20,
+          "low": 5,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 5,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 6,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {
+        "warmup": {
+          "source_bar_id": "source-bar-original-001",
+          "available_at": "2030-01-01T00:00:00Z",
+          "provenance_ref": "synthetic-fixture-reference"
+        }
+      },
+      "expected": {
+        "candidate_index": 3,
+        "status": "WARMUP_CONTEXT_ACCEPTABLE_ONLY_IF_VERIFIED",
+        "seed_pivot_consumable": true
+      }
+    },
+    {
+      "id": "M15_W3_WARMUP_WITHOUT_ORIGINAL_PROVENANCE",
+      "timeframe": "M15",
+      "window": {
+        "left": 3,
+        "right": 3
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 20,
+          "low": 5,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 5,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 6,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {
+        "warmup": {
+          "source_bar_id": null,
+          "available_at": null,
+          "provenance_ref": null
+        }
+      },
+      "expected": {
+        "candidate_index": 3,
+        "status": "NOT_EVALUABLE",
+        "reason": "WARMUP_SOURCE_IDENTITY_OR_PROVENANCE_MISSING"
       }
     },
     {
@@ -7839,6 +12550,100 @@
       }
     },
     {
+      "id": "M15_W5_INVALID_OHLC",
+      "timeframe": "M15",
+      "window": {
+        "left": 5,
+        "right": 5
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 5,
+          "high": 4,
+          "low": 8,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 6,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 7,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 8,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 9,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 10,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {},
+      "expected": {
+        "candidate_index": 5,
+        "status": "UNAVAILABLE",
+        "reason": "INVALID_OHLC"
+      }
+    },
+    {
       "id": "M15_W5_ISOLATED_HIGH",
       "timeframe": "M15",
       "window": {
@@ -8083,6 +12888,199 @@
       }
     },
     {
+      "id": "M15_W5_MISSING_CLOCK_PROVENANCE",
+      "timeframe": "M15",
+      "window": {
+        "left": 5,
+        "right": 5
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 5,
+          "high": 20,
+          "low": 5,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 6,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 7,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 8,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 9,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 10,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {
+        "clock_evidence": null,
+        "source_payload_sha256": "synthetic-placeholder-not-authentic"
+      },
+      "expected": {
+        "candidate_index": 5,
+        "status": "UNAVAILABLE",
+        "reason": "VERIFIED_AVAILABILITY_MISSING"
+      }
+    },
+    {
+      "id": "M15_W5_MISSING_PRECISION_METADATA",
+      "timeframe": "M15",
+      "window": {
+        "left": 5,
+        "right": 5
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 5,
+          "high": 20,
+          "low": 5,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 6,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 7,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 8,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 9,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 10,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {
+        "instrument_precision": null
+      },
+      "expected": {
+        "candidate_index": 5,
+        "status": "NOT_EVALUABLE",
+        "reason": "TRUSTED_PRICE_PRECISION_MISSING"
+      }
+    },
+    {
       "id": "M15_W5_RIGHT_WINDOW_INCOMPLETE",
       "timeframe": "M15",
       "window": {
@@ -8260,6 +13258,300 @@
         "status": "BOTH_CANDIDATES_ORDER_UNRESOLVED",
         "high_candidate": true,
         "low_candidate": true
+      }
+    },
+    {
+      "id": "M15_W5_UNFINISHED_CONFIRMING_BAR",
+      "timeframe": "M15",
+      "window": {
+        "left": 5,
+        "right": 5
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 5,
+          "high": 20,
+          "low": 5,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 6,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 7,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 8,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 9,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 10,
+          "high": 10,
+          "low": 9,
+          "closed": false,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {},
+      "expected": {
+        "candidate_index": 5,
+        "status": "PENDING",
+        "reason": "CONFIRMING_BAR_NOT_COMPLETED"
+      }
+    },
+    {
+      "id": "M15_W5_WARMUP_WITH_ORIGINAL_PROVENANCE",
+      "timeframe": "M15",
+      "window": {
+        "left": 5,
+        "right": 5
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 5,
+          "high": 20,
+          "low": 5,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 6,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 7,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 8,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 9,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 10,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {
+        "warmup": {
+          "source_bar_id": "source-bar-original-001",
+          "available_at": "2030-01-01T00:00:00Z",
+          "provenance_ref": "synthetic-fixture-reference"
+        }
+      },
+      "expected": {
+        "candidate_index": 5,
+        "status": "WARMUP_CONTEXT_ACCEPTABLE_ONLY_IF_VERIFIED",
+        "seed_pivot_consumable": true
+      }
+    },
+    {
+      "id": "M15_W5_WARMUP_WITHOUT_ORIGINAL_PROVENANCE",
+      "timeframe": "M15",
+      "window": {
+        "left": 5,
+        "right": 5
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 5,
+          "high": 20,
+          "low": 5,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 6,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 7,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 8,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 9,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 10,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {
+        "warmup": {
+          "source_bar_id": null,
+          "available_at": null,
+          "provenance_ref": null
+        }
+      },
+      "expected": {
+        "candidate_index": 5,
+        "status": "NOT_EVALUABLE",
+        "reason": "WARMUP_SOURCE_IDENTITY_OR_PROVENANCE_MISSING"
       }
     },
     {
@@ -8536,6 +13828,58 @@
       }
     },
     {
+      "id": "M30_W2_INVALID_OHLC",
+      "timeframe": "M30",
+      "window": {
+        "left": 2,
+        "right": 2
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 4,
+          "low": 8,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {},
+      "expected": {
+        "candidate_index": 2,
+        "status": "UNAVAILABLE",
+        "reason": "INVALID_OHLC"
+      }
+    },
+    {
       "id": "M30_W2_ISOLATED_HIGH",
       "timeframe": "M30",
       "window": {
@@ -8675,6 +14019,115 @@
       }
     },
     {
+      "id": "M30_W2_MISSING_CLOCK_PROVENANCE",
+      "timeframe": "M30",
+      "window": {
+        "left": 2,
+        "right": 2
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 20,
+          "low": 5,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {
+        "clock_evidence": null,
+        "source_payload_sha256": "synthetic-placeholder-not-authentic"
+      },
+      "expected": {
+        "candidate_index": 2,
+        "status": "UNAVAILABLE",
+        "reason": "VERIFIED_AVAILABILITY_MISSING"
+      }
+    },
+    {
+      "id": "M30_W2_MISSING_PRECISION_METADATA",
+      "timeframe": "M30",
+      "window": {
+        "left": 2,
+        "right": 2
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 20,
+          "low": 5,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {
+        "instrument_precision": null
+      },
+      "expected": {
+        "candidate_index": 2,
+        "status": "NOT_EVALUABLE",
+        "reason": "TRUSTED_PRICE_PRECISION_MISSING"
+      }
+    },
+    {
       "id": "M30_W2_RIGHT_WINDOW_INCOMPLETE",
       "timeframe": "M30",
       "window": {
@@ -8768,6 +14221,174 @@
         "status": "BOTH_CANDIDATES_ORDER_UNRESOLVED",
         "high_candidate": true,
         "low_candidate": true
+      }
+    },
+    {
+      "id": "M30_W2_UNFINISHED_CONFIRMING_BAR",
+      "timeframe": "M30",
+      "window": {
+        "left": 2,
+        "right": 2
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 20,
+          "low": 5,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": false,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {},
+      "expected": {
+        "candidate_index": 2,
+        "status": "PENDING",
+        "reason": "CONFIRMING_BAR_NOT_COMPLETED"
+      }
+    },
+    {
+      "id": "M30_W2_WARMUP_WITH_ORIGINAL_PROVENANCE",
+      "timeframe": "M30",
+      "window": {
+        "left": 2,
+        "right": 2
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 20,
+          "low": 5,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {
+        "warmup": {
+          "source_bar_id": "source-bar-original-001",
+          "available_at": "2030-01-01T00:00:00Z",
+          "provenance_ref": "synthetic-fixture-reference"
+        }
+      },
+      "expected": {
+        "candidate_index": 2,
+        "status": "WARMUP_CONTEXT_ACCEPTABLE_ONLY_IF_VERIFIED",
+        "seed_pivot_consumable": true
+      }
+    },
+    {
+      "id": "M30_W2_WARMUP_WITHOUT_ORIGINAL_PROVENANCE",
+      "timeframe": "M30",
+      "window": {
+        "left": 2,
+        "right": 2
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 20,
+          "low": 5,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {
+        "warmup": {
+          "source_bar_id": null,
+          "available_at": null,
+          "provenance_ref": null
+        }
+      },
+      "expected": {
+        "candidate_index": 2,
+        "status": "NOT_EVALUABLE",
+        "reason": "WARMUP_SOURCE_IDENTITY_OR_PROVENANCE_MISSING"
       }
     },
     {
@@ -9114,6 +14735,72 @@
       }
     },
     {
+      "id": "M30_W3_INVALID_OHLC",
+      "timeframe": "M30",
+      "window": {
+        "left": 3,
+        "right": 3
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 4,
+          "low": 8,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 5,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 6,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {},
+      "expected": {
+        "candidate_index": 3,
+        "status": "UNAVAILABLE",
+        "reason": "INVALID_OHLC"
+      }
+    },
+    {
       "id": "M30_W3_ISOLATED_HIGH",
       "timeframe": "M30",
       "window": {
@@ -9288,6 +14975,143 @@
       }
     },
     {
+      "id": "M30_W3_MISSING_CLOCK_PROVENANCE",
+      "timeframe": "M30",
+      "window": {
+        "left": 3,
+        "right": 3
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 20,
+          "low": 5,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 5,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 6,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {
+        "clock_evidence": null,
+        "source_payload_sha256": "synthetic-placeholder-not-authentic"
+      },
+      "expected": {
+        "candidate_index": 3,
+        "status": "UNAVAILABLE",
+        "reason": "VERIFIED_AVAILABILITY_MISSING"
+      }
+    },
+    {
+      "id": "M30_W3_MISSING_PRECISION_METADATA",
+      "timeframe": "M30",
+      "window": {
+        "left": 3,
+        "right": 3
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 20,
+          "low": 5,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 5,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 6,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {
+        "instrument_precision": null
+      },
+      "expected": {
+        "candidate_index": 3,
+        "status": "NOT_EVALUABLE",
+        "reason": "TRUSTED_PRICE_PRECISION_MISSING"
+      }
+    },
+    {
       "id": "M30_W3_RIGHT_WINDOW_INCOMPLETE",
       "timeframe": "M30",
       "window": {
@@ -9409,6 +15233,216 @@
         "status": "BOTH_CANDIDATES_ORDER_UNRESOLVED",
         "high_candidate": true,
         "low_candidate": true
+      }
+    },
+    {
+      "id": "M30_W3_UNFINISHED_CONFIRMING_BAR",
+      "timeframe": "M30",
+      "window": {
+        "left": 3,
+        "right": 3
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 20,
+          "low": 5,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 5,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 6,
+          "high": 10,
+          "low": 9,
+          "closed": false,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {},
+      "expected": {
+        "candidate_index": 3,
+        "status": "PENDING",
+        "reason": "CONFIRMING_BAR_NOT_COMPLETED"
+      }
+    },
+    {
+      "id": "M30_W3_WARMUP_WITH_ORIGINAL_PROVENANCE",
+      "timeframe": "M30",
+      "window": {
+        "left": 3,
+        "right": 3
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 20,
+          "low": 5,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 5,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 6,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {
+        "warmup": {
+          "source_bar_id": "source-bar-original-001",
+          "available_at": "2030-01-01T00:00:00Z",
+          "provenance_ref": "synthetic-fixture-reference"
+        }
+      },
+      "expected": {
+        "candidate_index": 3,
+        "status": "WARMUP_CONTEXT_ACCEPTABLE_ONLY_IF_VERIFIED",
+        "seed_pivot_consumable": true
+      }
+    },
+    {
+      "id": "M30_W3_WARMUP_WITHOUT_ORIGINAL_PROVENANCE",
+      "timeframe": "M30",
+      "window": {
+        "left": 3,
+        "right": 3
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 20,
+          "low": 5,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 5,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 6,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {
+        "warmup": {
+          "source_bar_id": null,
+          "available_at": null,
+          "provenance_ref": null
+        }
+      },
+      "expected": {
+        "candidate_index": 3,
+        "status": "NOT_EVALUABLE",
+        "reason": "WARMUP_SOURCE_IDENTITY_OR_PROVENANCE_MISSING"
       }
     },
     {
@@ -9895,6 +15929,100 @@
       }
     },
     {
+      "id": "M30_W5_INVALID_OHLC",
+      "timeframe": "M30",
+      "window": {
+        "left": 5,
+        "right": 5
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 5,
+          "high": 4,
+          "low": 8,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 6,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 7,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 8,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 9,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 10,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {},
+      "expected": {
+        "candidate_index": 5,
+        "status": "UNAVAILABLE",
+        "reason": "INVALID_OHLC"
+      }
+    },
+    {
       "id": "M30_W5_ISOLATED_HIGH",
       "timeframe": "M30",
       "window": {
@@ -10139,6 +16267,199 @@
       }
     },
     {
+      "id": "M30_W5_MISSING_CLOCK_PROVENANCE",
+      "timeframe": "M30",
+      "window": {
+        "left": 5,
+        "right": 5
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 5,
+          "high": 20,
+          "low": 5,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 6,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 7,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 8,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 9,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 10,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {
+        "clock_evidence": null,
+        "source_payload_sha256": "synthetic-placeholder-not-authentic"
+      },
+      "expected": {
+        "candidate_index": 5,
+        "status": "UNAVAILABLE",
+        "reason": "VERIFIED_AVAILABILITY_MISSING"
+      }
+    },
+    {
+      "id": "M30_W5_MISSING_PRECISION_METADATA",
+      "timeframe": "M30",
+      "window": {
+        "left": 5,
+        "right": 5
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 5,
+          "high": 20,
+          "low": 5,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 6,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 7,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 8,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 9,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 10,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {
+        "instrument_precision": null
+      },
+      "expected": {
+        "candidate_index": 5,
+        "status": "NOT_EVALUABLE",
+        "reason": "TRUSTED_PRICE_PRECISION_MISSING"
+      }
+    },
+    {
       "id": "M30_W5_RIGHT_WINDOW_INCOMPLETE",
       "timeframe": "M30",
       "window": {
@@ -10316,6 +16637,300 @@
         "status": "BOTH_CANDIDATES_ORDER_UNRESOLVED",
         "high_candidate": true,
         "low_candidate": true
+      }
+    },
+    {
+      "id": "M30_W5_UNFINISHED_CONFIRMING_BAR",
+      "timeframe": "M30",
+      "window": {
+        "left": 5,
+        "right": 5
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 5,
+          "high": 20,
+          "low": 5,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 6,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 7,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 8,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 9,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 10,
+          "high": 10,
+          "low": 9,
+          "closed": false,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {},
+      "expected": {
+        "candidate_index": 5,
+        "status": "PENDING",
+        "reason": "CONFIRMING_BAR_NOT_COMPLETED"
+      }
+    },
+    {
+      "id": "M30_W5_WARMUP_WITH_ORIGINAL_PROVENANCE",
+      "timeframe": "M30",
+      "window": {
+        "left": 5,
+        "right": 5
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 5,
+          "high": 20,
+          "low": 5,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 6,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 7,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 8,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 9,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 10,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {
+        "warmup": {
+          "source_bar_id": "source-bar-original-001",
+          "available_at": "2030-01-01T00:00:00Z",
+          "provenance_ref": "synthetic-fixture-reference"
+        }
+      },
+      "expected": {
+        "candidate_index": 5,
+        "status": "WARMUP_CONTEXT_ACCEPTABLE_ONLY_IF_VERIFIED",
+        "seed_pivot_consumable": true
+      }
+    },
+    {
+      "id": "M30_W5_WARMUP_WITHOUT_ORIGINAL_PROVENANCE",
+      "timeframe": "M30",
+      "window": {
+        "left": 5,
+        "right": 5
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 5,
+          "high": 20,
+          "low": 5,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 6,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 7,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 8,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 9,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 10,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {
+        "warmup": {
+          "source_bar_id": null,
+          "available_at": null,
+          "provenance_ref": null
+        }
+      },
+      "expected": {
+        "candidate_index": 5,
+        "status": "NOT_EVALUABLE",
+        "reason": "WARMUP_SOURCE_IDENTITY_OR_PROVENANCE_MISSING"
       }
     },
     {
@@ -10592,6 +17207,58 @@
       }
     },
     {
+      "id": "M5_W2_INVALID_OHLC",
+      "timeframe": "M5",
+      "window": {
+        "left": 2,
+        "right": 2
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 4,
+          "low": 8,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {},
+      "expected": {
+        "candidate_index": 2,
+        "status": "UNAVAILABLE",
+        "reason": "INVALID_OHLC"
+      }
+    },
+    {
       "id": "M5_W2_ISOLATED_HIGH",
       "timeframe": "M5",
       "window": {
@@ -10731,6 +17398,115 @@
       }
     },
     {
+      "id": "M5_W2_MISSING_CLOCK_PROVENANCE",
+      "timeframe": "M5",
+      "window": {
+        "left": 2,
+        "right": 2
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 20,
+          "low": 5,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {
+        "clock_evidence": null,
+        "source_payload_sha256": "synthetic-placeholder-not-authentic"
+      },
+      "expected": {
+        "candidate_index": 2,
+        "status": "UNAVAILABLE",
+        "reason": "VERIFIED_AVAILABILITY_MISSING"
+      }
+    },
+    {
+      "id": "M5_W2_MISSING_PRECISION_METADATA",
+      "timeframe": "M5",
+      "window": {
+        "left": 2,
+        "right": 2
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 20,
+          "low": 5,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {
+        "instrument_precision": null
+      },
+      "expected": {
+        "candidate_index": 2,
+        "status": "NOT_EVALUABLE",
+        "reason": "TRUSTED_PRICE_PRECISION_MISSING"
+      }
+    },
+    {
       "id": "M5_W2_RIGHT_WINDOW_INCOMPLETE",
       "timeframe": "M5",
       "window": {
@@ -10824,6 +17600,174 @@
         "status": "BOTH_CANDIDATES_ORDER_UNRESOLVED",
         "high_candidate": true,
         "low_candidate": true
+      }
+    },
+    {
+      "id": "M5_W2_UNFINISHED_CONFIRMING_BAR",
+      "timeframe": "M5",
+      "window": {
+        "left": 2,
+        "right": 2
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 20,
+          "low": 5,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": false,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {},
+      "expected": {
+        "candidate_index": 2,
+        "status": "PENDING",
+        "reason": "CONFIRMING_BAR_NOT_COMPLETED"
+      }
+    },
+    {
+      "id": "M5_W2_WARMUP_WITH_ORIGINAL_PROVENANCE",
+      "timeframe": "M5",
+      "window": {
+        "left": 2,
+        "right": 2
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 20,
+          "low": 5,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {
+        "warmup": {
+          "source_bar_id": "source-bar-original-001",
+          "available_at": "2030-01-01T00:00:00Z",
+          "provenance_ref": "synthetic-fixture-reference"
+        }
+      },
+      "expected": {
+        "candidate_index": 2,
+        "status": "WARMUP_CONTEXT_ACCEPTABLE_ONLY_IF_VERIFIED",
+        "seed_pivot_consumable": true
+      }
+    },
+    {
+      "id": "M5_W2_WARMUP_WITHOUT_ORIGINAL_PROVENANCE",
+      "timeframe": "M5",
+      "window": {
+        "left": 2,
+        "right": 2
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 20,
+          "low": 5,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {
+        "warmup": {
+          "source_bar_id": null,
+          "available_at": null,
+          "provenance_ref": null
+        }
+      },
+      "expected": {
+        "candidate_index": 2,
+        "status": "NOT_EVALUABLE",
+        "reason": "WARMUP_SOURCE_IDENTITY_OR_PROVENANCE_MISSING"
       }
     },
     {
@@ -11170,6 +18114,72 @@
       }
     },
     {
+      "id": "M5_W3_INVALID_OHLC",
+      "timeframe": "M5",
+      "window": {
+        "left": 3,
+        "right": 3
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 4,
+          "low": 8,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 5,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 6,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {},
+      "expected": {
+        "candidate_index": 3,
+        "status": "UNAVAILABLE",
+        "reason": "INVALID_OHLC"
+      }
+    },
+    {
       "id": "M5_W3_ISOLATED_HIGH",
       "timeframe": "M5",
       "window": {
@@ -11344,6 +18354,143 @@
       }
     },
     {
+      "id": "M5_W3_MISSING_CLOCK_PROVENANCE",
+      "timeframe": "M5",
+      "window": {
+        "left": 3,
+        "right": 3
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 20,
+          "low": 5,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 5,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 6,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {
+        "clock_evidence": null,
+        "source_payload_sha256": "synthetic-placeholder-not-authentic"
+      },
+      "expected": {
+        "candidate_index": 3,
+        "status": "UNAVAILABLE",
+        "reason": "VERIFIED_AVAILABILITY_MISSING"
+      }
+    },
+    {
+      "id": "M5_W3_MISSING_PRECISION_METADATA",
+      "timeframe": "M5",
+      "window": {
+        "left": 3,
+        "right": 3
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 20,
+          "low": 5,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 5,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 6,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {
+        "instrument_precision": null
+      },
+      "expected": {
+        "candidate_index": 3,
+        "status": "NOT_EVALUABLE",
+        "reason": "TRUSTED_PRICE_PRECISION_MISSING"
+      }
+    },
+    {
       "id": "M5_W3_RIGHT_WINDOW_INCOMPLETE",
       "timeframe": "M5",
       "window": {
@@ -11465,6 +18612,216 @@
         "status": "BOTH_CANDIDATES_ORDER_UNRESOLVED",
         "high_candidate": true,
         "low_candidate": true
+      }
+    },
+    {
+      "id": "M5_W3_UNFINISHED_CONFIRMING_BAR",
+      "timeframe": "M5",
+      "window": {
+        "left": 3,
+        "right": 3
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 20,
+          "low": 5,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 5,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 6,
+          "high": 10,
+          "low": 9,
+          "closed": false,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {},
+      "expected": {
+        "candidate_index": 3,
+        "status": "PENDING",
+        "reason": "CONFIRMING_BAR_NOT_COMPLETED"
+      }
+    },
+    {
+      "id": "M5_W3_WARMUP_WITH_ORIGINAL_PROVENANCE",
+      "timeframe": "M5",
+      "window": {
+        "left": 3,
+        "right": 3
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 20,
+          "low": 5,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 5,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 6,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {
+        "warmup": {
+          "source_bar_id": "source-bar-original-001",
+          "available_at": "2030-01-01T00:00:00Z",
+          "provenance_ref": "synthetic-fixture-reference"
+        }
+      },
+      "expected": {
+        "candidate_index": 3,
+        "status": "WARMUP_CONTEXT_ACCEPTABLE_ONLY_IF_VERIFIED",
+        "seed_pivot_consumable": true
+      }
+    },
+    {
+      "id": "M5_W3_WARMUP_WITHOUT_ORIGINAL_PROVENANCE",
+      "timeframe": "M5",
+      "window": {
+        "left": 3,
+        "right": 3
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 20,
+          "low": 5,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 5,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 6,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {
+        "warmup": {
+          "source_bar_id": null,
+          "available_at": null,
+          "provenance_ref": null
+        }
+      },
+      "expected": {
+        "candidate_index": 3,
+        "status": "NOT_EVALUABLE",
+        "reason": "WARMUP_SOURCE_IDENTITY_OR_PROVENANCE_MISSING"
       }
     },
     {
@@ -11951,6 +19308,100 @@
       }
     },
     {
+      "id": "M5_W5_INVALID_OHLC",
+      "timeframe": "M5",
+      "window": {
+        "left": 5,
+        "right": 5
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 5,
+          "high": 4,
+          "low": 8,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 6,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 7,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 8,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 9,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 10,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {},
+      "expected": {
+        "candidate_index": 5,
+        "status": "UNAVAILABLE",
+        "reason": "INVALID_OHLC"
+      }
+    },
+    {
       "id": "M5_W5_ISOLATED_HIGH",
       "timeframe": "M5",
       "window": {
@@ -12195,6 +19646,199 @@
       }
     },
     {
+      "id": "M5_W5_MISSING_CLOCK_PROVENANCE",
+      "timeframe": "M5",
+      "window": {
+        "left": 5,
+        "right": 5
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 5,
+          "high": 20,
+          "low": 5,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 6,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 7,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 8,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 9,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 10,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {
+        "clock_evidence": null,
+        "source_payload_sha256": "synthetic-placeholder-not-authentic"
+      },
+      "expected": {
+        "candidate_index": 5,
+        "status": "UNAVAILABLE",
+        "reason": "VERIFIED_AVAILABILITY_MISSING"
+      }
+    },
+    {
+      "id": "M5_W5_MISSING_PRECISION_METADATA",
+      "timeframe": "M5",
+      "window": {
+        "left": 5,
+        "right": 5
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 5,
+          "high": 20,
+          "low": 5,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 6,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 7,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 8,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 9,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 10,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {
+        "instrument_precision": null
+      },
+      "expected": {
+        "candidate_index": 5,
+        "status": "NOT_EVALUABLE",
+        "reason": "TRUSTED_PRICE_PRECISION_MISSING"
+      }
+    },
+    {
       "id": "M5_W5_RIGHT_WINDOW_INCOMPLETE",
       "timeframe": "M5",
       "window": {
@@ -12372,6 +20016,300 @@
         "status": "BOTH_CANDIDATES_ORDER_UNRESOLVED",
         "high_candidate": true,
         "low_candidate": true
+      }
+    },
+    {
+      "id": "M5_W5_UNFINISHED_CONFIRMING_BAR",
+      "timeframe": "M5",
+      "window": {
+        "left": 5,
+        "right": 5
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 5,
+          "high": 20,
+          "low": 5,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 6,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 7,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 8,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 9,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 10,
+          "high": 10,
+          "low": 9,
+          "closed": false,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {},
+      "expected": {
+        "candidate_index": 5,
+        "status": "PENDING",
+        "reason": "CONFIRMING_BAR_NOT_COMPLETED"
+      }
+    },
+    {
+      "id": "M5_W5_WARMUP_WITH_ORIGINAL_PROVENANCE",
+      "timeframe": "M5",
+      "window": {
+        "left": 5,
+        "right": 5
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 5,
+          "high": 20,
+          "low": 5,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 6,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 7,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 8,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 9,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 10,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {
+        "warmup": {
+          "source_bar_id": "source-bar-original-001",
+          "available_at": "2030-01-01T00:00:00Z",
+          "provenance_ref": "synthetic-fixture-reference"
+        }
+      },
+      "expected": {
+        "candidate_index": 5,
+        "status": "WARMUP_CONTEXT_ACCEPTABLE_ONLY_IF_VERIFIED",
+        "seed_pivot_consumable": true
+      }
+    },
+    {
+      "id": "M5_W5_WARMUP_WITHOUT_ORIGINAL_PROVENANCE",
+      "timeframe": "M5",
+      "window": {
+        "left": 5,
+        "right": 5
+      },
+      "kind": "HIGH",
+      "bars": [
+        {
+          "index": 0,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 1,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 2,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 3,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 4,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 5,
+          "high": 20,
+          "low": 5,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 6,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 7,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 8,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 9,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        },
+        {
+          "index": 10,
+          "high": 10,
+          "low": 9,
+          "closed": true,
+          "source_gap_before": false
+        }
+      ],
+      "metadata": {
+        "warmup": {
+          "source_bar_id": null,
+          "available_at": null,
+          "provenance_ref": null
+        }
+      },
+      "expected": {
+        "candidate_index": 5,
+        "status": "NOT_EVALUABLE",
+        "reason": "WARMUP_SOURCE_IDENTITY_OR_PROVENANCE_MISSING"
       }
     }
   ]
