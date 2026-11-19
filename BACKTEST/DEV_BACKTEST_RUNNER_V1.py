@@ -143,11 +143,13 @@ def build_row(market: dict[str,Any], mtf: dict[str,Any]) -> dict[str,Any]:
     out: dict[str, Any] = {}
     for field in REQUIRED_MTF_FIELDS:
         raw = mtf.get(field)
-        if raw is None or pd.isna(raw):
+        if raw is None or (isinstance(raw, str) and not raw.strip()):
             raise ValueError(f"MTF_INPUT_NOT_EVALUABLE:MISSING_OR_BLANK:{field}")
         try:
             value = float(raw)
         except (TypeError, ValueError, OverflowError) as exc:
+            if pd.isna(raw):
+                raise ValueError(f"MTF_INPUT_NOT_EVALUABLE:MISSING_OR_BLANK:{field}") from exc
             raise ValueError(f"MTF_INPUT_NOT_EVALUABLE:NON_NUMERIC:{field}") from exc
         if not math.isfinite(value):
             raise ValueError(f"MTF_INPUT_NOT_EVALUABLE:NON_FINITE:{field}")
