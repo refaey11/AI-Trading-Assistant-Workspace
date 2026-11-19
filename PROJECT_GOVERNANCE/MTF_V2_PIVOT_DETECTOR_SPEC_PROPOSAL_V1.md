@@ -220,3 +220,26 @@ The following are recommendations for explicit review, not frozen rules:
 6. Only then consider a separate compatibility adapter review. No Decision Brain integration is implied.
 
 No detector implementation is authorized by this recommendation table. The two-bar H1 historical report remains H1-only evidence and is not generalized to the other five timeframes.
+
+
+## 15. User approval record — conservative detector policies accepted (2026-11-19)
+
+The user explicitly approved the conservative recommendations in Section 14. The following policy decisions are therefore accepted as the V2 specification baseline:
+
+1. **Architecture:** create a new independently versioned V2 detector; leave the legacy `PIVOT_SEQUENCE_V2` namespace untouched.
+2. **Window model:** use symmetric left/right neighborhoods, with configuration specified independently for each of M5, M15, M30, H1, H4, and D1. Numeric L/R values are not yet approved.
+3. **Extremum comparison:** use strict comparisons against neighboring highs/lows.
+4. **Equal-price plateaus:** mark equality/plateau cases ambiguous and `NOT_EVALUABLE`; do not select first, last, or center by an invented tie-break.
+5. **Same-bar dual candidate:** preserve the high and low candidate observations separately but mark their sequence/order unresolved; never infer intrabar order from OHLC.
+6. **Confirmation:** require completed right-side bars; set `available_at` to the verified availability of the final required confirming bar. No pivot is consumable earlier.
+7. **Separation/alternation:** do not impose minimum bar/price separation, forced alternation, clustering, or replacement. Expose independently confirmed pivots.
+8. **Price precision:** rely on trusted instrument metadata; no arbitrary rounding/tolerance. Equality-sensitive cases are `NOT_EVALUABLE` when precision metadata is missing.
+9. **Gaps:** a gap inside the confirmation window blocks confirmation unless upstream source/session evidence explicitly proves continuity.
+10. **Warm-up:** allow pre-window context only with original source identity, verified availability, and full provenance; never synthesize seed pivots.
+11. **Identity:** use deterministic identity based on symbol, timeframe, source-bar identity, pivot kind, detector version, and configuration fingerprint. Exact canonical serialization/hash encoding remains to be specified and tested.
+
+### Still open — numeric per-timeframe windows and exact encoding
+
+The approval above does **not** select numeric L/R values for any timeframe. Do not infer values from H1's historical two-bar availability audit, and do not tune values against profitability or 2025 data. The next review must propose and justify L/R for each timeframe using source-contract constraints and synthetic sensitivity fixtures only. Until that review is approved, detector code remains unauthorized.
+
+The approval also does not authorize event expiry, invalidation, deduplication, or lifecycle rules; those remain separate decisions under the event lifecycle review.
