@@ -297,3 +297,27 @@ If the required archive/source exists only in Dropbox or an unavailable external
 ### 13.4 Current conclusion
 
 The original six-timeframe MTF numeric producer remains NOT RECOVERED. The previous successful archive-search workflow is not a basis for closing the search because it used an external Dropbox download and did not recursively inspect nested ZIP contents. No formula reconstruction, replacement producer, imputation, or runtime change is authorized by this finding.
+
+## 14. Reconciliation of historical source-closure language and existing capture work (2026-11-19)
+
+### 14.1 What the August 'source closure' actually closes
+
+The historical audit audits/evidence/MTF_ALIGNMENT_6_TIMEFRAME_SOURCE_CLOSURE_2026-08-21.md uses the label 'six-timeframe source provenance CLOSED'. The later AUDITS/MTF_MARKET_STRUCTURE_SIMILARITY_PRODUCER_LINEAGE_RECOVERY_2026-11-15.md and AUDITS/MTF_SOURCE_COMPATIBILITY_AUDIT_2026-11-16.md narrow that conclusion: the recovered serialized MTF_ALIGNMENT_GBPUSD_V1 dataset family and its six-timeframe field family are identified, but the original executable feature producer and exact formula semantics are not recovered.
+
+These records are not contradictory when their evidence layers are kept separate:
+- artifact/source-family identity: CONFIRMED;
+- declared six-timeframe architecture and field-name compatibility: CONFIRMED;
+- historical as-of alignment: PASS only for its documented test window;
+- original feature producer/formulas, raw input lineage, timezone and missingness semantics: NOT RECOVERED / BLOCKED.
+
+Do not use the August 'CLOSED' label to claim that the numeric producer is recovered. The later, narrower lineage interpretation governs producer recovery.
+
+### 14.2 Existing raw MT5 capture work must be reused, not rebuilt
+
+GitHub PR #123 (MT5 Raw Capture V1) and PR #131 (MT5 Raw Capture V1.3) already contain separately versioned raw-capture work for the six native timeframes. Their stated scope is raw bars, source/clock observations, validation, and ingestion; neither generates the seven derived Brain MTF fields. Both PRs are open Draft and unmerged as of this inspection.
+
+Therefore Stage B raw acquisition is an existing workstream with partial implementation/evidence, not the missing historical numeric producer. Any future capture-contract change must first audit and extend the existing V1/V1.3 work under its own compatibility gates; do not create a duplicate capture implementation inside this recovery task.
+
+### 14.3 Reconciled decision
+
+The source recovery blocker is specifically the missing semantic producer layer (Market Structure / six-timeframe trend regimes / aggregate MTF score), not candle aggregation, six-timeframe architecture, the serialized artifact family, raw MT5 capture, or the strict as-of join adapter. Preserve each recovered component at its actual evidence level. The Decision Brain must remain fail-closed for fields whose semantics or source-time provenance are unresolved.
