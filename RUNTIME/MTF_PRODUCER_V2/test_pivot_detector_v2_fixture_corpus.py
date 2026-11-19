@@ -37,10 +37,14 @@ class PivotFixtureCorpusTests(unittest.TestCase):
             "EQUAL_LOW",
             "GAP_IN_RIGHT_WINDOW",
             "RIGHT_WINDOW_INCOMPLETE",
+            "SAME_BAR_DUAL_HIGH_LOW",
+            "FUTURE_PERTURBATION",
+            "DETERMINISTIC_REPLAY",
+            "LEFT_WINDOW_INCOMPLETE",
         }
         ids = [fixture["id"] for fixture in self.fixtures]
         self.assertEqual(len(ids), len(set(ids)))
-        self.assertEqual(len(self.fixtures), 108)
+        self.assertEqual(len(self.fixtures), 180)
         for timeframe in self.payload["timeframes"]:
             for window in (2, 3, 5):
                 prefix = f"{timeframe}_W{window}_"
@@ -81,6 +85,38 @@ class PivotFixtureCorpusTests(unittest.TestCase):
         )
         self.assertIn("not a pivot detector implementation",
                       self.payload["purpose"])
+
+
+    def test_same_bar_dual_candidate_order_is_not_inferred(self):
+        for fixture in self.fixtures:
+            if fixture["id"].endswith("SAME_BAR_DUAL_HIGH_LOW"):
+                self.assertEqual(
+                    fixture["expected"]["status"],
+                    "BOTH_CANDIDATES_ORDER_UNRESOLVED",
+                )
+                self.assertTrue(fixture["expected"]["high_candidate"])
+                self.assertTrue(fixture["expected"]["low_candidate"])
+
+    def test_future_perturbation_is_after_decision_snapshot(self):
+        for fixture in self.fixtures:
+            if fixture["id"].endswith("FUTURE_PERTURBATION"):
+                expected = fixture["expected"]
+                self.assertGreater(
+                    fixture["future_perturbation"][0]["index"],
+                    expected["decision_snapshot_bar_index"],
+                )
+                self.assertEqual(
+                    fixture["future_perturbation"][0]["index"],
+                    len(fixture["bars"]),
+                )
+
+    def test_replay_fixture_does_not_freeze_identity_encoding(self):
+        for fixture in self.fixtures:
+            if fixture["id"].endswith("DETERMINISTIC_REPLAY"):
+                self.assertEqual(fixture["expected"]["replay_count"], 2)
+                self.assertEqual(
+                    fixture["expected"]["identity_encoding"], "NOT_YET_FROZEN"
+                )
 
 
 if __name__ == "__main__":
