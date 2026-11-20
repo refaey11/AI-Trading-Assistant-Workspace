@@ -1,24 +1,36 @@
 name: MTF Source Gate Smoke 2026-09-02
 
 on:
+  pull_request:
+    branches:
+      - current-stack-dev-backtest-2016-2024-v3
+    paths:
+      - 'BACKTEST/mtf_source_contract_gate_v1.py'
+      - 'RUNTIME/DECISION_RUNTIME_V1/mtf_brain_input_join_v1.py'
+      - '.github/workflows/mtf-source-gate-smoke-2026-09-02.yml'
   push:
     branches:
       - current-stack-dev-backtest-2016-2024-v3
+    paths:
+      - 'BACKTEST/mtf_source_contract_gate_v1.py'
+      - 'RUNTIME/DECISION_RUNTIME_V1/mtf_brain_input_join_v1.py'
+      - '.github/workflows/mtf-source-gate-smoke-2026-09-02.yml'
 
 permissions:
   contents: read
 
 jobs:
   mtf-source-gate:
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
       DROPBOX_ACCESS_TOKEN: ${{ secrets.DROPBOX_ACCESS_TOKEN }}
     steps:
-      - name: Checkout
+      - name: Checkout PR head or pushed revision
         uses: actions/checkout@v4
         with:
-          ref: current-stack-dev-backtest-2016-2024-v3
+          ref: ${{ github.event.pull_request.head.sha || github.sha }}
           fetch-depth: 1
       - name: Setup Python
         uses: actions/setup-python@v5
@@ -30,7 +42,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          TOKEN="$(printf '%s' "$DROPBOX_ACCESS_TOKEN" | tr -d '\r\n' | sed -E 's/^Bearer[[:space:]]+//; s/^\"//; s/\"$//')"
+          TOKEN="$(printf '%s' "$DROPBOX_ACCESS_TOKEN" | tr -d '\r\n' | sed -E 's/^Bearer[[:space:]]+//; s/^"//; s/"$//')"
           test -n "$TOKEN"
           mkdir -p artifacts/source/mtf
           curl -L --fail --silent --show-error \
@@ -39,38 +51,58 @@ jobs:
             -H 'Dropbox-API-Arg: {"path":"/MTF_ALIGNMENT_GBPUSD_V1.zip"}' \
             -o artifacts/mtf.zip
           unzip -q artifacts/mtf.zip -d artifacts/source/mtf
-      - name: Verify 6-TF annual source files, explicit timezone provenance, and canonical numeric fields
+      - name: Verify all annual source files and report unavailable values without filling them
         shell: bash
         run: |
           python - <<'PY'
           from pathlib import Path
           import pandas as pd
-          from BACKTEST.mtf_source_contract_gate_v1 import parse_aware_timestamps
-          root=Path('artifacts/source/mtf')
-          fields=['mtf_trend_score','M5_trend_regime','M15_trend_regime','M30_trend_regime','H1_trend_regime','H4_trend_regime','D1_trend_regime']
-          frames=[]
-          for year in range(2016,2025):
-              matches=sorted(root.rglob(f'GBPUSD_M5_MTF_ALIGNMENT_{year}.csv'))
-              if len(matches)!=1: raise SystemExit(f'MTF_FILE_COUNT_FAIL:{year}:{matches}')
-              p=matches[0]
-              df=pd.read_csv(p,low_memory=False)
-              missing=sorted(set(['timestamp',*fields])-set(df.columns))
-              if missing: raise SystemExit(f'MTF_REQUIRED_COLUMNS_FAIL:{year}:{missing}')
-              for f in fields:
-                  n=pd.to_numeric(df[f],errors='coerce')
-                  if n.isna().any():
-                      bad=df.loc[n.isna(),f].astype('string').dropna().unique().tolist()
-                      raise SystemExit(f'MTF_NON_NUMERIC_FAIL:{year}:{f}:{bad[:10]}')
-                  df[f]=n.astype(float)
-              df['timestamp']=parse_aware_timestamps(df['timestamp'],label=f'MTF_SOURCE:{year}')
-              if df['timestamp'].duplicated().any(): raise SystemExit(f'MTF_TIMESTAMP_DUPLICATE_FAIL:{year}')
-              frames.append(df)
-          combined=pd.concat(frames,ignore_index=True).sort_values('timestamp').reset_index(drop=True)
-          if combined['timestamp'].duplicated().any(): raise SystemExit('MTF_GLOBAL_TIMESTAMP_DUPLICATE_FAIL')
-          combined.to_csv('artifacts/MTF_CURRENT_STACK.csv',index=False)
+          from BACKTEST.mtf_source_contract_gate_v1 import REQUIRED, inspect, parse_aware_timestamps
+
+          root = Path('artifacts/source/mtf')
+          frames = []
+          blockers = []
+
+          for year in range(2016, 2025):
+              matches = sorted(root.rglob(f'GBPUSD_M5_MTF_ALIGNMENT_{year}.csv'))
+              if len(matches) != 1:
+                  blockers.append(f'MTF_FILE_COUNT_FAIL:{year}:{matches}')
+                  continue
+
+              path = matches[0]
+              try:
+                  inspect(path)
+              except SystemExit as exc:
+                  blockers.append(f'{year}:{exc}')
+                  continue
+
+              frame = pd.read_csv(path, low_memory=False)
+              frame['timestamp'] = parse_aware_timestamps(
+                  frame['timestamp'],
+                  label=f'MTF_SOURCE:{year}',
+              )
+              for field in REQUIRED:
+                  frame[field] = pd.to_numeric(frame[field], errors='raise').astype(float)
+              frames.append(frame)
+
+          if blockers:
+              print('MTF_SOURCE_BLOCKERS_BEGIN')
+              for blocker in blockers:
+                  print(blocker)
+              print('MTF_SOURCE_BLOCKERS_END')
+              raise SystemExit('BLOCKED_MTF_SOURCE_ARCHIVE')
+
+          if len(frames) != 9:
+              raise SystemExit(f'MTF_ANNUAL_FILE_COUNT_FAIL:expected=9:actual={len(frames)}')
+
+          combined = pd.concat(frames, ignore_index=True).sort_values('timestamp').reset_index(drop=True)
+          if combined['timestamp'].duplicated().any():
+              raise SystemExit('MTF_GLOBAL_TIMESTAMP_DUPLICATE_FAIL')
+
+          combined.to_csv('artifacts/MTF_CURRENT_STACK.csv', index=False)
           print('MTF_6TF_SOURCE_PASS')
-          print('ROWS',len(combined))
-          print('YEARS',sorted(combined.timestamp.dt.year.unique().tolist()))
+          print('ROWS', len(combined))
+          print('YEARS', sorted(combined.timestamp.dt.year.unique().tolist()))
           PY
       - name: Run fail-closed contract gate
         run: python BACKTEST/mtf_source_contract_gate_v1.py --mtf artifacts/MTF_CURRENT_STACK.csv

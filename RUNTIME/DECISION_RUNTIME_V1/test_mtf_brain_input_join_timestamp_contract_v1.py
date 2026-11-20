@@ -292,3 +292,61 @@ def test_oos_candidate_mode_preserves_its_separate_frozen_adapter_contract() -> 
         mode="oos_evaluation",
     )
     assert returned is original
+
+
+def test_mtf_gate_reports_blank_values_as_missing_without_imputation(tmp_path: Path) -> None:
+    source = _write_mtf_source(tmp_path / "blank.csv", ["2024-01-02T10:00:00+02:00"])
+    frame = pd.read_csv(source)
+    frame.loc[0, "M15_trend_regime"] = ""
+    frame.to_csv(source, index=False)
+    with pytest.raises(
+        SystemExit,
+        match=r"BLOCKED_MTF_MISSING_SOURCE_VALUE:M15_trend_regime:count=1",
+    ):
+        MTF_GATE.inspect(source)
+
+
+def test_mtf_gate_distinguishes_invalid_tokens_from_blank_source_values(tmp_path: Path) -> None:
+    source = _write_mtf_source(tmp_path / "invalid-token.csv", ["2024-01-02T10:00:00+02:00"])
+    frame = pd.read_csv(source)
+    frame.loc[0, "M15_trend_regime"] = "UNKNOWN"
+    frame.to_csv(source, index=False)
+    with pytest.raises(
+        SystemExit,
+        match=r"BLOCKED_MTF_NON_NUMERIC_SOURCE_FIELD:M15_trend_regime:count=1",
+    ):
+        MTF_GATE.inspect(source)
+
+
+def test_shared_timestamp_parser_uses_source_specific_fail_closed_code() -> None:
+    values = pd.Series(["2024-01-02 10:00:00"])
+    with pytest.raises(ValueError, match="BLOCKED_SOURCE_TIMEZONE_PROVENANCE_UNRESOLVED"):
+        MTF_GATE.parse_aware_timestamps(
+            values,
+            label="H1",
+            error_prefix="BLOCKED_SOURCE",
+        )
+
+
+def test_circleci_timestamp_consumers_use_explicit_timezone_parser() -> None:
+    root = MODULE_PATH.parents[2]
+    gate_source = (root / "BACKTEST" / "CIRCLECI_RUN_GOVERNED_GATE.py").read_text(encoding="utf-8")
+    frozen_source = (root / "BACKTEST" / "CIRCLECI_FROZEN_SCOPE_CHECK.py").read_text(encoding="utf-8")
+
+    assert "parse_aware_timestamps" in gate_source
+    assert 'pd.to_datetime(chunk["timestamp"], utc=True' not in gate_source
+    assert "parse_aware_timestamps" in frozen_source
+    assert 'pd.to_datetime(h1["timestamp"], utc=True' not in frozen_source
+    assert 'pd.to_datetime(n["timestamp"], utc=True' not in frozen_source
+    assert 'pd.to_datetime(m["timestamp"], utc=True' not in frozen_source
+
+
+def test_mtf_source_workflow_runs_on_pr_head_and_keeps_2025_out_of_scope() -> None:
+    root = MODULE_PATH.parents[2]
+    workflow = (root / ".github" / "workflows" / "mtf-source-gate-smoke-2026-09-02.yml").read_text(encoding="utf-8")
+
+    assert "pull_request:" in workflow
+    assert "github.event.pull_request.head.sha || github.sha" in workflow
+    assert "range(2016,2025)" in workflow
+    assert "range(2016,2026)" not in workflow
+    assert "run_governed_backtest" not in workflow

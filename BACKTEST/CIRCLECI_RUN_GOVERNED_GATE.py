@@ -6,6 +6,8 @@ from pathlib import Path
 
 import pandas as pd
 
+from BACKTEST.mtf_source_contract_gate_v1 import parse_aware_timestamps
+
 ROOT = Path.cwd()
 Path("artifacts/integration_gate").mkdir(parents=True, exist_ok=True)
 
@@ -20,9 +22,11 @@ def slice_to_development_window(source: str, output: str) -> str:
     for chunk in pd.read_csv(src, chunksize=250_000, low_memory=False):
         if "timestamp" not in chunk.columns:
             raise ValueError(f"{src}: missing timestamp")
-        ts = pd.to_datetime(chunk["timestamp"], utc=True, errors="coerce", format="mixed")
-        if ts.isna().any():
-            raise ValueError(f"{src}: invalid timestamp")
+        ts = parse_aware_timestamps(
+            chunk["timestamp"],
+            label=str(src),
+            error_prefix="BLOCKED_SOURCE",
+        )
         keep = (ts.dt.year >= 2016) & (ts.dt.year <= 2024)
         part = chunk.loc[keep].copy()
         if part.empty:
