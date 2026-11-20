@@ -204,8 +204,9 @@ def test_mtf_gate_rejects_duplicate_instants_after_utc_normalization(tmp_path: P
 def test_mtf_source_workflow_uses_the_same_fail_closed_timestamp_parser() -> None:
     root = MODULE_PATH.parents[2]
     workflow = (root / ".github" / "workflows" / "mtf-source-gate-smoke-2026-09-02.yml").read_text(encoding="utf-8")
-    assert "parse_aware_timestamps(df['timestamp']" in workflow
-    assert "pd.to_datetime(df['timestamp'],utc=True" not in workflow
+    assert "parse_aware_timestamps(" in workflow
+    assert "frame['timestamp']" in workflow
+    assert "pd.to_datetime(frame['timestamp'], utc=True" not in workflow
 
 
 from RUNTIME.DECISION_RUNTIME_V1.full_brain_runtime_bridge_v1 import (
@@ -297,6 +298,7 @@ def test_oos_candidate_mode_preserves_its_separate_frozen_adapter_contract() -> 
 def test_mtf_gate_reports_blank_values_as_missing_without_imputation(tmp_path: Path) -> None:
     source = _write_mtf_source(tmp_path / "blank.csv", ["2024-01-02T10:00:00+02:00"])
     frame = pd.read_csv(source)
+    frame["M15_trend_regime"] = frame["M15_trend_regime"].astype("string")
     frame.loc[0, "M15_trend_regime"] = ""
     frame.to_csv(source, index=False)
     with pytest.raises(
@@ -309,6 +311,7 @@ def test_mtf_gate_reports_blank_values_as_missing_without_imputation(tmp_path: P
 def test_mtf_gate_distinguishes_invalid_tokens_from_blank_source_values(tmp_path: Path) -> None:
     source = _write_mtf_source(tmp_path / "invalid-token.csv", ["2024-01-02T10:00:00+02:00"])
     frame = pd.read_csv(source)
+    frame["M15_trend_regime"] = frame["M15_trend_regime"].astype("string")
     frame.loc[0, "M15_trend_regime"] = "UNKNOWN"
     frame.to_csv(source, index=False)
     with pytest.raises(
@@ -336,6 +339,8 @@ def test_circleci_timestamp_consumers_use_explicit_timezone_parser() -> None:
     assert "parse_aware_timestamps" in gate_source
     assert 'pd.to_datetime(chunk["timestamp"], utc=True' not in gate_source
     assert "parse_aware_timestamps" in frozen_source
+    assert "sys.path.insert(0, str(ROOT))" in gate_source
+    assert "sys.path.insert(0, str(ROOT))" in frozen_source
     assert 'pd.to_datetime(h1["timestamp"], utc=True' not in frozen_source
     assert 'pd.to_datetime(n["timestamp"], utc=True' not in frozen_source
     assert 'pd.to_datetime(m["timestamp"], utc=True' not in frozen_source
@@ -347,6 +352,6 @@ def test_mtf_source_workflow_runs_on_pr_head_and_keeps_2025_out_of_scope() -> No
 
     assert "pull_request:" in workflow
     assert "github.event.pull_request.head.sha || github.sha" in workflow
-    assert "range(2016,2025)" in workflow
+    assert "range(2016, 2025)" in workflow
     assert "range(2016,2026)" not in workflow
     assert "run_governed_backtest" not in workflow

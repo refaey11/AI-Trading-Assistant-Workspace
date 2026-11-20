@@ -2,13 +2,16 @@ from __future__ import annotations
 
 import os
 import subprocess
+import sys
 from pathlib import Path
 
 import pandas as pd
 
-from BACKTEST.mtf_source_contract_gate_v1 import parse_aware_timestamps
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
 
-ROOT = Path.cwd()
+from BACKTEST.mtf_source_contract_gate_v1 import parse_aware_timestamps
 Path("artifacts/integration_gate").mkdir(parents=True, exist_ok=True)
 
 

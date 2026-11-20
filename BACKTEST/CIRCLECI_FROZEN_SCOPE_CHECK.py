@@ -2,13 +2,16 @@ from __future__ import annotations
 
 import json
 import os
+import sys
 from pathlib import Path
 
 import pandas as pd
 
-from BACKTEST.mtf_source_contract_gate_v1 import parse_aware_timestamps
-
 ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from BACKTEST.mtf_source_contract_gate_v1 import parse_aware_timestamps
 allowlist = json.loads((ROOT / "governance/DECISION_BRAIN_RULE_ALLOWLIST_V1.json").read_text(encoding="utf-8"))
 expected_murphy = set(allowlist["verified_runtime"]["MURPHY"])
 blocked = {x["rule_id"] for x in allowlist.get("explicitly_blocked", [])}
