@@ -355,3 +355,67 @@ def test_mtf_source_workflow_runs_on_pr_head_and_keeps_2025_out_of_scope() -> No
     assert "range(2016, 2025)" in workflow
     assert "range(2016,2026)" not in workflow
     assert "run_governed_backtest" not in workflow
+
+
+RUNNER_PATH = MODULE_PATH.parents[2] / "BACKTEST" / "GOVERNED_CANONICAL_RUNNER_V3.py"
+RUNNER_SPEC = importlib.util.spec_from_file_location("governed_canonical_runner_v3", RUNNER_PATH)
+assert RUNNER_SPEC is not None and RUNNER_SPEC.loader is not None
+RUNNER = importlib.util.module_from_spec(RUNNER_SPEC)
+RUNNER_SPEC.loader.exec_module(RUNNER)
+
+
+def _complete_numeric_mtf_row() -> dict[str, float]:
+    return {field: 0.0 for field in RUNNER.MTF_REQUIRED_FIELDS}
+
+
+def test_canonical_runner_rejects_missing_mtf_fields_instead_of_defaulting_to_zero() -> None:
+    with pytest.raises(ValueError, match="BLOCKED_MTF_MISSING_CANONICAL_FIELDS"):
+        RUNNER.brain_row(pd.Series({"mtf_trend_score": 0.0}))
+
+
+def test_canonical_runner_rejects_categorical_mtf_without_invented_numeric_mapping() -> None:
+    row = _complete_numeric_mtf_row()
+    row["M15_trend_regime"] = "BULL_TREND"
+    with pytest.raises(ValueError, match="BLOCKED_MTF_NON_NUMERIC_FIELD:M15_trend_regime"):
+        RUNNER.brain_row(pd.Series(row))
+
+
+def test_canonical_runner_rejects_non_finite_mtf_values() -> None:
+    row = _complete_numeric_mtf_row()
+    row["mtf_trend_score"] = float("inf")
+    with pytest.raises(ValueError, match="BLOCKED_MTF_NON_FINITE_FIELD:mtf_trend_score"):
+        RUNNER.brain_row(pd.Series(row))
+
+
+def test_canonical_runner_passes_only_supplied_numeric_mtf_fields() -> None:
+    row = _complete_numeric_mtf_row()
+    row["mtf_trend_score"] = 2.0
+    row["M5_trend_regime"] = -1.0
+    result = RUNNER.brain_row(pd.Series(row))
+    assert result["mtf_trend_score"] == 2.0
+    assert result["M5_trend_regime"] == -1.0
+    assert result["volume_available"] is False
+    assert not any(key.endswith("_volume_regime") for key in result)
+
+
+def test_governed_integration_gate_requires_all_six_timeframe_brain_fields() -> None:
+    root = MODULE_PATH.parents[2]
+    source = (root / "BACKTEST" / "GOVERNED_INTEGRATION_GATE_V3.py").read_text(encoding="utf-8")
+    assert "MTF_REQUIRED_FIELDS" in source
+    assert '"M5_trend_regime"' in source
+    assert '"M15_trend_regime"' in source
+    assert '"M30_trend_regime"' in source
+    assert '"H1_trend_regime"' in source
+    assert '"H4_trend_regime"' in source
+    assert '"D1_trend_regime"' in source
+    assert "parse_aware_timestamps" in source
+    assert 'pd.to_datetime(df["timestamp"], utc=True' not in source
+
+
+def test_governed_canonical_runner_uses_aware_timestamps_and_rejects_duplicates() -> None:
+    root = MODULE_PATH.parents[2]
+    source = (root / "BACKTEST" / "GOVERNED_CANONICAL_RUNNER_V3.py").read_text(encoding="utf-8")
+    assert "parse_aware_timestamps" in source
+    assert "BLOCKED_SOURCE_DUPLICATE_TIMESTAMP" in source
+    assert 'pd.to_datetime(df["timestamp"], utc=True' not in source
+    assert ".drop_duplicates(" not in source
