@@ -131,6 +131,18 @@ def validate_synthetic_consumer_contract(*, stream, bars, source_history, pivots
             raise ValueError("availability must equal the final confirming bar index")
         if pivot["available_index"] > decision_snapshot_index:
             raise ValueError("pivot is not yet available at the decision snapshot")
+        # Require the complete declared L..R source context in source history.
+        # Consecutive fixture indices do NOT authenticate market-time/session
+        # continuity; production continuity evidence remains a separate gate.
+        required_context = range(
+            pivot["source_index"] - pivot["left_window"],
+            pivot["final_confirming_index"] + 1,
+        )
+        missing_context = [i for i in required_context if i not in history_by_index]
+        if missing_context:
+            raise ValueError(
+                "pivot confirmation context is incomplete: missing source-history indices"
+            )
         source = history_by_id.get(pivot["source_bar_id"])
         confirming = history_by_id.get(pivot["final_confirming_bar_id"])
         if source is None or confirming is None:
