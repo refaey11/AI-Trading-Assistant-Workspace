@@ -377,3 +377,69 @@ Consequently, the PR #114 finding that timestamps equal UTC hour boundaries is c
 6. Do not inspect or analyze 2025 data further. Historical workflows that loaded complete source CSVs before filtering are documented as past scope corrections, not a precedent for future access.
 
 No source ID or composite ID was generated. No clock was promoted to UTC. No runtime, producer, pivot detector, Decision Brain, OOS, or order-path change was made.
+
+## 13. Historical source-manifest recovery status — 2026-11-21
+
+This section records the first historical-source recovery pass after the user approved the sequence "historical source first, live MT5 second." It uses only existing GitHub repository/PR evidence and the previously completed, bounded annual HistData archive forensics. It does not download, reopen, or inspect any 2025/2026 market data.
+
+### 13.1 Positive source evidence currently recovered
+
+| Artifact / period | Evidence | What it establishes |
+|---|---|---|
+| Eight annual GBPUSD M1 MT archives: 2016–2019 and 2021–2024 | Release asset names, per-asset SHA-256 values, internal CSV member names, and companion metadata inspected in Section 10 | HistData.com provenance label for each of those eight annual archives |
+| Annual CSV row schema | Date, time, OHLC, volume; no separate per-row immutable identifier in the inspected format | No Model A native candle ID demonstrated by this CSV representation |
+| Annual companion metadata | HistData attribution and tick-interval summaries; no explicit UTC/GMT, timezone, DST, broker-server, or clock-offset declaration recovered | File provenance label only; no authenticated clock lineage or source publication-time semantics |
+| 2020 GBPUSD M1 | No matching named annual HistData M1 asset in the inspected release inventory | A source-inventory gap; provider is unresolved, not inferred |
+| Combined GBPUSD M1 master | Earlier PR #116 workflow downloaded and parsed it; Section 11 documents that full CSV rows were traversed/loaded before 2016–2024 filters | Historical presence of the archive in a prior workflow, but not a per-year source manifest; 2025 handling remains frozen and must not be repeated |
+| TitanFX-labelled 2020–2024 volume artifacts | Existing GBPUSD volume-source audit records derived timeframe volume as M1_TitanFX_2020_2024 | Volume-path label only; not raw M1 OHLC provider identity or clock authority |
+| PR #114 timestamp audit | Workflow source shows it acquired the combined M1/H1 archives; helper applies pd.to_datetime(..., utc=True) to timestamps | A historical code-path assumption, not independent source-clock authentication |
+
+### 13.2 Recovery of an authoritative manifest
+
+The reviewed GitHub evidence does **not** contain a recovered authoritative manifest that maps each year/file in the canonical historical OHLC master to:
+- actual upstream provider/feed and source namespace;
+- exact acquisition/export method and immutable archive/member identity;
+- canonical symbol mapping and native timeframe;
+- timestamp meaning (bar open vs bar close), timezone/offset and DST history;
+- provider publication/availability-time semantics;
+- duplicate, correction, revision, and backfill policy;
+- native per-bar immutable ID availability and uniqueness scope;
+- reproducible producer/transform version and parameters linking raw M1 to each derived output.
+
+PR #116's archive scanner was designed to find candidate documents/code and inspect archive members/schema/previews; its own interpretation explicitly says a filename/keyword is a lead, not proof of output lineage. Its recovered-workspace scan did not find the original general Market Structure/six-TF producer. PR #114's timestamp audit does not repair this gap because it localizes naive timestamps to UTC by software assumption, not by source evidence. The eight annual HistData files are direct provenance evidence for those files only; they do not authenticate the combined master or fill the 2020 gap.
+
+### 13.3 Historical source-manifest disposition
+
+**AUTHORITATIVE_HISTORICAL_SOURCE_MANIFEST: NOT RECOVERED.**
+
+Current bounded state:
+- HistData annual provenance: **PARTIALLY ESTABLISHED** for 2016–2019 and 2021–2024 only.
+- 2020 raw OHLC provider: **UNRESOLVED**.
+- Combined master per-year lineage: **UNRESOLVED**.
+- Historical timestamp UTC/timezone/DST lineage: **NOT AUTHENTICATED**.
+- Provider source publication/available-at semantics: **NOT RECOVERED**.
+- Native immutable per-bar ID (Model A): **NOT DEMONSTRATED**.
+- Model B composite identity: **NOT AUTHORIZED**.
+- Historical source suitability for production Pivot V2: **BLOCKED**.
+
+Do not label the entire 2016–2024 development dataset as HistData or TitanFX. Do not infer 2020 from adjacent years. Do not treat the old utc=True normalization as source-clock evidence. Do not create source IDs or production available_at values from these records.
+
+### 13.4 Evidence required to close the historical gate
+
+The next admissible recovery item is the original source-side manifest/acquisition record or provider documentation for the exact raw OHLC files used to build the canonical 2016–2024 M1 master, including an explicit 2020 resolution. If no such manifest exists, a newly authored declaration from memory is not equivalent to contemporaneous source evidence; it must be marked as an owner attestation and independently corroborated where possible.
+
+The evidence package must also include:
+1. exact archive/member names and cryptographic digests for each development-year source file;
+2. provider/source namespace and canonical symbol mapping;
+3. native timestamp semantics and authoritative timezone/DST/UTC mapping;
+4. provider publication/availability semantics, distinct from capture and ingestion time;
+5. revision/backfill/duplicate policy;
+6. whether native immutable candle IDs exist and their uniqueness scope;
+7. reproducible transformation lineage from raw M1 to derived OHLC/timeframes, with code/version and configuration;
+8. explicit exclusion of the locked 2025 OOS dataset from all new retrieval, inspection, and processing.
+
+### 13.5 Next step
+
+The historical source-manifest recovery pass is complete as a bounded GitHub evidence review and has reached a fail-closed result: **the authoritative manifest was not found**. Before any historical clock or identity contract can be promoted, the project needs the original acquisition/source manifest or equivalent provider-issued evidence. Once that historical gate is resolved, proceed to the separately governed live MT5 broker-clock workstream; do not combine their policies.
+
+Read-only documentation update. No 2025/2026 data access, no tuning/calibration/feature selection/performance evaluation, no timestamp promotion, no source ID generation, no production runtime change, no Decision Brain integration, no main-branch change, no merge, and no order path.
