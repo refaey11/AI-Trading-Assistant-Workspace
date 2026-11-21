@@ -330,13 +330,13 @@ The separate reconciliation script read the combined CSV into a dataframe, then 
 
 ### 11.2 OOS handling qualification
 
-The older scanner did traverse/parse CSV records from the combined file while applying its year filter, so it is not correct to claim that no 2025+ record bytes or timestamp fields were ever read by that historical workflow. However, the inspected source code shows that:
-- 2025+ rows were excluded from the reported row counts and M1-to-MTF reconciliation;
+The older scanner did traverse/parse CSV records from the combined file while applying its year filter. In addition, the reconciliation helper called `pandas.read_csv` on the complete M1 CSV member before applying its date filter, so the 2025+ rows and columns were loaded into memory by that historical workflow. It is therefore not correct to claim that no 2025+ record bytes, timestamps, or OHLCV fields were ever read. However, the inspected source code shows that:
+- 2025+ rows were excluded from the reported row counts and M1-to-MTF reconciliation results;
 - the scanner used the timestamp to decide the year bucket and did not aggregate 2025 OHLC or volume into the audit summary;
-- the reconciliation explicitly filtered to dates before 2025-01-01 before computing OHLCV aggregation;
+- the reconciliation filtered the loaded dataframe to dates before 2025-01-01 before computing expected OHLCV aggregation and comparisons;
 - no 2025 tuning, calibration, feature selection, threshold selection, or performance evaluation was performed by these scripts.
 
-This is a bounded source-code finding about what the scripts did. It is not a claim that the archive was untouched at the byte/read level. The protected 2025 OOS rule remains: no future inspection, analysis, tuning, or evaluation of 2025 data.
+This is a bounded source-code finding about what the scripts did. It is not a claim that the archive was untouched at the byte/read or in-memory loading level: the old workflow did read and load 2025 records, then excluded them before reported calculations. The protected 2025 OOS rule remains: no future inspection, analysis, tuning, or evaluation of 2025 data.
 
 ### 11.3 Provenance conclusion unchanged
 
