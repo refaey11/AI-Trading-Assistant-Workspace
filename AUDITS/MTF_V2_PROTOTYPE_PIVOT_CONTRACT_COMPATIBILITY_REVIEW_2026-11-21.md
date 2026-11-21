@@ -475,3 +475,40 @@ Any tolerance or synchronization bound must come from authoritative source/opera
 Next safe step: identify the actual intended source boundary (historical archive vs live broker/MT5 feed) and recover its clock/publication-time authority. These may be different sources and must not be silently combined into one clock policy.
 
 Static review/documentation only. No timestamp promotion, clock-authentication code, source-bar ID, production `available_at`, detector/consumer runtime change, 2025/2026 data, tuning/calibration, Decision Brain integration, main-branch change, merge, or order path.
+
+
+## 15. Historical-vs-live clock authority boundary inventory (2026-11-21)
+
+The Section 14 recommendation to identify the actual source boundary was checked against the existing bounded repository evidence. The current evidence describes at least two distinct source paths; it does not justify one shared clock policy.
+
+| Candidate source path | What is positively evidenced | Clock/publication-time authority | Current disposition |
+|---|---|---|---|
+| Annual HistData GBPUSD M1 MT archives, 2016–2019 and 2021–2024 | The eight individually inspected annual release archives identify HistData.com in companion metadata | No explicit UTC/GMT timezone, DST, broker-server, or offset declaration recovered; no provider publication-time SLA/evidence | Historical file provenance known; clock lineage and available_at BLOCKED |
+| 2020 GBPUSD M1 | No matching annual HistData M1 asset in the inspected release inventory | Provider and clock authority unresolved | BLOCKED; do not bridge the gap by assumption |
+| Combined GBPUSD M1 master 2016–2026 | Prior workflows downloaded and parsed/loaded it; the earlier OOS-scope correction is recorded in Section 11 of the source identity audit | Its internal per-year provider/clock manifest was not recovered in this review; 2025 remains protected and is not to be re-inspected | BLOCKED; do not infer all-year HistData provenance from annual subset |
+| TitanFX-labelled derived volume path, GBPUSD 2020–2024 | Existing audit records source_volume as TitanFX M1-derived timeframe volume for OBV | This is volume-path attribution only; no raw OHLC clock/publication-time contract recovered | Not a candidate clock authority for general OHLC/Pivot input |
+| Live MT5 Raw Capture V1.3 | EA captures broker-server identifier, raw MqlRates time, terminal/server/host clock observations | Actual broker/server identity and its historical timezone/DST policy are not yet selected or evidenced; raw candle time is explicitly UNVERIFIED | Capture schema only; no authenticated UTC or provider available_at |
+
+### 15.1 Boundary decision
+
+There is currently **no single selected authoritative source boundary** for both historical and live Pivot V2 inputs. Historical HistData files and a live MT5 terminal capture must be treated as separate source namespaces and separate clock policies unless a future, evidence-backed contract explicitly proves equivalence.
+
+Do not:
+- use the TitanFX OBV volume label as proof of the OHLC provider;
+- assume the annual HistData timezone from observed wall-clock values;
+- infer the missing 2020 provider from adjacent years;
+- infer the combined master provider from the annual archive subset;
+- treat a broker/server name captured at runtime as proof of its timezone/DST history;
+- synthesize provider source_available_at from candle close or local capture time.
+
+### 15.2 Required next input / recovery target
+
+To proceed without guessing, the project must recover one of:
+1. the authoritative historical source manifest that maps each development-year OHLC file to provider, symbol mapping, timezone/offset and revision policy; or
+2. the selected live broker/server's official clock/timezone/DST and bar-publication semantics, plus a controlled terminal observation protocol.
+
+These are separate workstreams. A future implementation may support both, but it must use separately versioned source/clock policies and keep their identities distinct. The historical path must not be promoted into a live clock authority, and the live MT5 observations must not retroactively authenticate historical archive timestamps.
+
+**Disposition:** no source boundary selected, no UTC promotion, no Model B source identity authorization, and no production available_at. The next safe action is source-manifest recovery for historical data or broker-specific clock authority recovery for the live feed; a choice is required before either can become an implementation contract.
+
+Static evidence inventory only. No external lookup, no 2025/2026 data access, no tuning, no source/runtime change, no main change, no merge, and no order path.
