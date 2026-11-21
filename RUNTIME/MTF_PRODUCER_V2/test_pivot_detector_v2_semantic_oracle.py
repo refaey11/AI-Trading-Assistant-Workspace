@@ -53,6 +53,18 @@ class PivotSemanticOracleTests(unittest.TestCase):
         self.assertEqual((low.status, low.reason),
                          ("NOT_EVALUABLE", "EQUAL_LOW_PLATEAU"))
 
+    def test_equal_high_on_right_side_is_not_evaluable(self):
+        bars = make_bars([1, 2, 9, 9, 4], [0, 1, 7, 8, 3])
+        high, _ = evaluate(bars, 2)
+        self.assertEqual((high.status, high.reason),
+                         ("NOT_EVALUABLE", "EQUAL_HIGH_PLATEAU"))
+
+    def test_equal_low_on_right_side_is_not_evaluable(self):
+        bars = make_bars([8, 7, 3, 2, 7], [6, 5, -2, -2, 5])
+        _, low = evaluate(bars, 2)
+        self.assertEqual((low.status, low.reason),
+                         ("NOT_EVALUABLE", "EQUAL_LOW_PLATEAU"))
+
     def test_same_bar_high_and_low_are_retained_separately(self):
         bars = make_bars([1, 2, 10, 3, 4], [0, -1, -2, -1, 0])
         high, low = evaluate(bars, 2)
@@ -78,6 +90,16 @@ class PivotSemanticOracleTests(unittest.TestCase):
         high, low = evaluate(bars, 2, edges=edges)
         self.assertEqual((high.status, low.status),
                          ("NOT_EVALUABLE", "NOT_EVALUABLE"))
+        self.assertEqual(high.reason, "UNPROVEN_SEQUENCE_GAP")
+
+    def test_unproven_gap_at_left_window_boundary_blocks(self):
+        bars = make_bars([1, 2, 9, 3, 4])
+        high, _ = evaluate(bars, 2, edges=[False, True, True, True])
+        self.assertEqual(high.reason, "UNPROVEN_SEQUENCE_GAP")
+
+    def test_unproven_gap_at_right_window_boundary_blocks(self):
+        bars = make_bars([1, 2, 9, 3, 4])
+        high, _ = evaluate(bars, 2, edges=[True, True, True, False])
         self.assertEqual(high.reason, "UNPROVEN_SEQUENCE_GAP")
 
     def test_verified_continuity_allows_normal_evaluation(self):
@@ -115,6 +137,25 @@ class PivotSemanticOracleTests(unittest.TestCase):
         bars[2] = SyntheticBar("synthetic-2", math.nan, 1, True, 102)
         high, _ = evaluate(bars, 2)
         self.assertEqual(high.status, "NOT_EVALUABLE")
+
+    def test_invalid_ohlc_range_blocks_window(self):
+        bars = make_bars([1, 2, 9, 3, 4])
+        bars[2] = SyntheticBar("synthetic-2", 1, 2, True, 102)
+        high, low = evaluate(bars, 2)
+        self.assertEqual((high.status, low.status),
+                         ("NOT_EVALUABLE", "NOT_EVALUABLE"))
+
+    def test_boolean_ohlc_is_rejected(self):
+        bars = make_bars([1, 2, 9, 3, 4])
+        bars[2] = SyntheticBar("synthetic-2", True, 1, True, 102)
+        high, _ = evaluate(bars, 2)
+        self.assertEqual(high.reason, "INVALID_OR_UNFINISHED_BAR")
+
+    def test_equal_availability_values_are_rejected(self):
+        bars = make_bars([1, 2, 9, 3, 4])
+        bars[3] = SyntheticBar("synthetic-3", 3, 1, True, 102)
+        high, _ = evaluate(bars, 2)
+        self.assertEqual(high.reason, "UNORDERED_AVAILABILITY")
 
     def test_future_bars_cannot_change_earlier_confirmation(self):
         full = make_bars([1, 2, 9, 3, 4, 100, -50])
