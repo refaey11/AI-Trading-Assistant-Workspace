@@ -1,0 +1,68 @@
+name: Dropbox GBPUSD 2020 Archive Reconciliation
+
+on:
+  push:
+    branches:
+      - audit/dropbox-gbpusd-2020-source-reconciliation-2026-11-21
+
+permissions:
+  contents: read
+
+jobs:
+  compare-2020-source:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      DROPBOX_ACCESS_TOKEN: ${{ secrets.DROPBOX_ACCESS_TOKEN }}
+    steps:
+      - name: Checkout audit branch
+        uses: actions/checkout@v4
+        with:
+          ref: audit/dropbox-gbpusd-2020-source-reconciliation-2026-11-21
+          fetch-depth: 1
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install audit dependency
+        run: python -m pip install --disable-pip-version-check pandas
+
+      - name: Download only the 2020 source and 2016-2024 derived MTF archive
+        shell: bash
+        run: |
+          set -euo pipefail
+          TOKEN="$(printf '%s' "$DROPBOX_ACCESS_TOKEN" | tr -d '\r\n' | sed -E 's/^Bearer[[:space:]]+//; s/^"//; s/"$//')"
+          test -n "$TOKEN"
+          mkdir -p artifacts/source
+          download() {
+            local source_path="$1"
+            local output="$2"
+            local dropbox_arg
+            dropbox_arg="$(python -c 'import json,sys; print(json.dumps({"path":sys.argv[1]}))' "$source_path")"
+            curl -L --fail --silent --show-error \
+              https://content.dropboxapi.com/2/files/download \
+              -H "Authorization: Bearer ${TOKEN}" \
+              -H "Dropbox-API-Arg: ${dropbox_arg}" \
+              -o "$output"
+          }
+          download "/HISTDATA_COM_MT_GBPUSD_M12020.zip" artifacts/source/HISTDATA_COM_MT_GBPUSD_M12020.zip
+          download "/MULTI_TF_MARKET_DATA_V1.zip" artifacts/source/MULTI_TF_MARKET_DATA_V1.zip
+          ls -lh artifacts/source
+
+      - name: Run 2020-only archive reconciliation
+        run: |
+          python -m py_compile tools/audit_dropbox_gbpusd_2020_archive_against_mtf_v1.py
+          python tools/audit_dropbox_gbpusd_2020_archive_against_mtf_v1.py \
+            --m1-archive artifacts/source/HISTDATA_COM_MT_GBPUSD_M12020.zip \
+            --mtf-archive artifacts/source/MULTI_TF_MARKET_DATA_V1.zip \
+            --output artifacts/DROPBOX_GBPUSD_HISTDATA_2020_VS_MTF_AUDIT.json
+
+      - name: Upload read-only audit report
+        uses: actions/upload-artifact@v4
+        with:
+          name: dropbox-gbpusd-histdata-2020-vs-mtf-audit
+          path: artifacts/DROPBOX_GBPUSD_HISTDATA_2020_VS_MTF_AUDIT.json
+          if-no-files-found: error
+          retention-days: 30
