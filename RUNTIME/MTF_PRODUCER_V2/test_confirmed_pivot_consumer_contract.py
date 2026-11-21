@@ -161,5 +161,57 @@ class ConfirmedPivotConsumerContractTests(unittest.TestCase):
         self.assertFalse(out["continuity_authenticated"])
 
 
+    def test_six_native_timeframe_labels_are_structurally_supported(self):
+        for timeframe in ("M5", "M15", "M30", "H1", "H4", "D1"):
+            stream, bars, history, pivot = fixture()
+            stream["timeframe"] = timeframe
+            for bar in history:
+                bar["timeframe"] = timeframe
+            for bar in bars:
+                bar["timeframe"] = timeframe
+            pivot["timeframe"] = timeframe
+            with self.subTest(timeframe=timeframe):
+                self.assertTrue(self.validate(stream, bars, history, pivot)["accepted_pivot_ids"])
+
+    def test_same_source_bar_can_retain_separate_high_and_low_candidates(self):
+        stream, bars, history, high = fixture()
+        low = copy.deepcopy(high)
+        low["pivot_id"] = "pivot-low-2"
+        low["kind"] = "LOW"
+        low["price"] = history[2]["low"]
+        out = validate_synthetic_consumer_contract(
+            stream=stream, bars=bars, source_history=history,
+            pivots=[high, low], decision_snapshot_index=8,
+        )
+        self.assertEqual(out["accepted_pivot_ids"], ["pivot-high-2", "pivot-low-2"])
+
+    def test_duplicate_source_bar_identity_is_rejected(self):
+        stream, bars, history, pivot = fixture()
+        history.append(copy.deepcopy(history[0]))
+        with self.assertRaisesRegex(ValueError, "IDs and indices must be unique"):
+            self.validate(stream, bars, history, pivot)
+
+    def test_non_finite_source_ohlc_is_rejected(self):
+        stream, bars, history, pivot = fixture()
+        history[2]["high"] = math.nan
+        with self.assertRaisesRegex(ValueError, "OHLC must be finite"):
+            self.validate(stream, bars, history, pivot)
+
+    def test_final_confirming_identity_must_match_declared_index(self):
+        stream, bars, history, pivot = fixture()
+        pivot["final_confirming_bar_id"] = "bar-6"
+        with self.assertRaisesRegex(ValueError, "final confirming index"):
+            self.validate(stream, bars, history, pivot)
+
+    def test_producer_and_configuration_binding_is_enforced(self):
+        for field, value in (("producer_version", "other-version"),
+                             ("schema_version", "other-schema"),
+                             ("detector_config_id", "other-config")):
+            stream, bars, history, pivot = fixture()
+            pivot[field] = value
+            with self.subTest(field=field), self.assertRaisesRegex(ValueError, "not bound"):
+                self.validate(stream, bars, history, pivot)
+
+
 if __name__ == "__main__":
     unittest.main()
