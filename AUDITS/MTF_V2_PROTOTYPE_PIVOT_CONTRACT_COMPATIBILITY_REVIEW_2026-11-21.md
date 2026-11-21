@@ -350,3 +350,52 @@ This closes only a structural fixture gap. Consecutive integer indices do not pr
 The warm-start fixture still does not authorize production warm-start. Production acceptance remains blocked until source identity and clock evidence are independently authenticated, the complete pre-window context payload and availability boundary are governed, continuity/session evidence is authoritative, and six-timeframe conformance is demonstrated. No production consumer or detector code was changed.
 
 No 2025/2026 market data, tuning, calibration, feature selection, performance evaluation, Decision Brain integration, main-branch change, merge, or order path.
+
+
+## 13. Market-time continuity and session-gap audit (2026-11-21)
+
+A focused static review compared the PR #139 structure consumer, the PR #140 structural evidence-envelope gate, the approved PR #141 pivot contract, and the approved synthetic event-lifecycle policy.
+
+### 13.1 PR #139 consumer: sequence continuity only
+
+The exact PR #139 `Bar` schema contains only integer index, OHLC, and a completed flag. Its validator requires consecutive ordered integer indices and valid completed OHLC. The event loop compares the previous supplied close with the current close without any bar-open/bar-close timestamp, source availability time, timezone, session calendar, or upstream continuity attestation.
+
+Therefore, this consumer cannot distinguish:
+- normal adjacent native-timeframe bars;
+- expected weekend or market-session closures;
+- a missing in-session candle;
+- a delayed, duplicated, revised, or out-of-order feed record;
+- a broker/provider outage.
+
+A consecutive index sequence is only a caller-provided sequence property. It is not evidence of elapsed market-time continuity.
+
+### 13.2 PR #140 envelope: stronger structure, still not continuity authentication
+
+The separate PR #140 gate checks explicit-offset timestamp structure, timestamp ordering/causality, contiguous source indices, same-symbol binding, and exact six-timeframe envelope coverage. Its documented output remains `STRUCTURALLY_VALID_NOT_AUTHENTICATED`, with `production_eligible=false` and `authentication_required=true`.
+
+Those checks do not establish the truth of the source clock, broker timezone/DST mapping, expected native-bar schedule, session calendar, or whether a time interval represents a legitimate closure versus missing in-session data. A monotonic sequence of timestamps does not by itself prove that no expected bar is missing.
+
+### 13.3 Cross-contract boundary
+
+The Pivot V2 contract permits confirmation across a gap only when upstream source/session evidence proves continuity. The approved event-lifecycle policy also explicitly says that a local index gap or inferred session is not an independent invalidation/reset trigger. These rules are compatible: neither index gaps nor guessed session semantics may be promoted to authenticated continuity or invalidation.
+
+The present synthetic warm-start hardening checks that all declared L/R integer indices exist and are completed, but deliberately leaves `continuity_authenticated=false`. It does not resolve market-time/session continuity.
+
+### 13.4 Evidence required before selecting production gap behavior
+
+A production continuity contract still needs, at minimum:
+1. authoritative source namespace and canonical symbol/native-timeframe mapping;
+2. source bar-open, bar-close, and verified availability-time semantics;
+3. independently verified source clock lineage, timezone, and DST policy;
+4. an authoritative expected-bar/session calendar for the selected feed and instrument;
+5. deterministic classification of expected closures versus missing in-session bars, delayed bars, duplicates, and revisions;
+6. explicit state behavior at a proven discontinuity (block confirmation, preserve prior structure state, reset, or another approved transition);
+7. six-timeframe positive/negative fixtures, including session boundaries, weekends, missing bars, provider outages, duplicate/revised bars, and replay determinism.
+
+No gap tolerance, maximum elapsed time, session schedule, reset behavior, or continuity policy is selected in this audit. In particular, no arbitrary duration threshold is inferred from timeframe labels.
+
+### 13.5 Disposition
+
+**Market-time continuity remains BLOCKED / NOT AUTHENTICATED.** PR #139 remains a sequence-indexed synthetic consumer. PR #140 remains a structural envelope gate, not a trusted clock/session authority. The next safe step is to recover or define the selected upstream source/session authority and its evidence contract before proposing gap-state semantics.
+
+Static review/documentation only. No PR #139 or PR #140 runtime changes, no production continuity implementation, no market-data-derived thresholds, no 2025/2026 data, no tuning/calibration, no Decision Brain integration, no main-branch change, and no merge.
