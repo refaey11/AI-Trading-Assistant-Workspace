@@ -138,3 +138,31 @@ The contract must preserve the distinction between an immutable source-bar ident
 - No pivot detector implementation or L/R selection.
 - No Decision Brain integration, signal generation, or order path.
 - No PR merge and no main-branch change.
+
+
+## 7. Follow-up source inspection — 2026-11-21
+
+This follow-up re-fetched the exact implementation files from the head branches of PRs #131, #133, #136, and #140. The findings below are tied to the inspected branch content and blob SHAs so the conclusion is auditable.
+
+| PR / file | Inspected blob SHA | Relevant lines / fields | Identity finding |
+|---|---|---|---|
+| #131 `RUNTIME/MT5_RAW_CAPTURE_V1_3/MT5_Raw_Capture_Only_V1_3.mq5` | `a79b173adf06c9caaf3a3288e5a3f8504a56e6f2` | 34, 61–72 | Uses `MqlRates`; writes raw epoch and explicitly labels it `UNVERIFIED`. No native per-bar ID field is emitted in this file. |
+| #131 `RUNTIME/MT5_RAW_CAPTURE_V1_3/mt5_raw_capture_contract_v1_3.py` | `8474543c7465431a8a29fb1d106ec5621826e991` | 9, 30–31, 39–57, 73–75 | Defines row `payload_hash` and raw epoch; explicitly forbids UTC alignment fields and requires `UNVERIFIED`. No `source_bar_id` contract appears in this file. |
+| #133 `RUNTIME/MTF_PRODUCER_V1/producer_feature_lineage_contract_v1.py` | `a4cb1c44d01725cc9e5f60ae1f1d83e9a049c0ee` | 11, 23–32, 43, 91–123 | Identity tuple is `symbol,timeframe,bar_time_utc,source,producer`; raw inputs are matched by payload hash and lineage tuple. No immutable per-bar ID field is defined. |
+| #136 `BACKTEST/MTF_SIX_TF_SOURCE_ADAPTER_V1.py` | `c79c73851bd100990aa9ec18a462a028c819267b` | 6, 24, 57–86, 97–99, 217 | Rejects timezone-naive timestamps and normalizes explicit-offset timestamps to UTC; inventories timestamps and duplicate samples. No per-bar ID emission or serialization is present in this adapter. |
+| #140 `RUNTIME/MTF_PRODUCER_V2/mtf_v2_evidence_envelope_gate_v1.py` | `c41eecd5b5c463857b2b81ac8b6a0b21a5dc2039` | 3, 29–30 | Gate describes envelope shape, aware timestamps, availability ordering, and explicit UTC offsets. It is not a source-ID authenticator or per-bar identity issuer. |
+
+### 7.1 Search and scope limitations
+
+- GitHub code-search queries for `source_bar_id`, `bar_id`, `candle_id`, and `source identity` returned no indexed matches in the connected search surface.
+- That search surface is limited to the default-branch code index; zero results do **not** prove that no identifier exists in every branch, historical commit, unindexed path, external provider, or uninspected artifact.
+- The stronger positive findings above come from direct inspection of the exact PR-head files and their blob SHAs, not from treating zero search results as proof of absence.
+- The four PRs' changed-file inventories were also checked. Their relevant changed-file sets contain the implementation/contract files listed in Sections 2 and 7; this does not constitute a complete repository-wide inventory of every historical or external data producer.
+
+### 7.2 Updated conclusion
+
+Within the directly inspected source contracts, no authoritative immutable upstream-native per-bar identifier has been demonstrated. This is sufficient to keep source identity blocked; it is **not yet sufficient to authorize Model B**. The Model A-first / conditional Model B policy remains unchanged.
+
+Before Model B can be considered, the project must establish—through a bounded inventory of all relevant in-repository producers and source artifacts, plus source-backed evidence where available—that no suitable native identifier exists. Only then may the separate Model B prerequisites be specified, reviewed, tested, and explicitly approved.
+
+No source identity implementation, timestamp promotion, pivot detector implementation, L/R selection, Brain integration, 2025 use, merge, or order path is authorized by this follow-up.
