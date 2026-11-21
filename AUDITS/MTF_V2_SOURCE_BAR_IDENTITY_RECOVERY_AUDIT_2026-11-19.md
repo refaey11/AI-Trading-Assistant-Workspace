@@ -343,3 +343,37 @@ This is a bounded source-code finding about what the scripts did. It is not a cl
 The old workflow's scan did not recover an internal source manifest or producer lineage proving which provider generated every year of the combined master. The later direct annual HistData inspection remains limited to the eight annual files from 2016–2019 and 2021–2024. The missing 2020 annual HistData GBPUSD asset and the separate combined archive's unresolved assembly history mean that HistData provenance must not be generalized to the full combined master or live MT5 feed.
 
 No source ID, composite ID, timestamp promotion, pivot identity, detector implementation, Brain/runtime change, or merge is authorized by this correction.
+
+## 12. GBPUSD 2020–2024 TitanFX label and historical M1/H1 clock-assumption follow-up — 2026-11-21
+
+### 12.1 What the GitHub history actually establishes
+
+Two historical commits were reviewed:
+- Commit `30318c5fdc59f117e5ec1162fa345da885e459ef` added `AUDITS/GBPUSD_VOLUME_SOURCE_AUDIT_2020_2024_2026-08-22.md`. It records GBPUSD derived M5/M15/M30/H1/H4 files in `mtf_test2/` for 2020-01-02 through 2024-12-31 with `source_timeframe=M1_TitanFX_2020_2024` and nonzero/positive volume in the inspected outputs.
+- Commit `4b8f52438925684501fb7d54d3c8136888a4838e` changed the Market State fixture from zero-volume examples to a small number of GBPUSD sample rows dated 2020-01-02 through 2024-12-31. The commit provides fixture values, not the upstream raw M1 source archive or its provider manifest.
+- Commit `44dff967b3dc7c40f7f1a170f3fd4429892e165b` changed the Market State adapter to treat an explicitly non-null volume as evaluable even if `volume_ratio` is unavailable. It is a downstream normalization change, not a raw-volume producer or provenance record.
+
+These records corroborate a **TitanFX-labelled derived volume path** for the 2020–2024 GBPUSD development artifacts. They do not identify the original raw M1 OHLC provider, establish that all OHLC fields came from TitanFX, authenticate the provider boundary, or provide a native per-bar ID. The exact source archive/manifest and executable M1-to-derived-volume producer were not recovered in the inspected GitHub history. Do not promote the label `M1_TitanFX_2020_2024` into a canonical source namespace without its source-side evidence.
+
+### 12.2 Existing annual HistData inventory cross-check
+
+The `workspace-v1` release inventory contains named annual GBPUSD M1 HistData MT archives for 2016–2019 and 2021–2025, but no matching named GBPUSD M1 HistData MT archive for 2020. This is a release-inventory gap only; it does not prove that HistData supplied no 2020 data by another route, nor that TitanFX necessarily supplied all 2020 OHLC. The annual files directly inspected in Section 10 remain attributable to HistData only for their own years.
+
+### 12.3 PR #114 timestamp audit code has an explicit UTC assumption
+
+PR #114 (`audit/m1-h1-completeness-timestamp-audit`, head `1d76594115ccaf0b8df2c7d0dd989cf0dc18195a`) was reviewed at source level. Its workflow downloads `/GBPUSD_M1_MASTER_2016_2026_V1.zip` and `/GBPUSD_H1_2016_2025_MASTER.zip`. In `tools/audit_m1_h1_completeness_timestamp_v1.py`, `_timestamps()` calls `pd.to_datetime(frame["timestamp"], utc=True, errors="coerce")` (function near the top of the file). For timezone-naive source timestamps, pandas localizes them as UTC; the code does not independently authenticate the source clock, broker timezone, DST policy, or UTC offset before doing so.
+
+Also, `_read_csv_from_zip()` loads the selected full CSV into a dataframe before `_timestamps()` parses timestamps and before the audit filters rows to years 2016–2024. Thus the PR #114 workflow read/loaded the full M1/H1 CSV members, including 2025 rows from the named 2016–2026/2016–2025 archives, then excluded 2025+ before reported development-period measurements. The old audit statement that 2025 was excluded before all measurements is true for its reported calculations but must not be read as meaning 2025 rows were never read or loaded. No 2025 tuning, calibration, feature selection, threshold selection, or performance evaluation is evidenced in this code path.
+
+Consequently, the PR #114 finding that timestamps equal UTC hour boundaries is conditional on its `utc=True` interpretation and is not independent proof that the raw provider timestamps were UTC. Do not reuse that audit's UTC-normalized values as authenticated clock lineage or as permission to construct Model B source-bar IDs.
+
+### 12.4 Current conclusion and next evidence gate
+
+1. TitanFX is supported as a source label for the separate 2020–2024 derived GBPUSD volume path only; raw M1 OHLC provider identity remains unresolved.
+2. HistData is directly evidenced for the eight annual files in Section 10 only; the release inventory has no named 2020 GBPUSD M1 HistData MT asset.
+3. The 2020 provider gap is not solved by either label. Require the original source-side archive/manifest, acquisition record, or producer contract that explicitly binds the 2020 M1 OHLC/volume records to a provider and source namespace.
+4. The timestamp audit's `utc=True` conversion is an assumption for naive timestamps, not clock authentication. Require source-native timezone/UTC-offset/DST/server-clock documentation or independently verified capture metadata.
+5. No provider-native immutable per-bar ID has been evidenced for the 2020–2024 TitanFX-labelled derived path. Model A remains preferred; Model B remains NOT AUTHORIZED until the selected source boundary, clock lineage, uniqueness/revision semantics, and serialization are separately evidenced and approved.
+6. Do not inspect or analyze 2025 data further. Historical workflows that loaded complete source CSVs before filtering are documented as past scope corrections, not a precedent for future access.
+
+No source ID or composite ID was generated. No clock was promoted to UTC. No runtime, producer, pivot detector, Decision Brain, OOS, or order-path change was made.
