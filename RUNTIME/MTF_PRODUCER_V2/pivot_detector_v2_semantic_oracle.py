@@ -63,10 +63,16 @@ def evaluate_candidate(
     False/missing evidence blocks the candidate; this oracle does not infer
     whether a gap is a weekend/session closure.
     """
-    if left < 1 or right < 1:
+    if (isinstance(left, bool) or not isinstance(left, int)
+            or isinstance(right, bool) or not isinstance(right, int)
+            or left < 1 or right < 1):
         raise ValueError("L and R must be explicit positive integers")
+    if isinstance(index, bool) or not isinstance(index, int):
+        raise TypeError("candidate index must be an integer")
     if not 0 <= index < len(bars):
         raise IndexError("candidate index outside supplied bars")
+    if not isinstance(precision_verified, bool):
+        raise ValueError("precision verification must be an explicit boolean")
     if len(continuity_verified) != max(0, len(bars) - 1):
         raise ValueError("continuity evidence must cover every supplied edge")
     if any(not isinstance(v, bool) for v in continuity_verified):
