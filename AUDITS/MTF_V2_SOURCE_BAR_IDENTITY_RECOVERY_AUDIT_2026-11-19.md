@@ -209,3 +209,56 @@ Therefore:
 4. No concrete composite ID, source timestamp promotion, or pivot identity generation is implemented by this inventory.
 
 No 2025 use, tuning, source/runtime change, Pivot Detector implementation, Brain integration, merge, or order path is authorized by this follow-up.
+
+
+
+## 9. Recovered original workspace archive — provider/source lead (2026-11-21)
+
+A previously committed read-only GitHub Actions workflow in PR #116 was located and its completed run and artifact were inspected:
+
+- Workflow: **MTF Producer Lineage - Recovered Workspace Archive**
+- Run: [43676124722](https://github.com/refaey11/AI-Trading-Assistant-Workspace/actions/runs/43676124722)
+- Result: completed / SUCCESS; all six workflow steps completed successfully.
+- Artifact: `recovered-workspace-mtf-producer-lineage`, artifact ID `14146273673`.
+- Artifact SHA-256: `6d364bc7c5f0bcbd78a29c870468d8dcab0e9de9df2097947f76c912258103e8`.
+- The workflow downloaded and reassembled the three-part `GBPUSD_RULE_EVALUATOR_V2_WORKSPACE` backup from the repository's `workspace-v1` release, then scanned the extracted workspace read-only.
+
+### 9.1 Inventory result
+
+The generated report records:
+- 241 files in the recovered workspace;
+- 211 text files scanned;
+- 94 candidate files containing relevant MTF / structure / timeframe / OHLCV terms;
+- only four Python files in the recovered workspace inventory, all named Murphy evaluator modules:
+  - `MURPHY_EVALUATORS_V1/murphy_0003_0004_evaluator.py`
+  - `MURPHY_EVALUATORS_V1/murphy_0021_0023_evaluator.py`
+  - `MURPHY_EVALUATORS_V1/murphy_0027_0029_evaluator.py`
+  - `MURPHY_EVALUATORS_V1/murphy_0050_evaluator.py`
+
+The inventory is primarily contracts, manifests, evaluation outputs, and precomputed indicator/structure files. It does not identify the original general Market Structure / six-timeframe MTF numeric producer or its exact `mtf_trend_score` formula. This is bounded to the contents of this recovered workspace backup; it is not an exhaustive inventory of every separately released data archive or external source.
+
+### 9.2 Provider clue — strictly scoped
+
+The recovered file-search report contains this exact line from `OBV_V1_OUTPUT/OBV_CONTRACT_V1.json` (line 5):
+
+```json
+"source_volume": "TitanFX M1-derived timeframe volume, 2020-2024"
+```
+
+This is positive evidence that the OBV contract attributes its M1-derived timeframe-volume input for 2020–2024 to **TitanFX**. It is a useful upstream-provider lead, but its scope is explicitly the OBV volume path. It does **not** prove that:
+- all historical M1 OHLC candles in the separately released master archives came from TitanFX;
+- the current/live MT5 feed uses TitanFX;
+- the broker server, symbol mapping, timezone/DST policy, or immutable per-bar ID is established;
+- TitanFX exposes a provider-native immutable candle ID.
+
+The recovered-workspace workflow did not download or inspect the separately released `GBPUSD_M1_MASTER_2016_2026_V1.zip` asset or the live MT5 source boundary. The provider identity for the canonical historical OHLC master and live capture therefore remains UNRESOLVED.
+
+### 9.3 Updated source-identity decision
+
+1. Record TitanFX as a **documented volume-source lead for the OBV 2020–2024 path only**, not as the proven canonical source for every M1 OHLC archive or live MT5 capture.
+2. Do not promote this clue into a source namespace, clock policy, native candle ID, or Model B composite key.
+3. Continue to prefer Model A if the selected upstream source exposes an authoritative native per-bar ID.
+4. Before any Model B consideration, identify the actual provider/feed and source boundary for the selected historical OHLC master and live capture separately; then establish clock provenance, native-ID availability/absence, uniqueness, revisions, and serialization under the previously approved gates.
+5. The recovered workspace scan is read-only and does not change the existing 2016–2024 candle aggregation reconciliation.
+
+No 2025 data was used for tuning, calibration, feature selection, or evaluation. No source/runtime change, ID generation, pivot detector implementation, Brain integration, merge, or order path is authorized by this follow-up.
