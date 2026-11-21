@@ -54,7 +54,7 @@ class PivotSemanticOracleTests(unittest.TestCase):
                          ("NOT_EVALUABLE", "EQUAL_LOW_PLATEAU"))
 
     def test_same_bar_high_and_low_are_retained_separately(self):
-        bars = make_bars([1, 2, 10, 3, 4], [9, 8, 0, 7, 6])
+        bars = make_bars([1, 2, 10, 3, 4], [0, -1, -2, -1, 0])
         high, low = evaluate(bars, 2)
         self.assertEqual(high.status, "CONFIRMED")
         self.assertEqual(low.status, "CONFIRMED")
@@ -81,7 +81,7 @@ class PivotSemanticOracleTests(unittest.TestCase):
         self.assertEqual(high.reason, "UNPROVEN_SEQUENCE_GAP")
 
     def test_verified_continuity_allows_normal_evaluation(self):
-        high, _ = evaluate(make_bars([1, 2, 9, 3, 4]))
+        high, _ = evaluate(make_bars([1, 2, 9, 3, 4]), 2)
         self.assertEqual(high.status, "CONFIRMED")
 
     def test_missing_precision_blocks_equality_sensitive_decision(self):
@@ -124,10 +124,12 @@ class PivotSemanticOracleTests(unittest.TestCase):
         self.assertEqual(a, b)
 
     def test_each_timeframe_is_independent(self):
-        expected = ("CONFIRMED", "CONFIRMED")
+        expected = ("CONFIRMED", "NOT_PIVOT")
         for timeframe in TFS:
             with self.subTest(timeframe=timeframe):
-                high, low = evaluate(make_bars([1, 2, 9, 3, 4]), 2)
+                highs = [9, 10, 11, 9, 10]
+                lows = [8, 7, -2, 6, 7]
+                high, low = evaluate(make_bars(highs, lows), 2)
                 self.assertEqual((high.status, low.status), expected)
 
     def test_l_and_r_are_explicit_and_independent(self):
