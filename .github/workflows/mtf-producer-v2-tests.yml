@@ -28,7 +28,6 @@ jobs:
         run: python -m unittest discover -s RUNTIME/MTF_PRODUCER_V2 -p "test_*.py" -v
 
   histdata-archive-forensics:
-    if: contains(github.event.pull_request.changed_files, 1) || github.event_name == 'push'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -42,7 +41,7 @@ jobs:
           import csv, hashlib, io, json, pathlib, urllib.request, zipfile
           assets = [
               ("2016", 512282668, "f9cc08e01cb7d4bc65fbcb8783b6bca6b57d7ab5891c4b2899c39514a82cd326"),
-              ("2017", 512281069, "39758f62fdd7c9760950541fa119c0bac2f0a3c0eb1645b9e71ac1034844aabe"),
+              ("2017", 512281069, "39758f62fdd7c9760950541fa119c0bac2f0a0c3eb1645b9e71ac1034844aabe"),
               ("2018", 512279006, "a1c66aca1aeec78e60c9aba633953f28c268b209015e786d7bef705ab59d03a1"),
               ("2019", 512276466, "1f0b275f21fba5cdc230a6a436aceaf039b11139b16e22814ad2b18dfc2c3bda"),
               ("2021", 512283416, "3a4c2f5ac875f20bbee6891370a6a85163f2f1d76ddfe0b3dcaa704e8b83e07c"),
