@@ -166,3 +166,46 @@ Within the directly inspected source contracts, no authoritative immutable upstr
 Before Model B can be considered, the project must establish—through a bounded inventory of all relevant in-repository producers and source artifacts, plus source-backed evidence where available—that no suitable native identifier exists. Only then may the separate Model B prerequisites be specified, reviewed, tested, and explicitly approved.
 
 No source identity implementation, timestamp promotion, pivot detector implementation, L/R selection, Brain integration, 2025 use, merge, or order path is authorized by this follow-up.
+
+
+## 8. Expanded in-repository capture inventory — 2026-11-21
+
+This pass extended the source-bar identity review to the earlier MT5 capture generations and reconciled the pre-existing GitHub-only branch-tree audit. It remains a GitHub-only inspection; no Dropbox/external archive retrieval or workflow that downloads external content was performed.
+
+### 8.1 MT5 capture generations directly inspected
+
+| Generation / PR | File | Inspected blob SHA | Relevant identity/clock evidence |
+|---|---|---|---|
+| Raw Capture V1 / PR #123 | `RUNTIME/MT5_RAW_CAPTURE_V1/MT5_Raw_Capture_Only_V1.mq5` | `7d0508bb7af3d0fbf89e114653f2ad72f5ec5c86` | Lines 15–48 track seen bars in memory by symbol/timeframe and datetime; lines 53–59 read MqlRates and form a symbol/timeframe key; lines 74, 97–100 expose terminal-derived `source_id` and bar-time column. No immutable native per-bar ID is emitted. |
+| Raw Capture V1 / PR #123 | `RUNTIME/MT5_RAW_CAPTURE_V1/mt5_raw_capture_contract_v1.py` | `593b1648cb08604e8edf31436b7ac1484b4453bd` | Lines 3, 23, 30–38 parse the bar timestamp as UTC-aware; lines 54–66 define payload hash and capture fields; lines 119–128 deduplicate by (symbol, timeframe, timestamp) plus payload hash. No per-bar ID field is defined. The timestamp's UTC assertion is not independently authenticated by this contract. |
+| Forex Capture V1.1 / PR #124 | `RUNTIME/MT5_FOREX_ONLY_CAPTURE_V1_1/MT5_Forex_Only_Raw_Capture_V1_1.mq5` | `0c20451c27c3f760876eb7b24d8d8a9687549d43` | Lines 16–58 track seen bar times; lines 63–68 read MqlRates and key symbol/timeframe; lines 84, 107–110 use terminal-derived `source_id` and timestamp field. No immutable per-bar ID is emitted. |
+| Forex Capture V1.2 / PR #125 | `RUNTIME/MT5_FOREX_ONLY_CAPTURE_V1_2/MT5_Forex_Only_Raw_Capture_V1_2.mq5` | `c40d7df0b8c8ce09db474ba658f67a582b1e3712` | Lines 16, 77–100 track seen bar times; lines 113–118 read MqlRates and form symbol/timeframe key; lines 134, 157–160 use terminal-derived `source_id` and timestamp field. No immutable per-bar ID is emitted. |
+| Raw Capture V1.3 / PR #131 | `RUNTIME/MT5_RAW_CAPTURE_V1_3/MT5_Raw_Capture_Only_V1_3.mq5` | `a79b173adf06c9caaf3a3288e5a3f8504a56e6f2` | Lines 13–37 track seen times per symbol/timeframe; lines 34–37 read MqlRates; lines 50, 61–65 emit terminal-derived `source_id` and raw epoch/status fields; lines 69–77 explicitly preserve raw time as UNVERIFIED. No immutable per-bar ID is emitted. |
+| Raw Capture V1.3 / PR #131 | `RUNTIME/MT5_RAW_CAPTURE_V1_3/mt5_csv_ingest_v1_3.py` | `27262e0571de7163478d42ec234920a4b65f2d38` | Lines 42–46 use (symbol, timeframe, raw epoch) for duplicate detection and add `payload_hash`. This is an ingest dedup key plus integrity digest, not a separately governed immutable source-bar identity. |
+
+### 8.2 Interpretation across capture generations
+
+- Across the directly inspected V1, V1.1, V1.2, and V1.3 MQL5 capture implementations, no authoritative upstream-native immutable per-bar identifier is emitted.
+- The `source_id` in these capture generations is derived from terminal name/path and identifies the capture environment, not an individual candle.
+- The in-memory `g_seen_bar_times` / symbol-timeframe key prevents repeated writes during capture; it is not a persistent source identity contract.
+- V1/V1.1/V1.2 use a timestamp-shaped field and a timestamp-based duplicate key. Their UTC labeling is not itself proof of broker timezone/DST lineage. V1.3 deliberately corrects this uncertainty by preserving raw MqlRates time as UNVERIFIED; it must not be silently promoted to verified UTC.
+- Payload hashes are integrity/conflict evidence. They are not stable candle IDs and remain Model C-rejected for identity purposes.
+- Forex-only filtering in V1.1/V1.2 changes symbol selection, not per-bar identity semantics.
+
+### 8.3 Prior branch-tree audit reconciliation
+
+PR #137's GitHub-only audit records recursive branch-tree inspection of 16 named branches, including the historical MTF producer search, MTF archive audit, MTF V1 design/contract, MT5 V1 capture, runtime integration, and older decision-stack branches. It found readers/adapters/validators/specifications but no executable Market Structure / six-timeframe numeric feature producer. This follow-up additionally inspected the exact MT5 V1, V1.1, V1.2, and V1.3 capture files above.
+
+The branch inventory was bounded to named branches and PR heads relevant to MTF/MT5/source/capture work. It is not a claim that every branch, every historical Git object, every unindexed artifact, or every external data provider has been exhaustively enumerated. PR #137 itself notes that its code-search zero-results are not proof of global absence. No Dropbox-based workflow was run.
+
+### 8.4 Updated Model A / Model B gate
+
+**Current result:** No suitable upstream-native immutable per-bar ID has been demonstrated in the directly inspected MT5 V1–V1.3 capture implementations or the previously audited MTF source contracts. This strengthens the evidence that the current MT5 capture path does not provide Model A, but it does not prove that every possible upstream/provider-native ID is unavailable.
+
+Therefore:
+1. Keep Model A preferred; if the eventual upstream data source exposes an authoritative native bar ID, recover and validate it before considering a composite.
+2. Do not treat terminal `source_id`, `g_seen_bar_times`, timestamp dedup keys, payload hashes, row indices, OHLC, or the V1.3 raw epoch as native IDs.
+3. Model B remains **NOT AUTHORIZED** until the actual source/provider boundary and clock evidence are established, the absence of a suitable native ID is proven for that selected source, and the full Model B contract is separately reviewed, tested, and explicitly approved.
+4. No concrete composite ID, source timestamp promotion, or pivot identity generation is implemented by this inventory.
+
+No 2025 use, tuning, source/runtime change, Pivot Detector implementation, Brain integration, merge, or order path is authorized by this follow-up.
