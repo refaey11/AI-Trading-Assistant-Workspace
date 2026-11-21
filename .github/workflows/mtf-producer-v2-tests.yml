@@ -9,6 +9,7 @@ on:
   push:
     branches:
       - "design/mtf-producer-v2-alternative-contract-v1"
+      - "spec/mtf-v2-pivot-detector-proposal-v1"
     paths:
       - "RUNTIME/MTF_PRODUCER_V2/**"
       - ".github/workflows/mtf-producer-v2-tests.yml"
