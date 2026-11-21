@@ -112,6 +112,7 @@ class ConfirmedPivotConsumerContractTests(unittest.TestCase):
     def test_source_index_must_match_source_identity(self):
         stream, bars, history, pivot = fixture()
         pivot["source_index"] = 3
+        pivot["right_window"] = 2
         with self.assertRaisesRegex(ValueError, "source index"):
             self.validate(stream, bars, history, pivot)
 
