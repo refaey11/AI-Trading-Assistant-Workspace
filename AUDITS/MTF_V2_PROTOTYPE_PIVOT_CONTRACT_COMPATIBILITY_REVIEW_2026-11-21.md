@@ -90,3 +90,78 @@ The following tests remain necessary before the prototype can be considered sema
 - No Decision Brain, Murphy, Nison, Trading in the Zone, Similarity, Risk, or execution behavior changed.
 - No 2025 OOS access, tuning, or evaluation.
 - No main-branch changes and no merge.
+
+
+## 7. Deeper consumer-contract audit (2026-11-21 continuation)
+
+The exact PR #139 consumer implementation was re-read against the current PR #141 reference contract. The following are additional static findings; they do not change the approved detector policy.
+
+### 7.1 Pivot payload is not yet a governed cross-PR contract
+
+The PR #139 `ConfirmedPivot` object contains only:
+- caller-supplied `pivot_id`;
+- HIGH/LOW kind and numeric price;
+- integer source and availability bar indices;
+- a confirmation-status string.
+
+It does not carry a canonical symbol, native timeframe, original source-bar identity, verified `available_at`, producer/schema identity, or provenance references. The surrounding producer call supplies symbol/timeframe at batch level, while each pivot is not independently bound to those values. This is insufficient to demonstrate that a pivot belongs to the exact source stream being consumed.
+
+The prototype's `pivot_id` is only checked for uniqueness within the supplied list. It is not validated against the PR #141 approved conceptual identity ingredients or the still-blocked production source-bar identity contract. Do not treat the current field as an authenticated pivot identity.
+
+### 7.2 Source-bar consistency and runtime type validation are incomplete
+
+Static inspection confirms that the consumer does not establish:
+- that `source_bar_index` identifies a bar in the supplied stream or an approved pre-window context;
+- that a HIGH pivot price equals the referenced source bar's high, or a LOW pivot price equals its low;
+- that pivot source and availability indices are actual non-boolean integers;
+- that pivot prices and bar OHLC values are finite numeric values;
+- that a pivot source index is unique for a given kind under the approved detector output contract.
+
+The current OHLC envelope comparison is not a sufficient non-finite-value guard: NaN can evade ordinary ordering comparisons. A separate strict input-validation patch and negative tests are required before consuming untrusted producer payloads. No validation behavior is inferred or changed here.
+
+### 7.3 The two-bar check is both hard-coded and not equivalent to the V2 confirmation contract
+
+The validator's `source_bar_index + 2` condition is a fixed minimum delay, while PR #141 defines confirmation from the configured right window R and the verified availability of the final required right-side bar. The historical H1 observation does not authorize this rule for every timeframe. The consumer must eventually validate the upstream event's actual confirmation/availability relationship against an approved per-timeframe configuration, not assume a universal two-bar delay.
+
+### 7.4 Consumer event identity is not source-authenticated
+
+The current event ID is assembled from symbol, timeframe, event type, break-bar integer index, and boundary pivot ID. The `Bar` object has no immutable source-bar ID, and the event has no verified wall-clock `available_at`. Therefore the ID is deterministic within the current synthetic index stream but cannot serve as a governed cross-replay/source event identity. Re-indexing an otherwise identical source stream can change the ID; replays with reused indices can collide across distinct source streams if external namespace is not bound.
+
+The `source_payload_hash` and `clock_policy_id` arguments are copied into output metadata but are not authenticated or bound to individual bars/pivots. The output correctly remains `PROVENANCE_UNVALIDATED`; these strings must not be interpreted as provenance proof.
+
+### 7.5 Event transition and boundary selection need policy-level acceptance tests
+
+The implementation uses the previous row's recomputed pivot structure state to classify a close crossing and selects the latest available pivot of the relevant kind as its boundary. The state itself is not transitioned by the emitted BOS/CHOCH event. Consequently:
+- a later cross back through the same boundary and another qualifying cross can emit another event;
+- the same pivot boundary can remain eligible indefinitely;
+- a newly confirmed pivot can become the selected boundary without any separately specified invalidation/supersession lifecycle;
+- no expiry or reset policy exists.
+
+These are not necessarily defects relative to the current prototype's narrow semantics. They are unresolved lifecycle behavior and must remain blocked from production until explicitly specified and tested. Do not silently add deduplication, expiry, or supersession.
+
+### 7.6 Required consumer acceptance matrix before any integration
+
+| Area | Required positive case | Required negative case | Current status |
+| --- | --- | --- | --- |
+| Pivot stream binding | Pivot matches symbol/native timeframe/source stream | Cross-symbol or cross-timeframe pivot rejected | BLOCKED: fields/provenance absent |
+| Source-bar reference | HIGH/LOW price matches original source bar and identity | Missing, mismatched, or forged source reference rejected | NOT TESTED |
+| Confirmation timing | Configured R and verified final-bar availability accepted | Early or universal hard-coded delay rejected | BLOCKED: R contract not wired |
+| Warm start | Provenanced pre-window pivot available before first decision accepted | Missing identity, late availability, or forged provenance rejected | BLOCKED: current consumer rejects all pre-window availability |
+| Event identity | Same source inputs produce stable source-bound event identity | Reindexed/different source stream cannot alias | BLOCKED: index-based only |
+| Recross lifecycle | Approved same-boundary transition behavior | Repeated event outside approved lifecycle rejected/handled | POLICY UNRESOLVED |
+| Boundary lifecycle | Approved expiry/invalidation/supersession transition | Stale/superseded boundary not silently reused | POLICY UNRESOLVED |
+| Event availability | Break event tied to verified availability of completed break bar | Caller index/string alone cannot assert wall-clock availability | BLOCKED: index-only |
+| Gap/session continuity | Upstream source/session evidence proves continuity | Integer index continuity alone cannot prove it | BLOCKED: no authenticated evidence |
+
+### 7.7 Safe sequencing
+
+1. Freeze the versioned pivot-event payload and source-stream binding contract, reusing the approved Model A / conditional Model B source identity policy without authorizing either identity implementation prematurely.
+2. Resolve per-timeframe R/configuration linkage and exact confirmation availability.
+3. Approve the warm-start acceptance payload and source/clock evidence boundary.
+4. Specify event lifecycle (recross, deduplication, expiry, invalidation, supersession) as a separate explicit policy.
+5. Add test-only consumer contract tests for the full positive/negative matrix.
+6. Only then consider a separately reviewed implementation patch. Keep all production eligibility false until source identity, clock, continuity, and six-timeframe conformance are independently established.
+
+## 8. Final compatibility disposition
+
+PR #139 and PR #141 remain complementary design work, but the consumer boundary is **NOT CONTRACT-COMPATIBLE FOR PRODUCTION**. The immediate blockers are the ungoverned pivot payload, hard-coded two-bar assumption, rejected warm-start context, index-only event identity/availability, and unresolved event lifecycle. This is a review conclusion only; no policy is selected by this report.
