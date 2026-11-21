@@ -207,3 +207,88 @@ The 22 test cases cover:
 ### L/R coverage clarification
 
 The synthetic confirmed-pivot envelope now requires both explicit `left_window` and `right_window` values and rejects non-positive values. The fixture uses L=2/R=3 solely as a synthetic test point; it is not a selected production configuration for any timeframe.
+
+## 10. Event lifecycle policy options — static review (2026-11-21)
+
+**Status: OPTIONS ONLY / NO POLICY SELECTED / NO BEHAVIORAL TESTS AUTHORIZED**
+
+### 10.1 Existing prototype behavior (observed, not approved policy)
+
+The PR #139 implementation:
+- emits on a close crossing the currently selected latest available boundary of the relevant pivot kind;
+- does not emit again merely because the next close remains beyond that boundary;
+- can emit again after a later recross and recross-again sequence because the event does not transition or consume the boundary;
+- derives each event ID using the break-bar index, so separate crossings receive different IDs within the same synthetic indexed stream;
+- does not expire a boundary by age;
+- selects the latest available HIGH/LOW pivot for the relevant event branch, so a newer pivot of that kind changes the selected boundary;
+- does not explicitly mark the older boundary as superseded, nor define invalidation/reset semantics.
+
+These are implementation observations only. They do not establish user-approved lifecycle rules.
+
+### 10.2 Recross and repeated-cross options
+
+| Option | Deterministic rule | Benefit | Cost / risk |
+| --- | --- | --- | --- |
+| A — Every crossing is a new occurrence | Emit each qualifying close-crossing; each occurrence has its own event identity bound to the boundary and break bar | Preserves all observed crossings; simple event log | Repeated noise around one boundary can create many events; consumers must distinguish occurrences from a lasting structure transition |
+| B — One event per boundary | After the first event for a boundary, suppress further events for that boundary | Strong deduplication; avoids repeated alerts | Can hide meaningful later breaks/reclaims of the same level; requires an explicit re-arm rule |
+| C — Explicit re-arm cycle | Emit once; re-arm only after a specified close returns to the opposite side of the same boundary; then allow another crossing | Distinguishes a true recross cycle from consecutive closes | Requires exact equality/side semantics and state persistence; does not itself define expiry or boundary replacement |
+
+No option is selected. In particular, the current “one event while closes remain beyond” test is not sufficient evidence for A, B, or C.
+
+### 10.3 Expiry options
+
+| Option | Deterministic rule | Benefit | Cost / risk |
+| --- | --- | --- | --- |
+| A — No age expiry | Boundary remains eligible until explicit supersession/invalidation | Avoids arbitrary bar-count or clock thresholds | Old levels may remain eligible for a long time |
+| B — Source-bar age expiry | Expire after an approved number of native-timeframe bars since pivot availability | Bounded stale-boundary lifetime | Requires approved per-timeframe age values; bar count alone does not establish elapsed market time |
+| C — Time/session expiry | Expire at an approved elapsed-time or session boundary | Can reflect market-session semantics | Requires authenticated clock, session calendar, timezone/DST and continuity authority, all currently unresolved |
+
+No age or time threshold is inferred or proposed as a selected value.
+
+### 10.4 Invalidation and supersession options
+
+**Supersession (new pivot of same kind):**
+- Option S1 — Immediate replacement: the newest confirmed HIGH replaces the active HIGH boundary (and likewise for LOW); prior boundary becomes ineligible for future events.
+- Option S2 — Retain historical boundaries: keep older confirmed boundaries eligible, with a separate explicit selection rule.
+- Option S3 — No implicit replacement: require a separate structure-state transition/confirmation before changing the active boundary.
+
+The current prototype behaves closest to S1 for boundary selection, but it does not implement a governed supersession record or lifecycle state. This must not be mistaken for approval of S1.
+
+**Invalidation/reset:**
+- Option I1 — No independent invalidation; only supersession changes boundary eligibility.
+- Option I2 — Invalidate on a separately defined opposite-side close/reclaim sequence.
+- Option I3 — Reset the event/boundary state only on an upstream-authenticated discontinuity or explicit session/reset event.
+
+An OHLC wick, an index discontinuity, or an unverified timestamp must not be silently treated as an invalidation/reset trigger.
+
+### 10.5 Recommended decision sequence (recommendation only)
+
+To avoid mixing independent decisions, approve these dimensions separately:
+1. Recross model: A, B, or C.
+2. Expiry model: A, B, or C.
+3. Same-kind pivot supersession: S1, S2, or S3.
+4. Invalidation/reset: I1, I2, or I3, with exact trigger semantics if I2/I3 is selected.
+
+For each approved combination, define event occurrence identity and replay behavior, then add positive and negative synthetic fixtures. Do not write behavioral tests against an unapproved combination.
+
+### 10.6 Cross-cutting blockers that remain independent
+
+Even after lifecycle policy approval, production eligibility remains blocked by:
+- unverified source-bar identity and source namespace;
+- unauthenticated source clock and event `available_at`;
+- unproven market-time/session continuity;
+- unresolved canonical symbol/timeframe and configuration binding;
+- lack of six-timeframe production conformance.
+
+Lifecycle approval alone does not authenticate an event or authorize Decision Brain integration.
+
+### 10.7 Governance
+
+- Static review/options only; no lifecycle policy selected.
+- No behavioral tests added for recross, expiry, invalidation, or supersession.
+- No production or prototype runtime code changed.
+- No source IDs, timestamps, L/R settings, or market-data-derived thresholds generated.
+- No 2025/2026 market data accessed or used.
+- No tuning, calibration, feature selection, or performance evaluation.
+- No Decision Brain integration, BUY/SELL, order path, main-branch change, or merge.
+
