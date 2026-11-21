@@ -299,7 +299,7 @@ The metadata scan searched all non-empty companion-text lines for provider, GMT/
 
 The release inventory separately lists `GBPUSD_M1_MASTER_2016_2026_V1.zip` (asset ID `510583969`, size 43,120,568 bytes, release SHA-256 `edb39db9c91dcfd2f3b5b11fa25734810d50cf501be37555d5ec9951715d8202`). Its release metadata identifies the asset and upload, but not its internal provenance.
 
-That combined archive was deliberately **not downloaded or inspected**, because it includes the locked 2025 OOS period. Accordingly, this audit does not claim that the combined master was assembled exclusively from the inspected HistData annual files. The release inventory has no matching named HistData GBPUSD M1 asset for 2020; that gap also prevents assuming one uninterrupted provider lineage across the whole master. The earlier TitanFX OBV clue remains scoped to the OBV volume path for 2020–2024 only.
+For the **Section 10 annual HistData archive forensics run**, that combined archive was deliberately not downloaded or inspected, because it includes the locked 2025 OOS period. A separate, older PR #116 workflow had previously downloaded and performed a bounded scan of the combined archive; the exact scope and limitation of that earlier scan are documented in Section 11 below. Accordingly, this audit still does not establish that the combined master was assembled exclusively from the inspected HistData annual files. The release inventory has no matching named HistData GBPUSD M1 asset for 2020; that gap also prevents assuming one uninterrupted provider lineage across the whole master. The earlier TitanFX OBV clue remains scoped to the OBV volume path for 2020–2024 only.
 
 ### 10.4 Updated eligibility decision
 
@@ -311,3 +311,35 @@ That combined archive was deliberately **not downloaded or inspected**, because 
 6. No source ID, composite ID, timestamp promotion, or pivot identity was generated.
 
 No 2025/2026 data was downloaded or inspected. No tuning, calibration, feature selection, or OOS evaluation was performed. No legacy producer, aggregation, runtime, Brain, detector, or order path was changed.
+
+## 11. Reconciliation of earlier PR #116 combined-master scan — 2026-11-21
+
+A further source-code review of the earlier PR #116 workflow (`audit/mtf-archive-producer-lineage`, commit `e19ac4482666d6c0dfde55de369f5c0dfe5fa537`) found that the historical workflow did download `/GBPUSD_M1_MASTER_2016_2026_V1.zip` from Dropbox. Therefore, the broader statement that the combined archive had never been downloaded or inspected would be inaccurate. This section supersedes any such global interpretation in earlier notes.
+
+### 11.1 Exact scope of the old workflow
+
+The workflow `.github/workflows/mtf-archive-producer-lineage-audit.yml` downloaded the combined archive and passed it to `tools/audit_mtf_archive_producer_lineage_v1.py` and `tools/validate_m1_to_mtf_candle_reconciliation_v1.py`.
+
+The audit script:
+- enumerated ZIP member names and metadata;
+- read a 256 KiB preview from CSV members to inspect headers and sample rows;
+- for the exact member `GBPUSD_M1_MASTER_2016_2026.csv`, iterated the CSV with `csv.DictReader` and used the timestamp year to count only 2016–2024 rows, grouped by year/source-period/volume-availability;
+- did not include 2025+ rows in its reported M1 summary, and its report explicitly described the summary as restricted to 2016–2024.
+
+The separate reconciliation script read the combined CSV into a dataframe, then filtered both M1 and existing MTF frames to the half-open interval 2016-01-01 through 2025-01-01 before aggregation/comparison. It reported 2016–2024 only.
+
+### 11.2 OOS handling qualification
+
+The older scanner did traverse/parse CSV records from the combined file while applying its year filter, so it is not correct to claim that no 2025+ record bytes or timestamp fields were ever read by that historical workflow. However, the inspected source code shows that:
+- 2025+ rows were excluded from the reported row counts and M1-to-MTF reconciliation;
+- the scanner used the timestamp to decide the year bucket and did not aggregate 2025 OHLC or volume into the audit summary;
+- the reconciliation explicitly filtered to dates before 2025-01-01 before computing OHLCV aggregation;
+- no 2025 tuning, calibration, feature selection, threshold selection, or performance evaluation was performed by these scripts.
+
+This is a bounded source-code finding about what the scripts did. It is not a claim that the archive was untouched at the byte/read level. The protected 2025 OOS rule remains: no future inspection, analysis, tuning, or evaluation of 2025 data.
+
+### 11.3 Provenance conclusion unchanged
+
+The old workflow's scan did not recover an internal source manifest or producer lineage proving which provider generated every year of the combined master. The later direct annual HistData inspection remains limited to the eight annual files from 2016–2019 and 2021–2024. The missing 2020 annual HistData GBPUSD asset and the separate combined archive's unresolved assembly history mean that HistData provenance must not be generalized to the full combined master or live MT5 feed.
+
+No source ID, composite ID, timestamp promotion, pivot identity, detector implementation, Brain/runtime change, or merge is authorized by this correction.
