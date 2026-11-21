@@ -55,6 +55,10 @@ def evaluate_risk(*, equity: float, entry: float, stop_loss: Optional[float], ta
     stop_distance = abs(entry - stop_loss)
     if stop_distance <= 0:
         return RiskResult(False, risk_pct, stop_distance, None, None, "NON_POSITIVE_STOP_DISTANCE", stop_loss, take_profit)
+    # A valid bracket must put stop-loss and take-profit on opposite sides of entry.
+    # This check is direction-agnostic: it accepts either a long or a short bracket.
+    if (stop_loss < entry and take_profit <= entry) or (stop_loss > entry and take_profit >= entry):
+        return RiskResult(False, risk_pct, stop_distance, None, None, "INVALID_STOP_TARGET_ORIENTATION", stop_loss, take_profit)
     stop_atr = stop_distance / atr
     if not isfinite(stop_atr):
         return RiskResult(False, risk_pct, stop_distance, None, None, "NON_FINITE_STOP_DISTANCE", stop_loss, take_profit)

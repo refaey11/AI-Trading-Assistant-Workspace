@@ -80,3 +80,39 @@ def test_canonical_risk_fails_closed_for_non_finite_inputs(overrides, expected_r
     assert result.risk_pass is False
     assert result.reason == expected_reason
     assert result.position_size is None
+
+
+@pytest.mark.parametrize(
+    "stop_loss,take_profit",
+    [
+        (1.2515, 1.2545),  # both above entry; distances otherwise produce 3R
+        (1.2485, 1.2455),  # both below entry; distances otherwise produce 3R
+    ],
+)
+def test_canonical_risk_rejects_stop_and_target_on_same_side_of_entry(stop_loss, take_profit):
+    result = evaluate_canonical_risk(
+        equity=10000.0,
+        entry=1.25,
+        stop_loss=stop_loss,
+        take_profit=take_profit,
+        atr=0.002,
+        prior_loss_streak=0,
+        peak_equity=10000.0,
+    )
+    assert result.risk_pass is False
+    assert result.reason == "INVALID_STOP_TARGET_ORIENTATION"
+    assert result.position_size is None
+
+
+def test_canonical_risk_accepts_valid_short_bracket_at_3r():
+    result = evaluate_canonical_risk(
+        equity=10000.0,
+        entry=1.25,
+        stop_loss=1.2515,
+        take_profit=1.2455,
+        atr=0.002,
+        prior_loss_streak=0,
+        peak_equity=10000.0,
+    )
+    assert result.risk_pass is True
+    assert result.rr == 3.0
