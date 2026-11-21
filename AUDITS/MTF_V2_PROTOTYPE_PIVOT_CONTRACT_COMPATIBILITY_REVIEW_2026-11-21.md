@@ -325,3 +325,28 @@ The existing workflow already includes the `RUNTIME/MTF_PRODUCER_V2/**` path fil
 - No live trading, BUY/SELL, order path, main-branch change, or merge.
 - PR #141 remains Draft/open/unmerged.
 
+
+
+## 12. Warm-start source-context completeness audit and synthetic tests (2026-11-21)
+
+A focused review of the test-only confirmed-pivot consumer oracle found that its initial warm-start fixture verified the pivot source-bar ID and final confirming-bar ID, but did not require every declared left/right context bar to be present in the supplied source history. A pivot could therefore pass the synthetic structural oracle even if an intermediate or outer L/R context bar had been omitted.
+
+### Test-only hardening
+
+Updated the test-only consumer oracle to require the full declared index interval from source_index - left_window through final_confirming_index in the supplied source history. All history bars continue to require unique IDs/indices, same symbol/native timeframe/source namespace, completed status, finite valid OHLC, and source-bar identity consistency.
+
+Added six synthetic tests:
+- missing outer-left context rejected;
+- missing intermediate left context rejected;
+- missing intermediate right context rejected;
+- incomplete source-history bar rejected;
+- context bar from another source namespace rejected;
+- structurally complete indexed context still reports continuity_authenticated=false and production_eligible=false.
+
+### Interpretation and remaining blockers
+
+This closes only a structural fixture gap. Consecutive integer indices do not prove elapsed market-time continuity, distinguish a legitimate market closure from a missing in-session candle, authenticate a session calendar, or prove source clock truth. Opaque evidence-reference strings remain labels, not authentication.
+
+The warm-start fixture still does not authorize production warm-start. Production acceptance remains blocked until source identity and clock evidence are independently authenticated, the complete pre-window context payload and availability boundary are governed, continuity/session evidence is authoritative, and six-timeframe conformance is demonstrated. No production consumer or detector code was changed.
+
+No 2025/2026 market data, tuning, calibration, feature selection, performance evaluation, Decision Brain integration, main-branch change, merge, or order path.
