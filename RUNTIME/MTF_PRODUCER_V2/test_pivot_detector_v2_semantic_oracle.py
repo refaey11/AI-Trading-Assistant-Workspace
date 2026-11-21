@@ -98,6 +98,18 @@ class PivotSemanticOracleTests(unittest.TestCase):
         self.assertEqual(high.status, "NOT_EVALUABLE")
         self.assertEqual(high.reason, "INVALID_OR_UNFINISHED_BAR")
 
+    def test_duplicate_source_bar_identity_blocks_window(self):
+        bars = make_bars([1, 2, 9, 3, 4])
+        bars[3] = SyntheticBar(bars[2].source_bar_id, 3, 1, True, 103)
+        high, _ = evaluate(bars, 2)
+        self.assertEqual(high.reason, "DUPLICATE_SOURCE_BAR_ID")
+
+    def test_unordered_availability_blocks_window(self):
+        bars = make_bars([1, 2, 9, 3, 4])
+        bars[3] = SyntheticBar("synthetic-3", 3, 1, True, 101)
+        high, _ = evaluate(bars, 2)
+        self.assertEqual(high.reason, "UNORDERED_AVAILABILITY")
+
     def test_non_finite_values_block_window(self):
         bars = make_bars([1, 2, 9, 3, 4])
         bars[2] = SyntheticBar("synthetic-2", math.nan, 1, True, 102)
