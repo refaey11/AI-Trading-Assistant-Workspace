@@ -165,3 +165,40 @@ These are not necessarily defects relative to the current prototype's narrow sem
 ## 8. Final compatibility disposition
 
 PR #139 and PR #141 remain complementary design work, but the consumer boundary is **NOT CONTRACT-COMPATIBLE FOR PRODUCTION**. The immediate blockers are the ungoverned pivot payload, hard-coded two-bar assumption, rejected warm-start context, index-only event identity/availability, and unresolved event lifecycle. This is a review conclusion only; no policy is selected by this report.
+
+
+## 9. Test-only consumer contract matrix added (2026-11-21)
+
+Added two isolated files under `RUNTIME/MTF_PRODUCER_V2/`:
+- `confirmed_pivot_consumer_contract_oracle.py`
+- `test_confirmed_pivot_consumer_contract.py`
+
+The oracle is explicitly synthetic-only and refuses non-fixture mode. It returns `production_eligible=false` and all source-identity, clock, and continuity authentication flags false. It is not imported by the production structure consumer and is not a production validator.
+
+The 21 test cases cover:
+1. Pre-window warm-start shape with original synthetic source and confirming-bar identities.
+2. Rejection of the current minimal PR #139 ConfirmedPivot payload as insufficient for the proposed envelope.
+3. Symbol, native timeframe, and source namespace binding.
+4. Producer version, schema version, and detector configuration binding.
+5. Source-bar identity/index correspondence and HIGH/LOW price consistency.
+6. Final confirming-bar identity/index correspondence.
+7. Configured R linkage without a universal two-bar assumption.
+8. No use before final confirming-bar availability or after the decision snapshot.
+9. Strict integer typing (booleans rejected), finite pivot prices, and finite source OHLC.
+10. Duplicate pivot and source-bar identities rejected in the synthetic fixture scope.
+11. Evidence-reference consistency checks as structural labels only, not authentication.
+12. Separate HIGH and LOW candidates retained for the same source bar.
+13. Six timeframe labels (M5/M15/M30/H1/H4/D1) accepted as independent schema fixtures.
+14. Explicit non-production and non-authentication output flags.
+
+**GitHub Actions:** run **44874216395** completed SUCCESS. The synthetic test job reports **53 total tests**, including all 21 new consumer-contract cases. The bounded annual HistData archive-forensics job also completed SUCCESS for its previously defined 2016-2019 and 2021-2024 scope. Pivot fixture/identity workflow **44874216299** completed SUCCESS.
+
+### Test interpretation limits
+
+- The warm-start test proves only that the synthetic oracle can represent a pre-window pivot when source and confirming-bar references are supplied. It does not authorize production warm-start.
+- Six timeframe labels are schema-level fixtures only; they do not prove live six-timeframe state isolation or conformance.
+- Evidence references are opaque matching strings. The tests do not authenticate source, clock, precision, or continuity evidence.
+- Synthetic Model A-shaped IDs do not prove that an upstream-native immutable ID exists in MT5 or HistData.
+- The configured R tests verify the synthetic relationship between source index, final confirming index, and declared R; they do not select production L/R values.
+- Event lifecycle (recross, deduplication, expiry, invalidation, supersession) remains deliberately untested until its policy is explicitly approved.
+- No market data, 2025/2026 data, tuning, calibration, production detector, production consumer integration, Decision Brain integration, main-branch change, or merge.
