@@ -123,14 +123,49 @@ class PivotSemanticOracleTests(unittest.TestCase):
         b, _ = evaluate(full, 2)
         self.assertEqual(a, b)
 
-    def test_each_timeframe_is_independent(self):
-        expected = ("CONFIRMED", "CONFIRMED")
-        for timeframe in TFS:
+    def test_six_timeframe_matrix_runs_distinct_independent_cases(self):
+        cases = {
+            "M5": ([1, 2, 9, 3, 4], [0, 1, 7, 2, 3],
+                   ("CONFIRMED", "NOT_PIVOT")),
+            "M15": ([8, 7, 3, 6, 7], [6, 5, -2, 4, 5],
+                    ("NOT_PIVOT", "CONFIRMED")),
+            "M30": ([1, 2, 10, 3, 4], [0, -1, -2, -1, 0],
+                    ("CONFIRMED", "CONFIRMED")),
+            "H1": ([1, 2, 3, 4, 5], [0, 1, 2, 3, 4],
+                   ("NOT_PIVOT", "NOT_PIVOT")),
+            "H4": ([1, 9, 9, 3, 4], [0, 7, 7, 2, 3],
+                   ("NOT_EVALUABLE", "NOT_EVALUABLE")),
+            "D1": ([1, 2, 9, 3, 4], [0, 1, 7, 2, 3],
+                   ("CONFIRMED", "NOT_PIVOT")),
+        }
+        self.assertEqual(tuple(cases), TFS)
+        for timeframe, (highs, lows, expected) in cases.items():
             with self.subTest(timeframe=timeframe):
-                highs = [9, 10, 11, 9, 10]
-                lows = [8, 7, -2, 6, 7]
                 high, low = evaluate(make_bars(highs, lows), 2)
                 self.assertEqual((high.status, low.status), expected)
+
+    def test_identical_replay_is_deterministic(self):
+        bars = make_bars([1, 2, 9, 3, 4], [0, 1, 7, 2, 3])
+        self.assertEqual(evaluate(bars, 2), evaluate(bars, 2))
+
+    def test_rejects_boolean_or_non_integer_configuration(self):
+        bars = make_bars([1, 2, 9, 3, 4])
+        for left, right in ((True, 2), (1.5, 2), (2, False), (2, 2.0)):
+            with self.subTest(left=left, right=right):
+                with self.assertRaises(ValueError):
+                    evaluate(bars, 2, left=left, right=right)
+
+    def test_rejects_non_integer_candidate_index(self):
+        bars = make_bars([1, 2, 9, 3, 4])
+        for index in (True, 2.0):
+            with self.subTest(index=index):
+                with self.assertRaises(TypeError):
+                    evaluate(bars, index)
+
+    def test_rejects_non_boolean_precision_evidence(self):
+        bars = make_bars([1, 2, 9, 3, 4])
+        with self.assertRaises(ValueError):
+            evaluate(bars, 2, precision="trusted")
 
     def test_l_and_r_are_explicit_and_independent(self):
         bars = make_bars([1, 2, 9, 3, 4, 5])
