@@ -38,6 +38,10 @@ def _valid_bar(bar: SyntheticBar) -> bool:
         and isinstance(bar.completed, bool)
         and isinstance(bar.available_at, int)
         and not isinstance(bar.available_at, bool)
+        and isinstance(bar.high, (int, float))
+        and not isinstance(bar.high, bool)
+        and isinstance(bar.low, (int, float))
+        and not isinstance(bar.low, bool)
         and isfinite(bar.high)
         and isfinite(bar.low)
         and bar.high >= bar.low
