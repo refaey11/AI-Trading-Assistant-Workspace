@@ -38,7 +38,7 @@ jobs:
         shell: bash
         run: |
           python - <<'PY'
-          import csv, hashlib, io, json, pathlib, urllib.request, zipfile
+          import csv, hashlib, io, json, pathlib, re, urllib.request, zipfile
           assets = [
               ("2016", 512282668, "f9cc08e01cb7d4bc65fbcb8783b6bca6b57d7ab5891c4b2899c39514a82cd326"),
               ("2017", 512281069, "39758f62fdd7c9760950541fa119c0bac2f0a0c3eb1645b9e71ac1034844aabe"),
@@ -73,6 +73,9 @@ jobs:
                       item["last_line"] = lines[-1][:240] if lines else ""
                       item["first_row_field_count"] = len(next(csv.reader([lines[0]]))) if lines else 0
                       item["last_row_field_count"] = len(next(csv.reader([lines[-1]]))) if lines else 0
+                      if info.filename.lower().endswith(".txt"):
+                          pattern = re.compile(r"histdata|gmt|utc|time.?zone|dst|offset|server|broker|date|time|interval|format|tick|period", re.I)
+                          item["metadata_lines_of_interest"] = [line[:300] for line in lines if pattern.search(line)][:100]
                   entries.append(item)
               results.append({"year": year, "asset_id": asset_id,
                               "asset_name": f"HISTDATA_COM_MT_GBPUSD_M1{year}.zip",
@@ -89,6 +92,8 @@ jobs:
               lines += [f"## {result['year']}", f"- Asset: {result['asset_name']}",
                         f"- Release SHA-256 verified: {result['release_asset_sha256']}", ""]
               for entry in result["archive_entries"]:
+                  if "metadata_lines_of_interest" in entry:
+                      lines += ["  - Metadata matches:"] + ["    - " + value for value in entry["metadata_lines_of_interest"]]
                   lines += [f"- Internal file: {entry['name']} ({entry['size']} bytes)"]
                   if "nonempty_lines" in entry:
                       lines += [f"  - Non-empty lines: {entry['nonempty_lines']}",
