@@ -203,6 +203,44 @@ class ConfirmedPivotConsumerContractTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "final confirming index"):
             self.validate(stream, bars, history, pivot)
 
+    def test_warm_start_rejects_missing_left_context_bar(self):
+        stream, bars, history, pivot = fixture()
+        history = [bar for bar in history if bar["index"] != 1]
+        with self.assertRaisesRegex(ValueError, "confirmation context is incomplete"):
+            self.validate(stream, bars, history, pivot)
+
+    def test_warm_start_rejects_missing_intermediate_right_context_bar(self):
+        stream, bars, history, pivot = fixture()
+        history = [bar for bar in history if bar["index"] != 4]
+        with self.assertRaisesRegex(ValueError, "confirmation context is incomplete"):
+            self.validate(stream, bars, history, pivot)
+
+    def test_warm_start_rejects_missing_outer_left_context(self):
+        stream, bars, history, pivot = fixture()
+        history = [bar for bar in history if bar["index"] != 0]
+        with self.assertRaisesRegex(ValueError, "confirmation context is incomplete"):
+            self.validate(stream, bars, history, pivot)
+
+    def test_warm_start_context_bars_must_all_be_completed(self):
+        stream, bars, history, pivot = fixture()
+        history[3]["completed"] = False
+        with self.assertRaisesRegex(ValueError, "only completed source-history bars"):
+            self.validate(stream, bars, history, pivot)
+
+    def test_warm_start_context_must_match_the_same_source_stream(self):
+        stream, bars, history, pivot = fixture()
+        history[4]["source_namespace"] = "different-feed"
+        with self.assertRaisesRegex(ValueError, "bound to another stream"):
+            self.validate(stream, bars, history, pivot)
+
+    def test_context_index_completeness_does_not_claim_market_time_continuity(self):
+        stream, bars, history, pivot = fixture()
+        out = self.validate(stream, bars, history, pivot)
+        self.assertTrue(out["accepted_pivot_ids"])
+        self.assertFalse(out["continuity_authenticated"])
+        self.assertFalse(out["production_eligible"])
+
+
     def test_producer_and_configuration_binding_is_enforced(self):
         for field, value in (("producer_version", "other-version"),
                              ("schema_version", "other-schema"),
