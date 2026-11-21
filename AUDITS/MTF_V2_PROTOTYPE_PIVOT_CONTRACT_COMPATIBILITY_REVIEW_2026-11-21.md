@@ -175,14 +175,14 @@ Added two isolated files under `RUNTIME/MTF_PRODUCER_V2/`:
 
 The oracle is explicitly synthetic-only and refuses non-fixture mode. It returns `production_eligible=false` and all source-identity, clock, and continuity authentication flags false. It is not imported by the production structure consumer and is not a production validator.
 
-The 21 test cases cover:
+The 22 test cases cover:
 1. Pre-window warm-start shape with original synthetic source and confirming-bar identities.
 2. Rejection of the current minimal PR #139 ConfirmedPivot payload as insufficient for the proposed envelope.
 3. Symbol, native timeframe, and source namespace binding.
 4. Producer version, schema version, and detector configuration binding.
 5. Source-bar identity/index correspondence and HIGH/LOW price consistency.
 6. Final confirming-bar identity/index correspondence.
-7. Configured R linkage without a universal two-bar assumption.
+7. Explicit synthetic L/R configuration linkage without a universal two-bar assumption.
 8. No use before final confirming-bar availability or after the decision snapshot.
 9. Strict integer typing (booleans rejected), finite pivot prices, and finite source OHLC.
 10. Duplicate pivot and source-bar identities rejected in the synthetic fixture scope.
@@ -191,7 +191,7 @@ The 21 test cases cover:
 13. Six timeframe labels (M5/M15/M30/H1/H4/D1) accepted as independent schema fixtures.
 14. Explicit non-production and non-authentication output flags.
 
-**GitHub Actions:** run **44874216395** completed SUCCESS. The synthetic test job reports **53 total tests**, including all 21 new consumer-contract cases. The bounded annual HistData archive-forensics job also completed SUCCESS for its previously defined 2016-2019 and 2021-2024 scope. Pivot fixture/identity workflow **44874216299** completed SUCCESS.
+**GitHub Actions:** latest run **44874316106** completed SUCCESS. The synthetic test job reports **54 total tests**, including all 22 consumer-contract cases. The bounded annual HistData archive-forensics job also completed SUCCESS for its previously defined 2016-2019 and 2021-2024 scope. Pivot fixture/identity workflow **44874316181** completed SUCCESS.
 
 ### Test interpretation limits
 
@@ -202,3 +202,8 @@ The 21 test cases cover:
 - The configured R tests verify the synthetic relationship between source index, final confirming index, and declared R; they do not select production L/R values.
 - Event lifecycle (recross, deduplication, expiry, invalidation, supersession) remains deliberately untested until its policy is explicitly approved.
 - No market data, 2025/2026 data, tuning, calibration, production detector, production consumer integration, Decision Brain integration, main-branch change, or merge.
+
+
+### L/R coverage clarification
+
+The synthetic confirmed-pivot envelope now requires both explicit `left_window` and `right_window` values and rejects non-positive values. The fixture uses L=2/R=3 solely as a synthetic test point; it is not a selected production configuration for any timeframe.
