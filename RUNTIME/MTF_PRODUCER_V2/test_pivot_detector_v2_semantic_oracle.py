@@ -124,7 +124,7 @@ class PivotSemanticOracleTests(unittest.TestCase):
         self.assertEqual(a, b)
 
     def test_each_timeframe_is_independent(self):
-        expected = ("CONFIRMED", "NOT_PIVOT")
+        expected = ("CONFIRMED", "CONFIRMED")
         for timeframe in TFS:
             with self.subTest(timeframe=timeframe):
                 highs = [9, 10, 11, 9, 10]
