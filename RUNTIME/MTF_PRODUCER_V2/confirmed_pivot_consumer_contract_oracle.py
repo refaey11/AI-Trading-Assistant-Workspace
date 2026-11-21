@@ -16,7 +16,7 @@ STREAM_FIELDS = {
 }
 PIVOT_FIELDS = {
     "pivot_id", "kind", "price", "source_bar_id", "source_index",
-    "final_confirming_bar_id", "final_confirming_index", "right_window",
+    "final_confirming_bar_id", "final_confirming_index", "left_window", "right_window",
     "available_index", "symbol", "timeframe", "source_namespace",
     "producer_name", "producer_version", "schema_version",
     "detector_config_id", "confirmation_status", "precision_evidence_ref",
@@ -120,11 +120,11 @@ def validate_synthetic_consumer_contract(*, stream, bars, source_history, pivots
             raise ValueError("pivot evidence references do not match source stream")
         if pivot["kind"] not in ("HIGH", "LOW") or pivot["confirmation_status"] != "CONFIRMED":
             raise ValueError("only confirmed HIGH/LOW pivots are accepted")
-        for key in ("source_index", "final_confirming_index", "right_window", "available_index"):
+        for key in ("source_index", "final_confirming_index", "left_window", "right_window", "available_index"):
             if not _strict_int(pivot[key]):
                 raise ValueError(f"pivot {key} must be a strict integer")
-        if pivot["right_window"] < 1:
-            raise ValueError("right window must be positive")
+        if pivot["left_window"] < 1 or pivot["right_window"] < 1:
+            raise ValueError("left and right windows must be positive")
         if pivot["final_confirming_index"] != pivot["source_index"] + pivot["right_window"]:
             raise ValueError("final confirming bar does not match configured right window")
         if pivot["available_index"] != pivot["final_confirming_index"]:
