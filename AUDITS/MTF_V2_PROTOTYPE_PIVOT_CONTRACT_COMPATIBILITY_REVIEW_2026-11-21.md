@@ -399,3 +399,79 @@ No gap tolerance, maximum elapsed time, session schedule, reset behavior, or con
 **Market-time continuity remains BLOCKED / NOT AUTHENTICATED.** PR #139 remains a sequence-indexed synthetic consumer. PR #140 remains a structural envelope gate, not a trusted clock/session authority. The next safe step is to recover or define the selected upstream source/session authority and its evidence contract before proposing gap-state semantics.
 
 Static review/documentation only. No PR #139 or PR #140 runtime changes, no production continuity implementation, no market-data-derived thresholds, no 2025/2026 data, no tuning/calibration, no Decision Brain integration, no main-branch change, and no merge.
+
+
+## 14. Clock provenance and `available_at` contract audit (2026-11-21)
+
+This section reviews the exact PR #131 MT5 Raw Capture V1.3 implementation, PR #140 MTF V2 evidence-envelope gate, and the approved Pivot V2 confirmation contract. It is a static contract audit; it does not authenticate a live terminal, broker, host clock, or historical source.
+
+### 14.1 What PR #131 V1.3 actually observes
+
+The inspected `RUNTIME/MT5_RAW_CAPTURE_V1_3/MT5_Raw_Capture_Only_V1_3.mq5`:
+- reads closed `MqlRates` records through `CopyRates(symbol, tf, 1, 1, rates)`;
+- preserves `MqlRates.time` as `bar_time_epoch_seconds_raw`;
+- labels it `MT5_MQLRATES_DATETIME_RAW` and `bar_time_utc_status=UNVERIFIED`;
+- records `TimeTradeServer()`, `TimeCurrent()`, `TimeGMT()`, and `TimeLocal()` as wall-clock observations;
+- records `observed_server_minus_host_gmt_seconds` as a diagnostic;
+- records `broker_server_id` and terminal-derived `source_id`.
+
+The corresponding Python contract explicitly rejects UTC-alignment fields and requires the raw clock status to remain `UNVERIFIED`. It parses the observed clock strings as wall times but does not authenticate any of the clocks or establish the broker's historical timezone/DST schedule. The server-minus-host-GMT diagnostic is one observation, not a verified mapping for every historical bar. Terminal `source_id` identifies the capture environment, not a clock authority or candle.
+
+**Finding:** V1.3 is correctly conservative, but it cannot supply a verified UTC `bar_open_time`, `bar_close_time`, or `available_at` for Pivot V2. Do not promote the raw epoch, server wall time, or diagnostic offset to UTC.
+
+### 14.2 What PR #140 validates — and what it does not
+
+The exact `mtf_v2_evidence_envelope_gate_v1.py`:
+- requires ISO-8601 timestamps with an explicit offset;
+- requires `bar_open_time < bar_close_time`;
+- requires `available_at >= bar_close_time`;
+- rejects `available_at > decision_time`;
+- requires increasing contiguous integer indices and strictly increasing bar-open times;
+- checks the declared source and clock evidence values are lowercase SHA-256-shaped strings.
+
+It does **not**:
+- verify that the explicit offset corresponds to the actual broker/source clock;
+- require all timestamp values to be normalized to `+00:00` (different explicit offsets are accepted);
+- authenticate the bytes behind `clock_evidence_sha256` or recompute a signed attestation;
+- validate a clock-policy document against an approved registry (the `clock_policy_id` is only a non-empty string);
+- prove host clock synchronization, broker server timezone, DST transitions, or historical offset changes;
+- establish when the source made a completed bar observable to the capture process;
+- establish whether `available_at` is source publication time, terminal observation time, ingestion time, or a later processing timestamp.
+
+The returned state remains `STRUCTURALLY_VALID_NOT_AUTHENTICATED`, `production_eligible=false`, and `authentication_required=true`. A well-shaped hash and explicit offset are syntax/integrity placeholders, not proof of clock truth.
+
+### 14.3 Required distinction between event times
+
+Before implementation, the clock contract must distinguish at least:
+1. **bar_open_time** — the source-defined opening instant for the native timeframe candle;
+2. **bar_close_time** — the source-defined scheduled/actual completion boundary, including explicit treatment of session-shortened bars if applicable;
+3. **source_available_at** — when the authoritative upstream provider made the completed bar available;
+4. **captured_at** — when the MT5 capture process observed/read the completed bar;
+5. **ingested_at** — when the ingestion system accepted the record;
+6. **decision_time** — the as-of cutoff for a Decision Brain snapshot.
+
+These are not interchangeable. A local capture timestamp cannot be substituted for source publication time. A candle's scheduled close cannot be substituted for actual source availability without an approved source guarantee. The pivot's `available_at` must be the verified availability of its final confirming bar, as required by the Pivot V2 contract; it must not be copied from the pivot source candle or guessed as close time.
+
+### 14.4 Minimum evidence contract before clock authentication
+
+A future source-clock contract must identify and independently verify:
+- the selected provider/broker and authoritative source namespace;
+- canonical instrument/symbol mapping and native timeframe;
+- source timestamp semantics (bar open vs close, epoch unit, timezone/offset basis);
+- broker-server timezone history and DST transition rules, if server-local time is used;
+- authoritative UTC reference and synchronization/error bounds for the capture host and terminal;
+- source publication/availability semantics and evidence for the actual completed-bar observation boundary;
+- immutable evidence payload, digest/signature, issuer identity, version, and verification procedure;
+- clock-policy registry/version and fail-closed behavior when evidence is stale, missing, conflicting, or outside tolerance;
+- duplicate, delayed, revised, and out-of-order record handling;
+- six-timeframe fixtures covering ordinary bars, weekends, DST transitions, session changes, delayed publication, terminal reconnect, host clock drift, and replay.
+
+Any tolerance or synchronization bound must come from authoritative source/operations evidence and explicit approval; no numeric tolerance is selected here.
+
+### 14.5 Disposition
+
+**Clock authentication and production `available_at` remain BLOCKED / NOT AUTHENTICATED.** PR #131 V1.3 correctly preserves raw time as UNVERIFIED. PR #140 validates envelope structure and as-of ordering only. The approved Pivot V2 causality requirement remains unchanged: a pivot becomes available only at the verified availability of its final confirming bar.
+
+Next safe step: identify the actual intended source boundary (historical archive vs live broker/MT5 feed) and recover its clock/publication-time authority. These may be different sources and must not be silently combined into one clock policy.
+
+Static review/documentation only. No timestamp promotion, clock-authentication code, source-bar ID, production `available_at`, detector/consumer runtime change, 2025/2026 data, tuning/calibration, Decision Brain integration, main-branch change, merge, or order path.
