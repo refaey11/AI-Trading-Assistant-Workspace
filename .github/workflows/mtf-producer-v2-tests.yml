@@ -5,9 +5,11 @@ on:
     paths:
       - "RUNTIME/MTF_PRODUCER_V2/**"
       - ".github/workflows/mtf-producer-v2-tests.yml"
+      - ".github/workflows/mtf-m1-provider-archive-forensics.yml"
   push:
     branches:
       - "design/mtf-producer-v2-alternative-contract-v1"
+      - "spec/mtf-v2-pivot-detector-proposal-v1"
     paths:
       - "RUNTIME/MTF_PRODUCER_V2/**"
       - ".github/workflows/mtf-producer-v2-tests.yml"
@@ -25,3 +27,85 @@ jobs:
           python-version: "3.11"
       - name: Run isolated deterministic tests
         run: python -m unittest discover -s RUNTIME/MTF_PRODUCER_V2 -p "test_*.py" -v
+
+  histdata-archive-forensics:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Download and inspect only HistData GBPUSD M1 archives for 2016-2024
+        shell: bash
+        run: |
+          python - <<'PY'
+          import csv, hashlib, io, json, pathlib, urllib.request, zipfile
+          assets = [
+              ("2016", 512282668, "f9cc08e01cb7d4bc65fbcb8783b6bca6b57d7ab5891c4b2899c39514a82cd326"),
+              ("2017", 512281069, "39758f62fdd7c9760950541fa119c0bac2f0a0c3eb1645b9e71ac1034844aabe"),
+              ("2018", 512279006, "a1c66aca1aeec78e60c9aba633953f28c268b209015e786d7bef705ab59d03a1"),
+              ("2019", 512276466, "1f0b275f21fba5cdc230a6a436aceaf039b11139b16e22814ad2b18dfc2c3bda"),
+              ("2021", 512283416, "3a4c2f5ac875f20bbee6891370a6a85163f2f1d76ddfe0b3dcaa704e8b83e07c"),
+              ("2022", 512281653, "dc8848671a1c3b757aa9fcc9e81c8b94f9f950badf8aeb751d516ec239c95cfa"),
+              ("2023", 512279756, "a15a061d5f6f58fa9119ca9f134bab5203c554a84d1f0adf43aa7f633eec347f"),
+              ("2024", 512277063, "323137222c00e071e706863ab587234dbc6ba305ffbf6d01e0f36a468347f68e"),
+          ]
+          out = pathlib.Path("provider-audit")
+          out.mkdir()
+          results = []
+          for year, asset_id, expected in assets:
+              url = f"https://github.com/refaey11/AI-Trading-Assistant-Workspace/releases/download/workspace-v1/HISTDATA_COM_MT_GBPUSD_M1{year}.zip"
+              with urllib.request.urlopen(url, timeout=120) as response:
+                  data = response.read()
+              digest = hashlib.sha256(data).hexdigest()
+              if digest != expected:
+                  raise SystemExit(f"{year}: release asset SHA-256 mismatch")
+              zf = zipfile.ZipFile(io.BytesIO(data))
+              entries = []
+              for info in zf.infolist():
+                  if info.is_dir():
+                      continue
+                  item = {"name": info.filename, "size": info.file_size}
+                  if info.filename.lower().endswith((".csv", ".txt", ".dat")):
+                      raw = zf.read(info.filename)
+                      lines = [line for line in raw.decode("utf-8-sig", "replace").splitlines() if line.strip()]
+                      item["nonempty_lines"] = len(lines)
+                      item["first_line"] = lines[0][:240] if lines else ""
+                      item["last_line"] = lines[-1][:240] if lines else ""
+                      item["first_row_field_count"] = len(next(csv.reader([lines[0]]))) if lines else 0
+                      item["last_row_field_count"] = len(next(csv.reader([lines[-1]]))) if lines else 0
+                  entries.append(item)
+              results.append({"year": year, "asset_id": asset_id,
+                              "asset_name": f"HISTDATA_COM_MT_GBPUSD_M1{year}.zip",
+                              "release_asset_sha256": digest, "archive_entries": entries})
+          report = {
+              "scope": "Only explicitly named HistData GBPUSD M1 release assets for 2016-2019 and 2021-2024",
+              "excluded_years": ["2020 (no matching named asset in release inventory)", "2025 (not downloaded or inspected)", "2026 (not downloaded or inspected)"],
+              "results": results,
+          }
+          (out / "provider_archive_forensics.json").write_text(json.dumps(report, indent=2), encoding="utf-8")
+          lines = ["# HistData GBPUSD M1 archive forensics (2016-2024)", "",
+                   "**Scope:** named annual release assets only. 2025/2026 were not downloaded or inspected.", ""]
+          for result in results:
+              lines += [f"## {result['year']}", f"- Asset: {result['asset_name']}",
+                        f"- Release SHA-256 verified: {result['release_asset_sha256']}", ""]
+              for entry in result["archive_entries"]:
+                  lines += [f"- Internal file: {entry['name']} ({entry['size']} bytes)"]
+                  if "nonempty_lines" in entry:
+                      lines += [f"  - Non-empty lines: {entry['nonempty_lines']}",
+                                f"  - First line: `{entry['first_line']}`",
+                                f"  - Last line: `{entry['last_line']}`",
+                                f"  - First/last field counts: {entry['first_row_field_count']}/{entry['last_row_field_count']}"]
+              lines.append("")
+          lines += ["## Interpretation boundary", "",
+                    "These annual assets' names and internal archive structure can establish the provenance label of the inspected annual archives, but cannot by themselves prove that the separate GBPUSD_M1_MASTER_2016_2026_V1.zip was assembled exclusively from them, or establish provider-native immutable bar IDs or verified clock lineage."]
+          (out / "provider_archive_forensics.md").write_text("\n".join(lines) + "\n", encoding="utf-8")
+          print((out / "provider_archive_forensics.md").read_text())
+          PY
+      - name: Upload read-only forensics report
+        uses: actions/upload-artifact@v4
+        with:
+          name: histdata-gbpusd-m1-provider-forensics-2016-2024
+          path: provider-audit/
+          if-no-files-found: error
+          retention-days: 14
