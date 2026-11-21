@@ -90,6 +90,18 @@ def evaluate_candidate(
             result("HIGH", "NOT_EVALUABLE", "INVALID_OR_UNFINISHED_BAR"),
             result("LOW", "NOT_EVALUABLE", "INVALID_OR_UNFINISHED_BAR"),
         )
+    ids = [bar.source_bar_id for bar in window]
+    if len(ids) != len(set(ids)):
+        return (
+            result("HIGH", "NOT_EVALUABLE", "DUPLICATE_SOURCE_BAR_ID"),
+            result("LOW", "NOT_EVALUABLE", "DUPLICATE_SOURCE_BAR_ID"),
+        )
+    availability = [bar.available_at for bar in window]
+    if any(later <= earlier for earlier, later in zip(availability, availability[1:])):
+        return (
+            result("HIGH", "NOT_EVALUABLE", "UNORDERED_AVAILABILITY"),
+            result("LOW", "NOT_EVALUABLE", "UNORDERED_AVAILABILITY"),
+        )
     if not precision_verified:
         return (
             result("HIGH", "NOT_EVALUABLE", "TRUSTED_PRECISION_MISSING"),
