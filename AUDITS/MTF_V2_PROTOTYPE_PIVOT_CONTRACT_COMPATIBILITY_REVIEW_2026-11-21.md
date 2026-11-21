@@ -292,3 +292,36 @@ Lifecycle approval alone does not authenticate an event or authorize Decision Br
 - No tuning, calibration, feature selection, or performance evaluation.
 - No Decision Brain integration, BUY/SELL, order path, main-branch change, or merge.
 
+## 11. User-approved event lifecycle policy and synthetic tests (2026-11-21)
+
+The user approved the four proposed lifecycle choices as the basis for isolated synthetic behavioral tests:
+
+1. **Recross:** explicit re-arm cycle. An upward HIGH-boundary event re-arms only after a later completed close at or below the same boundary; a downward LOW-boundary event re-arms only after a later completed close at or above it. A later crossing can then emit a new occurrence.
+2. **Expiry:** no age-based expiry. A boundary remains eligible regardless of elapsed synthetic bars/time until same-kind supersession.
+3. **Supersession:** the latest newly eligible confirmed pivot of the same kind replaces the prior active boundary; superseded pivots remain historical evidence but cannot trigger new events.
+4. **Invalidation:** no independent invalidation/reset. A return close re-arms only; it does not delete or invalidate the boundary. Wicks, unverified timestamps, local index gaps, and inferred sessions are not invalidation triggers.
+
+### Added artifacts
+
+- `PROJECT_GOVERNANCE/MTF_V2_EVENT_LIFECYCLE_POLICY_V1.md`
+- `RUNTIME/MTF_PRODUCER_V2/event_lifecycle_v1_synthetic_oracle.py`
+- `RUNTIME/MTF_PRODUCER_V2/test_event_lifecycle_v1_policy.py`
+
+The oracle is synthetic-only, isolated, and not imported by the PR #139 producer or Decision Brain. It consumes closes and synthetic confirmed pivots, uses strict-before availability, and does not classify BOS/CHOCH or generate direction. Synthetic event identity uses pivot ID + direction + break-bar index only; no production event ID is approved.
+
+### Test coverage
+
+The new suite contains 15 tests covering first crossing, suppression while beyond, re-arm and re-cross, equality-side semantics, symmetric downward events, no age expiry across 500 synthetic bars, same-kind supersession, suppression of superseded boundaries, independent HIGH/LOW lifecycle, strict availability causality, re-arm without invalidation, close-only behavior, deterministic replay, duplicate IDs, and boolean numeric rejection.
+
+The existing workflow already includes the `RUNTIME/MTF_PRODUCER_V2/**` path filters and runs unittest discovery, so these tests are included without expanding workflow permissions or touching the archive-forensics scope.
+
+### Governance and limits
+
+- Policy approved for synthetic tests only; no production runtime lifecycle implementation.
+- No changes to PR #139 producer code or Decision Brain.
+- No L/R values selected; legacy PIVOT_SEQUENCE_V2 untouched.
+- No source identity, clock, session continuity, or provider provenance authenticated.
+- No 2025/2026 data, tuning, calibration, feature selection, or performance evaluation.
+- No live trading, BUY/SELL, order path, main-branch change, or merge.
+- PR #141 remains Draft/open/unmerged.
+
