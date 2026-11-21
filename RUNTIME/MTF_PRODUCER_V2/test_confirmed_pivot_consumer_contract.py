@@ -34,7 +34,7 @@ def fixture():
         "pivot_id": "pivot-high-2", "kind": "HIGH", "price": 14.0,
         "source_bar_id": "bar-2", "source_index": 2,
         "final_confirming_bar_id": "bar-5", "final_confirming_index": 5,
-        "right_window": 3, "available_index": 5,
+        "left_window": 2, "right_window": 3, "available_index": 5,
         "symbol": "GBPUSD", "timeframe": "M5",
         "source_namespace": "synthetic-feed",
         "producer_name": "synthetic-pivot-producer",
@@ -210,6 +210,16 @@ class ConfirmedPivotConsumerContractTests(unittest.TestCase):
             stream, bars, history, pivot = fixture()
             pivot[field] = value
             with self.subTest(field=field), self.assertRaisesRegex(ValueError, "not bound"):
+                self.validate(stream, bars, history, pivot)
+
+
+    def test_left_and_right_window_configuration_is_explicit(self):
+        stream, bars, history, pivot = fixture()
+        self.assertTrue(self.validate(stream, bars, history, pivot)["accepted_pivot_ids"])
+        for field, value in (("left_window", 0), ("right_window", 0)):
+            stream, bars, history, pivot = fixture()
+            pivot[field] = value
+            with self.subTest(field=field), self.assertRaisesRegex(ValueError, "windows must be positive"):
                 self.validate(stream, bars, history, pivot)
 
 
