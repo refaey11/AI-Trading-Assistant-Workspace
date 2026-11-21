@@ -262,3 +262,52 @@ The recovered-workspace workflow did not download or inspect the separately rele
 5. The recovered workspace scan is read-only and does not change the existing 2016–2024 candle aggregation reconciliation.
 
 No 2025 data was used for tuning, calibration, feature selection, or evaluation. No source/runtime change, ID generation, pivot detector implementation, Brain integration, merge, or order path is authorized by this follow-up.
+
+
+## 10. Direct inspection of annual HistData GBPUSD M1 release archives — 2026-11-21
+
+A bounded, read-only GitHub Actions inspection downloaded only the explicitly named annual GBPUSD M1 release assets for 2016–2019 and 2021–2024. It did not download or inspect 2025/2026 data and did not download the separate combined master archive.
+
+### 10.1 Exact assets and integrity
+
+Workflow: [MTF Producer V2 Prototype Tests — run 44869552965](https://github.com/refaey11/AI-Trading-Assistant-Workspace/actions/runs/44869552965), job `histdata-archive-forensics`, completed SUCCESS. The workflow verified each downloaded archive against the release API's SHA-256 digest before inspecting it.
+
+| Year | Release asset | SHA-256 |
+|---|---|---|
+| 2016 | `HISTDATA_COM_MT_GBPUSD_M12016.zip` | `f9cc08e01cb7d4bc65fbcb8783b6bca6b57d7ab5891c4b2899c39514a82cd326` |
+| 2017 | `HISTDATA_COM_MT_GBPUSD_M12017.zip` | `39758f62fdd7c9760950541fa119c0bac2f0a0c3eb1645b9e71ac1034844aabe` |
+| 2018 | `HISTDATA_COM_MT_GBPUSD_M12018.zip` | `a1c66aca1aeec78e60c9aba633953f28c268b209015e786d7bef705ab59d03a1` |
+| 2019 | `HISTDATA_COM_MT_GBPUSD_M12019.zip` | `1f0b275f21fba5cdc230a6a436aceaf039b11139b16e22814ad2b18dfc2c3bda` |
+| 2021 | `HISTDATA_COM_MT_GBPUSD_M12021.zip` | `3a4c2f5ac875f20bbee6891370a6a85163f2f1d76ddfe0b3dcaa704e8b83e07c` |
+| 2022 | `HISTDATA_COM_MT_GBPUSD_M12022.zip` | `dc8848671a1c3b757aa9fcc9e81c8b94f9f950badf8aeb751d516ec239c95cfa` |
+| 2023 | `HISTDATA_COM_MT_GBPUSD_M12023.zip` | `a15a061d5f6f58fa9119ca9f134bab5203c554a84d1f0adf43aa7f633eec347f` |
+| 2024 | `HISTDATA_COM_MT_GBPUSD_M12024.zip` | `323137222c00e071e706863ab587234dbc6ba305ffbf6d01e0f36a468347f68e` |
+
+For each year, the archive contains a `DAT_MT_GBPUSD_M1_<year>.csv` file and a companion `.txt` metadata file. The CSV files contain seven comma-separated fields in the inspected first/last records: date, time, OHLC, and volume; no separate per-row immutable identifier field appears in that observed record format. The companion metadata files begin with `HistData.com (c) 2012`, directly attributing these annual archives to HistData.com.
+
+The metadata scan searched all non-empty companion-text lines for provider, GMT/UTC, timezone, DST, offset, server, broker, date/time, format, and tick-interval terms. It found the HistData attribution and average/maximum tick interval summaries, but no explicit GMT/UTC timezone, DST, broker-server, or clock-offset declaration. This is a bounded text/keyword finding, not proof about every HistData product or provider interface.
+
+### 10.2 Clock and identity findings
+
+- The observed CSV records are date/time + OHLC + volume only; no native immutable per-bar ID is exposed in this file format.
+- The timestamps have no explicit UTC offset in the inspected CSV record representation. The companion metadata scan did not recover an authoritative timezone/DST/clock contract.
+- The varying first-record wall-clock times across years (for example 17:00, 02:00, and 18:04) are observations only; they must not be interpreted as UTC or used to infer a timezone/DST rule.
+- Therefore these annual archives establish a HistData.com provenance label for the inspected files, but do not authenticate their clock or supply Model A native per-bar IDs.
+- A timestamp-based Model B composite remains blocked because verified clock lineage, namespace/timeframe canonicalization, uniqueness, and duplicate/revision semantics have not been established and approved.
+
+### 10.3 Relationship to the combined M1 master — still unresolved
+
+The release inventory separately lists `GBPUSD_M1_MASTER_2016_2026_V1.zip` (asset ID `510583969`, size 43,120,568 bytes, release SHA-256 `edb39db9c91dcfd2f3b5b11fa25734810d50cf501be37555d5ec9951715d8202`). Its release metadata identifies the asset and upload, but not its internal provenance.
+
+That combined archive was deliberately **not downloaded or inspected**, because it includes the locked 2025 OOS period. Accordingly, this audit does not claim that the combined master was assembled exclusively from the inspected HistData annual files. The release inventory has no matching named HistData GBPUSD M1 asset for 2020; that gap also prevents assuming one uninterrupted provider lineage across the whole master. The earlier TitanFX OBV clue remains scoped to the OBV volume path for 2020–2024 only.
+
+### 10.4 Updated eligibility decision
+
+1. HistData.com is now directly evidenced as the provenance label for the eight inspected annual GBPUSD M1 archives.
+2. Those CSV rows do not expose a native per-bar ID in the inspected format; no provider-native ID is established by this evidence.
+3. No verified UTC/timezone/DST lineage was recovered; do not use their date/time values as authenticated UTC.
+4. Do not attribute the combined GBPUSD M1 master or live MT5 feed to HistData without separate source-backed evidence.
+5. Model A remains preferred if the eventual selected upstream provider/feed exposes an authoritative native ID. Model B remains **NOT AUTHORIZED** until the selected source boundary, clock evidence, and all composite-key semantics are independently established, reviewed, tested, and explicitly approved.
+6. No source ID, composite ID, timestamp promotion, or pivot identity was generated.
+
+No 2025/2026 data was downloaded or inspected. No tuning, calibration, feature selection, or OOS evaluation was performed. No legacy producer, aggregation, runtime, Brain, detector, or order path was changed.
