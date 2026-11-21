@@ -3,12 +3,18 @@ from __future__ import annotations
 
 import importlib.util
 import sys
+from math import isclose, isfinite
 from pathlib import Path
 from typing import Any, Mapping
 
 ROOT = Path(__file__).resolve().parents[2]
 if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
+
+from RUNTIME.RISK_ENGINE_INTEGRATION_V1.risk_engine_integration_v1 import (
+    CURRENT_CANONICAL_MIN_RR,
+    RR_BOUNDARY_TOLERANCE,
+)
 
 
 def _load_module(path: Path, name: str):
@@ -27,6 +33,57 @@ assemble_decision_event = _ASSEMBLER.assemble_decision_event
 
 def _is_authoritative(evidence: Mapping[str, Any] | None) -> bool:
     return bool((evidence or {}).get("authoritative", False))
+
+
+def _canonical_risk_plan_mismatch(
+    execution_plan: Mapping[str, Any],
+    risk_evidence: Mapping[str, Any],
+) -> str | None:
+    """Require development execution levels to be the canonical Risk result."""
+    try:
+        canonical_rr = float(risk_evidence["rr"])
+        canonical_stop = float(risk_evidence["stop_loss"])
+        canonical_target = float(risk_evidence["take_profit"])
+        execution_stop = float(execution_plan["stop_loss"])
+        execution_target = float(execution_plan["take_profit"])
+    except (KeyError, TypeError, ValueError, OverflowError):
+        return "CANONICAL_RISK_PLAN_INPUTS_MISSING"
+
+    if not all(isfinite(value) for value in (canonical_rr, canonical_stop, canonical_target, execution_stop, execution_target)):
+        return "CANONICAL_RISK_PLAN_INPUTS_NON_FINITE"
+    if canonical_rr < CURRENT_CANONICAL_MIN_RR - RR_BOUNDARY_TOLERANCE:
+        return "CANONICAL_RISK_RR_BELOW_MINIMUM"
+    if not isclose(execution_stop, canonical_stop, rel_tol=0.0, abs_tol=RR_BOUNDARY_TOLERANCE):
+        return "EXECUTION_PLAN_DIFFERS_FROM_CANONICAL_RISK_LEVELS"
+    if not isclose(execution_target, canonical_target, rel_tol=0.0, abs_tol=RR_BOUNDARY_TOLERANCE):
+        return "EXECUTION_PLAN_DIFFERS_FROM_CANONICAL_RISK_LEVELS"
+    return None
+
+
+def _enforce_development_risk_contract(
+    result: dict[str, Any],
+    risk_evidence: Mapping[str, Any],
+    *,
+    mode: str,
+) -> dict[str, Any]:
+    # The frozen OOS candidate adapter retains its separately documented 2R
+    # protocol. Development mode must instead preserve the canonical Risk result.
+    if mode.strip().lower() != "development" or result.get("status") != "EXECUTABLE":
+        return result
+
+    mismatch = _canonical_risk_plan_mismatch(
+        result.get("execution_plan") or {},
+        risk_evidence,
+    )
+    updated = dict(result)
+    audit = dict(updated.get("audit") or {})
+    audit["canonical_risk_execution_match"] = mismatch is None
+    updated["audit"] = audit
+    if mismatch:
+        updated["status"] = "NOT_EXECUTABLE"
+        updated["reason"] = mismatch
+        updated["execution_plan"] = {"status": "NOT_EXECUTABLE", "reason": mismatch}
+    return updated
 
 
 def run_full_brain_cycle(
@@ -61,7 +118,7 @@ def run_full_brain_cycle(
     sys.modules["gate3c_decision_brain"] = brain
     brain_spec.loader.exec_module(brain)
 
-    return assemble_decision_event(
+    result = assemble_decision_event(
         decision_brain_module=brain,
         row=row,
         query_as_of=query_as_of,
@@ -85,6 +142,7 @@ def run_full_brain_cycle(
             "tiz_authoritative": tiz_available,
         },
     )
+    return _enforce_development_risk_contract(result, risk_evidence, mode=mode)
 
 
 __all__ = ["run_full_brain_cycle"]

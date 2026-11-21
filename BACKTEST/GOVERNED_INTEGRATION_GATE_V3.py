@@ -9,6 +9,21 @@ from typing import Any
 import pandas as pd
 
 ROOT = Path.cwd()
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from BACKTEST.mtf_source_contract_gate_v1 import parse_aware_timestamps
+
+MTF_REQUIRED_FIELDS = {
+    "mtf_trend_score",
+    "M5_trend_regime",
+    "M15_trend_regime",
+    "M30_trend_regime",
+    "H1_trend_regime",
+    "H4_trend_regime",
+    "D1_trend_regime",
+}
+
 ALLOWLIST = json.loads((ROOT / "governance/DECISION_BRAIN_RULE_ALLOWLIST_V1.json").read_text(encoding="utf-8"))
 MURPHY_ALLOWED = set(ALLOWLIST["verified_runtime"]["MURPHY"])
 NISON_ALLOWED = set(ALLOWLIST["verified_runtime"]["NISON"])
@@ -20,9 +35,13 @@ def load_csv(path: Path, required: set[str], nrows: int = 30000) -> pd.DataFrame
     missing = sorted(required - set(df.columns))
     if missing:
         raise ValueError(f"{path}: missing columns {missing}")
-    df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True, errors="coerce", format="mixed")
-    if df["timestamp"].isna().any():
-        raise ValueError(f"{path}: invalid timestamp")
+    df["timestamp"] = parse_aware_timestamps(
+        df["timestamp"],
+        label=str(path),
+        error_prefix="BLOCKED_SOURCE",
+    )
+    if df["timestamp"].duplicated().any():
+        raise ValueError(f"BLOCKED_SOURCE_DUPLICATE_TIMESTAMP:{path}")
     return df.sort_values("timestamp").reset_index(drop=True)
 
 
@@ -81,7 +100,10 @@ def main() -> int:
     checks["h1_development_rows"] = int(len(h1))
 
     market = load_csv(Path(args.market_state), {"timestamp"})
-    mtf = load_csv(find_csv(Path(args.mtf), "GBPUSD_MTF_H4_H1.csv"), {"timestamp"})
+    mtf = load_csv(
+        find_csv(Path(args.mtf), "GBPUSD_MTF_H4_H1.csv"),
+        {"timestamp", *MTF_REQUIRED_FIELDS},
+    )
     murphy = load_csv(find_csv(Path(args.murphy), "MURPHY_2016_2024_FULL_EVIDENCE.csv"), {"timestamp", "status", "direction", "source_rule_id"})
     nison = load_csv(Path(args.nison), {"timestamp", "status", "direction", "rule_id"})
     hc = load_csv(find_csv(Path(args.historical_context), "HISTORICAL_CONTEXT_MEMORY.csv"), {"timestamp", "context_signature"})
@@ -129,6 +151,7 @@ def main() -> int:
     checks["similarity_artifact_present"] = bool(sim_files)
     checks["retrieval_artifact_present"] = bool(ret_files)
     warnings.append("Similarity V2 and Context-Aware Retrieval V2 are evidence/context layers only; any 2025 snapshot material remains locked from 2016-2024 consumption")
+    warnings.append("Decision Brain smoke assessment uses an all-zero synthetic fixture only to verify API execution; it is not market evidence or MTF compatibility proof.")
 
     sys.path.insert(0, str(ROOT))
     checks["tiz"] = {"status": "NOT_EVALUABLE", "reason": "UNRESOLVED_OPTIONAL_DEVELOPMENT_MODULE"}
@@ -153,9 +176,11 @@ def main() -> int:
 
     try:
         brain = load_brain()
+        # This all-zero row is a synthetic API smoke fixture only, never market evidence.
         sample = {k: 0.0 for k in ("mtf_trend_score", "M5_trend_regime", "M15_trend_regime", "M30_trend_regime", "H1_trend_regime", "H4_trend_regime", "D1_trend_regime")}
         sample["volume_available"] = False
         result = brain.assess(sample, similarity=None)
+        checks["decision_brain_v1_assessment_input"] = "SYNTHETIC_TEST_ONLY_NOT_MARKET_EVIDENCE"
         checks["decision_brain_v1_assessment_executes"] = True
         checks["decision_brain_v1_bias"] = getattr(result, "directional_bias", None)
     except Exception as exc:

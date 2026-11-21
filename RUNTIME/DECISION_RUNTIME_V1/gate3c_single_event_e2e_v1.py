@@ -40,8 +40,29 @@ def _ids(rows: Any) -> list[str]:
     return out
 
 
+def _parse_aware_timestamp(value: Any, *, label: str) -> pd.Timestamp:
+    """Normalize only explicitly timezone-aware timestamps to UTC."""
+    try:
+        parsed = pd.Timestamp(value)
+    except (TypeError, ValueError, OverflowError) as exc:
+        raise ValueError(f"BLOCKED_INVALID_TIMESTAMP:{label}:{value!r}") from exc
+    if pd.isna(parsed):
+        raise ValueError(f"BLOCKED_INVALID_TIMESTAMP:{label}:{value!r}")
+    if parsed.tzinfo is None or parsed.utcoffset() is None:
+        raise ValueError(f"BLOCKED_TIMEZONE_PROVENANCE_UNRESOLVED:{label}:{value!r}")
+    return parsed.tz_convert("UTC")
+
+
+def _parse_aware_timestamp_series(values: pd.Series, *, label: str) -> pd.Series:
+    parsed = [
+        _parse_aware_timestamp(value, label=f"{label}:row={index}")
+        for index, value in values.items()
+    ]
+    return pd.Series(pd.DatetimeIndex(parsed), index=values.index, name=values.name)
+
+
 def _timestamp(value: Any) -> pd.Timestamp:
-    return pd.Timestamp(value, tz="UTC")
+    return _parse_aware_timestamp(value, label="query_as_of")
 
 
 def _murphy_risk_direction_contract(murphy: Mapping[str, Any], risk: Mapping[str, Any], murphy_rows: list[dict[str, Any]]) -> str | None:
@@ -104,11 +125,11 @@ def run(event: Mapping[str, Any]) -> dict[str, Any]:
     if "timestamp" not in mdf.columns:
         mdf["timestamp"] = ts
     else:
-        mdf["timestamp"] = pd.to_datetime(mdf["timestamp"], utc=True, errors="raise", format="mixed")
+        mdf["timestamp"] = _parse_aware_timestamp_series(mdf["timestamp"], label="murphy")
     if "timestamp" not in ndf.columns:
         ndf["timestamp"] = ts
     else:
-        ndf["timestamp"] = pd.to_datetime(ndf["timestamp"], utc=True, errors="raise", format="mixed")
+        ndf["timestamp"] = _parse_aware_timestamp_series(ndf["timestamp"], label="nison")
     envelope = fanin.combine_timestamp_evidence(mdf, ndf).get(ts)
     if envelope is None:
         return {"gate3c":"BLOCKED","stage":"RULE_FAN_IN","reason":"NO_COMBINED_EVENT_AT_AS_OF"}

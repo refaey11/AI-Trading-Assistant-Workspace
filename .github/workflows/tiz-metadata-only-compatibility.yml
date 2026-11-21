@@ -73,4 +73,5 @@ jobs:
             OOS_2025/test_execution_oos_adapter_v1.py \
             OOS_2025/test_tiz_fail_closed_gate_v1.py \
             OOS_2025/test_tiz_optional_eval_v1.py \
-            TESTS/test_oos_2025_evidence_assembler_v1.py
+            TESTS/test_oos_2025_evidence_assembler_v1.py \
+            RUNTIME/DECISION_RUNTIME_V1/test_mtf_brain_input_join_timestamp_contract_v1.py
