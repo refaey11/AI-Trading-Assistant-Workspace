@@ -6,6 +6,8 @@ on:
       - current-stack-dev-backtest-2016-2024-v3
     paths:
       - 'BACKTEST/mtf_source_contract_gate_v1.py'
+      - 'BACKTEST/CIRCLECI_ACQUIRE_GOVERNED_SOURCES.py'
+      - 'BACKTEST/test_circleci_mtf_source_acquisition_v1.py'
       - 'RUNTIME/DECISION_RUNTIME_V1/mtf_brain_input_join_v1.py'
       - '.github/workflows/mtf-source-gate-smoke-2026-09-02.yml'
   push:
@@ -13,6 +15,8 @@ on:
       - current-stack-dev-backtest-2016-2024-v3
     paths:
       - 'BACKTEST/mtf_source_contract_gate_v1.py'
+      - 'BACKTEST/CIRCLECI_ACQUIRE_GOVERNED_SOURCES.py'
+      - 'BACKTEST/test_circleci_mtf_source_acquisition_v1.py'
       - 'RUNTIME/DECISION_RUNTIME_V1/mtf_brain_input_join_v1.py'
       - '.github/workflows/mtf-source-gate-smoke-2026-09-02.yml'
 
@@ -36,8 +40,10 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      - name: Install pandas
-        run: python -m pip install --upgrade pip pandas
+      - name: Install pandas and pytest
+        run: python -m pip install --upgrade pip pandas pytest
+      - name: Test canonical six-timeframe MTF acquisition contract
+        run: python -m pytest -q BACKTEST/test_circleci_mtf_source_acquisition_v1.py
       - name: Download exact MTF archive
         shell: bash
         run: |
