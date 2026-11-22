@@ -5,6 +5,8 @@ import os
 import urllib.request
 from pathlib import Path
 
+import pandas as pd
+
 FILES = {
     "h1.zip": "/New 8/GBPUSD_H1_2016_2025_MASTER.zip",
     "nison.csv": "/New 8/NISON_2016_2024_FULL_EVIDENCE.csv",
