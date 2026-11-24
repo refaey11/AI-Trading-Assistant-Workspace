@@ -227,10 +227,46 @@ def compare(m1: pd.DataFrame, actual: pd.DataFrame, timeframe: str, duplicate_po
     actual = actual.copy().sort_values("timestamp", kind="mergesort")
     joined = expected.merge(actual, on="timestamp", how="outer", suffixes=("_expected", "_actual"), indicator=True)
     both = joined[joined["_merge"] == "both"].copy()
+    # Diagnostic only: test fixed clock shifts without applying or endorsing one.
+    shift_candidates = []
+    actual_for_shift = actual[["timestamp", *OHLC]].copy()
+    for offset_minutes in range(-14 * 60, 14 * 60 + 1, 15):
+        shifted = expected[["timestamp", *OHLC]].copy()
+        shifted["timestamp"] = shifted["timestamp"] + pd.Timedelta(minutes=offset_minutes)
+        overlap = shifted.merge(actual_for_shift, on="timestamp", how="inner", suffixes=("_expected", "_actual"))
+        if overlap.empty:
+            exact_ohlc = 0
+            median_close_error = None
+        else:
+            exact_rows = pd.Series(True, index=overlap.index)
+            for field in OHLC:
+                exact_rows &= (
+                    (overlap[f"{field}_expected"].astype(float) -
+                     overlap[f"{field}_actual"].astype(float)).abs() <= 1e-9
+                )
+            exact_ohlc = int(exact_rows.sum())
+            median_close_error = float(
+                (overlap["close_expected"].astype(float) -
+                 overlap["close_actual"].astype(float)).abs().median()
+            )
+        shift_candidates.append({
+            "expected_timestamp_shift_minutes": offset_minutes,
+            "matched_timestamps": int(len(overlap)),
+            "all_ohlc_exact_match_rows": exact_ohlc,
+            "close_abs_error_median": median_close_error,
+        })
+    shift_candidates.sort(
+        key=lambda x: (x["all_ohlc_exact_match_rows"], x["matched_timestamps"]),
+        reverse=True,
+    )
     stats = {
         "timeframe": timeframe,
         "mtf_timestamp_first": str(actual["timestamp"].min()),
         "mtf_timestamp_last": str(actual["timestamp"].max()),
+        "mtf_volume_column_present": "volume" in actual.columns,
+        "mtf_volume_nonzero_rows": int((pd.to_numeric(actual["volume"], errors="coerce").fillna(0) != 0).sum()) if "volume" in actual.columns else None,
+        "mtf_volume_available_true_rows": int(_bool_values(actual["volume_available"]).sum()) if "volume_available" in actual.columns else None,
+        "clock_shift_sensitivity_top_5": shift_candidates[:5],
         "mtf_sample_first_5": actual[["timestamp", *OHLC]].head(5).astype({"timestamp": str}).to_dict(orient="records"),
         "expected_sample_first_5": expected[["timestamp", *OHLC]].head(5).astype({"timestamp": str}).to_dict(orient="records"),
         "duplicate_policy": duplicate_policy,
