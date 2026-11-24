@@ -67,7 +67,7 @@ def main() -> int:
             )
         if content_length and int(content_length) != 22:
             raise RuntimeError(f"RANGE_LENGTH_MISMATCH={content_length};_BODY_NOT_READ")
-        footer = response.read(23)
+        footer = response.read(22)
         if len(footer) != 22:
             raise RuntimeError(f"RANGE_BODY_LENGTH_MISMATCH={len(footer)}")
         if footer[:4] != b"PK\\x05\\x06":
