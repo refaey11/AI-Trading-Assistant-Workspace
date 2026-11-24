@@ -322,7 +322,9 @@ def main() -> int:
         },
         "comparisons": comparisons,
         "governance": [
-            "No timestamps were localized or converted to UTC.",\n            "GBPUSD MTF member selection is exact and rejects ambiguous or cross-symbol matches.",\n            "Duplicate timestamp sensitivity is reported separately; exact duplicates are never silently removed from the strict result.",
+            "No timestamps were localized or converted to UTC.",
+            "GBPUSD MTF member selection is exact and rejects ambiguous or cross-symbol matches.",
+            "Duplicate timestamp sensitivity is reported separately; exact duplicates are never silently removed from the strict result.",
             "No provider timezone, broker timezone, DST, or clock semantics were inferred.",
             "A data match is not proof of actual source selection or original producer lineage.",
             "No strategy parameters, thresholds, features, or runtime code were changed.",
