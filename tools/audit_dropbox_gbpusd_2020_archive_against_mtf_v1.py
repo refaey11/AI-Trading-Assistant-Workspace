@@ -229,6 +229,10 @@ def compare(m1: pd.DataFrame, actual: pd.DataFrame, timeframe: str, duplicate_po
     both = joined[joined["_merge"] == "both"].copy()
     stats = {
         "timeframe": timeframe,
+        "mtf_timestamp_first": str(actual["timestamp"].min()),
+        "mtf_timestamp_last": str(actual["timestamp"].max()),
+        "mtf_sample_first_5": actual[["timestamp", *OHLC]].head(5).astype({"timestamp": str}).to_dict(orient="records"),
+        "expected_sample_first_5": expected[["timestamp", *OHLC]].head(5).astype({"timestamp": str}).to_dict(orient="records"),
         "duplicate_policy": duplicate_policy,
         "source_m1_rows_2020_before_duplicate_policy": int(len(m1)),
         "source_m1_rows_2020_after_duplicate_policy": int(len(source)),
@@ -241,9 +245,12 @@ def compare(m1: pd.DataFrame, actual: pd.DataFrame, timeframe: str, duplicate_po
     }
     checks = {}
     for col in OHLC:
-        checks[f"{col}_match_rows"] = int(
-            ((both[f"{col}_expected"].astype(float) - both[f"{col}_actual"].astype(float)).abs() <= 1e-9).sum()
-        )
+        delta = (both[f"{col}_expected"].astype(float) - both[f"{col}_actual"].astype(float)).abs()
+        checks[f"{col}_match_rows"] = int((delta <= 1e-9).sum())
+        checks[f"{col}_abs_error_mean"] = float(delta.mean()) if len(delta) else None
+        checks[f"{col}_abs_error_median"] = float(delta.median()) if len(delta) else None
+        checks[f"{col}_abs_error_p95"] = float(delta.quantile(0.95)) if len(delta) else None
+        checks[f"{col}_abs_error_max"] = float(delta.max()) if len(delta) else None
     if "m1_count" in actual.columns:
         checks["m1_count_match_rows"] = int(
             (pd.to_numeric(both["m1_count_expected"], errors="coerce") ==
@@ -284,6 +291,8 @@ def main() -> int:
     args = parser.parse_args()
     with zipfile.ZipFile(args.m1_archive) as m1_zip, zipfile.ZipFile(args.mtf_archive) as mtf_zip:
         member, m1, member_meta = _read_m1_member(m1_zip)
+        manifest_text = mtf_zip.read("MANIFEST.csv").decode("utf-8-sig", errors="replace") if "MANIFEST.csv" in mtf_zip.namelist() else "MISSING"
+        readme_text = mtf_zip.read("README.json").decode("utf-8-sig", errors="replace") if "README.json" in mtf_zip.namelist() else "MISSING"
         comparisons = []
         duplicate_diag = duplicate_diagnostics(m1)
         # Preserve strict result and a separately-labelled sensitivity run that
@@ -319,6 +328,8 @@ def main() -> int:
         "mtf_archive": {
             "name": args.mtf_archive.name, "size_bytes": args.mtf_archive.stat().st_size,
             "sha256": sha256(args.mtf_archive), "members": archive_inventory(args.mtf_archive),
+            "manifest_text": manifest_text,
+            "readme_text": readme_text,
         },
         "comparisons": comparisons,
         "governance": [
