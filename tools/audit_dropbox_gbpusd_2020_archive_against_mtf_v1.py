@@ -118,39 +118,36 @@ def _read_m1_member(zf: zipfile.ZipFile) -> tuple[str, pd.DataFrame, dict]:
 
 
 def _read_mtf_member(zf: zipfile.ZipFile, timeframe: str) -> tuple[str, pd.DataFrame]:
+    # Strictly select GBPUSD, never the first matching timeframe from another symbol.
     candidates = [
         x for x in zf.infolist()
         if not x.is_dir() and x.filename.lower().endswith(".csv")
+        and "gbpusd" in x.filename.lower()
         and re.search(rf"(^|[/_\\-]){timeframe.lower()}([._\\-]|$)", x.filename.lower())
     ]
-    if not candidates:
-        candidates = [
-            x for x in zf.infolist()
-            if not x.is_dir() and x.filename.lower().endswith(".csv")
-            and timeframe.lower() in x.filename.lower()
-        ]
-    if not candidates:
-        raise RuntimeError(f"MTF_MEMBER_NOT_FOUND timeframe={timeframe}")
-    for info in candidates:
-        try:
-            frame = pd.read_csv(io.BytesIO(zf.read(info)), low_memory=False)
-            cols = {_normal_name(c): c for c in frame.columns}
-            if not all(k in cols for k in ("timestamp", "open", "high", "low", "close")):
-                continue
-            out = pd.DataFrame({"timestamp": pd.to_datetime(frame[cols["timestamp"]], errors="coerce", format="mixed")})
-            for name in OHLC:
-                out[name] = pd.to_numeric(frame[cols[name]], errors="coerce")
-            for name in ("volume", "m1_count", "volume_available", "bar_complete"):
-                if name in cols:
-                    out[name] = frame[cols[name]]
-            out = out[out["timestamp"].notna()].copy()
-            out = out[(out["timestamp"] >= WINDOW_START) & (out["timestamp"] < WINDOW_END)].copy()
-            if not out.empty:
-                return info.filename, out
-        except Exception:
-            continue
-    raise RuntimeError(f"NO_VALID_2020_MTF_CSV timeframe={timeframe}")
-
+    if len(candidates) != 1:
+        raise RuntimeError(
+            f"EXPECTED_EXACTLY_ONE_GBPUSD_MTF_MEMBER timeframe={timeframe}; "
+            f"found={[x.filename for x in candidates]}"
+        )
+    info = candidates[0]
+    frame = pd.read_csv(io.BytesIO(zf.read(info)), low_memory=False)
+    cols = {_normal_name(c): c for c in frame.columns}
+    if not all(k in cols for k in ("timestamp", "open", "high", "low", "close")):
+        raise RuntimeError(f"GBPUSD_MTF_REQUIRED_COLUMNS_MISSING member={info.filename}")
+    out = pd.DataFrame({
+        "timestamp": pd.to_datetime(frame[cols["timestamp"]], errors="coerce", format="mixed")
+    })
+    for name in OHLC:
+        out[name] = pd.to_numeric(frame[cols[name]], errors="coerce")
+    for name in ("volume", "m1_count", "volume_available", "bar_complete"):
+        if name in cols:
+            out[name] = frame[cols[name]]
+    out = out[out["timestamp"].notna()].copy()
+    out = out[(out["timestamp"] >= WINDOW_START) & (out["timestamp"] < WINDOW_END)].copy()
+    if out.empty:
+        raise RuntimeError(f"NO_VALID_2020_GBPUSD_MTF_ROWS timeframe={timeframe}")
+    return info.filename, out
 
 def _bool_values(series: pd.Series) -> pd.Series:
     if pd.api.types.is_bool_dtype(series):
@@ -158,15 +155,66 @@ def _bool_values(series: pd.Series) -> pd.Series:
     return series.astype("string").str.strip().str.lower().isin({"true", "1", "yes", "y"})
 
 
-def compare(m1: pd.DataFrame, actual: pd.DataFrame, timeframe: str) -> dict:
+def duplicate_diagnostics(m1: pd.DataFrame) -> dict:
+    duplicated = m1[m1["timestamp"].duplicated(keep=False)].copy()
+    if duplicated.empty:
+        return {
+            "duplicate_timestamp_rows_including_first": 0,
+            "duplicate_timestamp_extra_rows": 0,
+            "duplicate_timestamp_groups": 0,
+            "exact_duplicate_extra_rows": 0,
+            "conflicting_duplicate_groups": 0,
+            "sample_duplicate_groups": [],
+        }
+    value_cols = [c for c in ("open", "high", "low", "close", "volume") if c in duplicated.columns]
+    groups = []
+    exact_extra = 0
+    conflicts = 0
+    for ts, group in duplicated.groupby("timestamp", sort=True):
+        distinct = group[value_cols].drop_duplicates()
+        identical = len(distinct) == 1
+        if identical:
+            exact_extra += len(group) - 1
+        else:
+            conflicts += 1
+        if len(groups) < 20:
+            groups.append({
+                "timestamp": str(ts),
+                "rows": int(len(group)),
+                "identical_values": bool(identical),
+                "values": group[value_cols].to_dict(orient="records"),
+            })
+    return {
+        "duplicate_timestamp_rows_including_first": int(len(duplicated)),
+        "duplicate_timestamp_extra_rows": int(m1["timestamp"].duplicated().sum()),
+        "duplicate_timestamp_groups": int(duplicated["timestamp"].nunique()),
+        "exact_duplicate_extra_rows": int(exact_extra),
+        "conflicting_duplicate_groups": int(conflicts),
+        "sample_duplicate_groups": groups,
+    }
+
+
+def compare(m1: pd.DataFrame, actual: pd.DataFrame, timeframe: str, duplicate_policy: str) -> dict:
     freq, _ = TIMEFRAMES[timeframe]
-    if m1["timestamp"].duplicated().any():
-        return {"timeframe": timeframe, "status": "BLOCKED_DUPLICATE_M1_TIMESTAMPS",
-                "duplicate_m1_rows": int(m1["timestamp"].duplicated().sum())}
+    m1_diag = duplicate_diagnostics(m1)
+    if m1_diag["conflicting_duplicate_groups"] > 0:
+        return {
+            "timeframe": timeframe,
+            "status": "BLOCKED_CONFLICTING_DUPLICATE_M1_TIMESTAMPS",
+            "duplicate_policy": duplicate_policy,
+            **m1_diag,
+        }
     if actual["timestamp"].duplicated().any():
-        return {"timeframe": timeframe, "status": "BLOCKED_DUPLICATE_MTF_TIMESTAMPS",
-                "duplicate_mtf_rows": int(actual["timestamp"].duplicated().sum())}
+        return {
+            "timeframe": timeframe,
+            "status": "BLOCKED_DUPLICATE_GBPUSD_MTF_TIMESTAMPS",
+            "duplicate_mtf_rows": int(actual["timestamp"].duplicated().sum()),
+        }
     source = m1.sort_values("timestamp", kind="mergesort").copy()
+    if duplicate_policy == "collapse_exact_duplicate_rows":
+        source = source.drop_duplicates(subset=["timestamp", "open", "high", "low", "close"] + (["volume"] if "volume" in source.columns else []), keep="first")
+    elif source["timestamp"].duplicated().any():
+        return {"timeframe": timeframe, "status": "BLOCKED_DUPLICATE_M1_TIMESTAMPS", **m1_diag}
     source["bucket"] = source["timestamp"].dt.floor(freq)
     aggregations = {
         "open": ("open", "first"), "high": ("high", "max"),
@@ -176,28 +224,33 @@ def compare(m1: pd.DataFrame, actual: pd.DataFrame, timeframe: str) -> dict:
     if "volume" in source.columns:
         aggregations["volume"] = ("volume", "sum")
     expected = source.groupby("bucket", sort=True).agg(**aggregations).reset_index().rename(columns={"bucket": "timestamp"})
-    actual = actual.copy()
-    actual = actual.sort_values("timestamp", kind="mergesort")
+    actual = actual.copy().sort_values("timestamp", kind="mergesort")
     joined = expected.merge(actual, on="timestamp", how="outer", suffixes=("_expected", "_actual"), indicator=True)
     both = joined[joined["_merge"] == "both"].copy()
     stats = {
         "timeframe": timeframe,
-        "source_m1_rows_2020": int(len(source)),
+        "duplicate_policy": duplicate_policy,
+        "source_m1_rows_2020_before_duplicate_policy": int(len(m1)),
+        "source_m1_rows_2020_after_duplicate_policy": int(len(source)),
         "expected_bars_2020": int(len(expected)),
         "actual_bars_2020": int(len(actual)),
         "matched_timestamps": int(len(both)),
         "missing_output_bars": int((joined["_merge"] == "left_only").sum()),
         "extra_output_bars": int((joined["_merge"] == "right_only").sum()),
+        **m1_diag,
     }
     checks = {}
     for col in OHLC:
-        checks[f"{col}_match_rows"] = int(pd.Series(
-            (both[f"{col}_expected"].astype(float) - both[f"{col}_actual"].astype(float)).abs() <= 1e-9
-        ).sum())
-    checks["m1_count_match_rows"] = int(
-        (pd.to_numeric(both["m1_count_expected"], errors="coerce") ==
-         pd.to_numeric(both.get("m1_count_actual", pd.Series(index=both.index, dtype=float)), errors="coerce")).sum()
-    ) if "m1_count" in actual.columns else None
+        checks[f"{col}_match_rows"] = int(
+            ((both[f"{col}_expected"].astype(float) - both[f"{col}_actual"].astype(float)).abs() <= 1e-9).sum()
+        )
+    if "m1_count" in actual.columns:
+        checks["m1_count_match_rows"] = int(
+            (pd.to_numeric(both["m1_count_expected"], errors="coerce") ==
+             pd.to_numeric(both["m1_count_actual"], errors="coerce")).sum()
+        )
+    else:
+        checks["m1_count_match_rows"] = None
     if "volume" in expected.columns and "volume" in actual.columns:
         checks["volume_match_rows"] = int((
             (pd.to_numeric(both["volume_expected"], errors="coerce") -
@@ -213,10 +266,15 @@ def compare(m1: pd.DataFrame, actual: pd.DataFrame, timeframe: str) -> dict:
     if checks["volume_match_rows"] is not None:
         full.append(checks["volume_match_rows"] == len(both))
     stats.update(checks)
-    stats["status"] = "EXACT_MATCH_ON_TESTED_FIELDS" if stats["missing_output_bars"] == 0 and stats["extra_output_bars"] == 0 and len(both) == len(expected) and all(full) else "MISMATCH_OR_PARTIAL"
-    stats["interpretation"] = "data equivalence only; a match does not prove this archive was the producer input or authenticate its clock"
+    stats["status"] = (
+        "EXACT_MATCH_ON_TESTED_FIELDS" if stats["missing_output_bars"] == 0
+        and stats["extra_output_bars"] == 0 and len(both) == len(expected) and all(full)
+        else "MISMATCH_OR_PARTIAL"
+    )
+    stats["interpretation"] = (
+        "data equivalence only; a match does not prove this archive was the producer input or authenticate its clock"
+    )
     return stats
-
 
 def main() -> int:
     parser = argparse.ArgumentParser()
@@ -227,9 +285,21 @@ def main() -> int:
     with zipfile.ZipFile(args.m1_archive) as m1_zip, zipfile.ZipFile(args.mtf_archive) as mtf_zip:
         member, m1, member_meta = _read_m1_member(m1_zip)
         comparisons = []
+        duplicate_diag = duplicate_diagnostics(m1)
+        # Preserve strict result and a separately-labelled sensitivity run that
+        # collapses only byte-value-equivalent duplicate timestamp rows.
+        duplicate_policy = (
+            "collapse_exact_duplicate_rows"
+            if duplicate_diag["conflicting_duplicate_groups"] == 0
+            else "strict_block"
+        )
         for tf in TIMEFRAMES:
             mtf_name, actual = _read_mtf_member(mtf_zip, tf)
-            comparisons.append({"mtf_member": mtf_name, **compare(m1, actual, tf)})
+            comparisons.append({
+                "mtf_member": mtf_name,
+                "strict": compare(m1, actual, tf, "strict_block"),
+                "exact_duplicate_sensitivity": compare(m1, actual, tf, duplicate_policy),
+            })
     report = {
         "audit": "DROPBOX_GBPUSD_HISTDATA_2020_VS_EXISTING_MTF_2016_2024_V1",
         "status": "COMPLETED_READ_ONLY",
@@ -240,7 +310,7 @@ def main() -> int:
             "selected_m1_member": member, **member_meta,
             "rows_2020": int(len(m1)), "first_timestamp": str(m1["timestamp"].min()),
             "last_timestamp": str(m1["timestamp"].max()),
-            "duplicate_timestamp_rows": int(m1["timestamp"].duplicated().sum()),
+            **duplicate_diagnostics(m1),
             "invalid_ohlc_rows": int(m1[list(OHLC)].isna().any(axis=1).sum()),
             "volume_present": "volume" in m1.columns,
             "volume_nonzero_rows": int((m1["volume"].fillna(0) != 0).sum()) if "volume" in m1.columns else None,
@@ -252,7 +322,7 @@ def main() -> int:
         },
         "comparisons": comparisons,
         "governance": [
-            "No timestamps were localized or converted to UTC.",
+            "No timestamps were localized or converted to UTC.",\n            "GBPUSD MTF member selection is exact and rejects ambiguous or cross-symbol matches.",\n            "Duplicate timestamp sensitivity is reported separately; exact duplicates are never silently removed from the strict result.",
             "No provider timezone, broker timezone, DST, or clock semantics were inferred.",
             "A data match is not proof of actual source selection or original producer lineage.",
             "No strategy parameters, thresholds, features, or runtime code were changed.",
