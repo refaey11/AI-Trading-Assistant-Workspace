@@ -15,7 +15,7 @@ PATH = "/GBPUSD_M1_MASTER_2016_2026_V1.zip"
 
 def main() -> int:
     token = os.environ.get("DROPBOX_ACCESS_TOKEN", "").strip()
-    token = re.sub(r"^Bearer\\s+", "", token, flags=re.I).strip().strip('"')
+    token = re.sub(r"^Bearer\s+", "", token, flags=re.I).strip().strip('"')
     if not token:
         raise RuntimeError("DROPBOX_ACCESS_TOKEN_MISSING")
 
@@ -70,7 +70,7 @@ def main() -> int:
         footer = response.read(22)
         if len(footer) != 22:
             raise RuntimeError(f"RANGE_BODY_LENGTH_MISMATCH={len(footer)}")
-        if footer[:4] != b"PK\\x05\\x06":
+        if footer[:4] != b"PK\x05\x06":
             raise RuntimeError("ZIP_EOCD_NOT_AT_FINAL_22_BYTES;_NO_WIDER_READ_ATTEMPTED")
 
         entries = int.from_bytes(footer[10:12], "little")
