@@ -20,7 +20,6 @@ if str(ROOT) not in sys.path:
     sys.path.insert(0, str(ROOT))
 
 from RUNTIME.RISK_ENGINE_INTEGRATION_V1.risk_engine_integration_v1 import evaluate_risk
-from RUNTIME.TIZ_PROCESS_GATE_V1.tiz_process_gate_v1 import evaluate_tiz_gate
 from evaluation.three_book_decision_evaluator_v1 import evaluate_three_book_decision
 
 MTF_FIELDS = (
@@ -135,12 +134,23 @@ def run_live_event(event: Mapping[str, Any]) -> dict[str, Any]:
         murphy = event.get("murphy_evidence")
         nison = event.get("nison_evidence")
         risk_input = event.get("risk_inputs")
-        tiz = event.get("tiz_evidence")
+        tiz_input = event.get("tiz_evidence")
         for name, item in (("mtf", mtf), ("murphy", murphy), ("nison", nison),
-                           ("risk", risk_input), ("tiz", tiz)):
+                           ("risk", risk_input)):
             if not isinstance(item, Mapping):
                 raise ValueError(f"{name.upper()}_EVIDENCE_MISSING")
             _require_source_envelope(item, name.upper(), as_of)
+
+        # TIZ is optional audit metadata only. Its absence, source envelope,
+        # process flags, or malformed shape must never authorize or block.
+        if isinstance(tiz_input, Mapping):
+            tiz_metadata = dict(tiz_input)
+        else:
+            tiz_metadata = {
+                "role": "OPTIONAL_AUDIT_METADATA_ONLY",
+                "state": "NOT_EVALUABLE_METADATA_ONLY" if tiz_input is None else "UNPARSEABLE_METADATA_ONLY",
+                "provided": tiz_input is not None,
+            }
 
         row = event.get("brain_row")
         if not isinstance(row, Mapping):
@@ -243,16 +253,6 @@ def run_live_event(event: Mapping[str, Any]) -> dict[str, Any]:
         if not risk_result.risk_pass:
             return _blocked(f"RISK_GATE:{risk_result.reason}", symbol=symbol, timestamp=timestamp_text)
 
-        tiz_result = evaluate_tiz_gate(
-            rule_adherence=tiz.get("rule_adherence") is True,
-            risk_accepted=tiz.get("risk_accepted") is True,
-            impulse_override=tiz.get("impulse_override") is True,
-            loss_chasing=tiz.get("loss_chasing") is True,
-            revenge_trade=tiz.get("revenge_trade") is True,
-        )
-        if tiz_result.process_state != "READY":
-            return _blocked(f"TIZ_PROCESS_GATE:{tiz_result.reason}", symbol=symbol, timestamp=timestamp_text)
-
         brain = _brain_module()
         # Similarity/historical memory is deliberately not passed to assess().
         assessment = brain.assess(normalized_row, similarity=None)
@@ -278,7 +278,7 @@ def run_live_event(event: Mapping[str, Any]) -> dict[str, Any]:
                 "pass_rule_id": pass_rule_id,
             },
             nison_evidence=nison_payload,
-            tiz_evidence={"process_state": tiz_result.process_state, "decision_authority": False},
+            tiz_evidence={**tiz_metadata, "decision_authority": False, "role": "OPTIONAL_AUDIT_METADATA_ONLY"},
             risk_evidence=risk_payload,
             source_rule_ids=sorted(supplied_ids),
             timestamp=timestamp_text,
@@ -291,7 +291,7 @@ def run_live_event(event: Mapping[str, Any]) -> dict[str, Any]:
                 "reason": (decision.get("decision") or {}).get("reasons_against", ["BRAIN_OR_THREE_BOOK_REJECT"])[0],
                 "brain": brain_assessment,
                 "risk": risk_payload,
-                "tiz": {"process_state": tiz_result.process_state, "reason": tiz_result.reason},
+                "tiz": tiz_metadata,
                 "execution": {"mode": "SIGNAL_ONLY", "orders_enabled": False, "broker_volume": None},
             }
 
@@ -311,7 +311,7 @@ def run_live_event(event: Mapping[str, Any]) -> dict[str, Any]:
             "brain": brain_assessment,
             "murphy": {"direction": murphy_direction, "pass_rule_id": pass_rule_id},
             "nison": {"confirmation": nison_confirmation, "contradiction": False},
-            "tiz": {"process_state": tiz_result.process_state, "reason": tiz_result.reason},
+            "tiz": tiz_metadata,
             "historical_memory": {
                 "included_for_audit_only": event.get("historical_evidence") is not None,
                 "passed_to_brain_for_direction": False,
