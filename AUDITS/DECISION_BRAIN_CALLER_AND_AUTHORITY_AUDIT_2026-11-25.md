@@ -38,8 +38,8 @@ This bridge is callable directly, so relying exclusively on one upstream Gate 3C
 The bridge dynamically imports `OOS_2025/full_decision_brain_assembler_v1.py`; that assembler imports `OOS_2025.execution_oos_compatibility_v1`. This is a namespace/lifecycle coupling, not proof that OOS data was read. Do not move OOS datasets or tune against them. Relocation requires a compatibility audit and import-path regression tests.
 
 ## Verification state
-- Review branch compare: 3 commits ahead, 0 behind the development base.
-- Exactly 3 files changed in the branch at the time of this audit (2 code/test files plus the first audit report).
+- Review branch compare after this audit: 4 commits ahead, 0 behind the development base.
+- Exactly 4 files changed on the review branch: 2 audit reports, 1 compatibility adapter, and 1 regression-test file.
 - Similarity regression test is present but has NOT been executed.
 - No PR exists for this branch; no CI run was observed for the remediation commit.
 - No changes made in this audit to application code, strategy, Risk, TIZ, Murphy, Nison, Similarity semantics, or OOS assets.
