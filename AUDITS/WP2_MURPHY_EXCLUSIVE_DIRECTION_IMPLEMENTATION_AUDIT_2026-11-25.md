@@ -57,4 +57,4 @@ The project owner approved the following implementation rule:
 
 ## Safety
 - No main branch changes, merge, rebase, cherry-pick, Dropbox, CircleCI, market-data payload, or 2025/2026 dataset access.
-- No test result is claimed in this report; status is implementation plus static verification pending Actions.
+- No test result is claimed in this report; status is implementation plus static verification. A matching GitHub Actions run on the pull-request head is required before this work can be marked validated.
