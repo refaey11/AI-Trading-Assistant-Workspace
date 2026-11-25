@@ -90,10 +90,15 @@ def valid_event():
     }
 
 
-def test_live_event_uses_existing_brain_and_returns_signal_only():
+def test_live_event_uses_murphy_direction_and_returns_signal_only():
     result = run_live_event(valid_event())
     assert result["status"] == "SIGNAL_READY"
     assert result["decision"] == "BUY"
+    assert result["direction_authority"] == "MURPHY_ONLY"
+    assert result["directional_confidence"] == "NOT_EVALUABLE"
+    assert result["brain_context"]["directional_bias"] == "NOT_USED_FOR_DIRECTION"
+    assert result["brain_context"]["directional_confidence"] is None
+    assert result["brain_context"]["confidence_status"] == "NOT_EVALUABLE"
     assert result["risk"]["rr"] == 3.0
     assert result["execution"]["orders_enabled"] is False
     assert result["execution"]["broker_volume"] is None
@@ -163,7 +168,7 @@ def test_live_runtime_tiz_absent_is_non_blocking_metadata():
     result = run_live_event(event)
     assert result["status"] == expected["status"]
     assert result["decision"] == expected["decision"]
-    assert result["brain"]["confidence"] == expected["brain"]["confidence"]
+    assert result["brain_context"]["directional_confidence"] == expected["brain_context"]["directional_confidence"]
     assert result["risk"] == expected["risk"]
     assert result["tiz"]["state"] == "NOT_EVALUABLE_METADATA_ONLY"
 
@@ -180,7 +185,7 @@ def test_live_runtime_tiz_failed_state_is_non_blocking_metadata():
     result = run_live_event(event)
     assert result["status"] == expected["status"]
     assert result["decision"] == expected["decision"]
-    assert result["brain"]["confidence"] == expected["brain"]["confidence"]
+    assert result["brain_context"]["directional_confidence"] == expected["brain_context"]["directional_confidence"]
     assert result["risk"] == expected["risk"]
     assert result["tiz"]["loss_chasing"] is True
     assert result["tiz"]["role"] == "OPTIONAL_AUDIT_METADATA_ONLY"
@@ -193,7 +198,7 @@ def test_live_runtime_malformed_tiz_is_non_blocking_metadata():
     result = run_live_event(event)
     assert result["status"] == expected["status"]
     assert result["decision"] == expected["decision"]
-    assert result["brain"]["confidence"] == expected["brain"]["confidence"]
+    assert result["brain_context"]["directional_confidence"] == expected["brain_context"]["directional_confidence"]
     assert result["risk"] == expected["risk"]
     assert result["tiz"]["state"] == "UNPARSEABLE_METADATA_ONLY"
 
@@ -228,3 +233,55 @@ def test_live_runtime_rejects_murphy_risk_direction_conflict():
     result = run_live_event(event)
     assert result["status"] == "BLOCKED"
     assert result["reason"] == "MURPHY_RISK_DIRECTION_CONFLICT"
+
+
+def _set_mtf_context(event, value, *, volume_available=False, volume_value=0.0):
+    for field in ("mtf_trend_score", "M5_trend_regime", "M15_trend_regime",
+                  "M30_trend_regime", "H1_trend_regime", "H4_trend_regime",
+                  "D1_trend_regime"):
+        event["brain_row"][field] = float(value)
+        event["mtf_evidence"]["fields"][field] = float(value)
+    event["brain_row"]["volume_available"] = volume_available
+    event["mtf_evidence"]["fields"]["volume_available"] = volume_available
+    if volume_available:
+        for field in ("M5_volume_regime", "M15_volume_regime", "M30_volume_regime",
+                      "H1_volume_regime", "H4_volume_regime", "D1_volume_regime"):
+            event["brain_row"][field] = float(volume_value)
+            event["mtf_evidence"]["fields"][field] = float(volume_value)
+
+
+def test_mtf_and_volume_cannot_reverse_murphy_buy():
+    event = valid_event()
+    _set_mtf_context(event, -1000.0, volume_available=True, volume_value=-1000.0)
+    result = run_live_event(event)
+    assert result["status"] == "SIGNAL_READY"
+    assert result["decision"] == "BUY"
+    assert result["direction_authority"] == "MURPHY_ONLY"
+    assert result["directional_confidence"] == "NOT_EVALUABLE"
+
+
+def test_mtf_and_volume_cannot_reverse_murphy_sell():
+    event = valid_event()
+    event["murphy_evidence"]["direction"] = "SELL"
+    event["risk_inputs"].update({
+        "direction": "SELL",
+        "stop_loss": 1.2515,
+        "take_profit": 1.2455,
+    })
+    _set_mtf_context(event, 1000.0, volume_available=True, volume_value=1000.0)
+    result = run_live_event(event)
+    assert result["status"] == "SIGNAL_READY"
+    assert result["decision"] == "SELL"
+    assert result["direction_authority"] == "MURPHY_ONLY"
+    assert result["risk"]["rr"] == 3.0
+
+
+def test_historical_similarity_cannot_change_murphy_direction_or_confidence():
+    bullish_memory = valid_event()
+    bearish_memory = valid_event()
+    bullish_memory["historical_evidence"]["similarity"]["predicted_return"] = 999.0
+    bearish_memory["historical_evidence"]["similarity"]["predicted_return"] = -999.0
+    a = run_live_event(bullish_memory)
+    b = run_live_event(bearish_memory)
+    assert a["decision"] == b["decision"] == "BUY"
+    assert a["directional_confidence"] == b["directional_confidence"] == "NOT_EVALUABLE"
