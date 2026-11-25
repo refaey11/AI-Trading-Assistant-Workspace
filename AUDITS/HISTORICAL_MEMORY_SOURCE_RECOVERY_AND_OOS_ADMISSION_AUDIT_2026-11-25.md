@@ -1,5 +1,7 @@
 # Historical Memory Source Recovery and OOS Admission Audit — 2026-11-25
 
+> **Correction / later discovery (2026-11-25):** The initial three-artifact search below was incomplete. A separate retained GitHub Actions artifact, run `33465775090` / artifact `9784863199`, was subsequently recovered. It contains the full `HISTORICAL_CONTEXT_MEMORY.csv` (57,552,949 bytes) and `HISTORICAL_OUTCOMES.csv` (63,287,758 bytes), exactly matching the byte sizes in the pinned source manifest. Therefore the two full memory sources **are present in GitHub Actions storage**. The earlier "NOT RECOVERED" finding below is superseded. However, this artifact also contains 2025/2026 payload members in other source families, and the successful workflow used load-then-filter for memory and extracted the complete MTF archive. No 2025/2026 payload was opened during this later audit. Source availability is now PASS at artifact-member/size level; strict 2016-2024-only admission remains BLOCKED until a safe partition is created without reading OOS rows.
+
 ## Scope
 
 GitHub-only inspection of the historical-context and historical-outcome source dependencies used by the 2016-2024 current-stack replay. This audit did not access Dropbox, did not open any 2025/2026 market or memory payload, and did not modify runtime code or source datasets.
@@ -22,10 +24,11 @@ The following artifacts were checked:
 | 35806971916 | governed-78-rule-development-backtest | 150,865,980 bytes | No |
 | 40135868895 | decision-brain-backtest-2016-2024 | 153,318,595 bytes | No |
 | 40135868833 | decision-brain-cost-stress-2016-2024 | 2,468,402 bytes | No |
+| 33465775090 | current-stack-development-backtest-2016-2024-v2 | 192,659,168 bytes | **Yes — both full memory CSVs** |
 
 The first artifact contains H1, Murphy, Nison, Market State, and MTF source members, as documented in the companion source-admission manifest. The second contains replay outputs, H1, Market State, Murphy, Nison, and MTF members; it does not contain `HISTORICAL_CONTEXT_MEMORY.csv` or `HISTORICAL_OUTCOMES.csv`. The third contains only cost-stress replay outputs and metrics, not the original memory source datasets.
 
-Therefore the GitHub Actions artifacts inspected do not recover the two full memory source CSVs.
+Therefore the first three artifacts do not recover the two full memory source CSVs; the subsequently recovered run 33465775090 does.
 
 ## 2. Exact intended source packages recovered from workflow configuration
 
@@ -40,7 +43,11 @@ After extraction, it expects:
 
 It also downloads Similarity Memory V2, Context-Aware Retrieval V2, and Market Scenario Engine V1 packages. Those packages are not part of the historical Context/Outcome source recovery and must remain evidence-only/NOT_EVALUABLE if their stored snapshots are OOS-2025.
 
-These exact source package paths are useful provenance references, but because they are external Dropbox paths and no corresponding full source bytes are in the inspected GitHub artifacts, they are not a GitHub-only recoverable source today.
+These exact source package paths are useful provenance references. Run 33465775090 records the same Dropbox paths in its resolved-source manifest and preserves the extracted CSVs inside GitHub Actions artifact 9784863199. The source CSV member sizes match the pinned manifest exactly:
+- Historical Context CSV: 57,552,949 bytes.
+- Historical Outcome CSV: 63,287,758 bytes.
+
+The original source acquisition was still Dropbox-backed, but the retained GitHub artifact provides a GitHub-only recovery/download route from this point forward. The exact immutable Dropbox revision IDs are not recorded by the September workflow; byte-size match is not cryptographic revision binding.
 
 ## 3. Critical 2025 read-boundary finding
 
@@ -84,9 +91,9 @@ Those semantics should be preserved; this audit does not authorize new scenario 
 |---|---|
 | Exact Historical Context package path | IDENTIFIED |
 | Exact Historical Outcome package path | IDENTIFIED |
-| Full Context CSV in inspected GitHub artifacts | NOT RECOVERED |
-| Full Outcome CSV in inspected GitHub artifacts | NOT RECOVERED |
-| Context/Outcome source SHA-256 | NOT AVAILABLE |
+| Full Context CSV in retained GitHub artifact 9784863199 | RECOVERED; exact manifest byte-size match |
+| Full Outcome CSV in retained GitHub artifact 9784863199 | RECOVERED; exact manifest byte-size match |
+| Context/Outcome source SHA-256 | NOT CALCULATED — would require opening full files containing OOS records |
 | Physical 2016-2024-only memory partitions | NOT VERIFIED |
 | 2025 no-read behavior in current-stack V2 | FAIL — load-then-filter |
 | Naive timestamp timezone provenance | UNRESOLVED |
