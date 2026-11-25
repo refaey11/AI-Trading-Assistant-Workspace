@@ -21,7 +21,30 @@
     "size_bytes": 150865980,
     "expires_at": "2026-12-22T01:36:15Z",
     "downloaded_via": "GitHub Actions artifact endpoint",
-    "artifact_sha256": "NOT_COMPUTED_TO_AVOID_READING_ARCHIVE_MEMBERS_CONTAINING_2025_2026_PAYLOADS"
+    "artifact_sha256": "NOT_COMPUTED_TO_AVOID_READING_ARCHIVE_MEMBERS_CONTAINING_2025_2026_PAYLOADS",
+    "not_present_in_artifact": [
+      {
+        "key": "historical_context",
+        "manifest_path": ".../HISTORICAL_CONTEXT_MEMORY.csv",
+        "status": "NOT_PRESENT",
+        "note": "PR #97 replay uses a small repository fixture, not the full source-backed memory CSV."
+      },
+      {
+        "key": "historical_outcome",
+        "manifest_path": ".../HISTORICAL_OUTCOMES.csv",
+        "status": "NOT_PRESENT",
+        "note": "PR #97 replay uses a small repository fixture, not the full source-backed outcome CSV."
+      }
+    ],
+    "full_seven_source_manifest_recovered": false,
+    "recovered_source_families": [
+      "h1",
+      "murphy",
+      "nison",
+      "market_state",
+      "mtf"
+    ],
+    "memory_sources_recovered": false
   },
   "development_scope": {
     "allowed_years": [
