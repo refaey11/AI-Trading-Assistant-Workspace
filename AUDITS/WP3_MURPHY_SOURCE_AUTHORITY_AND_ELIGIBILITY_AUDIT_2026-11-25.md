@@ -123,6 +123,22 @@ The current canonical rule-status registry `project_state/MURPHY_51_CANONICAL_RU
 - The 0025–0026 four-week reconciliation predates the current canonical status registry and says contract reconciliation was blocked. Current registry now marks 0025/0026 PRODUCTION FROZEN. Treat that old conflict as requiring canonical freeze-artifact provenance review, not a license to change the evaluator or choose a new price basis.
 - 0028/0029 have individual production freeze records; the 0028 final provenance JSON still says freeze candidate, while its backup manifest and individual freeze markdown say PRODUCTION FROZEN. The canonical status registry is authoritative and says both are frozen.
 
+## Recovered canonical Knowledge Alignment adapter — compatible boundary, not active wiring
+
+The repository audit records an exact recovery of the canonical `knowledge_alignment_adapter.py` from the Complete Milestone Backup. Its responsibility is evidence alignment only; it:
+- accepts existing Murphy evaluator/adapter outputs;
+- requires frozen Murphy evidence;
+- abstains when Murphy is missing;
+- returns NEEDS_REVIEW when frozen Murphy directions disagree;
+- lets Nison contradict the existing Murphy direction but never manufacture an opposite direction;
+- emits no final BUY/SELL, entry, SL, TP, or size.
+
+The same recovery report records the adapter as **not yet restored into the active runtime**. The canonical smoke evidence is 6/6 boundary cases, but it is representative evidence-shape testing, not proof that all 35 frozen Murphy rules execute live through one provider.
+
+The recovered adapter's exact Murphy input contract is `available=true`, `frozen=true`, `direction`, and `source_rule_id`. The 0006/0007 closure identifies those as its frozen evidence scope. Do not set `frozen=true` by inference from a rule-status registry, and do not translate `CONFIRMED` into `PASS` or `CANDIDATE_ONLY` into frozen evidence without a canonical approved adapter mapping.
+
+This is a useful existing component to restore after provider compatibility is proven; it is not permission to recreate it or to bypass its frozen-evidence checks.
+
 ## Live wiring result
 The unified `MURPHY_EVALUATORS_V1/murphy_runtime_entrypoint_v1.py` dispatches the evaluator functions for these rules, but the inspected `RUNTIME/DECISION_RUNTIME_V1/live_decision_runtime_v1.py` does not import or call that entrypoint, any of the seven evaluators, or the 0006/0007 provider. Instead, it trusts the externally supplied `event["murphy_evidence"]` mapping after checking caller-provided authority/source/producer strings and basic rule-ID membership.
 
