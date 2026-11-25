@@ -154,12 +154,61 @@ def test_live_runtime_blocks_nison_contradiction():
     assert result["reason"] == "NISON_CONTRADICTION"
 
 
-def test_live_runtime_blocks_tiz_process_failure():
+def test_live_runtime_tiz_absent_is_non_blocking_metadata():
     event = valid_event()
-    event["tiz_evidence"]["loss_chasing"] = True
+    expected = run_live_event(event)
+    del event["tiz_evidence"]
+    result = run_live_event(event)
+    assert result["status"] == expected["status"]
+    assert result["decision"] == expected["decision"]
+    assert result["brain"]["confidence"] == expected["brain"]["confidence"]
+    assert result["risk"] == expected["risk"]
+    assert result["tiz"]["state"] == "NOT_EVALUABLE_METADATA_ONLY"
+
+
+def test_live_runtime_tiz_failed_state_is_non_blocking_metadata():
+    event = valid_event()
+    expected = run_live_event(event)
+    event["tiz_evidence"] = {
+        "loss_chasing": True,
+        "impulse_override": True,
+        "rule_adherence": False,
+        "risk_accepted": False,
+    }
+    result = run_live_event(event)
+    assert result["status"] == expected["status"]
+    assert result["decision"] == expected["decision"]
+    assert result["brain"]["confidence"] == expected["brain"]["confidence"]
+    assert result["risk"] == expected["risk"]
+    assert result["tiz"]["loss_chasing"] is True
+    assert result["tiz"]["role"] == "OPTIONAL_AUDIT_METADATA_ONLY"
+
+
+def test_live_runtime_malformed_tiz_is_non_blocking_metadata():
+    event = valid_event()
+    expected = run_live_event(event)
+    event["tiz_evidence"] = "not-an-envelope"
+    result = run_live_event(event)
+    assert result["status"] == expected["status"]
+    assert result["decision"] == expected["decision"]
+    assert result["brain"]["confidence"] == expected["brain"]["confidence"]
+    assert result["risk"] == expected["risk"]
+    assert result["tiz"]["state"] == "UNPARSEABLE_METADATA_ONLY"
+
+
+def test_live_runtime_tiz_cannot_authorize_failed_risk():
+    event = valid_event()
+    event["risk_inputs"]["take_profit"] = 1.2530
+    event["tiz_evidence"] = {
+        "rule_adherence": True,
+        "risk_accepted": True,
+        "impulse_override": False,
+        "loss_chasing": False,
+        "revenge_trade": False,
+    }
     result = run_live_event(event)
     assert result["status"] == "BLOCKED"
-    assert "TIZ_PROCESS_GATE" in result["reason"]
+    assert "RR_BELOW_CURRENT_CANONICAL_MINIMUM" in result["reason"]
 
 
 def test_live_runtime_rejects_missing_mtf_field_without_defaulting():
