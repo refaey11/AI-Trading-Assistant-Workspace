@@ -9,7 +9,7 @@ parameters. They are NOT claimed to be verbatim Murphy numeric prescriptions.
 from copy import deepcopy
 from dataclasses import dataclass
 from math import ceil, floor
-from typing import Literal, Optional
+from typing import Literal, Mapping, Optional
 
 
 @dataclass(frozen=True)
@@ -134,27 +134,43 @@ class PNF3BoxReference:
         return snapshots
 
 
-def bullish_support_reference(columns: list[PNFColumn]) -> Optional[dict]:
+def _column_value(column: PNFColumn | Mapping[str, object], key: str) -> object:
+    if isinstance(column, Mapping):
+        if key in column:
+            return column[key]
+        if key in {"top", "bottom"} and isinstance(column.get("boxes"), (list, tuple)) and column["boxes"]:
+            return (max if key == "top" else min)(column["boxes"])
+        raise ValueError(f"P&F column is missing required field: {key}")
+    return getattr(column, key)
+
+
+def bullish_support_reference(columns: list[PNFColumn | Mapping[str, object]]) -> Optional[dict]:
     """Return the 45-degree bullish support origin.
 
     Source semantics: bullish support line starts from the base of the lowest O
     column. In a P&F grid, a 45-degree line advances one box upward per column.
     This returns a structural reference; it does not manufacture a trade signal.
     """
-    o_columns = [(i, c) for i, c in enumerate(columns) if c.kind == "O"]
+    o_columns = [
+        (i, c) for i, c in enumerate(columns)
+        if _column_value(c, "kind") == "O"
+    ]
     if not o_columns:
         return None
-    index, origin = min(o_columns, key=lambda item: item[1].bottom)
+    index, origin = min(o_columns, key=lambda item: float(_column_value(item[1], "bottom")))
     return {
         "origin_column_index": index,
-        "origin_price": origin.bottom,
+        "origin_price": float(_column_value(origin, "bottom")),
         "box_step_per_column": 1,
         "direction": "UP",
         "status": "AVAILABLE",
     }
 
 
-def stop_reference(columns: list[PNFColumn], direction: Literal["BULLISH", "BEARISH"]) -> Optional[dict]:
+def stop_reference(
+    columns: list[PNFColumn | Mapping[str, object]],
+    direction: Literal["BULLISH", "BEARISH"],
+) -> Optional[dict]:
     """Return Murphy's P&F stop reference without inventing an offset.
 
     Bullish: below previous O column.
@@ -165,11 +181,12 @@ def stop_reference(columns: list[PNFColumn], direction: Literal["BULLISH", "BEAR
     wanted = "O" if direction == "BULLISH" else "X"
     for index in range(len(columns) - 1, -1, -1):
         column = columns[index]
-        if column.kind == wanted:
+        if _column_value(column, "kind") == wanted:
+            price_key = "bottom" if wanted == "O" else "top"
             return {
                 "reference_column_index": index,
                 "reference_column": wanted,
-                "reference_price": column.bottom if wanted == "O" else column.top,
+                "reference_price": float(_column_value(column, price_key)),
                 "placement_relation": "BELOW" if wanted == "O" else "ABOVE",
                 "status": "AVAILABLE",
             }

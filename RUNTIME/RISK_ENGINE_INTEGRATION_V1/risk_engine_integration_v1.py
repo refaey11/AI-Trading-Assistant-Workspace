@@ -23,6 +23,8 @@ class RiskResult:
     rr: Optional[float]
     position_size: Optional[float]
     reason: str
+    stop_loss: Optional[float] = None
+    take_profit: Optional[float] = None
 
 
 def evaluate_risk(
@@ -89,4 +91,6 @@ def evaluate_risk(
         rr,
         position_size,
         "RISK_GATE_PASS",
+        stop_loss,
+        take_profit,
     )

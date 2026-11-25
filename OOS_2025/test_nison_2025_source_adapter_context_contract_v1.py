@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from nison_2025_source_adapter_v1 import build_payload_rows
+from OOS_2025.nison_2025_source_adapter_v1 import build_payload_rows
 
 
 def test_context_and_confirmation_are_nested_at_runtime_boundary():
@@ -20,7 +20,7 @@ def test_context_and_confirmation_are_nested_at_runtime_boundary():
         }
     ])
 
-    rows = build_payload_rows(bars, context)
+    rows = build_payload_rows(bars, context, evaluation_year=2025)
     payload = next(r["payload"] for r in rows if r["rule_id"] == "NISON_0001" and r["timestamp"].startswith("2025-01-02T01:00:00"))
 
     assert payload["context"]["trend"] == "Downtrend"
@@ -35,6 +35,6 @@ def test_context_is_not_invented_when_absent():
     bars = pd.DataFrame([
         {"timestamp": "2025-01-02T00:00:00Z", "open": 1.10, "high": 1.11, "low": 1.09, "close": 1.105},
     ])
-    payload = build_payload_rows(bars)[0]["payload"]
+    payload = build_payload_rows(bars, evaluation_year=2025)[0]["payload"]
     assert "context" not in payload
     assert "confirmation" not in payload
