@@ -1,0 +1,24 @@
+name: GitHub Release MTF ZIP Directory-Only Inspection
+
+on:
+  push:
+    branches:
+      - audit/master-2020-selective-range-read-2026-11-24
+    paths:
+      - tools/github_release_mtf_zip_directory_only.py
+      - .github/workflows/github-release-mtf-zip-directory-only.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  inspect-directory-only:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout isolated audit branch
+        uses: actions/checkout@v4
+        with:
+          ref: audit/master-2020-selective-range-read-2026-11-24
+      - name: Inspect GitHub Release ZIP directory only
+        run: python tools/github_release_mtf_zip_directory_only.py
