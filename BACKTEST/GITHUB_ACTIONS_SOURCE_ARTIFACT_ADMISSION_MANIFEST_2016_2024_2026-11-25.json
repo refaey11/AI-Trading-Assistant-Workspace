@@ -44,7 +44,23 @@
       "market_state",
       "mtf"
     ],
-    "memory_sources_recovered": false
+    "memory_sources_recovered": false,
+    "additional_artifacts_checked": [
+      {
+        "run_id": 40135868895,
+        "artifact_id": 12577355039,
+        "name": "decision-brain-backtest-2016-2024",
+        "size_bytes": 153318595,
+        "memory_source_csvs_present": false
+      },
+      {
+        "run_id": 40135868833,
+        "artifact_id": 12575929718,
+        "name": "decision-brain-cost-stress-2016-2024",
+        "size_bytes": 2468402,
+        "memory_source_csvs_present": false
+      }
+    ]
   },
   "development_scope": {
     "allowed_years": [
@@ -269,5 +285,22 @@
     "no_2025_or_2026_payloads_opened": true,
     "no_synthetic_rule_evidence_added": true,
     "no_candle_aggregation_rebuilt": true
+  },
+  "memory_source_recovery": {
+    "historical_context": {
+      "source_package_path": "/ai_trading_assistant_full_project_v1/AI_Trading_Assistant_HISTORICAL_CONTEXT_MEMORY_V1.zip",
+      "expected_member": "HISTORICAL_CONTEXT_MEMORY.csv",
+      "full_source_in_inspected_github_artifacts": false,
+      "sha256": "NOT_AVAILABLE"
+    },
+    "historical_outcome": {
+      "source_package_path": "/ai_trading_assistant_full_project_v1/AI_Trading_Assistant_HISTORICAL_OUTCOME_MEMORY_V1.zip",
+      "expected_member": "HISTORICAL_OUTCOMES.csv",
+      "full_source_in_inspected_github_artifacts": false,
+      "sha256": "NOT_AVAILABLE"
+    },
+    "current_stack_workflow_oos_boundary": "FAIL_LOADS_FULL_FILES_THEN_FILTERS_2016_2024",
+    "timezone_provenance": "UNRESOLVED_UTC_TRUE_WOULD_ASSIGN_UTC_TO_NAIVE_TIMESTAMPS",
+    "disposition": "EXTERNAL_SOURCE_BLOCKERS_UNDER_GITHUB_ONLY_CONSTRAINT"
   }
 }
