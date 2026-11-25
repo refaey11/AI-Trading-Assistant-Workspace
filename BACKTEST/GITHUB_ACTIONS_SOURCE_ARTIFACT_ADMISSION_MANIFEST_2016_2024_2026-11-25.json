@@ -1,0 +1,116 @@
+{
+  "manifest_id": "GITHUB_ACTIONS_HISTORICAL_SOURCE_ARTIFACT_ADMISSION_2016_2024_2026-11-25",
+  "status": "SOURCE_ARTIFACT_RECOVERED_WITH_OPEN_ADMISSION_GATES",
+  "repository": "refaey11/AI-Trading-Assistant-Workspace",
+  "workflow_run": {
+    "run_id": 35806971916,
+    "run_number": 9,
+    "name": "Governed 78-Rule Development Backtest",
+    "source_commit": "333795a0a135317619af69fd11f191db595e86a7",
+    "url": "https://github.com/refaey11/AI-Trading-Assistant-Workspace/actions/runs/35806971916",
+    "steps": {
+      "acquire_authoritative_governed_inputs": "success",
+      "validate_governed_78_rule_evidence_envelope": "success",
+      "run_decision_brain_runner": "failure",
+      "upload_results": "success"
+    }
+  },
+  "artifact": {
+    "artifact_id": 10728885030,
+    "name": "governed-78-rule-development-backtest",
+    "size_bytes": 150865980,
+    "expires_at": "2026-12-22T01:36:15Z",
+    "downloaded_via": "GitHub Actions artifact endpoint",
+    "artifact_sha256": "NOT_COMPUTED_TO_AVOID_READING_ARCHIVE_MEMBERS_CONTAINING_2025_2026_PAYLOADS"
+  },
+  "development_scope": {
+    "allowed_years": [2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024],
+    "oos_locked_year": 2025,
+    "future_payload_years_not_opened": [2025, 2026],
+    "no_oos_payload_read": true
+  },
+  "source_manifest_reference": {
+    "path": "BACKTEST/GOVERNED_SOURCE_INPUT_MANIFEST_2016_2024_2026-11-15.json",
+    "branch": "audit/gate-a-input-preflight-2026-11-15",
+    "exact_external_revision_binding": "UNVERIFIED",
+    "reason": "The September 2026 source-acquisition workflow downloaded by path; the later November manifest records immutable revision IDs. Artifact member sizes match the manifest, but the run does not bind each member to those exact revision IDs."
+  },
+  "artifact_member_size_reconciliation": {
+    "source/h1.zip": {"bytes": 805818, "manifest_bytes": 805818, "match": true, "payload_inspected": false},
+    "murphy/murphy.zip": {"bytes": 314490, "manifest_bytes": 314490, "match": true},
+    "nison/NISON_2016_2024_FULL_EVIDENCE.csv": {"bytes": 525483005, "manifest_bytes": 525483005, "match": true},
+    "market_state.csv": {"bytes": 20604225, "manifest_bytes": 20604225, "match": true, "payload_inspected": false},
+    "mtf/mtf_alignment.zip": {"bytes": 80293251, "manifest_bytes": 80293251, "match": true, "2025_2026_members_opened": false}
+  },
+  "verified_2016_2024_payloads": {
+    "murphy": {
+      "path": "murphy/MURPHY_2016_2024_FULL_EVIDENCE.csv",
+      "bytes": 6205075,
+      "sha256": "4ecd91b02047d817b5ceeb239e5d76f7d0c8f1c0aefd3de15f38f6bebbd2cfc7",
+      "embedded_manifest_sha256_match": true,
+      "rows": 87225,
+      "observed_rule_ids": ["MURPHY_0021", "MURPHY_0022", "MURPHY_0023", "MURPHY_0025", "MURPHY_0026", "MURPHY_0028", "MURPHY_0029"],
+      "observed_rule_count": 7,
+      "expected_runtime_rule_count": 34,
+      "missing_expected_rule_count": 27,
+      "naive_timestamp_rows": 32400,
+      "offset_aware_timestamp_rows": 54825,
+      "admission": "BLOCKED_INCOMPLETE_RULE_COVERAGE_AND_MIXED_TIMESTAMP_SEMANTICS"
+    },
+    "nison": {
+      "path": "nison/NISON_2016_2024_FULL_EVIDENCE.csv",
+      "bytes": 525483005,
+      "sha256": "8487d24664de68ad7947ea66e1686437a46cc1a7a433fff930198d531c990a0e",
+      "rows": 2428448,
+      "observed_rule_count": 44,
+      "naive_timestamp_rows": 0,
+      "admission": "CONTENT_DIGEST_RECORDED; PRIOR_RUN_INPUT_VALIDATION_PASS"
+    },
+    "mtf": {
+      "yearly_files": {
+        "2016": {"rows": 74677, "sha256": "677c5d5fc9ce28e4c8067cf08318685e4215e9192c11d6bb0d29b11400a19aca"},
+        "2017": {"rows": 74478, "sha256": "b5ceebf0cd5f3a662f0d80d4b4334af714e70d4a07182ed4d064d170153102bd"},
+        "2018": {"rows": 74696, "sha256": "3b6aaf581c5d687d7fcabf482ba50e3512094645a93dc03ec802881e4344340b"},
+        "2019": {"rows": 74530, "sha256": "c19b23002fa1b3346685fb938346588b54d81f79f16e6429b56c1a20fcf9be9a"},
+        "2020": {"rows": 74826, "sha256": "ec2e7beb0ffedae1226ee1f6f4039b89f773102da2075081e707aaccb0562521"},
+        "2021": {"rows": 74806, "sha256": "d397ccd36c2720dfc1a00a9173d803d10724ac6bbc0a2d1d735553bdb4c0a856"},
+        "2022": {"rows": 74511, "sha256": "6fa1d3a38c7b1141dbfcd547fb6c16db6e3c14a050a76f094298215b8e7617b4"},
+        "2023": {"rows": 74252, "sha256": "e4b13a9a23e1728e5381e90f73c1fdaae03c01edee78fd3f42b775593ccb0ef8"},
+        "2024": {"rows": 74825, "sha256": "d108d29afde393ff7f68dcece6e3bc19e861673182ce80d88c67a5c8d32ef7dd"}
+      },
+      "total_rows": 671601,
+      "naive_timestamp_rows": 671601,
+      "blank_cells": {
+        "M15_trend_regime": 26,
+        "M30_trend_regime": 53,
+        "H1_trend_regime": 107,
+        "H4_trend_regime": 371,
+        "D1_trend_regime": 1955
+      },
+      "total_blank_cells": 2512,
+      "brain_field_names_present": [
+        "M5_trend_regime", "M15_trend_regime", "M30_trend_regime",
+        "H1_trend_regime", "H4_trend_regime", "D1_trend_regime",
+        "mtf_trend_score"
+      ],
+      "admission": "BLOCKED_TIMEZONE_PROVENANCE_AND_PRODUCER_SEMANTICS"
+    }
+  },
+  "historical_runner_failure": {
+    "message": "ValueError: artifacts/mtf/extracted: no source-backed timeframe trend columns found",
+    "governed_expected_rules": 78,
+    "nison_observed_rules": 44,
+    "murphy_observed_rules": 7,
+    "murphy_missing_rules": 27,
+    "profitability_result": "NOT_ESTABLISHED"
+  },
+  "governance": {
+    "no_runtime_changes": true,
+    "no_main_changes": true,
+    "no_merge": true,
+    "no_dropbox_or_circleci_used_in_this_audit": true,
+    "no_2025_or_2026_payloads_opened": true,
+    "no_synthetic_rule_evidence_added": true,
+    "no_candle_aggregation_rebuilt": true
+  }
+}
