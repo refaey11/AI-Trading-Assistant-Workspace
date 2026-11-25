@@ -91,6 +91,35 @@ The current-stack memory provider and replay loaders use `pd.to_datetime(..., ut
 
 Do not normalize naive memory timestamps to UTC unless the source contract independently establishes their meaning. A strict source admission gate must reject unresolved naive timestamps or retain them as unresolved without joining them to UTC event streams.
 
+## 4A. What the successful replay actually proves
+
+Run `33465775090` completed all current-stack workflow steps successfully, including:
+- component completeness gate;
+- runtime wiring gate;
+- governed source acquisition;
+- Murphy and MTF source resolution;
+- memory source resolution;
+- replay invocation;
+- validation-manifest check;
+- artifact upload.
+
+The artifact's runtime-wiring record states that the historical memory provider was invoked and historical evidence injected. This proves the old replay had a memory-wiring path for GBPUSD; it does not prove strict OOS source isolation or production readiness.
+
+The replay's own output reports:
+- 30,678 candidate events;
+- 29,163 evaluated events;
+- 66 simulated trades;
+- 29 wins / 37 losses;
+- 43.94% win rate;
+- 1.57 profit factor;
+- +0.318 R expectancy;
+- +21 R total;
+- -19 R max drawdown.
+
+These figures are **diagnostic-only historical output**, not an official backtest or a profitability claim. The same output explicitly records `costs_applied=false`, `official_profitability_claim=false`, and only **7 source-backed Murphy rules observed** despite a 34-rule registry. It also records that the replay used a GBPUSD-only path.
+
+The validation JSON's `window_2016_2024_only=true` and `future_data_used=false` are output assertions. They do not override the code-level finding that full source files were loaded before the 2025 filter. Consequently these metrics cannot be promoted as evidence of a compliant 2016-2024 OOS-isolated evaluation.
+
 ## 5. Existing memory semantics preserved
 
 The existing Historical Outcome Memory compatibility audit says:
