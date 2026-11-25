@@ -38,3 +38,30 @@ def test_similarity_cannot_restore_tiz_gate_or_create_direction():
     assert out["status"] == "ASSESSED"
     assert out["assessment"] is not None
     assert out["knowledge_evidence"]["final_trade_decision"] is None
+
+
+def test_similarity_is_directionally_inert_on_aligned_path():
+    neutral_row = {
+        "mtf_trend_score": 0.0,
+        "M5_trend_regime": 0.0,
+        "M15_trend_regime": 0.0,
+        "M30_trend_regime": 0.0,
+        "H1_trend_regime": 0.0,
+        "H4_trend_regime": 0.0,
+        "D1_trend_regime": 0.0,
+        "volume_available": True,
+        "M5_volume_regime": 0.0,
+    }
+    alignment = {"alignment_state":"ALIGNED","contradiction_gate":"PASS"}
+    no_memory = run(neutral_row, alignment, None)
+    bullish_memory = run(neutral_row, alignment, {"predicted_return":0.99, "direction":"BULLISH"})
+    bearish_memory = run(neutral_row, alignment, {"predicted_return":-0.99, "direction":"BEARISH"})
+
+    assert no_memory["status"] == bullish_memory["status"] == bearish_memory["status"] == "ASSESSED"
+    assert no_memory["assessment"].directional_bias == "neutral"
+    assert bullish_memory["assessment"].directional_bias == no_memory["assessment"].directional_bias
+    assert bearish_memory["assessment"].directional_bias == no_memory["assessment"].directional_bias
+    assert bullish_memory["assessment"].confidence == no_memory["assessment"].confidence
+    assert bearish_memory["assessment"].confidence == no_memory["assessment"].confidence
+    assert bullish_memory["knowledge_evidence"]["evidence_bundle"]["similarity"]["predicted_return"] == 0.99
+    assert bearish_memory["knowledge_evidence"]["evidence_bundle"]["similarity"]["predicted_return"] == -0.99
