@@ -9,6 +9,8 @@ AS_OF = "2026-11-16T02:00:00Z"
 AVAILABLE = "2026-11-16T01:59:00Z"
 NISON_IDS = [f"NISON_{i:04d}" for i in range(1, 45)]
 
+# All fixtures in this module are synthetic inline contract data; no historical OOS market files are loaded.
+
 
 def valid_event():
     brain_row = {
