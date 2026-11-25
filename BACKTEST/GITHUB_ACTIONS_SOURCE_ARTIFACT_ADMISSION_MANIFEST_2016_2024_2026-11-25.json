@@ -355,6 +355,27 @@
     "strict_2016_2024_partition": "NOT_YET_CREATED",
     "current_stack_workflow_oos_boundary": "FAIL_LOADS_FULL_FILES_THEN_FILTERS_2016_2024",
     "timezone_provenance": "UNRESOLVED_UTC_TRUE_WOULD_ASSIGN_UTC_TO_NAIVE_TIMESTAMPS",
-    "exact_immutable_external_revision_binding": "UNVERIFIED"
+    "exact_immutable_external_revision_binding": "UNVERIFIED",
+    "prior_replay_evidence": {
+      "run_id": 33465775090,
+      "status": "SUCCESSFUL_WORKFLOW_BUT_DIAGNOSTIC_ONLY",
+      "historical_memory_provider_invoked": true,
+      "historical_evidence_injected": true,
+      "candidate_events": 30678,
+      "evaluated_events": 29163,
+      "executed_trades": 66,
+      "wins": 29,
+      "losses": 37,
+      "win_rate": 0.4393939393939394,
+      "profit_factor": 1.5675675675675675,
+      "expectancy_R": 0.3181818181818182,
+      "total_R": 21,
+      "max_drawdown_R": -19,
+      "costs_applied": false,
+      "murphy_source_backed_rules_observed": 7,
+      "murphy_governed_registry_rules": 34,
+      "official_profitability_claim_allowed": false,
+      "oos_isolation_admission": "BLOCKED_LOADS_FULL_SOURCE_THEN_FILTERS"
+    }
   }
 }
