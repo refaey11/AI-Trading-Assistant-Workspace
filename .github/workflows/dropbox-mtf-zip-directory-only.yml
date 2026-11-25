@@ -1,0 +1,24 @@
+name: Dropbox MTF ZIP Directory-Only Inspection
+
+on:
+  push:
+    branches:
+      - audit/master-2020-selective-range-read-2026-11-24
+
+permissions:
+  contents: read
+
+jobs:
+  mtf-directory-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      DROPBOX_ACCESS_TOKEN: ${{ secrets.DROPBOX_ACCESS_TOKEN }}
+    steps:
+      - name: Checkout isolated audit branch
+        uses: actions/checkout@v4
+        with:
+          ref: audit/master-2020-selective-range-read-2026-11-24
+          fetch-depth: 1
+      - name: Inspect MTF ZIP directory only
+        run: python tools/dropbox_mtf_zip_directory_only.py
