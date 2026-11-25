@@ -6,22 +6,45 @@ RULES = ["MURPHY_0003", "NISON_0001"]
 
 def base_inputs():
     return {
-        "brain_assessment": {"directional_bias": "bullish", "confidence": 0.8},
+        "brain_assessment": {"directional_bias": "bearish", "confidence": 0.999},
         "murphy_evidence": {"status": "PASS", "direction": "BULLISH"},
         "nison_evidence": {"confirmation": "CONFIRMED", "contradiction": False},
         "tiz_evidence": {"process_state": "READY", "impulse_override": False, "loss_chasing": False, "revenge_trade": False},
-        "risk_evidence": {"risk_pass": True, "stop_loss": "1.2700", "take_profit": "1.2800", "rr": "2.0"},
+        "risk_evidence": {"risk_pass": True, "stop_loss": "1.2700", "take_profit": "1.2800", "rr": "3.0"},
         "source_rule_ids": RULES,
         "timestamp": "2024-12-31T23:00:00Z",
     }
 
 
-def test_confirmed_bullish_becomes_executable_buy():
+def test_murphy_buy_is_final_even_when_brain_context_is_bearish():
     result = evaluate_three_book_decision(**base_inputs())
     assert result["signal"]["direction"] == "BUY"
     assert result["signal"]["status"] == "EXECUTABLE"
+    assert result["signal"]["direction_source"] == "MURPHY"
+    assert result["signal"]["confidence"] is None
+    assert result["signal"]["confidence_status"] == "NOT_EVALUABLE"
     assert result["decision"]["final"] == "BUY"
     assert result["decision"]["logic"] == "strong"
+    assert result["audit"]["brain_direction_used"] is False
+
+
+def test_murphy_sell_is_final_even_when_brain_context_is_bullish():
+    args = base_inputs()
+    args["murphy_evidence"] = {"status": "PASS", "direction": "BEARISH"}
+    args["brain_assessment"] = {"directional_bias": "bullish", "confidence": 1.0}
+    result = evaluate_three_book_decision(**args)
+    assert result["decision"]["final"] == "SELL"
+    assert result["signal"]["direction"] == "SELL"
+
+
+def test_brain_context_can_be_missing_or_neutral_without_vetoing_murphy():
+    args = base_inputs()
+    args["brain_assessment"] = {"directional_bias": "neutral", "confidence": 0.0}
+    result = evaluate_three_book_decision(**args)
+    assert result["decision"]["final"] == "BUY"
+    args["brain_assessment"] = {}
+    result = evaluate_three_book_decision(**args)
+    assert result["decision"]["final"] == "BUY"
 
 
 def test_weak_or_absent_nison_is_medium_not_direction_source():
@@ -71,18 +94,20 @@ def test_unknown_rule_id_is_hard_rejected():
     assert result["decision"]["reasons_against"] == ["RULE_ALLOWLIST_REJECT"]
 
 
-def test_murphy_direction_conflict_rejects():
+def test_murphy_non_pass_rejects():
     args = base_inputs()
-    args["murphy_evidence"] = {"status": "PASS", "direction": "BEARISH"}
+    args["murphy_evidence"] = {"status": "NOT_EVALUABLE", "direction": "BUY"}
     result = evaluate_three_book_decision(**args)
     assert result["decision"]["final"] == "NO_TRADE"
+    assert result["decision"]["reasons_against"] == ["MURPHY_CONTEXT_NOT_PASS"]
 
 
-def test_brain_neutral_rejects_without_creating_direction():
+def test_invalid_murphy_direction_rejects():
     args = base_inputs()
-    args["brain_assessment"] = {"directional_bias": "neutral", "confidence": 0.9}
+    args["murphy_evidence"] = {"status": "PASS", "direction": "NEUTRAL"}
     result = evaluate_three_book_decision(**args)
     assert result["decision"]["final"] == "NO_TRADE"
+    assert result["decision"]["reasons_against"] == ["MURPHY_DIRECTION_NOT_VALID"]
 
 
 def test_missing_tiz_is_allowed_and_recorded_as_empty_metadata():
@@ -92,19 +117,3 @@ def test_missing_tiz_is_allowed_and_recorded_as_empty_metadata():
     assert result["decision"]["final"] == "BUY"
     assert result["trading_zone"] == {}
     assert result["audit"]["tiz_execution_gate"] == "DISABLED"
-
-
-def test_brain_neutral_is_not_misreported_as_murphy_direction_conflict():
-    args = base_inputs()
-    args["brain_assessment"] = {"directional_bias": "neutral", "confidence": 0.0}
-    result = evaluate_three_book_decision(**args)
-    assert result["decision"]["final"] == "NO_TRADE"
-    assert result["decision"]["reasons_against"] == ["BRAIN_DIRECTION_NOT_EXECUTABLE"]
-
-
-def test_actual_opposing_brain_direction_remains_a_conflict():
-    args = base_inputs()
-    args["brain_assessment"] = {"directional_bias": "bearish", "confidence": 0.8}
-    result = evaluate_three_book_decision(**args)
-    assert result["decision"]["final"] == "NO_TRADE"
-    assert result["decision"]["reasons_against"] == ["MURPHY_BRAIN_DIRECTION_CONFLICT"]
