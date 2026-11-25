@@ -64,6 +64,8 @@ The recovered source artifact contains copies of the following objects. Their st
 
 This is a strong size-level reconciliation, not cryptographic proof that the artifact bytes correspond to the exact Dropbox revision IDs recorded later in the manifest. The original source acquisition run predates the November manifest and its workflow downloads by path; no immutable Dropbox revision ID is embedded in that run's acquisition step. Exact revision-to-artifact binding therefore remains unverified.
 
+**Coverage limitation:** this artifact contains H1, Murphy, Nison, Market State, and MTF. It does **not** contain the two full Historical Context / Historical Outcome Memory source CSVs pinned by the seven-object manifest. PR #97's replay instead supplies small repository fixtures for those memory inputs; those fixtures are not substitutes for the full source-backed memory datasets. Therefore this artifact does not close the complete seven-source manifest by itself.
+
 ## 2016-2024-only payload checks
 
 The following checks were performed directly against the recovered GitHub artifact. No 2025/2026 payload was opened.
