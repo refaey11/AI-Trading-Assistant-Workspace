@@ -63,5 +63,14 @@ def test_similarity_is_directionally_inert_on_aligned_path():
     assert bearish_memory["assessment"].directional_bias == no_memory["assessment"].directional_bias
     assert bullish_memory["assessment"].confidence == no_memory["assessment"].confidence
     assert bearish_memory["assessment"].confidence == no_memory["assessment"].confidence
+
+    # The full market evidence presented to the assessor must be identical
+    # regardless of whether historical memory is strongly bullish or bearish.
+    assert bullish_memory["assessment"].evidence == no_memory["assessment"].evidence
+    assert bearish_memory["assessment"].evidence == no_memory["assessment"].evidence
+    assert all(item["module"] != "HistoricalMemory" for item in bullish_memory["assessment"].evidence)
+    assert all(item["module"] != "HistoricalMemory" for item in bearish_memory["assessment"].evidence)
+
+    # Historical memory remains available in the audit/evidence bundle.
     assert bullish_memory["knowledge_evidence"]["evidence_bundle"]["similarity"]["predicted_return"] == 0.99
     assert bearish_memory["knowledge_evidence"]["evidence_bundle"]["similarity"]["predicted_return"] == -0.99
