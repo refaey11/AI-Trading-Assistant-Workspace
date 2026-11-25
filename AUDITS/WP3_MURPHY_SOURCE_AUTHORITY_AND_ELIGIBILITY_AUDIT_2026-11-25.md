@@ -106,6 +106,36 @@ Their exact compatibility status:
 
 Therefore, the workspace contains Murphy evaluator artifacts, but the reviewed files do not yet provide a verified active producer that satisfies the exact frozen-provider contract and the current live decision contract simultaneously.
 
+## Compatibility matrix — canonical status vs live producer wiring
+
+The current canonical rule-status registry `project_state/MURPHY_51_CANONICAL_RULE_STATUS_REGISTRY_V1.md` is the authority for frozen status. It lists all seven manifest-eligible rules as PRODUCTION FROZEN and lists 0006/0007 as frozen at evaluator + Decision-Brain-evidence level. Older audit snapshots that disagree must be reported as historical conflicts, not used to downgrade the current status.
+
+| Rule group | Canonical status / scope | Existing evaluator output | Live Decision Runtime compatibility | Verdict |
+|---|---|---|---|---|
+| 0006/0007 | Frozen at evaluator + Brain-evidence level; frozen provider contract explicitly requires available=true, frozen=true, direction, source_rule_id | Existing runtime returns status=CONFIRMED and direction=BULLISH/BEARISH; source-safe adapter returns CANDIDATE_ONLY | Runtime requires status=PASS and direction; it does not call these evaluators, and no verified adapter currently supplies the exact frozen envelope. Do not synthesize available/frozen flags | Frozen rule; provider wiring NOT CLOSED |
+| 0021/0022/0023 | PRODUCTION FROZEN in canonical status registry; seven-rule fan-in manifest lists them decision-eligible | Evaluator returns PASS/FAIL/NOT_EVALUABLE plus directional_confirmation; 0022/23 require CME British Pound futures OI, not spot-FX proxy | Existing bridge normalizes to direction/gate/available, but integration contract V2 says proposal/not production frozen and does not emit frozen=true. Live Runtime still expects caller-supplied status=PASS + direction and does not call evaluator/bridge | Rule frozen; live producer-to-runtime envelope NOT CLOSED |
+| 0025/0026 | PRODUCTION FROZEN in canonical status registry; decision-eligible in fan-in manifest | Runtime evaluator returns PASS/FAIL/NOT_EVALUABLE plus directional_confirmation using current_high/current_low vs preceding_4w_high/low | No verified live adapter/event producer or source-envelope binding found. Older four-week reconciliation contains close-vs-high/low contract conflict; do not reopen frozen semantics based on an old snapshot. Require canonical freeze artifact/manifest lookup before any use | Rule frozen; runtime source binding NOT CLOSED |
+| 0028/0029 | PRODUCTION FROZEN in canonical status registry and individual freeze records | Evaluators return PASS/FAIL/NOT_EVALUABLE and directional_confirmation (0028 BEARISH_WARNING, 0029 BULLISH_WARNING) using confirmed divergence + pivot evidence | Live Runtime does not call these evaluators or bind their event availability/source identity to the current event. Warning semantics must not be silently upgraded to standalone trade direction | Rule frozen; live source binding NOT CLOSED |
+
+### Important reconciliation of older conflicting records
+- The 0021–0023 historical provenance audit and integration-gate documents contain older statements that integration/freeze remained open. The current canonical status registry supersedes those older snapshots for the rule's present freeze status. The historical records remain preserved; they are not rewritten.
+- The 0021–0023 frozen snapshot records a clean 2020–2024 artifact with 9 raw 2025 rows excluded. The canonical status registry independently marks 0021–0023 PRODUCTION FROZEN. The separate raw-artifact contamination finding is not permission to re-open or retune the frozen rule.
+- The 0025–0026 four-week reconciliation predates the current canonical status registry and says contract reconciliation was blocked. Current registry now marks 0025/0026 PRODUCTION FROZEN. Treat that old conflict as requiring canonical freeze-artifact provenance review, not a license to change the evaluator or choose a new price basis.
+- 0028/0029 have individual production freeze records; the 0028 final provenance JSON still says freeze candidate, while its backup manifest and individual freeze markdown say PRODUCTION FROZEN. The canonical status registry is authoritative and says both are frozen.
+
+## Live wiring result
+The unified `MURPHY_EVALUATORS_V1/murphy_runtime_entrypoint_v1.py` dispatches the evaluator functions for these rules, but the inspected `RUNTIME/DECISION_RUNTIME_V1/live_decision_runtime_v1.py` does not import or call that entrypoint, any of the seven evaluators, or the 0006/0007 provider. Instead, it trusts the externally supplied `event["murphy_evidence"]` mapping after checking caller-provided authority/source/producer strings and basic rule-ID membership.
+
+The live runtime's required top-level schema is:
+- `status = PASS`
+- `direction = BUY | SELL`
+- `rows`, `pass_rule_id`, `directional_source_rule_id`
+- `authoritative = true`, non-empty `source` and `producer`, `available_at <= query_as_of`
+
+None of the inspected evaluators alone emits this complete envelope. Their native contract is `rule_id`, `status`, `directional_confirmation`, and rule-specific evidence fields; 0006/0007 emit `CONFIRMED` plus `direction`, while the frozen Knowledge Alignment contract expects `available`, `frozen`, `direction`, and `source_rule_id`.
+
+**Therefore the correct next task is not to change Murphy rules or invent a provider. It is to locate the canonical, already-approved adapter/producer contract that converts existing frozen evaluator outputs into the Live Runtime's event-bound Murphy envelope, or explicitly keep live signals blocked if no such artifact exists.**
+
 ## Required next sequence
 1. Reconcile the live directional source scope against the canonical registries and provider contracts. Keep separate: runtime routing, frozen rule status, historical decision eligibility, and live producer availability.
 2. Identify an existing, active Murphy evaluator/adapter provider in the current repository and document its exact output contract. Do not build a duplicate Murphy evaluator or invent a new source.
@@ -131,6 +161,6 @@ Those tests validate the tested contracts, not upstream Murphy source authentica
 - No test/workflow run was needed or performed for this report-only audit.
 
 ## Status
-**MURPHY DIRECTION AUTHORITY: IMPLEMENTED AT DECISION LOGIC; SOURCE AUTHENTICATION NOT ESTABLISHED.**
-**LIVE SOURCE ELIGIBILITY: NOT CLOSED.**
+**MURPHY DIRECTION AUTHORITY: IMPLEMENTED AT DECISION LOGIC; CANONICAL RULE STATUS IS FROZEN FOR THE SEVEN ELIGIBLE RULES; LIVE PRODUCER-TO-RUNTIME WIRING NOT CLOSED.**
+**LIVE SOURCE ENVELOPE / AUTHENTICATION: NOT CLOSED.**
 **PRODUCTION / LIVE SIGNAL AUTHORIZATION: NOT GRANTED.**
