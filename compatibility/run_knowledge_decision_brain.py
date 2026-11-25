@@ -11,7 +11,10 @@ def run(market_row, alignment_output, similarity=None):
             "knowledge_evidence": handoff["knowledge_evidence"],
             "gates": handoff["gates"],
         }
-    assessment = assess(handoff["decision_brain_row"], handoff["similarity"])
+
+    # Similarity is retained by the handoff as historical evidence/metadata,
+    # but must never enter the directional assessment function.
+    assessment = assess(handoff["decision_brain_row"], similarity=None)
     return {
         "status": "ASSESSED",
         "assessment": assessment,
