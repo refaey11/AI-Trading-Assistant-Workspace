@@ -24,9 +24,22 @@
     "artifact_sha256": "NOT_COMPUTED_TO_AVOID_READING_ARCHIVE_MEMBERS_CONTAINING_2025_2026_PAYLOADS"
   },
   "development_scope": {
-    "allowed_years": [2016, 2017, 2018, 2019, 2020, 2021, 2022, 2023, 2024],
+    "allowed_years": [
+      2016,
+      2017,
+      2018,
+      2019,
+      2020,
+      2021,
+      2022,
+      2023,
+      2024
+    ],
     "oos_locked_year": 2025,
-    "future_payload_years_not_opened": [2025, 2026],
+    "future_payload_years_not_opened": [
+      2025,
+      2026
+    ],
     "no_oos_payload_read": true
   },
   "source_manifest_reference": {
@@ -36,11 +49,34 @@
     "reason": "The September 2026 source-acquisition workflow downloaded by path; the later November manifest records immutable revision IDs. Artifact member sizes match the manifest, but the run does not bind each member to those exact revision IDs."
   },
   "artifact_member_size_reconciliation": {
-    "source/h1.zip": {"bytes": 805818, "manifest_bytes": 805818, "match": true, "payload_inspected": false},
-    "murphy/murphy.zip": {"bytes": 314490, "manifest_bytes": 314490, "match": true},
-    "nison/NISON_2016_2024_FULL_EVIDENCE.csv": {"bytes": 525483005, "manifest_bytes": 525483005, "match": true},
-    "market_state.csv": {"bytes": 20604225, "manifest_bytes": 20604225, "match": true, "payload_inspected": false},
-    "mtf/mtf_alignment.zip": {"bytes": 80293251, "manifest_bytes": 80293251, "match": true, "2025_2026_members_opened": false}
+    "source/h1.zip": {
+      "bytes": 805818,
+      "manifest_bytes": 805818,
+      "match": true,
+      "payload_inspected": false
+    },
+    "murphy/murphy.zip": {
+      "bytes": 314490,
+      "manifest_bytes": 314490,
+      "match": true
+    },
+    "nison/NISON_2016_2024_FULL_EVIDENCE.csv": {
+      "bytes": 525483005,
+      "manifest_bytes": 525483005,
+      "match": true
+    },
+    "market_state.csv": {
+      "bytes": 20604225,
+      "manifest_bytes": 20604225,
+      "match": true,
+      "payload_inspected": false
+    },
+    "mtf/mtf_alignment.zip": {
+      "bytes": 80293251,
+      "manifest_bytes": 80293251,
+      "match": true,
+      "2025_2026_members_opened": false
+    }
   },
   "verified_2016_2024_payloads": {
     "murphy": {
@@ -49,7 +85,15 @@
       "sha256": "4ecd91b02047d817b5ceeb239e5d76f7d0c8f1c0aefd3de15f38f6bebbd2cfc7",
       "embedded_manifest_sha256_match": true,
       "rows": 87225,
-      "observed_rule_ids": ["MURPHY_0021", "MURPHY_0022", "MURPHY_0023", "MURPHY_0025", "MURPHY_0026", "MURPHY_0028", "MURPHY_0029"],
+      "observed_rule_ids": [
+        "MURPHY_0021",
+        "MURPHY_0022",
+        "MURPHY_0023",
+        "MURPHY_0025",
+        "MURPHY_0026",
+        "MURPHY_0028",
+        "MURPHY_0029"
+      ],
       "observed_rule_count": 7,
       "expected_runtime_rule_count": 34,
       "missing_expected_rule_count": 27,
@@ -68,15 +112,42 @@
     },
     "mtf": {
       "yearly_files": {
-        "2016": {"rows": 74677, "sha256": "677c5d5fc9ce28e4c8067cf08318685e4215e9192c11d6bb0d29b11400a19aca"},
-        "2017": {"rows": 74478, "sha256": "b5ceebf0cd5f3a662f0d80d4b4334af714e70d4a07182ed4d064d170153102bd"},
-        "2018": {"rows": 74696, "sha256": "3b6aaf581c5d687d7fcabf482ba50e3512094645a93dc03ec802881e4344340b"},
-        "2019": {"rows": 74530, "sha256": "c19b23002fa1b3346685fb938346588b54d81f79f16e6429b56c1a20fcf9be9a"},
-        "2020": {"rows": 74826, "sha256": "ec2e7beb0ffedae1226ee1f6f4039b89f773102da2075081e707aaccb0562521"},
-        "2021": {"rows": 74806, "sha256": "d397ccd36c2720dfc1a00a9173d803d10724ac6bbc0a2d1d735553bdb4c0a856"},
-        "2022": {"rows": 74511, "sha256": "6fa1d3a38c7b1141dbfcd547fb6c16db6e3c14a050a76f094298215b8e7617b4"},
-        "2023": {"rows": 74252, "sha256": "e4b13a9a23e1728e5381e90f73c1fdaae03c01edee78fd3f42b775593ccb0ef8"},
-        "2024": {"rows": 74825, "sha256": "d108d29afde393ff7f68dcece6e3bc19e861673182ce80d88c67a5c8d32ef7dd"}
+        "2016": {
+          "rows": 74677,
+          "sha256": "677c5d5fc9ce28e4c8067cf08318685e4215e9192c11d6bb0d29b11400a19aca"
+        },
+        "2017": {
+          "rows": 74478,
+          "sha256": "b5ceebf0cd5f3a662f0d80d4b4334af714e70d4a07182ed4d064d170153102bd"
+        },
+        "2018": {
+          "rows": 74696,
+          "sha256": "3b6aaf581c5d687d7fcabf482ba50e3512094645a93dc03ec802881e4344340b"
+        },
+        "2019": {
+          "rows": 74530,
+          "sha256": "c19b23002fa1b3346685fb938346588b54d81f79f16e6429b56c1a20fcf9be9a"
+        },
+        "2020": {
+          "rows": 74826,
+          "sha256": "ec2e7beb0ffedae1226ee1f6f4039b89f773102da2075081e707aaccb0562521"
+        },
+        "2021": {
+          "rows": 74806,
+          "sha256": "d397ccd36c2720dfc1a00a9173d803d10724ac6bbc0a2d1d735553bdb4c0a856"
+        },
+        "2022": {
+          "rows": 74511,
+          "sha256": "6fa1d3a38c7b1141dbfcd547fb6c16db6e3c14a050a76f094298215b8e7617b4"
+        },
+        "2023": {
+          "rows": 74252,
+          "sha256": "e4b13a9a23e1728e5381e90f73c1fdaae03c01edee78fd3f42b775593ccb0ef8"
+        },
+        "2024": {
+          "rows": 74825,
+          "sha256": "d108d29afde393ff7f68dcece6e3bc19e861673182ce80d88c67a5c8d32ef7dd"
+        }
       },
       "total_rows": 671601,
       "naive_timestamp_rows": 671601,
@@ -89,11 +160,67 @@
       },
       "total_blank_cells": 2512,
       "brain_field_names_present": [
-        "M5_trend_regime", "M15_trend_regime", "M30_trend_regime",
-        "H1_trend_regime", "H4_trend_regime", "D1_trend_regime",
+        "M5_trend_regime",
+        "M15_trend_regime",
+        "M30_trend_regime",
+        "H1_trend_regime",
+        "H4_trend_regime",
+        "D1_trend_regime",
         "mtf_trend_score"
       ],
-      "admission": "BLOCKED_TIMEZONE_PROVENANCE_AND_PRODUCER_SEMANTICS"
+      "admission": "BLOCKED_TIMEZONE_PROVENANCE_AND_PRODUCER_SEMANTICS",
+      "regime_value_counts": {
+        "M5_trend_regime": {
+          "0": 192068,
+          "1": 240690,
+          "-1": 238843
+        },
+        "M15_trend_regime": {
+          "-1.0": 245764,
+          "0.0": 181294,
+          "1.0": 244517,
+          "blank": 26
+        },
+        "M30_trend_regime": {
+          "-1.0": 246002,
+          "0.0": 183273,
+          "1.0": 242273,
+          "blank": 53
+        },
+        "H1_trend_regime": {
+          "-1.0": 243031,
+          "0.0": 189238,
+          "1.0": 239225,
+          "blank": 107
+        },
+        "H4_trend_regime": {
+          "-1.0": 242231,
+          "0.0": 196377,
+          "1.0": 232622,
+          "blank": 371
+        },
+        "D1_trend_regime": {
+          "-1.0": 200138,
+          "0.0": 227594,
+          "1.0": 241914,
+          "blank": 1955
+        }
+      },
+      "mtf_trend_score_distinct_observed_values": [
+        -6,
+        -5,
+        -4,
+        -3,
+        -2,
+        -1,
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6
+      ]
     }
   },
   "historical_runner_failure": {
@@ -102,7 +229,14 @@
     "nison_observed_rules": 44,
     "murphy_observed_rules": 7,
     "murphy_missing_rules": 27,
-    "profitability_result": "NOT_ESTABLISHED"
+    "profitability_result": "NOT_ESTABLISHED",
+    "code_findings": {
+      "run_commit": "333795a0a135317619af69fd11f191db595e86a7",
+      "legacy_loader_expected": "one generic trend_regime/trend/market_trend column per inferred timeframe CSV",
+      "actual_source_layout": "wide annual CSV rows with M5/M15/M30/H1/H4/D1_trend_regime columns",
+      "later_pr97_loader_issue": "reads only six regime columns, omits source mtf_trend_score, computes a mean of timeframe columns into mtf_trend_score, and parses naive timestamps with utc=True",
+      "disposition": "NO_FIELD_RENAMING_OR_SCORE_RECONSTRUCTION; recover producer contract and clock provenance first"
+    }
   },
   "governance": {
     "no_runtime_changes": true,
