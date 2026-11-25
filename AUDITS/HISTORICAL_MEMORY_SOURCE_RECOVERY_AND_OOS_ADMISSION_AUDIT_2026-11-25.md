@@ -1,6 +1,6 @@
 # Historical Memory Source Recovery and OOS Admission Audit — 2026-11-25
 
-> **Correction / later discovery (2026-11-25):** The initial three-artifact search below was incomplete. A separate retained GitHub Actions artifact, run `33465775090` / artifact `9784863199`, was subsequently recovered. It contains the full `HISTORICAL_CONTEXT_MEMORY.csv` (57,552,949 bytes) and `HISTORICAL_OUTCOMES.csv` (63,287,758 bytes), exactly matching the byte sizes in the pinned source manifest. Therefore the two full memory sources **are present in GitHub Actions storage**. The earlier "NOT RECOVERED" finding below is superseded. However, this artifact also contains 2025/2026 payload members in other source families, and the successful workflow used load-then-filter for memory and extracted the complete MTF archive. No 2025/2026 payload was opened during this later audit. Source availability is now PASS at artifact-member/size level; strict 2016-2024-only admission remains BLOCKED until a safe partition is created without reading OOS rows.
+> **Correction / later discovery (2026-11-25):** The initial three-artifact search below was incomplete. A separate retained GitHub Actions artifact, run `33465775090` / artifact `9784863199`, was subsequently recovered. It contains the full `HISTORICAL_CONTEXT_MEMORY.csv` (57,552,949 bytes) and `HISTORICAL_OUTCOMES.csv` (63,287,758 bytes), exactly matching the byte sizes in the pinned source manifest. Therefore the two full memory sources **are present in GitHub Actions storage**. The earlier "NOT RECOVERED" finding below is superseded. However, this artifact also contains 2025/2026 payload members in other source families, and the successful workflow used load-then-filter for memory and extracted the complete MTF archive. No 2025/2026 payload was opened during this later audit. Source availability is now PASS at artifact-member/size level for all seven pinned source families; exact external revision binding remains unverified. Strict 2016-2024-only admission remains BLOCKED until a safe partition is created without reading OOS rows.
 
 ## Scope
 
@@ -48,6 +48,27 @@ These exact source package paths are useful provenance references. Run 334657750
 - Historical Outcome CSV: 63,287,758 bytes.
 
 The original source acquisition was still Dropbox-backed, but the retained GitHub artifact provides a GitHub-only recovery/download route from this point forward. The exact immutable Dropbox revision IDs are not recorded by the September workflow; byte-size match is not cryptographic revision binding.
+
+## 2A. Exact retained artifact recovery and run evidence
+
+The later-discovered artifact is:
+- Workflow run: `33465775090` — Current Stack Development Backtest 2016-2024 V2
+- Run commit: `7fd6cb8810b63844e0b17a6ef818981d25dc8371`
+- Artifact ID: `9784863199`
+- Artifact name: `current-stack-development-backtest-2016-2024-v2`
+- Artifact size: 192,659,168 bytes
+- GitHub run URL: https://github.com/refaey11/AI-Trading-Assistant-Workspace/actions/runs/33465775090
+
+The GitHub job completed successfully. Its logs explicitly show successful source acquisition, memory path resolution, replay invocation, replay-manifest validation, and artifact upload. The resolved paths point to the two full memory CSVs named above.
+
+Archive-member metadata shows:
+- `source/memory/historical_context/HISTORICAL_CONTEXT_MEMORY.csv`: 57,552,949 bytes.
+- `source/memory/historical_outcome/HISTORICAL_OUTCOMES.csv`: 63,287,758 bytes.
+- Both sizes exactly match the pinned November source manifest.
+
+Only archive member names, byte sizes, README/contract metadata, and CSV headers were inspected. No memory CSV payload rows were opened. The context index metadata includes last-seen dates in 2025, confirming that the full source spans the locked OOS year; no index rows were used as strategy evidence.
+
+The artifact also contains extracted MTF annual members for 2016 through 2026. The 2025/2026 members were not opened. This makes the artifact a recoverable source container, not a clean 2016-2024-only dataset.
 
 ## 3. Critical 2025 read-boundary finding
 
