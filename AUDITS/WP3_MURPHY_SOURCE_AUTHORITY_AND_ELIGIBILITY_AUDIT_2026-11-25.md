@@ -150,6 +150,19 @@ The inspected Live Runtime:
 
 Therefore synthetic test fixtures can currently pass the Live Runtime using a caller-asserted `MURPHY_0021` PASS row even though the exact producer/adapter-to-runtime provenance path is not established. Those tests verify runtime decision logic against a supplied envelope, not live source authority.
 
+## Final WP3 compatibility conclusion
+
+The latest direct inspection adds one important nuance: the canonical 0006/0007 status record says the rules are frozen at evaluator + Decision-Brain-evidence level, and the current evaluator has deterministic tests that can return `CONFIRMED` with direction. That does **not** close the separate Knowledge Alignment provider schema. The exact `available/frozen/direction/source_rule_id` mapping remains unimplemented or unrecovered in the active tree.
+
+The existing 0006/0007 deterministic workflow is `workflow_dispatch` only and runs the source-safe candidate evidence adapter tests, not the runtime evaluator tests or the Knowledge Alignment provider mapping. No workflow was dispatched in this pass. Existing runtime unit tests prove the evaluator can emit CONFIRMED in synthetic cases; they do not prove that the evaluator output is a canonical frozen provider record or that it is bound to the current Live Runtime event.
+
+### Required next controlled action
+1. Search the frozen 0006/0007 completion/closure artifacts for an already-approved mapping from evaluator `CONFIRMED` to the Knowledge Alignment fields. Do not infer it from the registry.
+2. If found, restore only that exact mapping and test it with the recovered Knowledge Alignment contract.
+3. If not found, keep the Knowledge Alignment Murphy provider fail-closed and ask for explicit governance approval before creating any mapping contract.
+4. Independently harden Live Runtime's envelope validation only after the producer schema is established: validate the pass row, direction agreement, eligible source IDs, and event identity/timestamps against an approved contract.
+5. Do not merge PR #143/#144 or WP3 audit branch; no integration authorization has been granted.
+
 ## WP3 decision refinement
 **No adapter patch is authorized by the evidence currently recovered.** The smallest safe next step is to recover the exact canonical 0006/0007 provider/adapter mapping (if one exists in the frozen closure package) and prove its output against the Knowledge Alignment schema. If the source package contains no such mapping, keep live Murphy evidence blocked and request an explicit governance decision before defining any conversion from `CONFIRMED` to `available/frozen`.
 
