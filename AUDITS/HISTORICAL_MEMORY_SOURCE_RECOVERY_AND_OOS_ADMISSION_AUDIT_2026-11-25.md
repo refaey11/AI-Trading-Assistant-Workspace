@@ -153,14 +153,16 @@ Those semantics should be preserved; this audit does not authorize new scenario 
 
 ## 7. Next safe action
 
-The next step is not to rerun or patch the old workflow. It is to recover a **physically 2016-2024-only** Context Memory and Outcome Memory source through an already retained GitHub artifact or a new approved GitHub-hosted source artifact, with:
+The next step is not to rerun or patch the old workflow. First search retained GitHub artifacts for an already physically partitioned 2016-2024 Context Memory and Outcome Memory export. If none exists, do not derive one from the mixed-year CSVs under the current strict no-read rule; keep the data admission gate blocked until a compliant partition can be provided through an approved process.
+
+Any admitted partition must have:
 1. exact source identity and immutable revision provenance;
 2. SHA-256 calculated over the exact 2016-2024 source files;
 3. timestamp semantics explicitly established (no silent UTC assignment);
 4. a source manifest proving that 2025 rows were not included in the opened payload;
 5. schema and 48-hour outcome maturity checks.
 
-If no such GitHub-hosted source exists, record the two memory datasets as external source blockers. Do not use Dropbox, CircleCI, synthetic fixtures, or the old load-then-filter workflow to claim the source gate is closed.
+Do not use Dropbox, CircleCI, synthetic fixtures, or the old load-then-filter workflow to claim the source gate is closed.
 
 ## Governance
 
