@@ -89,6 +89,23 @@ WP2 tests establish that Brain/MTF/Volume and Similarity cannot reverse Murphy d
 - producer/config/version digest mismatch;
 - unverified clock or absent freshness evidence.
 
+### 7. Existing Murphy evaluator files do not close the canonical live provider contract
+A focused repository-tree inspection located these existing implementations:
+- `src/murphy_0006_0007/evidence_adapter.py`
+- `runtime/murphy/murphy_0006_0008_runtime_v1.py`
+- `MURPHY_EVALUATORS_V1/murphy_0006_0007_runtime_v1.py`
+- `bridges/murphy_0021_0023_evaluator_to_evidence_bridge.py`
+- `MURPHY_EVALUATORS_V1/murphy_0021_0023_evaluator.py`
+
+Their exact compatibility status:
+- The 0006/0007 evidence adapter explicitly emits `CANDIDATE_ONLY`; it does not create an approved successful-touch/no-break PASS predicate.
+- The 0006/0007 runtime evaluators can emit `status=CONFIRMED` with a bullish/bearish direction after their line/reaction checks, but do not emit the canonical `available=true` and `frozen=true` provider record required by the recovered Knowledge Alignment contract.
+- The 0006/0007 exact provider audit already states active provider presence is NOT VERIFIED and no synthetic frozen flag may be fabricated.
+- The 0021–0023 evidence bridge normalizes an existing evaluator result into `available`, `direction`, `gate`, etc., but does not emit `frozen=true`; its integration contract is explicitly a proposal / not production-frozen.
+- The canonical 34-rule fan-in manifest classifies 0006/0007 as provisional QA-only / not decision-eligible, while its seven decision-eligible rules are historical evidence streams. This reinforces that the 0006/0007 frozen-provider contract and the historical 7-rule eligibility list are distinct scopes and must not be silently conflated.
+
+Therefore, the workspace contains Murphy evaluator artifacts, but the reviewed files do not yet provide a verified active producer that satisfies the exact frozen-provider contract and the current live decision contract simultaneously.
+
 ## Required next sequence
 1. Reconcile the live directional source scope against the canonical registries and provider contracts. Keep separate: runtime routing, frozen rule status, historical decision eligibility, and live producer availability.
 2. Identify an existing, active Murphy evaluator/adapter provider in the current repository and document its exact output contract. Do not build a duplicate Murphy evaluator or invent a new source.
