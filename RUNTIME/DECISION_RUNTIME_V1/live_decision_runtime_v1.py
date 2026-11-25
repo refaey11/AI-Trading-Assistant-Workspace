@@ -144,7 +144,11 @@ def run_live_event(event: Mapping[str, Any]) -> dict[str, Any]:
         # TIZ is optional audit metadata only. Its absence, source envelope,
         # process flags, or malformed shape must never authorize or block.
         if isinstance(tiz_input, Mapping):
-            tiz_metadata = dict(tiz_input)
+            tiz_metadata = {
+                **dict(tiz_input),
+                "role": "OPTIONAL_AUDIT_METADATA_ONLY",
+                "provided": True,
+            }
         else:
             tiz_metadata = {
                 "role": "OPTIONAL_AUDIT_METADATA_ONLY",
