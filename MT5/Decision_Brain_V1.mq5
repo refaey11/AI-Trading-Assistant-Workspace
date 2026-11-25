@@ -158,6 +158,7 @@ void RequestBrain()
         "Volume: unavailable\n"+
         "-------------------------\n"+
         "LIVE: "+TimeToString(TimeCurrent(),TIME_SECONDS));
+}
 
 int OnInit()
 {
