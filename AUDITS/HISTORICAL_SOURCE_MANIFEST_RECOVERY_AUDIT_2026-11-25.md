@@ -78,7 +78,16 @@ Only the nine annual files from 2016 through 2024 were opened:
   `M5_trend_regime`, `M15_trend_regime`, `M30_trend_regime`, `H1_trend_regime`, `H4_trend_regime`, `D1_trend_regime`, `mtf_trend_score`
 - Blank cells: M15=26, M30=53, H1=107, H4=371, D1=1,955; total **2,512**
 
-SHA-256 values for the nine 2016-2024 annual files were calculated and are preserved in this audit's source verification record (the hashes are listed below). The MTF producer/formula semantics remain unresolved; field presence and observed values do not authorize recoding, imputation, scaling, or a replacement formula.
+SHA-256 values for the nine 2016-2024 annual files were calculated and are preserved below. The MTF producer/formula semantics remain unresolved; field presence and observed values do not authorize recoding, imputation, scaling, or a replacement formula.
+
+Observed token distributions in the 2016-2024 files:
+- M5: `-1`=238,843; `0`=192,068; `1`=240,690.
+- M15: `-1.0`=245,764; `0.0`=181,294; `1.0`=244,517; blank=26.
+- M30: `-1.0`=246,002; `0.0`=183,273; `1.0`=242,273; blank=53.
+- H1: `-1.0`=243,031; `0.0`=189,238; `1.0`=239,225; blank=107.
+- H4: `-1.0`=242,231; `0.0`=196,377; `1.0`=232,622; blank=371.
+- D1: `-1.0`=200,138; `0.0`=227,594; `1.0`=241,914; blank=1,955.
+- The serialized `mtf_trend_score` has 13 distinct observed values from -6 through +6. Its producer formula is not inferred from this distribution.
 
 ### Murphy 2016-2024
 
@@ -124,7 +133,9 @@ The original run's log records:
 - Missing Murphy rule IDs: 27
 - The runner then raised: `ValueError: artifacts/mtf/extracted: no source-backed timeframe trend columns found`
 
-The first failure is an actual data-coverage gap: only 7 of the expected 34 Murphy IDs are present. The second is a runner/source schema incompatibility. The source annual MTF files do contain the seven named fields, but the old runner did not recognize the source layout as a valid timeframe trend input. Neither issue is solved by renaming fields or inventing a conversion.
+The first failure is an actual data-coverage gap: only 7 of the expected 34 Murphy IDs are present. The second is a runner/source schema incompatibility. The exact run commit `333795a0...` used a legacy loader that inferred a timeframe from each CSV and then searched for a generic `trend_regime`, `trend`, or `market_trend` column. The canonical annual MTF files are wide rows containing `M5_trend_regime` through `D1_trend_regime`, so the legacy loader rejected every file.
+
+A later PR #97 runner revision added a wide-file reader, but that implementation is not yet a safe fix: it reads only the six timeframe regime columns, omits the source's existing `mtf_trend_score`, maps the regime values, then overwrites `mtf_trend_score` with the arithmetic mean of the six columns. It also parses timezone-naive timestamps with `utc=True`. Those operations do not preserve the canonical source field and silently assign timezone semantics. The source contract requires the seven serialized numeric fields to be consumed as supplied; do not substitute a mean, recode the source, or normalize naive timestamps to UTC. Neither issue is solved by renaming fields or inventing a conversion.
 
 ## Existing source blockers that remain
 
