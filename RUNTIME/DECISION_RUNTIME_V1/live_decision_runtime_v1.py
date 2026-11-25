@@ -260,13 +260,17 @@ def run_live_event(event: Mapping[str, Any]) -> dict[str, Any]:
         brain = _brain_module()
         # Similarity/historical memory is deliberately not passed to assess().
         assessment = brain.assess(normalized_row, similarity=None)
+        # Brain assessment is retained as context only. Its directional
+        # bias/confidence are derived from MTF/Volume and are not Murphy authority.
         brain_assessment = {
             "market_state": assessment.market_state,
-            "directional_bias": assessment.directional_bias.upper(),
-            "confidence": float(assessment.confidence),
-            "evidence": assessment.evidence,
-            "contradictions": assessment.contradictions,
-            "no_trade_reasons": assessment.no_trade_reasons,
+            "directional_bias": "NOT_USED_FOR_DIRECTION",
+            "directional_confidence": None,
+            "confidence_status": "NOT_EVALUABLE",
+            "context_evidence": assessment.evidence,
+            "context_contradictions": assessment.contradictions,
+            "context_no_trade_reasons": assessment.no_trade_reasons,
+            "context_role": "MTF_VOLUME_CONTEXT_ONLY",
         }
         nison_payload = {
             "confirmation": nison_confirmation,
@@ -293,8 +297,10 @@ def run_live_event(event: Mapping[str, Any]) -> dict[str, Any]:
                 "status": "NO_TRADE",
                 "decision": "NO_TRADE",
                 "reason": (decision.get("decision") or {}).get("reasons_against", ["BRAIN_OR_THREE_BOOK_REJECT"])[0],
-                "brain": brain_assessment,
+                "brain_context": brain_assessment,
                 "risk": risk_payload,
+                "direction_authority": "MURPHY_ONLY",
+                "directional_confidence": "NOT_EVALUABLE",
                 "tiz": tiz_metadata,
                 "execution": {"mode": "SIGNAL_ONLY", "orders_enabled": False, "broker_volume": None},
             }
@@ -312,8 +318,10 @@ def run_live_event(event: Mapping[str, Any]) -> dict[str, Any]:
             "take_profit": take_profit,
             "atr": atr,
             "risk": risk_payload,
-            "brain": brain_assessment,
+            "brain_context": brain_assessment,
             "murphy": {"direction": murphy_direction, "pass_rule_id": pass_rule_id},
+            "direction_authority": "MURPHY_ONLY",
+            "directional_confidence": "NOT_EVALUABLE",
             "nison": {"confirmation": nison_confirmation, "contradiction": False},
             "tiz": tiz_metadata,
             "historical_memory": {
