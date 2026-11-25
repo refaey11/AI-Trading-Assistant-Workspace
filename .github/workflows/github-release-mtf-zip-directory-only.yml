@@ -1,12 +1,6 @@
 name: GitHub Release MTF ZIP Directory-Only Inspection
 
 on:
-  push:
-    branches:
-      - audit/master-2020-selective-range-read-2026-11-24
-    paths:
-      - tools/github_release_mtf_zip_directory_only.py
-      - .github/workflows/github-release-mtf-zip-directory-only.yml
   workflow_dispatch:
 
 permissions:
