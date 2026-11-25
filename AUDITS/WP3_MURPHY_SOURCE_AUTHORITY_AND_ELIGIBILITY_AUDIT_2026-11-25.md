@@ -123,6 +123,38 @@ The current canonical rule-status registry `project_state/MURPHY_51_CANONICAL_RU
 - The 0025–0026 four-week reconciliation predates the current canonical status registry and says contract reconciliation was blocked. Current registry now marks 0025/0026 PRODUCTION FROZEN. Treat that old conflict as requiring canonical freeze-artifact provenance review, not a license to change the evaluator or choose a new price basis.
 - 0028/0029 have individual production freeze records; the 0028 final provenance JSON still says freeze candidate, while its backup manifest and individual freeze markdown say PRODUCTION FROZEN. The canonical status registry is authoritative and says both are frozen.
 
+## Critical scope distinction: seven historical decision-eligible rules ≠ Knowledge Alignment frozen-provider scope
+
+The audit must keep two different source scopes separate:
+
+1. `BACKTEST/MURPHY_34_FANIN_CANONICAL_MANIFEST_V3.json` lists seven decision-eligible historical directional streams: 0021, 0022, 0023, 0025, 0026, 0028, 0029. This is the historical fan-in eligibility classification.
+2. The recovered canonical Knowledge Alignment adapter's provider audit explicitly says its confirmed frozen Murphy evidence scope is **0006 and 0007 only**. Its exact accepted record shape is `available=true`, `frozen=true`, `direction=bullish|bearish`, `source_rule_id=MURPHY_0006|MURPHY_0007`.
+
+These scopes are not interchangeable. The seven historical rules must not be silently promoted into the Knowledge Alignment adapter's frozen-provider input. Conversely, the 0006/0007 frozen evidence scope must not be used to claim the seven historical rules are live producers.
+
+### Exact 0006/0007 compatibility result
+- Canonical 0006/0007 evidence-preservation adapter: `CANDIDATE_ONLY` by design; PASS/FAIL are expressly forbidden.
+- Existing 0006/0007 runtime evaluator can return `status=CONFIRMED` plus `direction=BULLISH|BEARISH` after its touch/reaction/no-break checks.
+- The recovered Knowledge Alignment provider contract expects `available`, `frozen`, `direction`, and `source_rule_id`; neither inspected artifact emits that complete canonical record.
+- The canonical status registry records 0006/0007 as frozen at evaluator + Brain-evidence level, but that governance status alone does not authorize fabricating `available=true` or `frozen=true` onto a runtime result.
+- The provider-presence audit already concludes exact active provider implementation is NOT VERIFIED / NOT LOCATED. The direct path review in this WP3 pass is consistent with that result.
+
+### Exact Live Runtime gap
+The inspected Live Runtime:
+- accepts top-level caller-supplied `status=PASS` and `direction=BUY|SELL`;
+- does not require the canonical `frozen=true` field;
+- does not restrict directional source IDs to the canonical seven-rule historical eligibility list or the separate 0006/0007 Knowledge Alignment scope;
+- does not verify that the `pass_rule_id` row itself has `status=PASS` and a direction matching the top-level direction;
+- does not verify row timestamps/event identity against the current query event;
+- does not invoke the unified Murphy evaluator entrypoint or an approved adapter.
+
+Therefore synthetic test fixtures can currently pass the Live Runtime using a caller-asserted `MURPHY_0021` PASS row even though the exact producer/adapter-to-runtime provenance path is not established. Those tests verify runtime decision logic against a supplied envelope, not live source authority.
+
+## WP3 decision refinement
+**No adapter patch is authorized by the evidence currently recovered.** The smallest safe next step is to recover the exact canonical 0006/0007 provider/adapter mapping (if one exists in the frozen closure package) and prove its output against the Knowledge Alignment schema. If the source package contains no such mapping, keep live Murphy evidence blocked and request an explicit governance decision before defining any conversion from `CONFIRMED` to `available/frozen`.
+
+No changes to evaluator semantics, frozen rules, runtime source code, test fixtures, risk thresholds, or historical data are made in this pass.
+
 ## Recovered canonical Knowledge Alignment adapter — compatible boundary, not active wiring
 
 The repository audit records an exact recovery of the canonical `knowledge_alignment_adapter.py` from the Complete Milestone Backup. Its responsibility is evidence alignment only; it:
