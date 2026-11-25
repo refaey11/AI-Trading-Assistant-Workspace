@@ -22,20 +22,6 @@
     "expires_at": "2026-12-22T01:36:15Z",
     "downloaded_via": "GitHub Actions artifact endpoint",
     "artifact_sha256": "NOT_COMPUTED_TO_AVOID_READING_ARCHIVE_MEMBERS_CONTAINING_2025_2026_PAYLOADS",
-    "not_present_in_artifact": [
-      {
-        "key": "historical_context",
-        "manifest_path": ".../HISTORICAL_CONTEXT_MEMORY.csv",
-        "status": "NOT_PRESENT",
-        "note": "PR #97 replay uses a small repository fixture, not the full source-backed memory CSV."
-      },
-      {
-        "key": "historical_outcome",
-        "manifest_path": ".../HISTORICAL_OUTCOMES.csv",
-        "status": "NOT_PRESENT",
-        "note": "PR #97 replay uses a small repository fixture, not the full source-backed outcome CSV."
-      }
-    ],
     "full_seven_source_manifest_recovered": true,
     "recovered_source_families": [
       "h1",
@@ -95,7 +81,31 @@
       }
     },
     "full_seven_source_manifest_recovery_level": "GITHUB_ACTIONS_ARTIFACT_MEMBER_AND_BYTE_SIZE_RECONCILIATION",
-    "exact_external_revision_binding": "UNVERIFIED"
+    "exact_external_revision_binding": "UNVERIFIED",
+    "not_present_in_run_358069_artifact": [
+      {
+        "key": "historical_context",
+        "manifest_path": ".../HISTORICAL_CONTEXT_MEMORY.csv",
+        "status": "NOT_PRESENT",
+        "note": "PR #97 replay uses a small repository fixture, not the full source-backed memory CSV."
+      },
+      {
+        "key": "historical_outcome",
+        "manifest_path": ".../HISTORICAL_OUTCOMES.csv",
+        "status": "NOT_PRESENT",
+        "note": "PR #97 replay uses a small repository fixture, not the full source-backed outcome CSV."
+      }
+    ],
+    "recovered_full_source_objects": [
+      "h1",
+      "murphy",
+      "nison",
+      "market_state",
+      "mtf",
+      "historical_context",
+      "historical_outcome"
+    ],
+    "recovery_qualification": "All seven source objects are present in retained GitHub Actions artifacts and member byte sizes match the pinned source manifest. This is not an exact external revision or SHA-256 proof, and not a clean 2016-2024-only payload admission."
   },
   "development_scope": {
     "allowed_years": [
