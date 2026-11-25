@@ -36,7 +36,7 @@
         "note": "PR #97 replay uses a small repository fixture, not the full source-backed outcome CSV."
       }
     ],
-    "full_seven_source_manifest_recovered": false,
+    "full_seven_source_manifest_recovered": true,
     "recovered_source_families": [
       "h1",
       "murphy",
@@ -59,8 +59,43 @@
         "name": "decision-brain-cost-stress-2016-2024",
         "size_bytes": 2468402,
         "memory_source_csvs_present": false
+      },
+      {
+        "run_id": 33465775090,
+        "run_number": null,
+        "name": "current-stack-development-backtest-2016-2024-v2",
+        "artifact_id": 9784863199,
+        "size_bytes": 192659168,
+        "source_commit": "7fd6cb8810b63844e0b17a6ef818981d25dc8371",
+        "run_conclusion": "success",
+        "memory_sources_present": true,
+        "workflow_steps": [
+          "Acquire current-stack governed sources: success",
+          "Resolve memory source files: success",
+          "Run current-stack historical replay with memory wiring: success",
+          "Validate current-stack replay manifest: success",
+          "Upload current-stack development artifacts: success"
+        ]
       }
-    ]
+    ],
+    "memory_source_members": {
+      "historical_context": {
+        "path": "source/memory/historical_context/HISTORICAL_CONTEXT_MEMORY.csv",
+        "bytes": 57552949,
+        "manifest_bytes": 57552949,
+        "size_match": true,
+        "payload_opened": false
+      },
+      "historical_outcome": {
+        "path": "source/memory/historical_outcome/HISTORICAL_OUTCOMES.csv",
+        "bytes": 63287758,
+        "manifest_bytes": 63287758,
+        "size_match": true,
+        "payload_opened": false
+      }
+    },
+    "full_seven_source_manifest_recovery_level": "GITHUB_ACTIONS_ARTIFACT_MEMBER_AND_BYTE_SIZE_RECONCILIATION",
+    "exact_external_revision_binding": "UNVERIFIED"
   },
   "development_scope": {
     "allowed_years": [
@@ -287,20 +322,29 @@
     "no_candle_aggregation_rebuilt": true
   },
   "memory_source_recovery": {
+    "status": "GITHUB_ARTIFACT_RECOVERED_BUT_OOS_PARTITION_ADMISSION_BLOCKED",
+    "workflow_run_id": 33465775090,
+    "artifact_id": 9784863199,
+    "artifact_name": "current-stack-development-backtest-2016-2024-v2",
+    "artifact_size_bytes": 192659168,
+    "source_commit": "7fd6cb8810b63844e0b17a6ef818981d25dc8371",
     "historical_context": {
-      "source_package_path": "/ai_trading_assistant_full_project_v1/AI_Trading_Assistant_HISTORICAL_CONTEXT_MEMORY_V1.zip",
-      "expected_member": "HISTORICAL_CONTEXT_MEMORY.csv",
-      "full_source_in_inspected_github_artifacts": false,
-      "sha256": "NOT_AVAILABLE"
+      "path": "source/memory/historical_context/HISTORICAL_CONTEXT_MEMORY.csv",
+      "bytes": 57552949,
+      "manifest_size_match": true,
+      "payload_opened": false
     },
     "historical_outcome": {
-      "source_package_path": "/ai_trading_assistant_full_project_v1/AI_Trading_Assistant_HISTORICAL_OUTCOME_MEMORY_V1.zip",
-      "expected_member": "HISTORICAL_OUTCOMES.csv",
-      "full_source_in_inspected_github_artifacts": false,
-      "sha256": "NOT_AVAILABLE"
+      "path": "source/memory/historical_outcome/HISTORICAL_OUTCOMES.csv",
+      "bytes": 63287758,
+      "manifest_size_match": true,
+      "payload_opened": false
     },
+    "full_source_recovered_from_github": true,
+    "source_sha256": "NOT_CALCULATED_TO_AVOID_OPENING_FULL_FILE_WITH_OOS_RECORDS",
+    "strict_2016_2024_partition": "NOT_YET_CREATED",
     "current_stack_workflow_oos_boundary": "FAIL_LOADS_FULL_FILES_THEN_FILTERS_2016_2024",
     "timezone_provenance": "UNRESOLVED_UTC_TRUE_WOULD_ASSIGN_UTC_TO_NAIVE_TIMESTAMPS",
-    "disposition": "EXTERNAL_SOURCE_BLOCKERS_UNDER_GITHUB_ONLY_CONSTRAINT"
+    "exact_immutable_external_revision_binding": "UNVERIFIED"
   }
 }
