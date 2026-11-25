@@ -6,7 +6,6 @@ Release asset. Never reads local headers or member payloads.
 """
 from __future__ import annotations
 import json
-import os
 import struct
 import sys
 import urllib.request
