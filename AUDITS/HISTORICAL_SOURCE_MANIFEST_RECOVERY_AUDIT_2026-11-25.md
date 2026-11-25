@@ -2,17 +2,21 @@
 
 ## Scope and method
 
-GitHub-only, read-only source discovery for the Decision Brain V1 historical 2016-2024 vertical slice. Inspected the repository tree and the existing Gate A source manifest / audit artifacts on PR #118, plus the historical backtest checkpoint and PR #97 / #118 / #137 records.
+GitHub-only, read-only source discovery for the Decision Brain V1 historical 2016-2024 vertical slice. Inspected:
+- PR #118's pinned source manifest and Gate A reports;
+- PR #97's workflow and historical replay;
+- GitHub Actions run `35806971916` and its retained source artifact;
+- the exact 2016-2024-only Murphy, Nison, and MTF payloads inside that artifact.
 
-No Dropbox connection or API was used. No market-data payloads were opened. No 2025/2026 market-data payloads were read. No source code, frozen rule semantics, or data files were changed.
+No Dropbox connection or API was used in this audit. The source artifact was retrieved through GitHub Actions. Only MTF annual payloads for 2016-2024, the 2016-2024 Murphy evidence CSV, and the 2016-2024 Nison evidence CSV were opened. H1 and Market State payloads were not opened because their source files include 2025; MTF 2025/2026 payloads were not opened. No source code, frozen rule semantics, or source data files were changed.
 
-## Primary discovery: a pinned source manifest exists
+## Primary discovery: pinned source manifest
 
 Recovered from PR #118 branch `audit/gate-a-input-preflight-2026-11-15`:
 
 `BACKTEST/GOVERNED_SOURCE_INPUT_MANIFEST_2016_2024_2026-11-15.json`
 
-The manifest pins seven external source objects by Dropbox path, revision, byte size, and modified time:
+The manifest pins seven source objects by Dropbox path, revision, byte size, and modified time:
 
 | Key | Source role | Pinned object | Size (bytes) |
 |---|---|---|---:|
@@ -24,74 +28,148 @@ The manifest pins seven external source objects by Dropbox path, revision, byte 
 | historical_context | Historical Context Memory | `.../HISTORICAL_CONTEXT_MEMORY.csv` | 57,552,949 |
 | historical_outcome | Historical Outcome Memory | `.../HISTORICAL_OUTCOMES.csv` | 63,287,758 |
 
-The exact revision IDs are preserved in the source manifest. They are not repeated here to avoid creating a second mutable source of truth; the manifest is the canonical pinned record.
+The exact revision IDs remain in the manifest. Its `hashes.status` is `PENDING_ACTUAL_DOWNLOAD_AND_SHA256`; the manifest alone does not prove bytes or row semantics.
 
-**Important distinction:** these are external-source pins recorded in GitHub, not GitHub-hosted data assets. The manifest explicitly records `hashes.status = PENDING_ACTUAL_DOWNLOAD_AND_SHA256`. The metadata pins do not prove file bytes, row contents, source semantics, or current retrievability.
+## GitHub Actions source artifact recovered
 
-## GitHub-only availability result
+A historical GitHub Actions run contains the actual source bundle:
 
-The repository's recursive `main` tree contains no raw historical market-data archive matching the seven source objects. The inspected PR #97 head tree likewise contains no raw H1/MTF/Murphy/Nison historical source package; its CSV files are small memory fixtures and rule/audit summaries, not the canonical market series.
+- Workflow run: `35806971916` — **Governed 78-Rule Development Backtest**, run #9
+- Source commit: `333795a0a135317619af69fd11f191db595e86a7`
+- Artifact: `governed-78-rule-development-backtest`
+- Artifact ID: `10728885030`
+- Artifact size: 150,865,980 bytes
+- Retention expiry reported by GitHub: 2026-12-22
+- Run URL: https://github.com/refaey11/AI-Trading-Assistant-Workspace/actions/runs/35806971916
 
-PR #118's implementation audit records that the acquisition workflow failed at its first Dropbox API request with HTTP 401. It explicitly says no source files were downloaded, no real CSV rows were parsed, and no SHA-256 values were calculated. Therefore the external pinned source objects cannot be treated as available within the agreed GitHub-only workflow.
+The run's job steps show:
+1. **Acquire authoritative governed inputs — SUCCESS**
+2. **Validate governed 78-rule evidence envelope — SUCCESS**
+3. **Run existing Decision Brain runner with real Murphy + real Nison + existing MTF — FAILURE**
+4. **Upload results — SUCCESS**
 
-## What existing evidence says about the pinned sources
+PR #97 later retrieves this same artifact using `gh run download 35806971916 -n governed-78-rule-development-backtest` and re-uploads its replay package as another GitHub Actions artifact. This confirms a GitHub-only retrieval route exists; it does not require a new Dropbox connection.
 
-### Gate A input preflight (PR #118)
+### Artifact-to-manifest size reconciliation
 
-The existing remediation report states:
-- Historical Context: 273,387 rows retained for 2016-2024; 30,805 rows from 2025 excluded.
-- Historical Outcome: 273,183 rows retained; 30,805 rows from 2025 excluded; 204 additional late-2024 rows excluded because the 48-hour outcome horizon was not mature by 2025-01-01 UTC.
-- Market State: 55,192 rows retained; 6,225 rows from 2025 excluded.
-- H1 and Nison passed the recorded input preflight.
-- Gate A remained BLOCKED on MTF and Murphy.
+The recovered source artifact contains copies of the following objects. Their stored byte sizes match the sizes in the PR #118 pinned manifest:
 
-These are reported outputs from the historical Gate A run, not a new validation performed by this audit.
+| Artifact member | Stored bytes | Manifest bytes | Match |
+|---|---:|---:|---|
+| `source/h1.zip` | 805,818 | 805,818 | YES |
+| `murphy/murphy.zip` | 314,490 | 314,490 | YES |
+| `nison/NISON_2016_2024_FULL_EVIDENCE.csv` | 525,483,005 | 525,483,005 | YES |
+| `market_state.csv` | 20,604,225 | 20,604,225 | YES |
+| `mtf/mtf_alignment.zip` | 80,293,251 | 80,293,251 | YES |
 
-### MTF
+This is a strong size-level reconciliation, not cryptographic proof that the artifact bytes correspond to the exact Dropbox revision IDs recorded later in the manifest. The original source acquisition run predates the November manifest and its workflow downloads by path; no immutable Dropbox revision ID is embedded in that run's acquisition step. Exact revision-to-artifact binding therefore remains unverified.
 
-The existing report records 671,601 rows for 2016-2024, with 2025/2026 annual files excluded. All 671,601 timestamps are timezone-naive and remain `NAIVE_UNRESOLVED`. It records 2,512 blank cells across five regime fields. No timezone normalization, imputation, categorical recoding, or scaling is authorized.
+## 2016-2024-only payload checks
 
-The exact producer/formula lineage for the seven Brain MTF fields remains unresolved. The canonical MTF archive is identified, but its producer semantics are not.
+The following checks were performed directly against the recovered GitHub artifact. No 2025/2026 payload was opened.
 
-### Murphy
+### MTF 2016-2024
 
-The existing report records 32,400 naive timestamps and 54,825 offset-aware timestamps in the 87,225-row fan-in. The naive records are associated with MURPHY_0021, 0022, 0023, 0028, and 0029; offset-aware records with 0025 and 0026. The manifest's archive creation time does not prove the timezone semantics of event timestamps.
+Only the nine annual files from 2016 through 2024 were opened:
+- Total rows: **671,601**
+- Timestamp strings: **671,601 / 671,601 timezone-naive**
+- Time range: 2016-01-03 17:00:00 through 2024-12-31 23:55:00
+- All seven Brain MTF field names are present:
+  `M5_trend_regime`, `M15_trend_regime`, `M30_trend_regime`, `H1_trend_regime`, `H4_trend_regime`, `D1_trend_regime`, `mtf_trend_score`
+- Blank cells: M15=26, M30=53, H1=107, H4=371, D1=1,955; total **2,512**
 
-Separately, the historical backtest checkpoint reports that the recovered historical Murphy evidence contained only seven rule IDs (0003, 0004, 0021, 0022, 0023, 0028, 0029), totaling 402,710 normalized rows. PR #97 independently states that the available Murphy fan-in artifact represented only 7/34 decision-eligible rules and correctly failed the official completeness gate. The manifest's filename describing a 34-rule fan-in is not proof that all 34 eligible rule histories are present.
+SHA-256 values for the nine 2016-2024 annual files were calculated and are preserved in this audit's source verification record (the hashes are listed below). The MTF producer/formula semantics remain unresolved; field presence and observed values do not authorize recoding, imputation, scaling, or a replacement formula.
 
-### Historical aggregation
+### Murphy 2016-2024
 
-Existing repository records state that GBPUSD 2016-2024 candle aggregation reconciliation has already been completed. This audit does not rebuild or alter that aggregation.
+The recovered evidence CSV was opened:
+- Rows: **87,225**
+- Distinct source rule IDs: **7** — 0021, 0022, 0023, 0025, 0026, 0028, 0029
+- Status counts: FAIL=55,493; PASS=30,678; NOT_EVALUABLE=1; CONFLICT=1,053
+- Timestamp strings: **32,400 naive**, with 54,825 offset-aware
+
+The CSV SHA-256 is `4ecd91b02047d817b5ceeb239e5d76f7d0c8f1c0aefd3de15f38f6bebbd2cfc7`. It exactly matches the `integrity.fan_in_sha256` value embedded in `MURPHY_2016_2024_MANIFEST.json`.
+
+The manifest describes 34 runtime rule IDs, but the evidence CSV contains only seven IDs. Its own per-rule coverage metadata classifies the other histories as unavailable, provisional, or not decision-eligible. The filename and declared runtime rule count must not be mistaken for 34 complete historical evidence streams.
+
+### Nison 2016-2024
+
+The recovered Nison evidence CSV was opened:
+- Rows: **2,428,448**
+- Distinct rule IDs: **44**
+- Timestamp strings: all offset-aware
+- Time range: 2016-01-03 17:00:00+00:00 through 2024-12-31 16:00:00+00:00
+- SHA-256: `8487d24664de68ad7947ea66e1686437a46cc1a7a433fff930198d531c990a0e`
+
+### SHA-256 for MTF annual files (2016-2024 only)
+
+| Year | SHA-256 |
+|---|---|
+| 2016 | `677c5d5fc9ce28e4c8067cf08318685e4215e9192c11d6bb0d29b11400a19aca` |
+| 2017 | `b5ceebf0cd5f3a662f0d80d4b4334af714e70d4a07182ed4d064d170153102bd` |
+| 2018 | `3b6aaf581c5d687d7fcabf482ba50e3512094645a93dc03ec802881e4344340b` |
+| 2019 | `c19b23002fa1b3346685fb938346588b54d81f79f16e6429b56c1a20fcf9be9a` |
+| 2020 | `ec2e7beb0ffedae1226ee1f6f4039b89f773102da2075081e707aaccb0562521` |
+| 2021 | `d397ccd36c2720dfc1a00a9173d803d10724ac6bbc0a2d1d735553bdb4c0a856` |
+| 2022 | `6fa1d3a38c7b1141dbfcd547fb6c16db6e3c14a050a76f094298215b8e7617b4` |
+| 2023 | `e4b13a9a23e1728e5381e90f73c1fdaae03c01edee78fd3f42b775593ccb0ef8` |
+| 2024 | `d108d29afde393ff7f68dcece6e3bc19e861673182ce80d88c67a5c8d32ef7dd` |
+
+## Why the historical backtest run failed
+
+The original run's log records:
+- Governed expected rule count: 78
+- Nison observed: 44
+- Murphy observed: 7
+- Missing Murphy rule IDs: 27
+- The runner then raised: `ValueError: artifacts/mtf/extracted: no source-backed timeframe trend columns found`
+
+The first failure is an actual data-coverage gap: only 7 of the expected 34 Murphy IDs are present. The second is a runner/source schema incompatibility. The source annual MTF files do contain the seven named fields, but the old runner did not recognize the source layout as a valid timeframe trend input. Neither issue is solved by renaming fields or inventing a conversion.
+
+## Existing source blockers that remain
+
+- **Murphy:** 7/34 expected rule IDs are represented; 27 are missing. The historical evidence must remain limited to the source-backed IDs and cannot be padded.
+- **Murphy time:** mixed naive and offset-aware event timestamps; authoritative event timestamp semantics are not established.
+- **MTF time:** every 2016-2024 timestamp is naive; broker/session timezone provenance remains unresolved.
+- **MTF meaning:** seven serialized Brain fields exist, but exact producer/formula/encoding semantics remain unresolved.
+- **H1 and Market State:** matching artifact member sizes are confirmed from ZIP metadata only; their payloads were not opened because they include 2025.
+- **Exact external revision binding:** artifact sizes match the later pinned manifest, but the older run acquired by path, so exact Dropbox revision IDs are not independently bound to this artifact.
+- **Historical aggregation:** existing GBPUSD 2016-2024 candle aggregation reconciliation is preserved and will not be rebuilt.
 
 ## Source-admission decision
 
 | Gate | Current evidence | Disposition |
 |---|---|---|
-| Pinned historical source manifest | Exact external paths, revisions, sizes recorded | IDENTIFIED; not GitHub-hosted |
-| Actual source bytes / SHA-256 | No source download in Gate A; hash status pending | NOT VERIFIED |
-| GitHub-only source availability | No canonical raw source package found in inspected repository trees | BLOCKED |
-| H1 input shape | Historical Gate A reports PASS | Prior preflight only; no fresh source verification |
-| Nison input shape | Historical Gate A reports PASS | Prior preflight only; no fresh source verification |
-| Murphy 34-rule coverage | Historical evidence reports 7/34 eligible rule histories | BLOCKED |
-| Murphy timestamp semantics | Mixed naive/offset-aware; authoritative timestamp contract absent | BLOCKED |
+| Pinned source manifest | Exact paths, revisions, sizes recorded in PR #118 | IDENTIFIED |
+| GitHub-only artifact availability | Retained GitHub Actions artifact recovered | AVAILABLE |
+| Artifact/source size reconciliation | Five principal source objects match manifest byte sizes | PASS_SIZE_ONLY |
+| Exact source revision binding | Older run downloads by path, not immutable revision | UNVERIFIED |
+| Murphy content integrity | CSV SHA matches embedded manifest SHA | PASS_INTEGRITY |
+| Nison content digest | SHA calculated for 2016-2024 evidence CSV | RECORDED |
+| MTF 2016-2024 integrity | Annual-file SHA values calculated | RECORDED |
+| Murphy 34-rule coverage | Only 7 of 34 IDs present | BLOCKED |
+| Murphy timestamp semantics | Mixed naive/offset-aware | BLOCKED |
 | MTF timestamp semantics | 671,601 naive timestamps | BLOCKED |
-| MTF producer/formula semantics | Seven Brain fields unresolved | BLOCKED |
-| 2025 OOS separation | Manifest and Gate A reports preserve exclusion | KEEP LOCKED |
+| MTF producer/formula semantics | Seven fields present, producer meaning unresolved | BLOCKED |
+| 2025 OOS separation | 2025/2026 payloads not opened in this audit | KEEP LOCKED |
 
 ## Next safe action
 
-Do not write a new historical-source adapter, do not rerun the backtest, and do not reconstruct the candle aggregation.
+Do not rebuild candle aggregation and do not run the full backtest yet.
 
-The next work should remain on GitHub and focus on one of these source-preserving routes:
-1. Locate an already committed, authoritative GitHub artifact/Actions artifact containing the exact pinned 2016-2024 source bytes and a verifiable digest; or
-2. If no such GitHub artifact exists, record the source-data dependency as an explicit external blocker and proceed only with code/contract tests that do not claim real historical validation.
+The recovered GitHub Actions artifact removes the prior source-availability blocker for the files it contains. The next work should use this exact GitHub artifact as the immutable working input, preserve its SHA-256 values, and create a separate source-admission manifest on GitHub that:
+1. pins the original workflow run, source commit, artifact ID, and expiry;
+2. records only the 2016-2024 file hashes above;
+3. records H1/Market State as present but not payload-inspected under the 2025 lock;
+4. keeps Murphy at 7/34 and MTF time/semantics fail-closed;
+5. does not claim a successful strategy backtest or profitability.
 
-Before any real-data replay, separately close Murphy 34-rule completeness, MTF producer semantics, and timestamp/availability provenance. Keep 2025 excluded from development, tuning, calibration, and feature selection.
+Only after these source gates are closed should a separate compatibility patch be considered. The immediate MTF error must be resolved against the actual producer/schema contract, not by guessing field mappings. The Murphy gap requires recovery of approved historical rule sources, not synthetic evidence.
 
 ## Governance
 
-- Audit-only; no runtime code, data, frozen knowledge, or risk contracts changed.
+- Audit-only; no runtime code, source data, frozen knowledge, or risk contracts changed.
 - No merge, no main changes, no PR retargeting.
 - No Dropbox or CircleCI use.
-- No 2025/2026 market-data payloads accessed.
+- No 2025/2026 market-data payloads opened.
 - No live orders or trading authorization.
