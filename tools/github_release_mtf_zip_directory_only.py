@@ -13,8 +13,8 @@ import urllib.request
 ASSET_URL = "https://github.com/refaey11/AI-Trading-Assistant-Workspace/releases/download/workspace-v1/MULTI_TF_MARKET_DATA_V1.zip"
 EXPECTED_SIZE = 96_751_936
 TAIL_LIMIT = 65_557
-EOCD = b"PK\\x05\\x06"
-CD_SIG = b"PK\\x01\\x02"
+EOCD = b"PK\x05\x06"
+CD_SIG = b"PK\x01\x02"
 
 def ranged(start: int, end: int, expected_total: int) -> bytes:
     req = urllib.request.Request(
