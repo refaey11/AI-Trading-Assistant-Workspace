@@ -80,6 +80,12 @@ void OnStart()
    if(server_now <= 0)
       server_now = TimeCurrent();
 
+   string broker_server = AccountInfoString(ACCOUNT_SERVER);
+   string terminal_company = TerminalInfoString(TERMINAL_COMPANY);
+   string terminal_name = TerminalInfoString(TERMINAL_NAME);
+   long terminal_build = TerminalInfoInteger(TERMINAL_BUILD);
+   long terminal_max_bars = TerminalInfoInteger(TERMINAL_MAXBARS);
+
    MqlRates rates_a[];
    MqlRates rates_b[];
    bool set_a = ArraySetAsSeries(rates_a, InpArrayAsSeries);
@@ -167,7 +173,8 @@ void OnStart()
    }
 
    FileWrite(handle, "record_type", "run_id", "symbol", "timeframe",
-             "range_from_raw", "range_to_raw", "expected_count",
+             "broker_server", "terminal_company", "terminal_name",
+             "terminal_build", "terminal_max_bars", "range_from_raw", "range_to_raw", "expected_count",
              "copied_a", "error_a", "copied_b", "error_b",
              "sync_query_ok", "series_synchronized",
              "array_set_a_ok", "array_set_b_ok", "array_as_series_a",
@@ -176,7 +183,8 @@ void OnStart()
              "physical_time_strictly_increasing", "arrays_equal",
              "mismatches", "duplicate_or_order_errors", "result");
    FileWrite(handle, "META", run_id, _Symbol, EnumToString(InpTimeframe),
-             (long)InpRangeFrom, (long)InpRangeTo, expected_count,
+             broker_server, terminal_company, terminal_name,
+             terminal_build, terminal_max_bars, (long)InpRangeFrom, (long)InpRangeTo, expected_count,
              copied_a, error_a, copied_b, error_b,
              (int)sync_query_ok, synchronized,
              (int)set_a, (int)set_b, (int)series_a, (int)series_b,
