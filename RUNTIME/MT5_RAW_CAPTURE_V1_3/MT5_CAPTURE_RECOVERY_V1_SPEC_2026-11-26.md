@@ -1696,3 +1696,21 @@ A static source review tightened the utility before handoff:
 - source scan confirms two identical bounded `CopyRates` calls and no trade/order API calls or `FILE_COMMON` usage.
 
 This is a source-level review only. It is **not** a MetaEditor compile, terminal execution, or proof of runtime behavior.
+
+
+### 29.6 Official API cross-check and operator handoff
+
+The static implementation was cross-checked against the official MQL5 references:
+- `CopyRates` documents that copied elements are physically stored oldest-first regardless of the AS_SERIES flag: https://www.mql5.com/en/docs/series/copyrates
+- `ArraySetAsSeries` and `ArrayGetAsSeries` document the logical indexing flag and its read-back: https://www.mql5.com/en/docs/array/arraysetasseries and https://www.mql5.com/en/docs/array/arraygetasseries
+- `ACCOUNT_SERVER` is available through `AccountInfoString`: https://www.mql5.com/en/docs/account/accountinfostring
+- `TERMINAL_BUILD` and `TERMINAL_MAXBARS` are terminal integer properties: https://www.mql5.com/en/docs/constants/environment_state/terminalstatus
+
+The utility now records broker server label, terminal company/name, terminal build, and terminal Max Bars setting in its evidence metadata. It does not record account login/name or credentials.
+
+An Arabic operator guide has also been added:
+`RUNTIME/MT5_RAW_CAPTURE_V1_3/tests/D0_OPERATOR_GUIDE_AR.md`
+
+The guide explains download, local Scripts folder placement, MetaEditor compilation, Demo-only run, evidence-file location, and what to send for review. It explicitly instructs the operator not to use a live account and not to modify the original CSV evidence.
+
+**Current status remains:** source-level review completed; MetaEditor compilation NOT RUN; Demo execution NOT RUN; D0 NOT RUN. No result is promoted to PASS until the original CSV and terminal evidence are reviewed.
