@@ -320,3 +320,48 @@ Provisional recommendation for the next design review: prioritize a proof-of-con
 - Python SQLite after current CSV export: DOWNSTREAM ONLY; CANNOT ATOMICALLY COMMIT MT5 CAPTURE + CURSOR.
 
 No source/runtime code, tests, workflows, or OOS data were changed or executed in this research step. The specification remains review-only; implementation and PR creation still require separate explicit approval.
+
+
+## 16. SQLite logical schema and transaction protocol — review proposal only
+
+This section narrows the preferred proof-of-concept without selecting source identity, timestamp semantics, or authorizing implementation. Names below are conceptual; they are not committed SQL or code.
+
+### 16.1 Logical tables
+
+1. **capture_streams** — one row per approved stream partition. Holds stream identifier, provider namespace, canonical symbol identifier, timeframe, schema version, bootstrap boundary, current recovery state, cursor kind/value, cursor generation, and update observation. The canonical fields remain unresolved; do not populate them from terminal path or broker display text by assumption.
+2. **raw_bars** — immutable capture observations. Holds an internal ingestion record ID, stream reference, raw source position as-is, raw clock label/status, OHLC, volume fields, spread, capture version, payload hash, and observation metadata. Preserve raw source fields; do not normalize raw time to UTC.
+3. **capture_batches** — one row per bounded acquisition batch, including stream, requested source range/position, returned count, validation outcome, batch state, and commit generation. This supports audit of partial reads and retries.
+4. **capture_conflicts** — links a previously stored observation to a later conflicting payload or source revision candidate. Never silently overwrite prior evidence.
+5. **capture_events** — append-only state-transition/audit events for recovery-required, retryable source failure, gap-unknown, identity conflict, cursor inconsistency, and operator-approved bootstrap/reconciliation decisions.
+
+### 16.2 Constraints that can be considered now
+
+- Primary keys should be internal database record IDs, not claims of upstream source-bar identity.
+- Foreign keys should isolate each raw bar, batch, and event to exactly one stream record.
+- A uniqueness constraint on source position must remain disabled until same-stream position uniqueness/stability is proven for the exact source path.
+- The current tuple (symbol, timeframe, raw epoch) may be indexed for diagnostics/reconciliation but must not be promoted to a canonical identity key.
+- Conflicting payloads must be preserved and surfaced; conflict resolution policy is still open.
+- Every stream cursor must explicitly carry its position kind and clock status. An UNVERIFIED raw timestamp must never be labelled UTC.
+
+### 16.3 Transaction protocol
+
+For each fully validated bounded batch, the intended transaction is:
+1. Begin database transaction.
+2. Insert batch audit row in a pending/in-progress state.
+3. Insert all accepted raw bar observations; write conflict evidence rather than overwrite when a duplicate candidate differs.
+4. Update only the matching stream cursor and generation after all batch rows are accepted.
+5. Mark the batch committed and append the corresponding capture event.
+6. Commit the transaction; only a successful commit permits the runtime to report the batch as database-committed.
+If any step fails, roll back the transaction, retain the previous cursor, and expose a retryable or blocked state. If commit outcome is uncertain after a process/terminal interruption, reopen the database and reconcile batch state, rows, and cursor before requesting new data. Never infer success from a log message alone.
+
+### 16.4 Important boundary
+
+This protocol makes database rows, batch status, and cursor a single logical transaction candidate. It does not prove that CopyRates returned every expected candle, that the returned ordering is stable, that historical bars cannot be revised, or that the source position is a canonical immutable bar ID. Those remain independent gates. The recovery system must not report CAUGHT_UP_CURRENTLY or complete continuity until source ordering and completeness evidence are approved.
+
+### 16.5 Review disposition
+
+Logical schema: **DRAFTED FOR REVIEW**.
+SQLite transaction pattern: **PREFERRED PROOF-OF-CONCEPT DESIGN**.
+Source position / source_bar_id: **UNRESOLVED**.
+Timestamp normalization: **UNRESOLVED; raw V1.3 remains UNVERIFIED**.
+Implementation, MetaEditor changes, Demo capture, and PR: **NOT AUTHORIZED BY THIS DOCUMENT**.
