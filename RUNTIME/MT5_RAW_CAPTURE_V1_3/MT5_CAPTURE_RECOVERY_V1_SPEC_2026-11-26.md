@@ -231,3 +231,92 @@ The implementation must not describe a row as durably committed merely because a
 - Production completeness claim: **BLOCKED / NOT PROVEN**.
 
 No source files, runtime code, tests, workflows, or OOS data were changed or executed during this compatibility review.
+
+
+## 15. Storage architecture research addendum — 2026-11-26
+
+This section records an official-documentation discovery made during the storage comparison. It is an architecture candidate, not implementation approval.
+
+### 15.1 New finding: MQL5 has a native SQLite API
+
+The earlier storage comparison treated SQLite mainly as a possible Python-side store. Official MQL5 documentation confirms that MQL5 itself exposes SQLite database operations, including DatabaseOpen / DatabaseClose; SQL execution and prepared statements; DatabaseTransactionBegin, DatabaseTransactionCommit, and DatabaseTransactionRollback; and DATABASE_OPEN_COMMON for a database file in the common folder shared by terminals.
+
+Official references:
+- https://www.mql5.com/en/docs/database
+- https://www.mql5.com/en/docs/database/databaseopen
+- https://www.mql5.com/en/docs/database/databasetransactionbegin
+- https://www.mql5.com/en/docs/database/databasetransactioncommit
+- https://www.mql5.com/en/articles/7463
+
+This is materially different from a Python-only SQLite proposal: the MT5 EA may be able to write both captured bars and its capture cursor into the same SQLite database and the same transaction, avoiding a non-atomic handoff between a CSV file and a separate cursor file.
+
+### 15.2 Candidate architecture A — one MQL5 SQLite database
+
+Proposed transaction boundary (candidate only):
+1. Read a bounded closed-bar batch from the source.
+2. Validate each row and the approved stream identity/order contract.
+3. Begin one SQLite transaction.
+4. Insert raw bar evidence using a uniqueness/dedup policy that does not claim canonical source identity.
+5. Update the corresponding stream cursor in the same database transaction.
+6. Commit; if any operation fails, roll back and do not report the batch as committed.
+7. On restart, read the cursor and reconcile it against committed rows before requesting the next batch.
+
+This can make the logical data-row update and cursor update atomic with respect to the database transaction. It also enables SQL constraints and indexes for stream isolation, replay detection, and conflict reporting.
+
+Important limits still unproven:
+- MQL5 documentation confirms SQLite transactions, but this review has not yet proven the exact crash/power-loss durability mode available through the MQL5 wrapper or whether required SQLite PRAGMA settings are accepted and effective.
+- A successful transaction commit must not be equated automatically with the strongest power-loss guarantee until the actual MQL5/SQLite build, filesystem, journal mode, and synchronous behavior are tested.
+- DATABASE_OPEN_COMMON confirms a common-folder location, not a complete multi-terminal writer-coordination policy. Start with one designated writer per database/stream unless concurrency is separately tested.
+- Python interoperability, concurrent read behavior, backup/restore, schema migration, disk-full behavior, and database corruption recovery require explicit tests.
+- A transaction only protects records already returned by CopyRates; it does not solve missing history, unverified timestamps, source-bar identity, ordering, or session-gap classification.
+
+### 15.3 Candidate architecture B — append-only file plus journal/checkpoint
+
+This remains viable if a text/binary audit log is a hard requirement, but it needs explicit record framing, sequence numbers, checksums, torn-tail detection, and a recoverable checkpoint protocol. A simple CSV append plus separate cursor file remains rejected. MQL5 FileFlush flushes the file's I/O buffer, but the official description does not define a complete atomic transaction spanning a CSV record and a separate cursor file.
+
+Official references:
+- https://www.mql5.com/en/docs/files/fileflush
+- https://www.mql5.com/en/docs/files/filewrite
+- https://www.mql5.com/en/docs/files
+
+### 15.4 Candidate architecture C — Python SQLite after CSV export
+
+The existing Python V1.3 adapter reads a CSV and writes JSONL; it does not currently participate in the EA's write transaction. Therefore a Python-side SQLite database would be downstream of capture and could not atomically commit the MT5 source rows and MT5 cursor unless the architecture changes to make Python the authoritative capture writer. That alternative would require a separately designed IPC/ownership protocol and is not assumed here.
+
+Python's sqlite3 supports explicit transaction control, but that alone does not close the cross-process transaction gap between an MT5 CSV writer and a Python database writer.
+Official reference: https://docs.python.org/3/library/sqlite3.html
+
+### 15.5 Provisional comparison and disposition
+
+| Criterion | MQL5 SQLite, bars + cursor in one DB | Append log + journal | CSV + Python SQLite |
+|---|---|---|---|
+| Same transaction for bars and cursor | Potentially yes | Must be designed | No, not with current handoff |
+| Native support in current EA language | Official MQL5 API exists | MQL5 file API exists | Requires separate Python process |
+| Torn-tail handling | SQLite recovery/transaction behavior must be tested | Must be implemented and tested | CSV tail still needs repair before import |
+| Human-readable raw archive | Export view can be generated | Yes, depending on format | CSV retained |
+| Multi-terminal coordination | Not yet proven | Not yet proven | Not yet proven |
+| Power-loss durability | Not yet proven for actual wrapper/config | Not yet proven | Depends on both stages |
+
+Provisional recommendation for the next design review: prioritize a proof-of-concept review of MQL5-native SQLite with bars and cursor in the same database transaction. Do not implement it yet. Keep CSV as a derived export/audit format rather than the authoritative transactional store if the proof succeeds.
+
+### 15.6 Mandatory proof tests before selection
+
+29. Confirm the deployed MT5 build supports all required database APIs and DATABASE_OPEN_COMMON.
+30. Verify schema creation, prepared inserts, uniqueness constraints, and rollback behavior in a Demo terminal.
+31. Inject a failure after bar inserts but before cursor update; confirm neither is committed.
+32. Inject a failure after cursor update but before commit; confirm neither is committed.
+33. Terminate EA/terminal at each transaction stage; verify database integrity and cursor/data agreement after restart.
+34. Test OS crash and controlled power-loss simulation on the actual storage environment; document what durability claim is justified.
+35. Verify whether required SQLite journal/synchronous configuration is accepted and effective through MQL5 DatabaseExecute; if unavailable, document the resulting durability limit.
+36. Test disk-full, locked database, busy timeout, corrupted database, backup/restore, and schema migration.
+37. Test one-writer enforcement and read-only Python access while the EA is active; test multi-terminal access only if required.
+38. Confirm that CSV export is reproducible from committed database rows and is never treated as an independent cursor authority.
+
+### 15.7 Updated storage gate
+
+- MQL5-native SQLite: PREFERRED CANDIDATE FOR PROOF-OF-CONCEPT; NOT APPROVED.
+- Append log + journal: VALID FALLBACK CANDIDATE; DESIGN NOT COMPLETE.
+- CSV + separate cursor file: REJECTED WITHOUT A PROVEN JOURNAL/TWO-PHASE PROTOCOL.
+- Python SQLite after current CSV export: DOWNSTREAM ONLY; CANNOT ATOMICALLY COMMIT MT5 CAPTURE + CURSOR.
+
+No source/runtime code, tests, workflows, or OOS data were changed or executed in this research step. The specification remains review-only; implementation and PR creation still require separate explicit approval.
