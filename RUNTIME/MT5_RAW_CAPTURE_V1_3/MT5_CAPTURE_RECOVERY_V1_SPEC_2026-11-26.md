@@ -913,3 +913,149 @@ A D2 PASS does **not** mean the current EA has a production recovery mechanism. 
 - Do not advance or approve any persistent cursor based on D2/D3 alone. Cursor semantics, source identity, storage atomicity, history corrections, and clock provenance remain separate gates.
 - D2/D3 execution has not been performed by this documentation update. The operator must run the tests in the isolated Demo environment and submit the evidence for review.
 
+
+
+## 22. Operator Test Sheets — D4 Session-Gap Classification and D5 Historical-Bar Revision
+
+These tests examine two different sources of apparent history discontinuity: legitimate market-session closures and later changes to historical bar data. They must be run separately and must not be used to approve a source-bar ID or durable cursor by themselves.
+
+### 22.1 D4 — Session-gap classification
+
+**Question:** Can each interval between consecutive observed bars be classified using independent, broker/symbol-appropriate session evidence, without assuming that every elapsed timeframe interval must contain a bar?
+
+**Prerequisites:**
+1. Use one Demo symbol and timeframe in an isolated terminal.
+2. Obtain an independent session calendar applicable to the exact broker, instrument, and date range. Record its source, version/publication date, timezone semantics, holidays, early closes, and any known special sessions.
+3. If a reliable calendar cannot be obtained, the test may still record raw intervals, but it cannot classify them as expected session gaps.
+4. Preserve the raw EA output and a separate bounded CopyRates history query. Record query parameters, requested/returned counts, errors, and history synchronization state.
+5. Do not convert raw MT5 bar timestamps to UTC or infer broker offset/DST from the observed data.
+
+**Procedure:**
+1. Select a bounded interval that includes at least one expected active period and, if available, one known market closure (for example, a weekend or published holiday).
+2. Capture the bars available through the EA and independently query closed-bar history for the same bounded interval.
+3. Order observations only within the tested stream using a timestamp/order interpretation that is explicitly marked UNVERIFIED unless its semantics have been independently established.
+4. For each interval where a bar is absent, consult the independent session calendar for the exact instrument and date.
+5. Record whether the calendar predicts the market was open, closed, on an early close, or indeterminate. Preserve the calendar evidence used for each classification.
+6. Repeat the bounded history query after synchronization if CopyRates is partial. Preserve both the partial and later responses.
+7. Assign one of the following evidence labels to each interval:
+   - EXPECTED_SESSION_GAP — an authoritative applicable calendar explains the interval;
+   - MISSING_DATA_SUSPECTED — the calendar indicates the instrument should have been trading and the expected bar is absent from the verified comparison source;
+   - GAP_UNKNOWN — calendar, timestamp semantics, history readiness, or expected-bar evidence is insufficient;
+   - CONTIGUOUS_CONFIRMED — the relevant expected sequence is present under the tested, documented ordering contract.
+8. Do not create synthetic candles to fill any interval.
+
+**PASS criteria (classification only):**
+- Calendar provenance and applicability are documented.
+- Every assessed interval has evidence attached and is classified without using elapsed wall-clock time alone.
+- Expected closures are not counted as missing bars.
+- Suspected missing data is distinguished from unknown intervals.
+- Any timestamp or ordering limitation is explicitly retained in the result.
+
+**FAIL criteria:**
+- The process labels every missing timeframe slot as a data-loss event without session evidence.
+- A known active-session interval is silently skipped or marked complete despite absent expected data.
+- A session closure is filled with fabricated bars or hidden by normalization.
+- Calendar timezone or instrument applicability is guessed rather than evidenced.
+
+**INCONCLUSIVE / NOT RUN:**
+- No authoritative applicable session calendar is available.
+- The tested broker/instrument session schedule cannot be established.
+- History is partial, timestamp ordering is not adequate for the comparison, or the test interval is not bounded.
+- No relevant gap occurs during the observation window.
+
+**D4 evidence summary template:**
+
+| Field | Value |
+|---|---|
+| Broker/server and instrument | |
+| Symbol as shown by terminal | |
+| Timeframe and bounded interval | |
+| Session calendar source/version | |
+| Calendar timezone/semantics | |
+| Holidays / early closes covered | |
+| Raw bars expected by calendar | |
+| Raw bars present in EA output | |
+| Raw bars present in independent history | |
+| EXPECTED_SESSION_GAP intervals | |
+| MISSING_DATA_SUSPECTED intervals | |
+| GAP_UNKNOWN intervals | |
+| Partial CopyRates attempts and results | |
+| Evidence file hashes | |
+| Result and reason | |
+
+### 22.2 D5 — Historical-bar revision observation
+
+**Question:** Does the same historical bar, when queried again later from the same documented source stream, return changed values or become unavailable, and can the observation be preserved without overwriting the original capture?
+
+**Important limitation:** A test that observes no change only establishes that no change was observed for the selected bars, source, and observation period. It does not prove that the broker never revises history or that other symbols/timeframes/providers behave identically.
+
+**Preparation:**
+1. Use an isolated Demo terminal, one symbol, one timeframe, and a bounded set of fully closed bars.
+2. Record broker/server identity, terminal build, EA/capture version, symbol spelling/alias, timeframe, query parameters, and observed clock fields.
+3. Save the first raw response exactly as received, including OHLC, tick volume, spread, real volume, raw time representation, returned count, error/status, and query metadata.
+4. Compute and record a SHA-256 fingerprint of the preserved evidence package. This is an integrity fingerprint for the package, not a source-bar identity.
+5. Do not edit the original capture or merge subsequent observations into it.
+
+**Procedure:**
+1. Query a bounded range of fully closed historical bars and preserve the complete first response as OBSERVATION_A.
+2. Record the exact query range, CopyRates requested and returned counts, synchronization status, and array ordering configuration.
+3. Repeat the identical query after a documented delay and after any relevant history synchronization event. Preserve the response as OBSERVATION_B.
+4. Where practical, repeat at a later observation point as OBSERVATION_C. Keep each response immutable and separately hashed.
+5. Match candidate bars only using a documented, tested within-stream matching method. Until raw timestamp uniqueness and stability are established, treat timestamp matching as provisional and report ambiguity.
+6. Compare every available field independently: raw time, OHLC, tick volume, spread, and real volume. Do not compare only a row hash and infer which field changed.
+7. Classify each candidate bar:
+   - UNCHANGED_OBSERVED — all compared fields match across the observations;
+   - REVISION_OBSERVED — one or more compared fields differ for a provisionally or authoritatively matched bar;
+   - BAR_DISAPPEARED — a previously returned bar is absent in a later complete, synchronized response;
+   - BAR_APPEARED_LATER — a bar absent in an earlier response appears in a later complete response;
+   - MATCH_AMBIGUOUS — the source-bar matching key is not sufficiently unique/stable;
+   - QUERY_INCOMPLETE — one or more responses are partial, unsynchronized, or otherwise not comparable.
+8. Preserve all conflicting versions. Do not replace OBSERVATION_A with OBSERVATION_B or treat the latest value as proof that the earlier capture was invalid.
+9. If a change is observed, repeat the query and retain the repeated result. Do not automatically label the cause as broker correction; first exclude query-range differences, partial history, symbol alias changes, timeframe/configuration changes, and ordering mistakes.
+
+**PASS criteria (observation protocol only):**
+- Multiple immutable observations of the same bounded query are preserved with query metadata and hashes.
+- Comparisons are field-by-field and ambiguous matches remain explicitly ambiguous.
+- Any observed revision or disappearance is retained as a conflict/evidence event rather than overwriting the first observation.
+- If no changes are observed, the conclusion is narrowly worded as NOT OBSERVED for this sample and observation window.
+
+**FAIL criteria:**
+- A later historical response silently overwrites the earlier captured values.
+- Different query ranges, symbol aliases, or synchronization states are treated as identical observations without qualification.
+- A partial response is used to conclude that a bar disappeared.
+- An ambiguous timestamp match is presented as a confirmed revision.
+
+**INCONCLUSIVE / NOT RUN:**
+- History is not fully synchronized or responses are partial.
+- The tested source cannot be held constant across observations.
+- Bar matching is ambiguous or the query range cannot be reproduced.
+- The observation window is too short to support any conclusion beyond NOT OBSERVED.
+
+**D5 evidence summary template:**
+
+| Field | Observation A | Observation B | Observation C |
+|---|---|---|---|
+| Observation date/time and clock source | | | |
+| Broker/server / terminal build | | | |
+| Symbol / timeframe | | | |
+| Exact query range and parameters | | | |
+| CopyRates requested / returned count | | | |
+| History synchronized? | | | |
+| Raw response file SHA-256 | | | |
+| Matched bars / ambiguous matches | | | |
+| OHLC changes | | | |
+| Tick volume changes | | | |
+| Spread changes | | | |
+| Real volume changes | | | |
+| Bars appeared / disappeared | | | |
+| Result and reason | | | |
+
+### 22.3 D4/D5 interpretation and authorization boundary
+
+- D4 can classify only the tested instrument/session/date range. It does not define a universal market calendar or authorize UTC conversion.
+- D5 can report observed revisions only for the tested source and sample. No observed revision is not proof of immutable history.
+- A revision observation means the capture design must preserve conflicting versions and define a reviewed revision policy before production recovery is considered.
+- Neither test authorizes Model A source identity, Model B composite identity, raw timestamp cursor use, SQLite implementation, or production recovery claims.
+- D4/D5 execution has not been performed by this documentation update. Operator evidence collection and independent review remain outstanding.
+- Development remains restricted to 2016–2024. The 2025 OOS dataset remains locked and untouched.
+- No trading logic, source/runtime code, workflows, or live-order behavior is changed or authorized by this section.
