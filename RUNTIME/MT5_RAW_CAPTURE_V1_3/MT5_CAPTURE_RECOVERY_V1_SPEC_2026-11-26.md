@@ -1418,3 +1418,78 @@ The following must all be closed before any source identity or persistent resume
 - No source/runtime code, EA, test harness, workflows, PR, or live trading behavior is changed or authorized.
 - No MT5 history or mixed-year historical artifact is imported for these procedures.
 - Development remains limited to 2016–2024. The 2025 OOS dataset remains locked and untouched.
+
+
+## 26. Whole-Spec Compatibility Audit — 2026-11-26
+
+**Audit scope:** internal consistency and traceability across Sections 1–25, including the V1.3 baseline, cursor contract, timestamp/gap policy, storage candidates, MQL5 API constraints, operator sheets D0–D7, and acceptance tests 1–55. This is a documentation compatibility audit only; it is not a source-code review rerun, Demo test result, or implementation approval.
+
+### 26.1 Compatibility findings
+
+| Area | Audit result | Required interpretation |
+|---|---|---|
+| V1.3 raw capture compatibility | PASS — no proposed change redefines existing raw timestamp fields | V1.3 remains raw input only; it is not a recovery-complete source |
+| Three identity/state concepts | PASS — cursor, ingest deduplication, and source-bar identity are separately defined | Never reuse one as proof of another |
+| Timestamp and UTC semantics | PASS — raw time remains UNVERIFIED; UTC is a separate proof obligation | Raw period-start may only be considered as a narrowly scoped same-stream resume locator after tests; no UTC join follows |
+| CopyRates relative index | PASS — rejected as durable cursor | It may be used for bounded relative reads only |
+| Partial history and physical ordering | PASS — tests 39–43 and D3/D7 cover partial results, retries, array order, current-bar exclusion, and history limits | No cursor advancement on partial/ambiguous reads |
+| Session gaps and missing bars | PASS — GAP_UNKNOWN and MISSING_DATA_SUSPECTED fail closed | No fixed-interval assumption or synthetic candle |
+| Revision/conflict handling | PASS — previous observations are preserved; payload hash is not identity | Revision matching remains provisional until position semantics are proven |
+| Storage transaction design | PASS as a candidate design; NOT PROVEN operationally | MQL5 SQLite is a proof-of-concept candidate only; no implementation or durability claim |
+| CSV and cursor separation | PASS — independent CSV plus cursor is not treated as atomic | Requires a proven journal/two-phase protocol or a different selected store |
+| 2025 OOS governance | PASS — excluded throughout the test plan | No OOS import, read, filter, tuning, or evaluation |
+| Authorization boundary | PASS — repeated throughout the document | No code, EA change, PoC, PR, workflow, merge, or live trading is authorized |
+
+### 26.2 Acceptance-test traceability and intentional overlap
+
+The detailed operator sheets and numbered acceptance tests overlap by design: the sheets describe what an operator observes, while the numbered tests define the system property and acceptance oracle. They are not separate evidence of a PASS.
+
+| Operator sheet | Related numbered tests | Coverage boundary |
+|---|---|---|
+| D0 — baseline repeatability | 50 | Same bounded range repeatability only |
+| D1 — new-bar index shift | 51 | Demonstrates relative index instability; does not approve raw time |
+| D2 — EA/terminal restart | 1, 14, 50, 52 | Observed restart/reconciliation; not crash durability |
+| D3 — disconnect/delayed history | 2–4, 26, 39–40, 43, 52 | Partial/retry behavior and bounded overlap; not proof that the existing EA backfills |
+| D4 — session-gap classification | 11–12, 52 | Classification only with independent calendar evidence |
+| D5 — historical revision | 17, 27, 53 | Preserve changed observations; no revision observed is not proof of immutability |
+| D6 — symbol namespace isolation | 18, 25, 54 | Exact provider/symbol isolation; no guessed alias merging |
+| D7 — closed-bar/array order | 10, 41–42 | Physical order and shift-0 exclusion |
+| Storage proof plan | 5–6, 16, 19–24, 29–38, 44–48 | Logical atomicity and durability levels; requires separately authorized executable tests |
+| Identity proof matrix | 49–55 | Source identity, resume position, namespace, revision, and payload distinction |
+
+Test 49 is primarily a documentation/API inventory, not a Demo observation. Test 55 requires a clearly labelled synthetic fixture or naturally observed data; it must not alter broker history. The detailed operator sheets do not replace the machine-readable evidence bundles required by Sections 19 and 24.
+
+### 26.3 Important distinctions confirmed by the audit
+
+1. **Raw resume locator is not Model B identity.** A raw period-start value might eventually be accepted as a same-stream operational resume locator without being UTC. Model B composite identity remains blocked until its stronger namespace, canonical symbol, verified time, uniqueness, and revision requirements are met.
+2. **Database atomicity is not source completeness.** A transaction can atomically store an incomplete or incorrectly ordered batch. Passing storage tests 29–48 cannot substitute for CopyRates/source-position tests.
+3. **Source-position repeatability is not storage durability.** Passing tests 49–55 cannot prove that data and cursor survive a crash as one committed unit.
+4. **A later historical query is not proof of original capture.** The existing EA's reconnect behavior and a later successful CopyRates query must be reported separately; historical availability does not prove the raw capture file contains the missing bars.
+5. **PASS is scoped to its evidence envelope.** No result from one symbol, timeframe, provider, terminal build, OS, or storage medium generalizes automatically to another.
+
+### 26.4 Remaining blockers — no technical approval implied
+
+The audit found no basis to approve a production Recovery Architecture yet. The following evidence remains absent or unexecuted:
+
+- no completed operator evidence bundle for D0–D7;
+- no executed acceptance tests 29–55;
+- no proven same-stream raw-time uniqueness/order/restart/replay contract for the exact provider/build;
+- no approved canonical provider namespace and symbol-alias mapping;
+- no demonstrated broker revision contract or fully approved conservative revision policy;
+- no approved bootstrap boundary and historical completeness scope;
+- no selected storage implementation with validated transaction, restart, OS-crash, power-loss, and operational recovery evidence;
+- no end-to-end evidence proving capture, persistence, restart recovery, and gap reconciliation together.
+
+The current document defines how to collect and judge that evidence; it does not contain the evidence itself.
+
+### 26.5 Audit disposition and next permitted action
+
+**Whole-spec internal compatibility:** PASS WITH OPEN EVIDENCE GATES.
+
+**Recovery Architecture approval:** BLOCKED.
+
+**Implementation / SQLite PoC / EA modification / PR:** NOT AUTHORIZED.
+
+**Next permitted action:** prepare a read-only operator evidence checklist and collect the first D0 baseline package on one disposable MT5 Demo symbol/timeframe. Before any executable change or fault-injection harness, obtain separate explicit authorization. Record all outcomes as PASS, FAIL, INCONCLUSIVE, or NOT RUN; do not infer missing results.
+
+No source/runtime code, EA, tests, workflows, trading behavior, or OOS data were changed or executed by this audit.
