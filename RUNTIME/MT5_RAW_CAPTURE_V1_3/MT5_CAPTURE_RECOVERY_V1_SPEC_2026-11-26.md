@@ -449,3 +449,75 @@ Consequences:
 - SQLite proof-of-concept: **NEXT TECHNICAL VALIDATION GATE; NOT IMPLEMENTATION AUTHORIZATION**.
 
 No source/runtime code, tests, workflows, or OOS data were changed or executed during this documentation review.
+
+## 18. Source-bar identity and persistent resume-position decision — 2026-11-26
+
+This section separates three concepts that must not be conflated:
+- **Source-bar identity:** which upstream bar observation is being represented.
+- **Resume position:** where the capture process should continue reading after restart.
+- **Ingest deduplication:** whether a previously received observation has already been stored.
+
+A deduplication key or resume cursor is not automatically a canonical source-bar identity.
+
+### 18.1 Native MqlRates identity review
+
+The official MQL5 `MqlRates` structure exposes exactly these fields: `time`, `open`, `high`, `low`, `close`, `tick_volume`, `spread`, and `real_volume`. Its `time` field is documented as the period start time. The documented structure contains no separate upstream immutable bar ID, revision ID, sequence number, or provider event ID.
+
+Official reference:
+- https://www.mql5.com/en/docs/constants/structures/mqlrates
+
+Therefore the reviewed MqlRates/CopyRates interface does not currently provide evidence for Model A's native immutable ID. This is a limitation of the reviewed interface, not proof that no broker/provider-specific identity exists elsewhere. Any such alternative would need its own documented API and source contract.
+
+### 18.2 Resume-position candidates
+
+| Candidate | Persistent across new bars/restart? | Identity quality | Disposition |
+| --- | --- | --- | --- |
+| CopyRates `start_pos` / bar index | No; relative to the current series and shifts as new bars arrive | Not an identity | **REJECT as durable cursor**; allowed only for bounded relative reads |
+| Raw `MqlRates.time` | Not yet proven for this exact broker/API path, restart, history corrections, or duplicate behavior | Period-start label only; UTC remains separately unproven in the EA serialization audit | **CONDITIONAL SAME-STREAM POSITION CANDIDATE ONLY** after controlled tests |
+| Composite namespace + canonical symbol + timeframe + verified UTC period-start | Potentially stable if all components and correction semantics are proven | Candidate Model B | **BLOCKED** pending UTC, namespace, symbol alias, uniqueness, and revision evidence |
+| OHLCV/spread/payload hash | Changes when history is corrected; identical payloads may recur | Content fingerprint, not source identity | **REJECT as canonical identity**; retain only as payload integrity/evidence hash |
+| Broker/provider-native immutable bar ID | Would be preferred if an authoritative API exposes it | Potential Model A | **PREFERRED IF FOUND**, not present in reviewed MqlRates fields |
+
+### 18.3 Why bar index cannot be persisted
+
+`CopyRates` position arguments select bars relative to the current time series. When new bars arrive, the same historical bar moves to a different relative index. A restart does not preserve the old index as a stable source locator. Persisting `start_pos=N` can therefore skip or reread bars after the series advances.
+
+The index may still be used to request a bounded page after the stream has been independently anchored and reconciled. It must never be the only durable cursor or a source-bar ID.
+
+### 18.4 Conditional use of raw period-start time
+
+The raw `MqlRates.time` may be evaluated as a same-stream resume locator only after Demo evidence establishes all of the following for each supported symbol/timeframe/provider stream:
+1. strictly ordered period-start values in the exact physical order returned by CopyRates;
+2. uniqueness within the stream over the tested history and session boundaries;
+3. identical values for the same historical bar after EA restart and terminal restart;
+4. stable lookup/replay behavior when the same range is requested repeatedly;
+5. behavior when the broker revises a previously returned historical bar;
+6. no ambiguous collision across broker symbol aliases, suffixes, or provider namespaces;
+7. a safe bounded query strategy that can retrieve the cursor bar and overlap before advancing.
+
+Passing these tests would authorize only a **same-stream resume-position contract**. It would not make the raw value UTC, prove cross-source alignment, or create a globally canonical bar identity.
+
+If a historical correction changes OHLCV while period-start time stays the same, preserve both observations and raise a revision/conflict event. Do not overwrite the earlier capture silently. The system must define whether the broker exposes a revision marker; if not, it can only record that a later observation differed, not prove the provider's internal revision number.
+
+### 18.5 Identity and resume acceptance tests
+
+49. Confirm from the exact MQL5 structure/API used that no additional immutable source ID is exposed; document any broker-specific alternative separately.
+50. Capture a known closed-bar range, restart the EA, request the same range, and prove stable same-stream period-start values and deterministic reconciliation.
+51. Add new bars between two requests and prove that a persisted CopyRates index points to a different relative bar; confirm index-only recovery is rejected.
+52. Re-request overlapping ranges across session/weekend boundaries; prove no silent skip and classify gaps without inventing candles.
+53. Simulate or observe a historical OHLCV correction for an existing period-start value; preserve both versions and emit conflict/revision evidence.
+54. Test two symbol aliases/suffixes and two provider namespaces; prove they cannot collide in stream identity.
+55. Test identical payloads at distinct period starts and changed payloads at the same period start; distinguish payload equality from source identity and revision conflict.
+
+### 18.6 Updated decision
+
+- Native immutable ID in reviewed MqlRates: **NOT EXPOSED BY THE DOCUMENTED STRUCTURE**.
+- CopyRates index as persistent cursor: **REJECTED**.
+- Raw period-start time as same-stream resume locator: **CONDITIONAL / NOT YET PROVEN**.
+- Composite Model B identity: **BLOCKED** until timestamp and namespace contracts pass.
+- Payload-derived Model C identity: **REJECTED**.
+- Source-bar identity approval: **NOT GRANTED**.
+- Persistent cursor implementation: **NOT APPROVED**.
+- Demo proof-of-concept: **NEXT EVIDENCE GATE; NOT IMPLEMENTATION AUTHORIZATION**.
+
+No source/runtime code, tests, workflows, OOS data, or trading behavior were changed or executed by this specification update.
