@@ -1639,3 +1639,49 @@ Official references:
 ### 28.4 Audit scope and non-actions
 
 This section records a documentation/interface compatibility audit only. No Python script, EA, MQL5 source, test harness, workflow, PR, production data, or OOS data was created, modified, or executed. No live account or order activity is involved.
+
+
+## 29. D0 Read-Only Native MQL5 Diagnostic Utility — Authorized Test Artifact
+
+### 29.1 Artifact
+
+A narrowly scoped, standalone MQL5 **Script** (not an Expert Advisor) has been added:
+
+`RUNTIME/MT5_RAW_CAPTURE_V1_3/tests/D0_ReadOnly_CopyRates_Range_Diagnostic.mq5`
+
+Purpose: on an isolated Demo terminal, issue the same bounded `CopyRates(symbol,timeframe,from,to,rates[])` range request twice, preserve both complete returned datasets in physical chronological array order, and write a separate evidence CSV.
+
+The script:
+- refuses to run unless `ACCOUNT_TRADE_MODE_DEMO` is reported;
+- reads only the current chart symbol and the configured timeframe/date range;
+- records the `Bars()` expected count, both CopyRates return counts and `GetLastError()` values, history synchronization query, ArraySetAsSeries state, observation server time, and closed-bar checks;
+- exports time, OHLC, tick volume, spread, and real volume for both calls;
+- compares the two arrays record-by-record and checks strictly increasing physical-order timestamps;
+- writes a uniquely named file under the terminal's local `MQL5/Files` directory (does not use `FILE_COMMON` and does not write to the V1.3 production capture CSV);
+- contains no order, position, trade, indicator, signal, or production EA modification calls.
+
+### 29.2 Operator run instructions
+
+1. Use a **separate disposable MT5 terminal/profile connected to a Demo account only**. Do not run this on a live account.
+2. Open the exact broker symbol in Market Watch and a chart for the intended single timeframe.
+3. Copy the script into that terminal's `MQL5/Scripts` folder and open it in MetaEditor.
+4. Compile it locally. Record the terminal build, MetaEditor compiler result, and any warnings/errors. The repository addition itself does not establish compilation.
+5. Set `InpTimeframe`, `InpRangeFrom`, and `InpRangeTo` to a fixed historical interval in the broker's displayed/server-time context. Choose a range expected to contain only closed bars. Do not label these inputs UTC.
+6. Keep `InpArrayAsSeries` at the value selected for the run and record it; if testing the other setting, perform a separate run and preserve its separate evidence file.
+7. Run the Script once. It must refuse non-Demo accounts. The resulting `D0_ReadOnly_<run-id>.csv` is saved in the terminal's local `MQL5/Files` directory.
+8. Preserve the CSV unchanged, calculate SHA-256 outside MT5, and provide the file plus terminal/compiler details for review. Do not edit or overwrite the original evidence.
+
+### 29.3 Interpretation and limitations
+
+- **PASS** in the CSV is a preliminary result for that exact Demo terminal, server, symbol, timeframe, range, and observation. It requires both responses to match the expected `Bars()` count, be identical, be strictly increasing in physical order, be closed, and report synchronized history.
+- **FAIL** indicates a complete-count response with conflicting records/order or an unclosed bar.
+- **INCONCLUSIVE** includes partial/missing history, failed synchronization query, zero/unexpected counts, or other unmet conditions. Do not relabel it PASS.
+- The `Bars()` count is a cross-check, not independent proof that the broker's historical archive is complete.
+- The server-time closed-bar check is an operational guard, not a UTC certification or a broker-session calendar.
+- A PASS does not prove restart recovery, cursor correctness, immutable source-bar identity, historical revision behavior, gap classification, storage atomicity, power-loss durability, six-timeframe/multi-symbol behavior, or production readiness.
+- This Script is a D0 evidence collector only. It is not the recovery implementation and must not be connected to the production capture pipeline.
+- Local MetaEditor compilation and actual Demo execution remain **NOT RUN** until an operator performs them in the isolated terminal.
+
+### 29.4 Authorization boundary
+
+This artifact is within the user's explicit authorization for a narrowly scoped read-only D0 test utility. No existing EA/source file was modified. No PR was created. No workflow, live account, trade operation, production capture output, or OOS_2025 data was accessed or changed. No claim of successful compilation or D0 execution is made.
