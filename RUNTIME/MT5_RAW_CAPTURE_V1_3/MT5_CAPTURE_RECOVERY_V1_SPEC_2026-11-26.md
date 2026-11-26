@@ -1493,3 +1493,104 @@ The current document defines how to collect and judge that evidence; it does not
 **Next permitted action:** prepare a read-only operator evidence checklist and collect the first D0 baseline package on one disposable MT5 Demo symbol/timeframe. Before any executable change or fault-injection harness, obtain separate explicit authorization. Record all outcomes as PASS, FAIL, INCONCLUSIVE, or NOT RUN; do not infer missing results.
 
 No source/runtime code, EA, tests, workflows, trading behavior, or OOS data were changed or executed by this audit.
+
+
+## 27. D0 Operator Preflight and Execution-Readiness Checklist
+
+**Purpose:** make the first Demo observation operationally unambiguous while avoiding an unauthorized change to the existing EA. This section is a preflight/checklist only. It does not provide executable code or claim D0 has been run.
+
+### 27.1 Critical execution constraint
+
+The inspected V1.3 EA requests only one latest closed bar using `CopyRates(symbol, timeframe, 1, 1, rates)`. D0 requires two identical bounded multi-bar range requests and preservation of both returned arrays in physical order.
+
+Therefore, **the existing V1.3 EA alone cannot produce the full D0 evidence package as specified**. Do not treat repeated latest-bar CSV rows as a substitute for the bounded-range D0 test.
+
+D0 may be marked READY TO RUN only if an already-existing, separately authorized, read-only MT5 test mechanism can:
+- issue the same bounded multi-bar CopyRates request twice;
+- record requested and returned counts and API error/result information;
+- preserve the complete returned MqlRates fields and physical array order for each call;
+- record the ArraySetAsSeries setting and history readiness state;
+- write evidence only to a disposable test location without modifying the production/common capture output.
+
+If no such authorized mechanism is available, record **NOT RUN — READ-ONLY RANGE CAPTURE MECHANISM NOT AVAILABLE**. Do not create or modify an EA/script/harness under this specification authorization.
+
+### 27.2 Preflight checklist
+
+Before starting D0, the operator/reviewer must confirm every item:
+
+- [ ] Terminal is connected to a broker/provider Demo server; account identifiers and credentials are not recorded.
+- [ ] Test uses a disposable terminal profile or otherwise isolated test environment.
+- [ ] Exact broker/provider/server label is recorded without account secrets.
+- [ ] Exact Market Watch symbol string is recorded, including any suffix/prefix.
+- [ ] One timeframe only is selected for this run.
+- [ ] Terminal build, OS version, terminal data-path identity, and TERMINAL_MAXBARS are recorded.
+- [ ] History for the chosen interval is fully available and synchronized.
+- [ ] The chosen interval contains only closed bars; shift 0/current bar is excluded.
+- [ ] The bounded request parameters and intended count N are written down before the first request.
+- [ ] An authorized read-only range-capture mechanism is already available.
+- [ ] Evidence output path is disposable and is not the existing V1.3 Common Files capture output.
+- [ ] No second writer or concurrent test is using the same evidence store.
+- [ ] Raw output, screenshots/logs, and comparison results can be retained without editing source observations.
+
+If any required item is unchecked, do not start the test. Record NOT RUN or INCONCLUSIVE with the exact missing prerequisite.
+
+### 27.3 D0 run record — duplicate this block for each run
+
+| Field | Value |
+|---|---|
+| Test ID | D0 |
+| Run ID | |
+| Date/time observed (clock source named) | |
+| Broker/provider + Demo server label | |
+| Terminal build / OS | |
+| Symbol exactly as shown in Market Watch | |
+| Timeframe | |
+| EA/read-only mechanism name and version | |
+| Mechanism authorization/reference | |
+| TERMINAL_MAXBARS | |
+| Requested bounded interval (raw source representation) | |
+| CopyRates start position / range parameters | |
+| Requested count N | |
+| Run A returned count / result / error | |
+| Run A history ready? | |
+| Run A ArraySetAsSeries | |
+| Run B returned count / result / error | |
+| Run B history ready? | |
+| Run B ArraySetAsSeries | |
+| Physical array order preserved? | |
+| Exact field-by-field comparison completed? | |
+| Duplicate / missing / out-of-order counts | |
+| Current/forming bar excluded? | |
+| Evidence filenames and SHA-256 | |
+| Result: PASS / FAIL / INCONCLUSIVE / NOT RUN | |
+| Reason and reviewer | |
+
+### 27.4 D0 decision rules
+
+- **PASS:** both requests return exactly N closed bars, history is ready, raw physical-order arrays match record-for-record across time, OHLC, tick volume, spread, and real volume, and no duplicate/missing/out-of-order record is observed.
+- **FAIL:** complete successful requests for the same fixed interval produce conflicting values, counts, duplicates, missing records, inconsistent order, or include a forming bar.
+- **INCONCLUSIVE:** partial response, history synchronization uncertainty, changed request parameters, missing raw array evidence, or any unexplained environmental change.
+- **NOT RUN:** no authorized read-only bounded-range capture mechanism, no isolated Demo environment, or a required prerequisite is unavailable.
+
+Do not rerun a failed/inconclusive request in a way that overwrites the first evidence. Preserve each attempt as a separate run. A later successful retry does not erase an earlier partial or conflicting observation.
+
+### 27.5 What a D0 PASS does not approve
+
+Even a valid D0 PASS is limited to repeatability of one bounded range for one exact provider/server, symbol, timeframe, terminal build, and observation window. It does not approve:
+- raw period-start as a persistent resume cursor;
+- Model A, Model B, or any canonical source-bar identity;
+- UTC conversion or MTF joins;
+- broker history immutability or revision semantics;
+- SQLite, CSV journaling, atomic cursor commits, or crash/power-loss durability;
+- multi-symbol or six-timeframe recovery;
+- source/runtime changes, a test harness, a PR, or production recovery.
+
+The next evidence step after D0 review is D1, then D2–D7 and the separately gated storage/identity tests. No result may be generalized beyond its tested scope.
+
+### 27.6 Current execution status
+
+D0: **NOT RUN by this specification work**.
+
+D0 readiness: **BLOCKED until an already-authorized read-only bounded-range mechanism and isolated Demo environment are available**.
+
+No source/runtime code, EA, test harness, workflows, PR, or OOS data were changed or executed by this checklist.
