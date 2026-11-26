@@ -183,3 +183,51 @@ The draft is ready for review, not approval. Reviewers must explicitly resolve:
 6. What is the approved bootstrap start boundary and historical completeness claim?
 
 Until these are answered, production capture completeness remains **BLOCKED / NOT PROVEN**.
+
+
+## 14. Compatibility review addendum — 2026-11-26
+
+This addendum records a second-pass compatibility review against the existing V1.3 EA, Python contract, and Source-Bar Identity Proposal V1. It does not approve implementation.
+
+### 14.1 Confirmed compatibility constraints
+
+1. **Current V1.3 is a latest-bar poller, not a recovery reader.** The EA calls `CopyRates(symbol, tf, 1, 1, rates)`, and its seen-key arrays exist only in process memory. A recovery implementation must not claim completeness by merely persisting the current `g_seen_bar_times` value.
+2. **Current CSV output is append-oriented.** The EA opens the Common Files CSV, seeks to end, writes a header only for an empty file, writes one row, calls `FileFlush`, closes the file, and then updates in-memory seen state. A future cursor must be reconciled against the actual durable CSV contents, not treated as an independent truth.
+3. **FileFlush is not yet an approved crash-durability guarantee.** The current code's successful `FileWrite` plus `FileFlush` is not sufficient evidence for atomic multi-record batch commits, power-loss durability, or atomic coordination between CSV rows and a separate cursor file. The implementation design must state its exact failure model and prove recovery under process crash, terminal crash, OS crash, and storage interruption. If the selected storage cannot provide the required guarantee, the state must remain incomplete rather than overclaim durability.
+4. **Existing Python ingest normalization is not canonical identity.** The V1.3 validator uppercases symbol and timeframe values and the current ingest dedup key is `(symbol, timeframe, bar_time_epoch_seconds_raw)`. The Source-Bar Identity Proposal explicitly treats this as an ingest aid, not immutable source identity. Recovery must not promote either normalization or this tuple into a canonical source_bar_id without a separate approved symbol/identity contract.
+5. **Source-Bar Identity remains unresolved.** Model A requires evidence of a native immutable identifier; none is emitted by the inspected V1.3 MqlRates capture. Model B requires verified UTC bar-open time and approved namespace/symbol/timeframe/revision semantics. Current raw time is UNVERIFIED, so Model B is presently blocked. Model C remains rejected.
+6. **Raw-time ordering is a separate proof obligation from UTC.** A same-stream resume cursor might eventually use a raw source position without claiming UTC, but only if exact API/broker tests prove stable ordering, uniqueness, and repeatability across restarts and history refreshes. This is not currently proven.
+
+### 14.2 Additional acceptance tests required
+
+19. CSV row is truncated/torn during process or terminal interruption: detect and quarantine the incomplete tail; never advance cursor past it.
+20. CSV append succeeds but process crashes before cursor update: replay/reconcile without losing or duplicating committed logical records.
+21. Cursor update succeeds but CSV data is absent/truncated: detect `CURSOR_DATA_INCONSISTENT` and stop.
+22. FileFlush returns but simulated OS/power-loss failure occurs: validate the declared durability boundary; otherwise do not claim durable commit.
+23. Existing CSV contains duplicate keys with identical payloads: reconcile idempotently while preserving an audit count.
+24. Existing CSV contains duplicate keys with different payloads: preserve both evidence records or a conflict record according to an approved revision policy; never silently overwrite.
+25. Symbol case/suffix/alias differences (for example broker-specific suffixes) do not merge streams without an approved canonical symbol mapping.
+26. Recovery batch spans more records than one bounded request: all pages are fetched in deterministic order; no cursor leap occurs after a partial page.
+27. History refresh changes an older bar while the cursor is ahead: detect the revision/conflict under an approved lookback/reconciliation policy; do not assume all earlier bars are immutable.
+28. CSV header/schema mismatch, reordered columns, or unsupported capture version: block recovery rather than append incompatible rows.
+
+### 14.3 Revised storage decision gate
+
+No storage backend or cursor-file layout is selected by this draft. Before implementation, choose one explicit transaction/reconciliation strategy and document its guarantees:
+
+- **Single append log with recoverable journal/checkpoint:** cursor is derived from and validated against the committed log boundary; partial trailing records are detected and quarantined.
+- **Transactional store:** data rows and cursor advancement share one atomic transaction, with a defined uniqueness/conflict model.
+- **Separate CSV plus cursor file:** allowed only if a crash-safe two-phase/journal protocol is demonstrated; simple sequential writes to two files are not sufficient.
+
+The implementation must not describe a row as durably committed merely because an API call returned success. Define what “durable” means for the selected platform and failure model.
+
+### 14.4 Compatibility disposition
+
+- Existing V1.3 capture contract: **COMPATIBLE ONLY AS RAW INPUT**, not as proof of recovery completeness.
+- Existing V1.3 CSV dedup tuple: **INGEST AID ONLY**, not canonical identity.
+- Source-Bar Identity Model A: **PREFERRED, EVIDENCE NOT FOUND IN V1.3**.
+- Source-Bar Identity Model B: **BLOCKED**, because verified UTC and namespace/symbol semantics are not established.
+- Persistent cursor implementation: **NOT APPROVED** until storage/reconciliation and source-ordering gates pass.
+- Production completeness claim: **BLOCKED / NOT PROVEN**.
+
+No source files, runtime code, tests, workflows, or OOS data were changed or executed during this compatibility review.
