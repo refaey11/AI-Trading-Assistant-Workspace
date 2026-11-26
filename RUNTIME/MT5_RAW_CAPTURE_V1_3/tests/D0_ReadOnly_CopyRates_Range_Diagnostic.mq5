@@ -51,6 +51,14 @@ void OnStart()
       return;
    }
 
+   if(InpTimeframe != PERIOD_M5 && InpTimeframe != PERIOD_M15 &&
+      InpTimeframe != PERIOD_M30 && InpTimeframe != PERIOD_H1 &&
+      InpTimeframe != PERIOD_H4 && InpTimeframe != PERIOD_D1)
+   {
+      Print("D0 diagnostic refused: choose one of M5, M15, M30, H1, H4, or D1.");
+      return;
+   }
+
    if(InpRangeFrom <= 0 || InpRangeTo <= InpRangeFrom)
    {
       Print("D0 diagnostic refused: invalid bounded date range.");
@@ -136,11 +144,15 @@ void OnStart()
    }
 
    bool sync_ready = (sync_query_ok && synchronized != 0);
+   bool array_setting_ok = (set_a && set_b &&
+                            series_a == InpArrayAsSeries &&
+                            series_b == InpArrayAsSeries);
    bool full_counts = (expected_count > 0 &&
                        copied_a == expected_count &&
                        copied_b == expected_count);
    string result = "INCONCLUSIVE";
-   if(full_counts && arrays_equal && strictly_increasing && all_closed && sync_ready)
+   if(full_counts && arrays_equal && strictly_increasing && all_closed &&
+      sync_ready && array_setting_ok)
       result = "PASS";
    else if(full_counts && (!arrays_equal || !strictly_increasing || !all_closed))
       result = "FAIL";
@@ -159,7 +171,7 @@ void OnStart()
              "copied_a", "error_a", "copied_b", "error_b",
              "sync_query_ok", "series_synchronized",
              "array_set_a_ok", "array_set_b_ok", "array_as_series_a",
-             "array_as_series_b", "server_time_observed",
+             "array_as_series_b", "array_setting_ok", "server_time_observed",
              "period_seconds", "all_bars_closed", "unclosed_bars",
              "physical_time_strictly_increasing", "arrays_equal",
              "mismatches", "duplicate_or_order_errors", "result");
@@ -168,7 +180,7 @@ void OnStart()
              copied_a, error_a, copied_b, error_b,
              (int)sync_query_ok, synchronized,
              (int)set_a, (int)set_b, (int)series_a, (int)series_b,
-             (long)server_now, period_seconds, (int)all_closed, unclosed_bars,
+             (int)array_setting_ok, (long)server_now, period_seconds, (int)all_closed, unclosed_bars,
              (int)strictly_increasing, (int)arrays_equal, mismatches,
              duplicate_or_order_errors, result);
 
