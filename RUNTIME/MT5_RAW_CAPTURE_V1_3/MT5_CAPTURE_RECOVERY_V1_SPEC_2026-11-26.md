@@ -521,3 +521,122 @@ If a historical correction changes OHLCV while period-start time stays the same,
 - Demo proof-of-concept: **NEXT EVIDENCE GATE; NOT IMPLEMENTATION AUTHORIZATION**.
 
 No source/runtime code, tests, workflows, OOS data, or trading behavior were changed or executed by this specification update.
+
+## 19. MT5 Demo evidence protocol — operator runbook draft
+
+**Purpose:** define how the unresolved source-position and recovery claims must be tested on a disposable MT5 Demo terminal before any implementation decision. This is a test protocol only. It does not authorize EA changes, database implementation, production capture, or PR creation.
+
+### 19.1 Test environment and isolation
+
+Record the following before the first observation:
+- broker/provider display name and a non-secret provider/server identifier;
+- MT5 terminal build, operating system, terminal data-path identity, and whether the terminal is portable;
+- account mode explicitly marked **DEMO**; do not include account number, credentials, investor password, or other secrets in committed evidence;
+- exact Market Watch symbol string, any broker suffix/prefix, contract description, and the timeframe under test;
+- terminal history settings including `TERMINAL_MAXBARS`, chart/history availability, and whether the symbol is selected/subscribed;
+- local test start/end observations and the clock source used to record them;
+- capture source version and file/schema hash, without modifying that source during this protocol.
+
+Use a disposable terminal profile and isolated test storage. Do not point the experiment at an existing production/common capture database. Do not run multiple writers against one test store. Begin with one symbol and one timeframe; expand to all six supported timeframes only after the single-stream protocol is repeatable.
+
+### 19.2 Evidence package for every test
+
+Each test execution must preserve:
+1. test ID and exact procedure version;
+2. environment record from 19.1;
+3. requested CopyRates range/position and requested count;
+4. returned count, error/result code, and whether history was still downloading;
+5. raw returned values in physical array order before any transformation;
+6. the same values after the proposed chronological ordering step;
+7. separate raw period-start values and clock observations, without relabelling raw time as UTC;
+8. capture/restart/disconnect event log with operator-observed sequence;
+9. a machine-readable comparison showing missing, duplicate, reordered, and changed observations;
+10. explicit PASS, FAIL, INCONCLUSIVE, or NOT RUN, with the reason.
+
+Screenshots may supplement this package but cannot replace raw data and deterministic comparisons. Redact credentials and personal/account identifiers. Do not commit broker-sensitive data unless repository access and data-sharing permission are confirmed.
+
+### 19.3 Ordered execution sequence
+
+**D0 — Baseline repeatability**
+- Select one liquid Demo symbol and one supported timeframe.
+- Request a fixed, bounded range of closed bars twice without changing the terminal history.
+- Compare count, period-start labels, physical order, OHLCV/spread values, and payload fingerprints.
+- Expected result: identical source observations reconcile deterministically. Any unexplained variation is FAIL/INCONCLUSIVE, not silently deduplicated.
+
+**D1 — New-bar index shift**
+- Record a known bar's relative CopyRates index and period-start label.
+- Allow at least one new bar to become closed.
+- Query again and locate the same period-start label.
+- Expected result: demonstrate that its relative index changed while its period-start label can be used to locate the same observed bar in this controlled run. This demonstrates why index-only persistence is invalid; it does not yet approve raw-time cursor semantics.
+
+**D2 — EA restart and terminal restart**
+- Capture the same bounded closed-bar range.
+- Stop/restart the EA, then repeat the same request.
+- Separately restart the terminal and repeat.
+- Expected result: same period-start labels and deterministic reconciliation. Any missing historical range or changed label requires investigation; no cursor may jump to the newest bar.
+
+**D3 — Disconnect and delayed history**
+- In Demo, disconnect the terminal or make the test history unavailable, then reconnect.
+- Request a bounded range where the terminal may initially have only part of the requested history ready.
+- Repeat the same request after history download progresses.
+- Expected result: partial count is explicitly partial; no completion/cursor advancement is inferred until the full requested range is reconciled. Record if the broker/server cannot reproduce delayed history; mark NOT RUN rather than assume PASS.
+
+**D4 — Session boundary and gap classification**
+- Select a range crossing a known market closure/weekend or a documented instrument session break.
+- Compare returned period-start sequence with an independently recorded session calendar for that instrument.
+- Expected result: only calendar-supported closures may be classified as EXPECTED_SESSION_GAP. Without authoritative calendar evidence, use GAP_UNKNOWN; never fabricate a bar to fill the interval.
+
+**D5 — Historical correction / revision observation**
+- Save an immutable copy of a bounded historical response.
+- At a later time, request exactly the same range and compare all fields.
+- If a changed historical value is observed, preserve both versions and record a conflict event with observation times and raw values.
+- If no correction occurs during the observation window, record NOT OBSERVED; this is not proof that corrections never occur. Do not manufacture a correction in a live broker history and do not claim provider revision semantics from a changed payload alone.
+
+**D6 — Symbol namespace isolation**
+- Compare a broker symbol with any suffix/prefix alias only where the broker confirms the instruments represent the same underlying contract.
+- Compare the same display symbol across distinct Demo provider/server namespaces only if available.
+- Expected result: stream keys remain isolated unless a reviewed canonical instrument mapping explicitly joins them. Similar display names are not sufficient.
+
+**D7 — Current-bar exclusion and physical ordering**
+- Request data including shift 0 and multiple closed bars.
+- Verify that shift 0 is excluded from the admitted closed-bar dataset.
+- Verify chronological persistence order from the physical array, with tests under both ArraySetAsSeries settings.
+- Expected result: current/forming bar is never committed as closed; oldest-to-newest persistence order is explicit and deterministic.
+
+### 19.4 Per-test pass/fail rules
+
+A test may be PASS only when its raw evidence package is complete and all stated assertions hold. Use:
+- **FAIL** when evidence contradicts an assertion (e.g. a skipped bar, index-only cursor ambiguity, unstable ordering, current bar admitted as closed, or cursor advanced after a partial read).
+- **INCONCLUSIVE** when evidence is contradictory or insufficient to decide (e.g. clock source cannot be trusted, broker history changes without clear provenance, or session calendar is unavailable).
+- **NOT RUN** when the Demo environment cannot exercise the condition.
+- **PASS** only for the narrow assertion tested. A PASS on restart stability does not prove UTC, global identity, power-loss durability, or historical completeness.
+
+No test result may be generalized from one symbol/timeframe/provider to all streams without repeating the relevant tests for each required stream class.
+
+### 19.5 Evidence review gates after Demo
+
+The review must answer, separately:
+1. Is raw period-start time stable enough for same-stream resume in this exact environment?
+2. Is its uniqueness demonstrated for the configured stream and tested history?
+3. Can the API reliably re-read an overlap around the saved position?
+4. Can history corrections be detected and preserved without overwriting evidence?
+5. Is source namespace and symbol identity sufficiently stable?
+6. Is the clock domain independently proven for any UTC claim?
+7. Is the storage transaction/durability behavior proven under the defined failure model?
+
+If questions 1–5 pass, a narrowly scoped same-stream resume proposal may be submitted for approval. Questions 6 and 7 remain independent gates; passing the resume tests does not close them.
+
+### 19.6 Exit criteria and authorization boundary
+
+The Demo evidence package must be reviewed and the source-position contract explicitly approved before a persistent cursor implementation is proposed. A separate explicit user approval is still required before source/runtime code changes or PR creation.
+
+Until then:
+- recovery implementation: **NOT AUTHORIZED**;
+- MQL5 SQLite proof-of-concept implementation: **NOT AUTHORIZED**;
+- raw timestamp as persistent cursor: **NOT APPROVED**;
+- UTC/cross-source MTF joins: **BLOCKED**;
+- production recovery-complete claim: **BLOCKED**;
+- 2025 OOS: **LOCKED / NOT TOUCHED**;
+- live orders: **NOT AUTHORIZED**.
+
+No source/runtime code, tests, workflows, OOS data, or trading behavior were changed or executed by this runbook addition.
