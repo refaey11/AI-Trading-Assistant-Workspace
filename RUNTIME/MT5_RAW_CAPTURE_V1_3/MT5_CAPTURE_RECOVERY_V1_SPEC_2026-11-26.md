@@ -1059,3 +1059,135 @@ These tests examine two different sources of apparent history discontinuity: leg
 - D4/D5 execution has not been performed by this documentation update. Operator evidence collection and independent review remain outstanding.
 - Development remains restricted to 2016–2024. The 2025 OOS dataset remains locked and untouched.
 - No trading logic, source/runtime code, workflows, or live-order behavior is changed or authorized by this section.
+
+
+## 23. Operator Test Sheets — D6 Symbol-Namespace Isolation and D7 Closed-Bar / Array-Order Semantics
+
+D6 and D7 test whether observations from different symbol namespaces remain isolated and whether CopyRates array behavior is understood correctly. Neither test establishes a universal source-bar identity or approves a persistent cursor.
+
+### 23.1 D6 — Symbol namespace isolation
+
+**Question:** When two terminal-visible symbols may represent the same underlying instrument but have different broker names, suffixes, prefixes, contract specifications, or data feeds, can the capture evidence keep their streams distinct without silently merging them?
+
+**Preparation:**
+1. Use an isolated Demo terminal and identify two symbols that are available from the same broker but have different terminal symbol names or namespaces. Do not assume they are equivalent merely because their labels look similar.
+2. Record the exact symbol names as returned by the terminal, broker/server identity, contract description, digits, point size, tick size/value where available, and any suffix/prefix.
+3. Record the EA version/hash, terminal build, timeframe, output path, and single-writer arrangement.
+4. Choose a bounded interval where both symbols have history. Preserve the initial Market Watch / symbol selection evidence and the exact CopyRates query parameters for each stream.
+5. Do not normalize case, strip suffixes, or map aliases during collection. Preserve the source spelling exactly.
+
+**Procedure:**
+1. Capture symbol A and symbol B independently, recording the exact terminal symbol argument used for each request.
+2. Save each stream's raw rows and logs separately where possible. If the EA writes to a shared file, retain the original file and verify that each row contains enough source information to identify the exact requested symbol.
+3. Independently query the same bounded closed-bar interval for each exact symbol name and preserve both responses.
+4. Compare the symbol field, raw timestamp, OHLC, tick volume, spread, real volume, and query metadata across the two streams.
+5. Repeat the queries with the same exact symbol names after a terminal restart or history synchronization event, if the test environment allows.
+6. Check whether two aliases have identical bars, different bars, overlapping timestamps, or different trading sessions. Identical OHLC values do not prove that the symbols are the same source stream.
+7. Verify that a row from symbol A is never assigned to symbol B solely because the timestamp and OHLC match.
+8. Record any mapping proposed by the broker or terminal documentation as external evidence; do not create a canonical-symbol mapping from visual similarity alone.
+
+**PASS criteria (isolation observation only):**
+- Every captured/query row can be traced to the exact requested terminal symbol name and broker/server namespace.
+- A and B remain separate streams even when their bar timestamps or OHLC values happen to match.
+- Any alias relationship is documented with independent evidence and is not silently applied by the capture process.
+- Missing symbol provenance, ambiguous aliases, or conflicting source labels are reported as unresolved.
+
+**FAIL criteria:**
+- The capture or comparison process merges A and B based only on matching timestamp/OHLC or a guessed alias.
+- Suffixes/prefixes or case are silently removed and the original source spelling is lost.
+- A row cannot be traced to the exact symbol request that produced it.
+- Data from one symbol is attributed to another without authoritative mapping evidence.
+
+**INCONCLUSIVE / NOT RUN:**
+- Only one symbol is available.
+- The broker's symbol namespace or instrument mapping cannot be established.
+- History for one symbol is incomplete or the test interval cannot be compared.
+- The EA output does not preserve enough symbol provenance to identify the source stream.
+
+**D6 evidence summary template:**
+
+| Field | Symbol A | Symbol B |
+|---|---|---|
+| Exact terminal symbol name | | |
+| Broker/server namespace | | |
+| Contract / instrument description | | |
+| Suffix / prefix / case | | |
+| Digits / point / tick details | | |
+| Timeframe and bounded interval | | |
+| CopyRates requested / returned count | | |
+| Raw output file and SHA-256 | | |
+| Rows with exact symbol provenance | | |
+| Timestamp overlap | | |
+| Identical / different OHLC observations | | |
+| Session differences | | |
+| Alias evidence source | | |
+| Result and reason | | |
+
+### 23.2 D7 — Current-bar exclusion and physical array ordering
+
+**Question:** Does the operator correctly identify the currently forming bar versus fully closed bars, and correctly interpret the physical array order returned by CopyRates under both ArraySetAsSeries settings?
+
+**Preparation:**
+1. Use one Demo symbol and timeframe with synchronized history.
+2. Record terminal build, symbol, timeframe, EA/test harness version, CopyRates start position and requested count, ArraySetAsSeries setting, and query observation time/source clock.
+3. Select a bounded query that includes the current bar and several earlier bars. Do not infer that array index zero always means the oldest or newest element without considering the series setting and documented physical storage behavior.
+4. Preserve the raw returned array values and the exact query parameters for each run.
+
+**Procedure:**
+1. Run a controlled CopyRates query with start position 0 and a fixed requested count. Record the returned count and every element's array index, raw bar time, OHLC, and volume fields.
+2. Repeat the same query with ArraySetAsSeries enabled, preserving the complete array and configuration.
+3. Repeat with ArraySetAsSeries disabled, preserving the complete array and configuration.
+4. Compare the physical memory sequence and the logical indexing view. Record the oldest physical element and newest physical element explicitly.
+5. Identify the forming bar using an independent observation of the terminal's current bar state, not merely by assuming that a particular array index is closed.
+6. Identify the latest fully closed bar separately. Verify that the intended capture selection excludes the forming bar and includes the latest closed bar.
+7. Repeat the query after a new bar begins. Record how the current bar and latest closed bar move in the logical array view and in the returned physical sequence.
+8. If fewer bars are returned than requested, preserve the partial result and mark the run incomplete; do not infer a complete ordering result from a truncated array.
+9. Repeat the bounded query after history synchronization if needed, preserving both attempts.
+
+**PASS criteria (array semantics observation only):**
+- Both ArraySetAsSeries configurations are recorded and their logical indexing is distinguished from physical memory order.
+- The oldest and newest returned elements are identified from the actual captured sequence and checked against the documented CopyRates behavior.
+- The forming bar and latest fully closed bar are independently identified.
+- The result demonstrates that the forming bar is excluded from a closed-bar capture selection.
+- Partial results are not treated as complete.
+
+**FAIL criteria:**
+- The process treats index 0 as a universal oldest/newest indicator regardless of ArraySetAsSeries and physical storage semantics.
+- The forming bar is included in a dataset labelled closed bars.
+- The latest fully closed bar is omitted while a forming bar is selected in its place.
+- The test silently reorders or rewrites raw observations without preserving the original returned sequence.
+
+**INCONCLUSIVE / NOT RUN:**
+- The terminal history is not synchronized or CopyRates returns partial data.
+- The forming/closed state cannot be independently established.
+- The two ArraySetAsSeries runs do not use equivalent query parameters.
+- The terminal build or test harness does not expose enough evidence to reconstruct the returned sequence.
+
+**D7 evidence summary template:**
+
+| Field | Series=true | Series=false |
+|---|---|---|
+| Terminal build / symbol / timeframe | | |
+| start_pos / requested count | | |
+| Returned count / error | | |
+| Observation time/source clock | | |
+| Physical first element raw time | | |
+| Physical last element raw time | | |
+| Logical index 0 raw time | | |
+| Logical final index raw time | | |
+| Forming bar identified? | | |
+| Latest fully closed bar identified? | | |
+| Closed-bar selection excludes shift 0? | | |
+| Raw array evidence SHA-256 | | |
+| Result and reason | | |
+
+### 23.3 D6/D7 interpretation and authorization boundary
+
+- D6 applies only to the tested broker, symbols, terminal build, and timeframe. It does not approve a universal symbol canonicalization policy.
+- D7 validates observed CopyRates array semantics for the tested build and call pattern. It does not approve a durable resume cursor or immutable source-bar identity.
+- A successful D7 result must not be used to promote CopyRates relative shift/index into a persistent cursor; bar positions move as new bars arrive.
+- Any ambiguous symbol mapping or array-order discrepancy blocks the relevant conclusion and must be preserved as evidence.
+- D6/D7 execution has not been performed by this documentation update. Operator execution and evidence review remain outstanding.
+- Recovery implementation, SQLite PoC, raw timestamp cursor, UTC/cross-source MTF joins, and production recovery-complete claims remain unauthorized or blocked pending their separate evidence and approval gates.
+- Development remains restricted to 2016–2024. The 2025 OOS dataset remains locked and untouched.
+- No source/runtime code, workflows, trading behavior, or live orders are changed or authorized by this section.
