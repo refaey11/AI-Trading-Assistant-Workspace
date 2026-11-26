@@ -1191,3 +1191,114 @@ D6 and D7 test whether observations from different symbol namespaces remain isol
 - Recovery implementation, SQLite PoC, raw timestamp cursor, UTC/cross-source MTF joins, and production recovery-complete claims remain unauthorized or blocked pending their separate evidence and approval gates.
 - Development remains restricted to 2016–2024. The 2025 OOS dataset remains locked and untouched.
 - No source/runtime code, workflows, trading behavior, or live orders are changed or authorized by this section.
+
+
+## 24. Storage Proof Plan — SQLite Transaction, Failure, and Durability Tests (Acceptance Tests 29–48)
+
+This section turns acceptance tests 29–48 into a controlled evidence plan. It does not authorize building a SQLite prototype, changing the EA, writing a fault-injection harness, or claiming durability. Any test that requires new executable code remains NOT RUN until separately authorized. Documentation review and environment inventory may be performed without changing runtime behavior.
+
+### 24.1 Storage-test safety and test environment
+
+**Required isolation:**
+1. Use a disposable MT5 Demo terminal/profile and a disposable database path. Never point fault-injection tests at a live account, production capture store, or the only copy of any evidence.
+2. Record terminal build, OS version/filesystem, storage device/type, broker/server, EA build/hash, MQL5 database API availability, database path mode, and test harness version/hash.
+3. Enforce one writer for the test database. Any Python inspection must use a read-only connection and must not mutate the database while the EA/test harness is writing.
+4. Preserve a baseline backup and hash before each destructive test. After every test, preserve the database, WAL/journal sidecars if present, logs, and a machine-readable test result.
+5. Use synthetic test records clearly marked as synthetic. Do not import historical market datasets, mixed-year artifacts, or any 2025 OOS material.
+6. Do not use real credentials, account identifiers, or secrets in the evidence package.
+7. Stop immediately if the test path resolves outside the disposable directory, if another writer is detected, or if the baseline cannot be restored.
+
+**Evidence bundle required for every test:**
+- Test ID and exact acceptance-test number(s).
+- Terminal/build/OS/filesystem/storage environment.
+- Database path mode and exact API calls/results.
+- Schema version and synthetic batch/bar identifiers.
+- Operation sequence with ordered timestamps and clock source (no unsupported UTC relabeling).
+- Injected fault point and observed return/error code.
+- Database integrity result, row counts, batch state, cursor value/generation, and conflict/event rows before and after restart.
+- Hashes for database, sidecars, logs, test inputs, and outputs.
+- PASS / FAIL / INCONCLUSIVE / NOT RUN with a narrow assertion and limitations.
+
+### 24.2 Transaction invariants — apply to tests 30–33 and 44–45
+
+The test oracle must evaluate these invariants after reopening the database, not merely from in-memory return values:
+
+1. **Atomic batch:** a capture batch and its bar rows are either committed together or absent together.
+2. **Cursor never ahead:** the persistent stream cursor must never refer to a bar/batch that is not durably represented in the database.
+3. **Replay safety:** if a batch may have been written but the cursor update did not commit, replay must not create silent duplicate/conflicting records.
+4. **No false success:** failed begin, statement preparation, parameter binding, execution, or commit must not be reported as a successful capture.
+5. **Conflict preservation:** a repeated logical key with different payload must be retained as a conflict/evidence condition, not silently overwritten.
+6. **Restart reconciliation:** after any interruption, the reopened database must be checked for integrity and cursor/data agreement before capture resumes.
+7. **Unknown commit outcome:** if the process terminates during commit and the outcome cannot be established, mark recovery state uncertain/blocked and reconcile; do not assume either success or failure.
+
+These are required acceptance properties, not claims that the current V1.3 EA already satisfies them.
+
+### 24.3 Test procedures and pass/fail criteria
+
+| Test | Controlled action | Required evidence | PASS condition | FAIL condition |
+|---|---|---|---|---|
+| 29 — API/build capability | Inventory exact deployed MT5 build and verify documented database API availability in that build; record compile/runtime evidence only if an already-authorized disposable harness exists | Build number, API list, compile/run log, DATABASE_OPEN_COMMON result | Required API surface is available and exact build is recorded | Missing API or unverified build is treated as supported |
+| 30 — Schema and rollback | In disposable DB, create schema, insert synthetic rows with prepared statements, exercise constraints, explicitly rollback a test transaction | Schema, statements, row counts before/after, rollback log | Constraints behave as specified and rollback leaves no partial transaction rows | Partial rows remain after confirmed rollback or constraints are bypassed |
+| 31 — Failure after bar inserts | Within a test transaction, insert batch/bar rows, inject controlled failure before cursor update, rollback/reopen | Fault point, transaction result, DB integrity, batch/bar/cursor state | No partial batch/bar/cursor state is committed | Any bar/batch persists while cursor/batch atomicity contract says it must not |
+| 32 — Failure after cursor update | Update cursor inside transaction, inject failure before commit, rollback/reopen | Old/new cursor generation and committed rows | Neither cursor advance nor batch rows are committed | Cursor advances without its corresponding committed data |
+| 33 — Process termination stages | Terminate disposable EA/terminal at each documented transaction stage; reopen and reconcile after each run | Stage-by-stage crash matrix, integrity_check, cursor/data comparison | Every outcome is either consistent committed state or consistent rollback/blocked recovery | Corrupt/inconsistent state is accepted as complete or capture resumes without reconciliation |
+| 34 — OS crash / power-loss | Controlled crash/power-loss simulation only on disposable test storage under an approved lab procedure | OS/storage details, fault method, DB and sidecar hashes, reopen/integrity results | Evidence supports only the exact durability claim demonstrated under that environment | Any broader power-loss guarantee is inferred from FileFlush/transaction API or one successful run |
+| 35 — PRAGMA configuration | In disposable DB, attempt only documented/supported settings; read back effective values where possible | Exact commands, return codes, read-back values, journal/sidecar behavior | Accepted settings and limits are reported precisely | Command acceptance alone is described as proof of durable persistence |
+| 36 — Storage fault matrix | Separately test disk full, DB lock/busy, timeout, corruption, backup/restore, and schema migration | One evidence bundle per fault, recovery result, integrity checks | Each fault fails closed; backup/restore and migration preserve validated data/cursor consistency | Silent data loss, cursor advance, unsafe auto-resume, or unverified restore |
+| 37 — Writer/access policy | Attempt second writer and read-only Python inspection in isolated test; multi-terminal only if required | Lock behavior, writer identity, access mode, concurrent-operation log | Single-writer rule is enforced; readers cannot mutate active DB | Concurrent writer corrupts/changes stream or read-only observer writes |
+| 38 — CSV export | Export committed DB rows repeatedly using same schema/version; compare output and prove export cannot advance cursor | Export parameters, DB snapshot, CSV hashes, cursor before/after | CSV is reproducible from committed rows and is downstream/read-only | CSV becomes independent cursor authority or export changes capture state |
+| 39 — Partial CopyRates | Request N bars when only K<N are available; preserve exact result | N, K, return/error, history readiness, cursor before/after | Partial result is marked incomplete and cursor unchanged | Partial result advances cursor or is labelled complete |
+| 40 — Retry after history download | Repeat identical bounded query after history progresses | Both raw responses, counts, matching/reconciliation report | Newly available bars reconcile without skip/duplicate; partial attempt retained | Retry overwrites evidence or silently skips newly available bars |
+| 41 — Array order | Test both ArraySetAsSeries settings against a known synthetic/demo sequence | Full arrays, physical/logical order, chronological persistence | Stored order is proven and independent of mistaken logical-index assumptions | Incorrect order or current-bar ambiguity is accepted |
+| 42 — Closed-bar selection | Query including shift 0 and identify current vs latest closed bar | Raw array, shift mapping, bar state | Shift 0 excluded; latest closed bar included | Forming bar admitted as closed or latest closed omitted |
+| 43 — History boundary | Query beyond available history and TERMINAL_MAXBARS | Requested/returned counts, error, terminal setting, retry state | Stream is marked blocked/retryable/bootstrap-limited; no cursor jump | Cursor jumps to newest available bar despite unresolved earlier interval |
+| 44 — Prepared insert/bind failure | Cause a prepared insert/bind failure midway through a disposable transaction | Statement status, rollback result, rows/cursor after reopen | Transaction rolls back and cursor remains unchanged | Partial rows or cursor advance survive |
+| 45 — Begin/commit failures | Exercise transaction-begin failure and commit failure paths | Return codes, transaction state, reopen result | Neither failure path is treated as success; uncertain commit is reconciled | Failed/uncertain commit is reported as successful |
+| 46 — Parameter binding | Bind synthetic symbols/metadata containing quotes, punctuation, Unicode, and suffixes | Bound inputs, stored values, statement logs | Values round-trip exactly; no SQL concatenation/injection | Values are altered, truncated, or interpreted as SQL |
+| 47 — COMMON path / writer | Verify DATABASE_OPEN_COMMON path and one-writer behavior on exact target build | Resolved path, permissions, concurrent access tests | Actual path and locking policy are proven for target build | Assumed path/locking behavior differs from observed environment |
+| 48 — PRAGMA behavior | Inspect PRAGMA support only in disposable DB; compare accepted commands with effective read-back | Command results, read-back, journal/sidecar observations | Supported behavior and unknowns are documented without overclaim | Acceptance of command is treated as durability guarantee |
+
+**Note on test 29:** A source/API inventory is not equivalent to an EA compile. A compile is not equivalent to a runtime test. A runtime test is not equivalent to crash-durability proof. Record each evidence level separately.
+
+### 24.4 Required fault-injection stage matrix for test 33
+
+The disposable test harness, if later separately authorized, must define and record these interruption points independently:
+
+| Stage | Interruption point | Reopen-time assertion |
+|---|---|---|
+| T0 | Before transaction begin | No batch/bar/cursor changes |
+| T1 | After transaction begin, before inserts | No committed changes |
+| T2 | After batch metadata insert | No partial committed batch |
+| T3 | After one or more raw-bar inserts | No partial committed bar set |
+| T4 | After conflict/event insert | No partial committed evidence set |
+| T5 | After cursor update, before batch finalization | No cursor-only advance |
+| T6 | After batch finalization, before commit | No uncommitted batch is visible as committed |
+| T7 | During commit / commit outcome uncertain | Reconcile after reopen; never assume outcome |
+| T8 | Immediately after successful commit return | Verify committed batch and cursor agree after process restart |
+| T9 | After reopen/reconciliation but before next capture | Ensure resume starts only from validated committed state |
+
+For every stage, record whether termination was a controlled process exit, terminal kill, OS crash, or power interruption. These are not interchangeable fault models.
+
+### 24.5 Durability claim ladder
+
+The final report must not collapse distinct evidence levels into a single word such as “safe” or “durable”:
+
+- **L0 — API available:** exact build exposes the required database API.
+- **L1 — Logical transaction behavior:** begin/insert/update/rollback/commit behavior passes controlled tests.
+- **L2 — Process-restart consistency:** state remains consistent after EA/terminal termination and restart.
+- **L3 — OS-crash evidence:** controlled OS crash testing on the specified environment supports a narrowly scoped claim.
+- **L4 — Power-loss evidence:** controlled power-loss testing on the specified hardware/filesystem/storage configuration supports a narrowly scoped claim.
+- **L5 — Operational recovery:** backup, restore, corruption handling, disk-full handling, migration, single-writer policy, and reconciliation are validated together.
+
+Passing a lower level does not imply any higher level. Even L4 evidence is environment-specific and does not prove universal durability across brokers, terminals, operating systems, or storage devices.
+
+### 24.6 Stop conditions and authorization boundary
+
+- Do not execute destructive storage/fault tests against any non-disposable database.
+- Do not create a SQLite PoC, fault-injection executable, EA modification, or source/runtime PR without separate user authorization.
+- Do not infer atomicity between the existing CSV output and a separate SQLite cursor; they are different storage systems with no demonstrated shared transaction.
+- Do not treat FileFlush, a successful DatabaseTransactionCommit return, or a PRAGMA command being accepted as independent proof of power-loss durability.
+- If commit outcome is uncertain, if the database is corrupt, or if cursor/data agreement fails, the only acceptable state is blocked recovery pending reconciliation.
+- Tests 29–48 have not been executed by this specification update. This section defines evidence requirements and operator review criteria only.
+- The 2025 OOS dataset remains locked and untouched; no mixed-year historical payload is to be loaded for these tests.
+- No source/runtime code, workflows, trading behavior, live orders, or production recovery status is changed by this documentation section.
