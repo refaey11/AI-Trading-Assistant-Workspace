@@ -1302,3 +1302,119 @@ Passing a lower level does not imply any higher level. Even L4 evidence is envir
 - Tests 29–48 have not been executed by this specification update. This section defines evidence requirements and operator review criteria only.
 - The 2025 OOS dataset remains locked and untouched; no mixed-year historical payload is to be loaded for these tests.
 - No source/runtime code, workflows, trading behavior, live orders, or production recovery status is changed by this documentation section.
+
+
+## 25. Source Identity and Resume-Position Proof Matrix — Acceptance Tests 49–55
+
+This section converts acceptance tests 49–55 into a proof matrix and makes explicit which conclusions each test can and cannot support. The matrix is documentation only. It does not approve an identity model, cursor, Demo harness, or implementation.
+
+### 25.1 Required separation of concepts
+
+The evidence review must keep these three concepts separate:
+
+- **Source-bar identity:** answers which original source bar this observation represents, including source namespace and revision semantics.
+- **Resume position:** answers where the capture process should continue reading after a validated committed batch. It is an operational checkpoint, not necessarily an immutable bar identity.
+- **Ingest deduplication key:** prevents the same observation from being inserted twice during replay. It does not prove that two observations are the same original source bar.
+
+A single field must not be promoted to serve all three roles without independent evidence and explicit approval.
+
+### 25.2 Acceptance-test proof matrix
+
+| Test | Procedure and evidence | PASS means only | FAIL / BLOCK consequence |
+|---|---|---|---|
+| 49 — Native identity inventory | Review exact deployed MQL5 structures and APIs; record fields and any broker/provider extension separately | No native immutable identifier was found in the reviewed API surface, or a specific candidate is documented for separate review | Do not invent an ID from row index, OHLC, or unverified timestamp; source identity remains unresolved |
+| 50 — Restart and repeat range | Save a bounded closed-bar response, restart EA, request the exact same range, preserve both raw responses and deterministic comparison | Period-start observations are repeatable in this exact stream/build/test interval | Repeatability alone does not establish global uniqueness, immutable identity, UTC, or revision behavior |
+| 51 — Relative index shift | Record a bar's CopyRates relative index, allow new bars to arrive, request again and locate the same observed period-start | Relative index moves as history advances; index-only persistent cursor is invalid | Any design persisting only relative index is rejected |
+| 52 — Overlap across session/weekend | Re-request overlapping bounded ranges across a documented session boundary; compare every observation and attach independent calendar evidence | Overlap reconciliation is deterministic for tested range; gaps can be classified only where calendar evidence supports it | Any silent skip, fabricated candle, or unsupported session-gap classification blocks recovery approval |
+| 53 — Historical revision | Preserve immutable response A, query same range later as B/C, compare fields, record conflict/revision evidence | If changed, revision was observed for the exact matched source/sample; if unchanged, no revision was observed in this window | Overwriting A, ambiguous matching, or treating no observed change as proof of immutability blocks approval |
+| 54 — Symbol/provider namespace | Compare exact symbol strings, broker/provider namespaces, and independently evidenced alias mappings | Tested streams remain isolated; only an explicitly reviewed mapping may establish equivalence | Any collision or guessed alias merge blocks composite identity |
+| 55 — Payload equality vs source identity | Compare identical payloads at distinct period starts and changed payloads at the same provisional period start | Payload hash can serve as integrity fingerprint and aid conflict detection, not as source identity | Any use of payload/OHLC hash as immutable source-bar ID is rejected |
+
+### 25.3 Detailed operator procedure for tests 49–55
+
+**T49 — Native identity inventory**
+1. Record the exact MQL5 structure/API names and deployed terminal build being reviewed.
+2. Enumerate documented fields exactly as exposed; distinguish documented fields from broker-specific metadata or assumptions.
+3. Search for an immutable provider event ID, source sequence, revision ID, or equivalent only where the exact API actually exposes it.
+4. If a candidate exists, preserve its source documentation, scope, uniqueness guarantee, stability across restart/replay, and revision behavior as a separate evidence item.
+5. Result must say either NATIVE_ID_NOT_EXPOSED_IN_REVIEWED_API or CANDIDATE_REQUIRES_SEPARATE_CONTRACT_REVIEW. Do not infer a native ID from timestamp or array position.
+
+**T50 — Restart and repeat range**
+1. Select one symbol/timeframe and a bounded range containing fully closed bars.
+2. Preserve response A, exact request parameters, returned count, raw physical order, and environment.
+3. Restart the EA without changing the terminal profile or source history; request the exact same range as response B.
+4. Repeat after a full terminal restart as response C if feasible.
+5. Compare exact raw period-start representations and every bar field. Retain all observations and hashes.
+6. PASS is limited to repeatability of the observed range. Any changed value, missing bar, ambiguous matching, or partial response is recorded as revision/missing/inconclusive as appropriate.
+
+**T51 — Relative index shift**
+1. Record a specific closed bar's current CopyRates relative index and its raw period-start representation.
+2. Allow at least one new bar to close in the same stream.
+3. Request the range again and locate the same bar by its observed period-start representation.
+4. Record the new relative index and compare it with the old one.
+5. If the index changes, mark index-only cursor REJECTED. If it does not change during the selected interval, the result is INCONCLUSIVE for demonstrating movement; index-only cursor remains rejected because the index is relative by API design and no durable identity contract follows from a single unchanged observation.
+
+**T52 — Overlap and session boundary**
+1. Select two bounded requests with a known overlap, one spanning a documented session/weekend boundary.
+2. Preserve both responses and request metadata independently.
+3. Compare the overlap without discarding duplicates or conflicting payloads.
+4. Attach authoritative calendar evidence for any interval classified as expected closure.
+5. Report all unmatched bars and partial queries. Never synthesize missing bars.
+6. PASS is limited to tested overlap reconciliation; it does not establish a global resume cursor.
+
+**T53 — Revision observation**
+1. Preserve response A as immutable evidence.
+2. Repeat the exact request at a later observation point as response B and, if possible, C.
+3. Match bars only under an explicitly stated matching confidence. If timestamp uniqueness/stability is not yet proven, matching remains provisional.
+4. Compare time, OHLC, tick volume, spread, and real volume separately.
+5. If values change for a sufficiently matched period, preserve both versions and mark REVISION_OBSERVED. If no values change, report NOT_OBSERVED_WITHIN_TEST_WINDOW.
+6. Never manufacture a correction or claim a broker's revision policy from a single changed observation without excluding query and synchronization differences.
+
+**T54 — Namespace and aliases**
+1. Preserve exact symbol spelling and exact broker/provider/server namespace for each source.
+2. Compare aliases only with authoritative broker/provider instrument mapping evidence.
+3. Keep two providers' identically named symbols separate unless a canonical-source contract explicitly states otherwise.
+4. Verify no cross-stream collision occurs when timestamps and OHLC happen to match.
+5. A proposed composite identity cannot be approved while namespace, canonical symbol, and provider scope remain unresolved.
+
+**T55 — Payload/identity distinction**
+1. Preserve two distinct period-start observations with intentionally or naturally identical OHLCV payloads in a synthetic test fixture clearly marked SYNTHETIC, or use observed data without altering it.
+2. Preserve two observations for the same provisionally matched period start where one or more fields differ, if such a revision is naturally observed.
+3. Demonstrate that equal payload fingerprints do not establish equal source-bar identity.
+4. Demonstrate that a changed payload fingerprint signals changed content but does not alone establish whether the source revised a bar, the namespace changed, or the query was inconsistent.
+5. Treat SHA-256 payload hash as integrity metadata only.
+
+### 25.4 Decision rules for Model A / B / C
+
+- **Model A — native immutable source ID:** remains preferred only if a genuine source-provided immutable ID is found and its namespace, uniqueness, replay stability, and revision semantics are documented and tested. The current reviewed MqlRates structure does not expose such an ID.
+- **Model B — composite identity:** remains conditional. It cannot be approved until the exact source namespace, canonical symbol mapping, period-start semantics, uniqueness within stream, restart/replay stability, and historical revision behavior are evidenced. Raw period-start time is not UTC merely because it is represented as an epoch-like integer.
+- **Model C — payload/OHLC-derived identity:** remains rejected as source identity. A payload hash may be retained as an integrity fingerprint and aid conflict detection, but identical payloads can occur at distinct periods and changed payloads can represent revisions.
+
+### 25.5 Evidence review gates and current blockers
+
+The following must all be closed before any source identity or persistent resume-position decision is proposed for approval:
+
+1. Exact Demo broker/provider, terminal build, OS, and symbol namespace are recorded.
+2. D0–D7 evidence packages are complete for the selected symbol/timeframe, with limitations explicit.
+3. T49–T55 evidence packages are complete, with no ambiguous match presented as proof.
+4. Same-stream period-start ordering, uniqueness, restart stability, and overlap behavior are demonstrated within a bounded scope.
+5. Historical revision behavior is either observed and handled as versioned conflict evidence, or remains explicitly unknown with a conservative policy that cannot overwrite prior observations.
+6. Session gaps are supported by independent calendar evidence; unknown intervals remain unknown.
+7. The storage proof gates 29–48 are separately reviewed. Source identity proof does not prove atomic persistence; storage transaction proof does not prove source identity.
+8. A separate written decision records the selected identity model, resume locator, dedup key, revision policy, namespace rules, and residual risks.
+
+**Current status:**
+- Native immutable MqlRates source ID: NOT EXPOSED BY THE REVIEWED DOCUMENTED STRUCTURE.
+- Relative CopyRates index as durable cursor: REJECTED.
+- Raw period-start as resume locator: CONDITIONAL / NOT PROVEN.
+- Model B composite identity: BLOCKED.
+- Payload-derived Model C identity: REJECTED.
+- Persistent cursor implementation and SQLite PoC: NOT AUTHORIZED.
+- Recovery production-complete claim: BLOCKED.
+
+### 25.6 Safety and scope
+
+- Tests 49–55 have not been executed by this documentation update; no Demo result is implied.
+- No source/runtime code, EA, test harness, workflows, PR, or live trading behavior is changed or authorized.
+- No MT5 history or mixed-year historical artifact is imported for these procedures.
+- Development remains limited to 2016–2024. The 2025 OOS dataset remains locked and untouched.
