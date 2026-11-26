@@ -1685,3 +1685,14 @@ The script:
 ### 29.4 Authorization boundary
 
 This artifact is within the user's explicit authorization for a narrowly scoped read-only D0 test utility. No existing EA/source file was modified. No PR was created. No workflow, live account, trade operation, production capture output, or OOS_2025 data was accessed or changed. No claim of successful compilation or D0 execution is made.
+
+
+### 29.5 Static review clarification
+
+A static source review tightened the utility before handoff:
+- timeframe input is restricted to the six V1.3 capture frames (M5, M15, M30, H1, H4, D1);
+- PASS now also requires both `ArraySetAsSeries` calls to succeed and both resulting array flags to equal the requested setting;
+- physical-order export explicitly maps logical indices according to the actual `ArrayGetAsSeries` value;
+- source scan confirms two identical bounded `CopyRates` calls and no trade/order API calls or `FILE_COMMON` usage.
+
+This is a source-level review only. It is **not** a MetaEditor compile, terminal execution, or proof of runtime behavior.
