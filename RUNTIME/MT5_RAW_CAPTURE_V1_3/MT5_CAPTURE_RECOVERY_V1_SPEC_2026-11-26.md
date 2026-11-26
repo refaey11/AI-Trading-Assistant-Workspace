@@ -640,3 +640,129 @@ Until then:
 - live orders: **NOT AUTHORIZED**.
 
 No source/runtime code, tests, workflows, OOS data, or trading behavior were changed or executed by this runbook addition.
+
+
+## 20. Operator Test Sheets — D0 Baseline Repeatability and D1 New-Bar Index Shift
+
+This section converts D0 and D1 from the Section 19 Demo protocol into reproducible operator procedures. It is a documentation-only addition. It does not authorize implementation, alter the capture EA, or claim that any Demo test has been run.
+
+### 20.1 Common test controls
+
+Before either test:
+
+1. Use an isolated disposable MT5 terminal and Demo account. Do not use a live account.
+2. Record broker/provider name, Demo server label (redact account identifiers), terminal build, OS/version, EA source version and SHA-256, symbol as displayed by Market Watch, timeframe, and TERMINAL_MAXBARS.
+3. Select one symbol and one timeframe only. Do not change symbol aliases, timeframe, broker connection, terminal build, or history settings during a test run.
+4. Use a bounded historical interval that is already fully available in the terminal. Exclude the currently forming bar (shift 0). Record the exact requested interval and the expected number of closed bars before comparing results.
+5. Save original raw output and screenshots/log excerpts as evidence. Do not manually edit captured rows. Store each run in a separate, clearly named evidence folder.
+6. Record all times exactly as observed, including the field name and source clock. Do not relabel raw MT5 time as UTC.
+7. Record outcomes as PASS, FAIL, INCONCLUSIVE, or NOT RUN. Missing evidence is not PASS.
+
+Common evidence fields:
+- test_id, run_id, operator, observation_start, observation_end;
+- broker_provider, demo_server_label, terminal_build, OS_version;
+- EA_version, EA_SHA256, symbol_market_watch, timeframe, TERMINAL_MAXBARS;
+- CopyRates_start_pos, CopyRates_requested_count, CopyRates_returned_count, CopyRates_return_value_or_error;
+- history_download_status, array_series_setting, physical_array_index, raw_bar_time, OHLC, tick_volume, spread, real_volume;
+- observed server/terminal/host clock fields exactly as emitted;
+- expected_count, observed_unique_count, duplicate_count, missing_count, out_of_order_count;
+- evidence_file_names and SHA-256 hashes;
+- result, reason, reviewer, review_date.
+
+### 20.2 D0 — Baseline repeatability
+
+**Question:** Given the same already-available closed-bar interval, does repeated CopyRates retrieval return the same ordered bar records in the same terminal environment?
+
+**Procedure:**
+
+1. Choose one symbol/timeframe and a fixed historical interval. Record the interval in the raw time representation returned by MT5; do not infer UTC.
+2. Determine the intended closed-bar count N for that interval. Ensure the interval excludes shift 0 and is within locally available history.
+3. Request the same bounded interval twice using the same API path and identical parameters. Save each returned array before any transformation.
+4. Record CopyRates requested and returned counts, return/error state, history synchronization state, and ArraySetAsSeries setting for each run.
+5. Preserve physical array order exactly as returned. Separately produce a comparison view sorted by the documented/observed bar-time field; do not overwrite the raw capture.
+6. Compare run A and run B by position and by raw field values. Compare time, OHLC, tick volume, spread, and real volume; do not compare only a derived hash.
+7. If any count is partial, history is still downloading, or an API error occurred, repeat only after history is ready and retain the incomplete attempt as evidence.
+
+**PASS criteria (narrow):**
+- Both calls return exactly N records for the same bounded closed-bar interval.
+- Both calls have successful, fully available history status.
+- The same raw bar-time sequence and all captured bar fields match record-for-record.
+- No duplicate, missing, or out-of-order record is observed within the tested interval.
+- Raw physical order and the comparison order are both documented.
+
+**FAIL criteria:**
+- With complete history and successful calls, the same fixed request returns conflicting bar records, missing/extra records, duplicates, or inconsistent ordering.
+- A forming bar is included despite the test's closed-bar-only selection.
+
+**INCONCLUSIVE / NOT RUN:**
+- Partial CopyRates result, history still downloading, terminal error, uncertain interval boundaries, or insufficient evidence.
+- A single successful call is NOT repeatability evidence.
+- A PASS does not establish restart stability, broker-wide behavior, UTC, immutable identity, correction policy, or crash durability.
+
+**D0 evidence summary template:**
+
+| Field | Run A | Run B |
+|---|---|---|
+| Requested interval | | |
+| Requested count N | | |
+| Returned count | | |
+| CopyRates result/error | | |
+| History ready? | | |
+| ArraySetAsSeries | | |
+| First raw time in physical array | | |
+| Last raw time in physical array | | |
+| Duplicate / missing / out-of-order counts | | |
+| Field-by-field identical? | | |
+| Evidence package SHA-256 | | |
+
+### 20.3 D1 — New-bar index shift observation
+
+**Question:** Does the positional bar index shift when a new bar is added, demonstrating why a relative CopyRates shift/index is not a durable resume cursor?
+
+**Procedure:**
+
+1. Use the same isolated Demo environment, one symbol, and one timeframe. Confirm the terminal has synchronized history.
+2. Before the next bar boundary, select and record one already-closed reference bar. Capture its raw time and full OHLCV/spread fields, plus the CopyRates shift/index used to locate it.
+3. Record the current server/terminal/host clock observations without converting them to UTC. Record the timeframe and expected next bar boundary as an observation, not as a guaranteed broker clock rule.
+4. Wait until MT5 shows that a new bar has actually opened and the prior current bar has closed. Verify this from a fresh API request; do not rely only on a wall-clock estimate.
+5. Request the same reference bar again by the same bounded-history method. Record its new relative shift/index and its raw time and full fields.
+6. Compare the before/after observations. The intended demonstration is that the same reference bar is now at a different relative index while its raw period-start label and bar fields remain the same in this controlled observation.
+7. Repeat for at least two observed new-bar transitions if practical, keeping all observations in the same stream and session.
+
+**PASS criteria (narrow):**
+- A new closed bar is independently observed after the transition.
+- The exact same reference bar is found before and after.
+- Its relative shift/index changes as newer bars are added.
+- Its raw time and captured bar fields remain identical during the observation.
+
+**FAIL criteria:**
+- The reference bar cannot be uniquely located in the bounded history, or its fields change without a documented correction/revision event.
+- The observed index does not shift despite proof that a newer bar was added and the same indexing convention was used; investigate the test method and repeat before drawing a conclusion.
+
+**INCONCLUSIVE / NOT RUN:**
+- No confirmed new bar, terminal/history synchronization issue, changed indexing convention, or incomplete evidence.
+- A PASS demonstrates only that the tested relative index is positional and shifts in this environment. It does not prove raw time is a safe cursor or immutable source-bar ID.
+
+**D1 evidence summary template:**
+
+| Field | Before new bar | After new bar |
+|---|---|---|
+| Observation time/source clock | | |
+| Reference raw bar time | | |
+| Reference bar relative shift/index | | |
+| Reference OHLC | | |
+| Reference tick volume / spread / real volume | | |
+| Newer closed bar observed? | N/A | |
+| ArraySetAsSeries | | |
+| Same reference bar uniquely matched? | | |
+| Evidence package SHA-256 | | |
+
+### 20.4 Review and stop conditions
+
+- Do not use a D0 or D1 result to authorize a persistent cursor.
+- Do not substitute a CopyRates shift/index for a source-bar identity or durable resume position.
+- If a test produces conflicting data, preserve both observations and stop cursor-design conclusions until the conflict is explained.
+- If any evidence field is unavailable, mark it unavailable; do not synthesize a value.
+- D0/D1 evidence must be reviewed alongside D2–D7 and the storage durability tests before any source-position contract can be considered.
+- No Demo test is claimed as executed by this specification update. Operator execution and evidence review remain outstanding.
+
