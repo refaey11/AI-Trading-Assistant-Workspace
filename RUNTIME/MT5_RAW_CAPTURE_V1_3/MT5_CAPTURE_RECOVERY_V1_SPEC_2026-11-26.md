@@ -766,3 +766,150 @@ Common evidence fields:
 - D0/D1 evidence must be reviewed alongside D2–D7 and the storage durability tests before any source-position contract can be considered.
 - No Demo test is claimed as executed by this specification update. Operator execution and evidence review remain outstanding.
 
+
+
+## 21. Operator Test Sheets — D2 Restart and D3 Disconnect / Delayed-History Recovery
+
+This section expands D2 and D3 from Section 19 into operator procedures. These are evidence-gathering tests, not implementation instructions. The currently inspected V1.3 EA keeps its seen-bar state in memory and captures the latest closed bar; a successful terminal history download after reconnect must not be mistaken for proof that the EA's raw capture file recovered every missed bar.
+
+### 21.1 D2 — EA restart and terminal restart
+
+**Question:** After restarting the EA or the terminal, can the operator establish exactly which closed bars were captured before and after restart, and identify any gap, duplicate, or replay?
+
+**Test variants (run and report separately):**
+- D2-A: remove/re-attach or otherwise restart the EA while keeping the terminal session running.
+- D2-B: close and relaunch the MT5 terminal, then allow the same EA/configuration to start again.
+
+Do not combine the two variants into one result. They exercise different state-loss boundaries.
+
+**Preparation:**
+1. Use an isolated Demo terminal, one symbol and one timeframe, and a period with expected market activity. Record the environment fields required by Section 20.1.
+2. Ensure history is synchronized before starting. Record the latest fully closed reference bar and a bounded overlap interval of prior closed bars.
+3. Preserve a copy of the raw capture output before restart. Record its file size, last complete row, row count, and SHA-256. Do not edit or truncate the source file.
+4. Record the EA inputs and output destination. Ensure no second EA instance or terminal is writing to the same stream/file.
+5. Record the last observed closed bar before the restart using the raw timestamp representation and full OHLCV/spread fields. Do not call that timestamp UTC.
+
+**D2-A procedure — EA-only restart:**
+1. Start capture and allow at least several closed bars to be observed and written.
+2. Record the final complete captured row and restart the EA without changing symbol, timeframe, inputs, terminal, or output destination.
+3. Record the restart time and all available log messages.
+4. After restart, observe subsequent closed bars and preserve the raw output.
+5. Independently query the terminal's bounded closed-bar history covering the pre-restart overlap and post-restart interval. Save the query parameters and returned records separately from the EA output.
+6. Compare the independent history with the EA capture sequence. Report missing, duplicate, conflicting, and replayed records; do not silently deduplicate the evidence.
+
+**D2-B procedure — terminal restart:**
+1. Repeat the preparation and capture steps from a clean run.
+2. Close the terminal normally. Record the last complete raw row and hash before closing.
+3. Relaunch the same terminal installation and Demo server. Verify the same symbol/timeframe and EA inputs; record any environment change.
+4. Allow history synchronization to complete and capture subsequent closed bars.
+5. Save the post-restart raw output and logs. Independently query the bounded overlap history and compare it with the raw capture.
+6. If the terminal or EA creates a new output file, preserve both files and document the exact path/name; do not merge them manually.
+
+**PASS criteria (observation only):**
+- The restart boundary and environment are fully documented.
+- Pre-restart and post-restart raw evidence is preserved and independently comparable.
+- Every expected closed bar in the bounded test interval is accounted for as captured, intentionally replayed, or explicitly classified as missing/uncertain.
+- No conflicting duplicate is silently overwritten or discarded.
+- The result clearly distinguishes EA output completeness from terminal-history availability.
+
+A D2 PASS does **not** mean the current EA has a production recovery mechanism. If the EA output omits intermediate bars while CopyRates later exposes them, report that as a capture gap even though terminal history is available.
+
+**FAIL criteria:**
+- The test demonstrates a missing closed bar in the EA capture output with no documented intentional exclusion.
+- A restart causes a duplicate/conflicting record to overwrite prior evidence or causes the output sequence to become ambiguous.
+- The system resumes from the latest bar while the intervening interval is not reconciled.
+
+**INCONCLUSIVE / NOT RUN:**
+- No confirmed bar close occurred during the test window.
+- History is incomplete or still downloading.
+- Output files/logs are missing, the restart type cannot be established, or another writer was active.
+- The observed interval cannot be bounded reliably.
+
+**D2 evidence summary template:**
+
+| Field | D2-A EA restart | D2-B terminal restart |
+|---|---|---|
+| Environment unchanged? | | |
+| Last complete pre-restart row | | |
+| Pre-restart row count / SHA-256 | | |
+| Restart start/end observation | | |
+| First post-restart complete row | | |
+| Output file continuity/path | | |
+| Independent history ready? | | |
+| Expected closed bars in interval | | |
+| Captured / replayed / missing / conflicting counts | | |
+| Logs and evidence SHA-256 | | |
+| Result and reason | | |
+
+### 21.2 D3 — Disconnect and delayed-history recovery
+
+**Question:** During a controlled connection interruption, what bars are absent from the live capture stream, what bars later become available from terminal history, and does the evidence distinguish those two facts?
+
+**Important distinction:** This test first measures the behavior of the existing capture path. It does not assume that reconnecting automatically backfills missed bars. A later CopyRates query returning historical bars proves only that the terminal can supply those bars at that time; it does not prove the EA wrote them to its raw capture output.
+
+**Preparation:**
+1. Use a Demo account and an isolated terminal. Choose one symbol/timeframe with expected market activity and a short test window.
+2. Record the last complete captured closed bar and preserve the raw output, row count, file size, and SHA-256.
+3. Record the broker/server label and observed clock fields. Do not infer UTC or assume fixed broker offset.
+4. Define a test interruption window and a safe method to disconnect/reconnect the Demo terminal without changing the account, symbol, timeframe, or EA inputs.
+5. Before disconnecting, record the last known fully closed bar and the independent-history query parameters that will later be used for reconciliation.
+
+**Procedure:**
+1. Start capture and confirm normal writes before the interruption.
+2. Disconnect the Demo terminal/network using the planned safe method. Record the exact observable start and end events; do not assume the EA can log while disconnected.
+3. Allow at least two expected bar closes during the interruption where market/session conditions permit. If this cannot be achieved, mark the test INCONCLUSIVE rather than manufacturing a gap.
+4. Reconnect. Record connection restoration and wait until terminal history reports ready for the tested symbol/timeframe.
+5. Save the EA raw capture output immediately after reconnect and preserve all logs.
+6. Independently request the bounded closed-bar history spanning the last pre-disconnect bar through the post-reconnect period. Record requested count, returned count, errors, and synchronization state.
+7. Compare three timelines separately:
+   - bars present in the raw capture before disconnection;
+   - bars written by the EA after reconnection;
+   - bars available through the independent CopyRates history query.
+8. For each expected closed bar in the interruption window, classify it as CAPTURED_DURING, BACKFILLED_AFTER_RECONNECT, HISTORY_AVAILABLE_BUT_NOT_CAPTURED, MISSING_FROM_HISTORY, or GAP_UNKNOWN. Use these as evidence labels only; do not claim the current EA supports backfill unless the raw output proves it.
+9. If CopyRates returns fewer records than requested or history is still downloading, preserve the partial result, do not declare the interval complete, and repeat the same bounded query after synchronization.
+10. Preserve all raw attempts, including partial/error responses. Do not replace an earlier response with a later successful one.
+
+**PASS criteria (observation only):**
+- The disconnect/reconnect interval is documented and the independent history is demonstrably ready.
+- The expected closed-bar interval is bounded and reconciled record-by-record.
+- Every bar is assigned an evidence-backed classification; unknowns remain GAP_UNKNOWN.
+- The report explicitly states whether the EA output itself contains every expected bar.
+- No partial CopyRates response is treated as complete and no missing interval is silently skipped.
+
+**FAIL criteria:**
+- A bar known to have closed during the interruption is absent from EA output and the system nevertheless reports uninterrupted/complete capture.
+- A partial history result is accepted as complete or the capture resumes at the latest bar without classifying the intervening interval.
+- Duplicate/conflicting rows are overwritten or discarded without retaining evidence.
+
+**INCONCLUSIVE / NOT RUN:**
+- No bar close occurred during disconnection, session was closed, or market data was unavailable.
+- Reconnect did not complete, history remained partial, or the independent expected interval cannot be established.
+- The operator cannot preserve both pre- and post-interruption outputs.
+
+**D3 evidence summary template:**
+
+| Field | Value |
+|---|---|
+| Last complete pre-disconnect raw bar | |
+| Disconnect observed at / source clock | |
+| Reconnect observed at / source clock | |
+| Number of expected closed bars during interruption | |
+| CopyRates requested / returned count | |
+| History ready after reconnect? | |
+| Captured during interruption | |
+| Backfilled after reconnect in EA output | |
+| History available but not captured | |
+| Missing from history / GAP_UNKNOWN | |
+| Duplicate / conflicting rows | |
+| Raw output file hashes before/after | |
+| Logs and query evidence hashes | |
+| Result and reason | |
+
+### 21.3 Stop conditions and interpretation
+
+- Stop and preserve evidence if the EA output unexpectedly truncates, rotates, changes schema, or is written by another process.
+- Do not infer missing bars from elapsed wall-clock time alone. Use the tested market session and independent history evidence; otherwise classify the interval GAP_UNKNOWN.
+- Do not infer that all missing bars are recoverable merely because CopyRates can return some older bars.
+- Do not advance or approve any persistent cursor based on D2/D3 alone. Cursor semantics, source identity, storage atomicity, history corrections, and clock provenance remain separate gates.
+- D2/D3 execution has not been performed by this documentation update. The operator must run the tests in the isolated Demo environment and submit the evidence for review.
+
