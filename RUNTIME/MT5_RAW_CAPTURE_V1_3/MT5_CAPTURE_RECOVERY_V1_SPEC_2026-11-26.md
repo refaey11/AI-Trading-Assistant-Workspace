@@ -1594,3 +1594,48 @@ D0: **NOT RUN by this specification work**.
 D0 readiness: **BLOCKED until an already-authorized read-only bounded-range mechanism and isolated Demo environment are available**.
 
 No source/runtime code, EA, test harness, workflows, PR, or OOS data were changed or executed by this checklist.
+
+
+## 28. D0 Execution-Path Compatibility Audit — Python Integration vs Native MQL5
+
+**Disposition: Python Integration is a useful alternate read-only bar-retrieval interface, but it is NOT equivalent to the D0 test specified in Section 27. It cannot be substituted for native MQL5 CopyRates evidence.**
+
+### 28.1 Official interface capabilities
+
+The official MetaTrader 5 Python Integration documents these relevant calls:
+
+- `copy_rates_range(symbol, timeframe, date_from, date_to)`: retrieves bars whose open times are greater than or equal to `date_from` and less than or equal to `date_to`. It returns a NumPy array with named fields `time, open, high, low, close, tick_volume, spread, real_volume`; on error it returns `None`, with details available from `last_error()`. The documentation states that the terminal supplies only history available to the user and that the chart's Max. bars setting limits available history.
+- `copy_rates_from_pos(symbol, timeframe, start_pos, count)`: retrieves a count from a bar index; bar numbering runs present-to-past and position 0 is the current bar. It returns the same named bar fields and returns `None` on error.
+- The Python documentation explicitly says bar open times received through this Python integration are UTC, and datetime arguments should be constructed in UTC.
+
+Official references:
+- https://www.mql5.com/en/docs/python_metatrader5/mt5copyratesrange_py
+- https://www.mql5.com/en/docs/python_metatrader5/mt5copyratesfrompos_py
+- https://www.mql5.com/en/docs/python_metatrader5
+
+### 28.2 Compatibility against D0 requirements
+
+| D0 requirement | Python Integration finding | Disposition |
+|---|---|---|
+| Request a fixed multi-bar range twice | `copy_rates_range` supports bounded date-range retrieval | Capability documented; not executed |
+| Capture requested and returned counts | NumPy result length can be recorded; `None` and `last_error()` expose failure | Candidate evidence only |
+| Preserve all required bar values | Named array exposes time, OHLC, tick volume, spread, real volume | Field coverage documented |
+| Preserve native MqlRates physical array order | Python returns a NumPy structured array, not the native MqlRates array memory layout | Not equivalent |
+| Record `ArraySetAsSeries` | This MQL5 array property is not exposed as a Python result property | Not available through this interface |
+| Prove native `CopyRates` return/count semantics and history readiness | Python wrapper has its own return contract; available history is bounded by terminal chart history | Does not prove native D0 |
+| Prove raw EA timestamp semantics | Python documentation states UTC for the Python integration path; this is not proof of the existing EA's raw `MqlRates.time` path | Separate clock contract; no transfer |
+| Prove exact broker/server timezone behavior for the EA | Python documentation alone does not establish the broker's server-time behavior for the EA capture path | Not established |
+| Test the deployed EA's recovery/cursor behavior | Python retrieval does not exercise the EA's in-memory dedup arrays or capture cursor | Not tested |
+
+### 28.3 Decision
+
+1. Python Integration may be considered a **separate read-only comparison/retrieval path** for future evidence collection, provided the exact terminal, broker Demo server, symbol, timeframe, package version, request bounds, returned count, error state, and raw output are recorded.
+2. A Python result must not be labelled D0 PASS. It does not preserve native MqlRates physical array order or expose `ArraySetAsSeries`, and it does not exercise the EA's `CopyRates` call path.
+3. The Python documentation's UTC statement applies to the Python Integration API. It must not be used to relabel existing V1.3 raw timestamps as UTC or to authorize MTF joins.
+4. The terminal GUI/History Center export was not accepted as a substitute: the inspected official Python interface documentation does not establish that a GUI export preserves all required raw fields, API return/error state, native array order, or `ArraySetAsSeries`.
+5. No evidence was found in this audit that an already-authorized read-only native MQL5 bounded-range capture utility is present in the repository. Repository code search returned no indexed matches for the Python Integration calls; this is not proof that no local utility exists outside the repository.
+6. Therefore Section 27 remains unchanged: **D0 = NOT RUN; D0 readiness remains BLOCKED** until an already-authorized native bounded-range mechanism is made available, or the user separately authorizes a narrowly scoped read-only test utility. Any such authorization must remain isolated to a disposable Demo environment and must not alter the production EA, capture output, workflows, or OOS data.
+
+### 28.4 Audit scope and non-actions
+
+This section records a documentation/interface compatibility audit only. No Python script, EA, MQL5 source, test harness, workflow, PR, production data, or OOS data was created, modified, or executed. No live account or order activity is involved.
