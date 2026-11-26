@@ -365,3 +365,87 @@ SQLite transaction pattern: **PREFERRED PROOF-OF-CONCEPT DESIGN**.
 Source position / source_bar_id: **UNRESOLVED**.
 Timestamp normalization: **UNRESOLVED; raw V1.3 remains UNVERIFIED**.
 Implementation, MetaEditor changes, Demo capture, and PR: **NOT AUTHORIZED BY THIS DOCUMENT**.
+
+
+## 17. Official MQL5 API compatibility review — 2026-11-26
+
+This section records official MQL5 API behavior relevant to the proposed recovery design. It does not authorize implementation.
+
+### 17.1 SQLite support confirmed at API level
+
+The official MQL5 database reference confirms that the built-in database functions use SQLite and support database files on disk, SQL execution, prepared queries, parameter binding, and explicit transaction begin/commit/rollback. `DatabaseOpen` documents `DATABASE_OPEN_COMMON` for a database file in the common folder shared by terminals.
+
+References:
+- https://www.mql5.com/en/docs/database
+- https://www.mql5.com/en/docs/database/databaseopen
+- https://www.mql5.com/en/docs/database/databaseexecute
+- https://www.mql5.com/en/docs/database/databaseprepare
+- https://www.mql5.com/en/docs/database/databasebind
+- https://www.mql5.com/en/docs/database/databasetransactionbegin
+- https://www.mql5.com/en/docs/database/databasetransactioncommit
+- https://www.mql5.com/en/docs/database/databasetransactionrollback
+
+This confirms that an MQL5-native SQLite proof of concept is technically plausible without adding a Python process to the capture write path. It does not prove the deployed terminal build, storage configuration, power-loss durability, or multi-terminal writer behavior.
+
+### 17.2 Important transaction limitation
+
+MQL5 documents successful transaction commit as completion/application of the changes accumulated since transaction begin. The API documentation does not, by itself, specify the exact filesystem-level power-loss guarantee, SQLite journal mode, synchronous setting, or durability after sudden OS/power failure for the target terminal build.
+
+Therefore:
+- Treat transaction atomicity as a database-level property to validate with rollback/crash tests.
+- Do not claim power-loss durability solely from `DatabaseTransactionCommit()` returning true.
+- Test actual restart and fault-injection behavior on the target MT5 build and storage medium.
+- If the strongest durability mode cannot be configured or verified through the MQL5 wrapper, narrow the durability claim accordingly.
+
+The official API example also checks and handles transaction begin, execute, rollback, and commit outcomes; the recovery implementation must check every return value rather than log and continue.
+
+### 17.3 Prepared statements and value binding
+
+`DatabasePrepare` supports parameter placeholders and `DatabaseBind` binds supported scalar values. The recovery implementation should use prepared statements for all variable row values. Dynamic table/column names are not value parameters and must remain fixed, allowlisted schema identifiers.
+
+This reduces SQL quoting/injection risk and avoids brittle string formatting for symbols, source metadata, and payload fields. It does not solve canonical symbol identity or source-bar identity.
+
+### 17.4 CopyRates behavior changes the recovery acceptance criteria
+
+The official `CopyRates` documentation states:
+- A request can return the number of elements copied or `-1` on error.
+- When history is not ready, an EA/script may receive only the amount ready by timeout while history download continues; subsequent similar requests can return more data.
+- Regardless of `ArraySetAsSeries`, copied data is physically placed with the oldest element at the beginning of allocated memory.
+- `start_pos=0` is the current, potentially incomplete bar; closed-bar recovery must exclude it.
+- Requests outside available server history or beyond `TERMINAL_MAXBARS` can fail.
+
+Official reference: https://www.mql5.com/en/docs/series/copyrates
+
+Consequences:
+1. A positive return smaller than the requested count is a partial result, not proof of catch-up.
+2. The recovery loop must persist no cursor advancement for an incomplete/ambiguous requested range.
+3. Repeat acquisition while history becomes available, with bounded retries and an explicit retryable state.
+4. Normalize the physical array order explicitly and test it; do not rely only on `ArraySetAsSeries` assumptions.
+5. Keep the current forming bar excluded from the durable closed-bar stream.
+6. Enforce a configured bootstrap/history boundary and handle terminal history limits explicitly; never silently jump to the latest bar when older history is unavailable.
+7. A request by position (`start_pos`) and a request by raw timestamp have different semantics. Since the raw time and stable source-order contract are not yet approved, the exact resume method remains unresolved.
+
+### 17.5 Revised acceptance tests
+
+39. Request N bars when only K<N are locally ready; confirm the result is marked partial and cursor is unchanged.
+40. Repeat the same bounded request after history download progresses; confirm newly available bars are reconciled without skipping or duplicating.
+41. Verify physical array ordering with a known synthetic/demo series for both `ArraySetAsSeries(true)` and `false`; confirm chronological persistence order.
+42. Confirm shift 0/current bar is never admitted as a closed bar, while the intended latest closed bar is included.
+43. Request data beyond available history and beyond `TERMINAL_MAXBARS`; confirm the stream becomes blocked/retryable or bootstrap-limited rather than jumping forward.
+44. Test a database transaction where a prepared insert/bind fails midway; verify rollback and unchanged cursor.
+45. Test transaction begin failure and commit failure return paths; neither may be treated as success.
+46. Verify prepared parameter binding with symbols/metadata containing quotes, punctuation, and broker suffixes; no SQL text concatenation of untrusted values.
+47. Verify `DATABASE_OPEN_COMMON` path behavior and single-writer policy on the exact deployed terminal build.
+48. Inspect available SQLite PRAGMA behavior only in a disposable Demo database; record which settings are accepted and read back. Do not assume that accepting a command means its durability effect is proven.
+
+### 17.6 Updated technical disposition
+
+- MQL5 SQLite API existence: **CONFIRMED BY OFFICIAL DOCUMENTATION**.
+- Database-level transaction mechanism: **CONFIRMED BY OFFICIAL DOCUMENTATION**.
+- Exact power-loss durability on target MT5 build: **NOT PROVEN**.
+- Prepared parameter binding: **CONFIRMED BY OFFICIAL DOCUMENTATION**.
+- CopyRates partial-history behavior and physical array order: **CONFIRMED BY OFFICIAL DOCUMENTATION**.
+- Recovery source position/order semantics: **UNRESOLVED**.
+- SQLite proof-of-concept: **NEXT TECHNICAL VALIDATION GATE; NOT IMPLEMENTATION AUTHORIZATION**.
+
+No source/runtime code, tests, workflows, or OOS data were changed or executed during this documentation review.
