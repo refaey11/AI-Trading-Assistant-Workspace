@@ -80,6 +80,31 @@ def test_asof_join_uses_latest_non_future_mtf_row() -> None:
     assert joined["M5_trend_regime"].tolist() == [1, 2]
 
 
+def test_asof_join_excludes_same_timestamp_mtf_row() -> None:
+    events = pd.DataFrame({"timestamp": ["2024-01-02T09:00:00Z"]})
+    mtf = pd.DataFrame(
+        {
+            "timestamp": ["2024-01-02T08:00:00Z", "2024-01-02T09:00:00Z"],
+            **{field: [1, 2] for field in MODULE.REQUIRED_MTF_FIELDS},
+        }
+    )
+    joined = MODULE.join_mtf_to_events(events, mtf)
+    assert joined["mtf_trend_score"].tolist() == [1]
+    assert joined["M5_trend_regime"].tolist() == [1]
+
+
+def test_asof_join_blocks_when_only_same_timestamp_mtf_row_exists() -> None:
+    events = pd.DataFrame({"timestamp": ["2024-01-02T08:00:00Z"]})
+    mtf = pd.DataFrame(
+        {
+            "timestamp": ["2024-01-02T08:00:00Z"],
+            **{field: [1] for field in MODULE.REQUIRED_MTF_FIELDS},
+        }
+    )
+    with pytest.raises(ValueError, match="MISSING_SOURCE_BACKED_MTF_INPUT"):
+        MODULE.join_mtf_to_events(events, mtf)
+
+
 BUILDER_PATH = MODULE_PATH.parents[2] / "tools" / "gate3c_build_single_event_bundle_v1.py"
 BUILDER_SPEC = importlib.util.spec_from_file_location("gate3c_build_single_event_bundle_v1", BUILDER_PATH)
 assert BUILDER_SPEC is not None and BUILDER_SPEC.loader is not None
