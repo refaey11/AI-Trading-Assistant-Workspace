@@ -401,6 +401,8 @@ def test_canonical_runner_mtf_join_excludes_exact_timestamp() -> None:
             "mtf_value": [1, 2],
         }
     )
+    left["timestamp"] = pd.to_datetime(left["timestamp"], utc=True)
+    right["timestamp"] = pd.to_datetime(right["timestamp"], utc=True)
     joined = RUNNER.asof_join(left, right, "_mtf", allow_exact_matches=False)
     assert joined["mtf_value"].tolist() == [1]
 
