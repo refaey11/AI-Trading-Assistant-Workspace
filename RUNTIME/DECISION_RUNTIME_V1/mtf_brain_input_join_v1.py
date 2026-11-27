@@ -90,7 +90,7 @@ def join_mtf_to_events(events: pd.DataFrame, mtf: pd.DataFrame) -> pd.DataFrame:
         mtf[["timestamp", *REQUIRED_MTF_FIELDS]],
         on="timestamp",
         direction="backward",
-        allow_exact_matches=True,
+        allow_exact_matches=False,
     )
 
     for field in REQUIRED_MTF_FIELDS:
@@ -103,7 +103,7 @@ def join_mtf_to_events(events: pd.DataFrame, mtf: pd.DataFrame) -> pd.DataFrame:
         left_on="timestamp",
         right_on="mtf_timestamp",
         direction="backward",
-        allow_exact_matches=True,
+        allow_exact_matches=False,
     )["mtf_timestamp"]
     if (mtf_ts > events["timestamp"].sort_values().reset_index(drop=True)).any():
         raise ValueError("FUTURE_MTF_INPUT_DETECTED")
@@ -124,7 +124,7 @@ def run(events_path: Path, mtf_path: Path, output_path: Path) -> dict[str, Any]:
         "mtf_rows": int(len(mtf)),
         "joined_rows": int(len(merged)),
         "required_mtf_fields": list(REQUIRED_MTF_FIELDS),
-        "join": "merge_asof_backward_exact",
+        "join": "merge_asof_backward_strict",
         "defaults_used": False,
         "direction_generated": False,
         "risk_generated": False,
