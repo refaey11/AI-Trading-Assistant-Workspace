@@ -72,14 +72,14 @@ def read_csv(path: Path, required: set[str], chunksize: int | None = None) -> pd
     return df.sort_values("timestamp").reset_index(drop=True)
 
 
-def asof_join(left: pd.DataFrame, right: pd.DataFrame, suffix: str) -> pd.DataFrame:
+def asof_join(left: pd.DataFrame, right: pd.DataFrame, suffix: str, *, allow_exact_matches: bool = True) -> pd.DataFrame:
     if right.empty:
         return left.copy()
     if right["timestamp"].duplicated().any():
         raise ValueError(f"BLOCKED_ASOF_DUPLICATE_SOURCE_TIMESTAMP:{suffix}")
     cols = [c for c in right.columns if c != "timestamp"]
     r = right[["timestamp", *cols]].sort_values("timestamp")
-    return pd.merge_asof(left.sort_values("timestamp"), r, on="timestamp", direction="backward", allow_exact_matches=True, suffixes=("", suffix))
+    return pd.merge_asof(left.sort_values("timestamp"), r, on="timestamp", direction="backward", allow_exact_matches=allow_exact_matches, suffixes=("", suffix))
 
 
 def norm_direction(value: Any) -> str | None:
@@ -163,7 +163,7 @@ def run(args) -> dict[str, Any]:
     n = aggregate_rule_frame(nison, "rule_id")
     joined = bars[["timestamp", "open", "high", "low", "close"]].copy()
     joined = asof_join(joined, market, "_market")
-    joined = asof_join(joined, mtf, "_mtf")
+    joined = asof_join(joined, mtf, "_mtf", allow_exact_matches=False)
     joined = asof_join(joined, m.rename(columns={"direction": "murphy_direction", "rule_ids": "murphy_rule_ids", "rule_count": "murphy_rule_count"}), "_murphy")
     joined = asof_join(joined, n.rename(columns={"direction": "nison_confirmation", "rule_ids": "nison_rule_ids", "rule_count": "nison_rule_count"}), "_nison")
     joined = asof_join(joined, hc[["timestamp", "context_signature"]].rename(columns={"context_signature": "historical_context_signature"}), "_hc")
