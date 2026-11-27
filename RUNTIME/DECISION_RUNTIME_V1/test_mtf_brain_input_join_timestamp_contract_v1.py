@@ -393,6 +393,21 @@ def _complete_numeric_mtf_row() -> dict[str, float]:
     return {field: 0.0 for field in RUNNER.MTF_REQUIRED_FIELDS}
 
 
+def test_canonical_runner_mtf_join_excludes_exact_timestamp() -> None:
+    left = pd.DataFrame({"timestamp": ["2024-01-02T09:00:00Z"]})
+    right = pd.DataFrame(
+        {
+            "timestamp": ["2024-01-02T08:00:00Z", "2024-01-02T09:00:00Z"],
+            "mtf_value": [1, 2],
+        }
+    )
+    joined = RUNNER.asof_join(left, right, "_mtf", allow_exact_matches=False)
+    assert joined["mtf_value"].tolist() == [1]
+
+    source = (MODULE_PATH.parents[2] / "BACKTEST" / "GOVERNED_CANONICAL_RUNNER_V3.py").read_text(encoding="utf-8")
+    assert 'joined = asof_join(joined, mtf, "_mtf", allow_exact_matches=False)' in source
+
+
 def test_canonical_runner_rejects_missing_mtf_fields_instead_of_defaulting_to_zero() -> None:
     with pytest.raises(ValueError, match="BLOCKED_MTF_MISSING_CANONICAL_FIELDS"):
         RUNNER.brain_row(pd.Series({"mtf_trend_score": 0.0}))
