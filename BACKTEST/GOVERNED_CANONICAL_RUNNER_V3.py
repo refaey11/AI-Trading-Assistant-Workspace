@@ -10,12 +10,28 @@ All historical joins are point-in-time/as-of. 2025 is excluded at ingestion.
 import argparse
 import importlib.util
 import json
+import math
+import sys
 from pathlib import Path
 from typing import Any
 
 import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from BACKTEST.mtf_source_contract_gate_v1 import parse_aware_timestamps
+
+MTF_REQUIRED_FIELDS = (
+    "mtf_trend_score",
+    "M5_trend_regime",
+    "M15_trend_regime",
+    "M30_trend_regime",
+    "H1_trend_regime",
+    "H4_trend_regime",
+    "D1_trend_regime",
+)
 BRAIN = ROOT / "RECOVERED_SOURCES/DECISION_BRAIN_V1/decision_brain.py"
 HANDOFF = ROOT / "compatibility/knowledge_decision_handoff.py"
 RISK = ROOT / "RUNTIME/RISK_ENGINE_INTEGRATION_V1/risk_engine_integration_v1.py"
@@ -46,18 +62,24 @@ def read_csv(path: Path, required: set[str], chunksize: int | None = None) -> pd
     missing = sorted(required - set(df.columns))
     if missing:
         raise ValueError(f"{path}: missing {missing}")
-    df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True, errors="coerce", format="mixed")
-    if df["timestamp"].isna().any():
-        raise ValueError(f"{path}: invalid timestamp")
-    return df.sort_values("timestamp").drop_duplicates("timestamp", keep="last").reset_index(drop=True)
+    df["timestamp"] = parse_aware_timestamps(
+        df["timestamp"],
+        label=str(path),
+        error_prefix="BLOCKED_SOURCE",
+    )
+    if df["timestamp"].duplicated().any():
+        raise ValueError(f"BLOCKED_SOURCE_DUPLICATE_TIMESTAMP:{path}")
+    return df.sort_values("timestamp").reset_index(drop=True)
 
 
-def asof_join(left: pd.DataFrame, right: pd.DataFrame, suffix: str) -> pd.DataFrame:
+def asof_join(left: pd.DataFrame, right: pd.DataFrame, suffix: str, *, allow_exact_matches: bool = True) -> pd.DataFrame:
     if right.empty:
         return left.copy()
+    if right["timestamp"].duplicated().any():
+        raise ValueError(f"BLOCKED_ASOF_DUPLICATE_SOURCE_TIMESTAMP:{suffix}")
     cols = [c for c in right.columns if c != "timestamp"]
-    r = right[["timestamp", *cols]].sort_values("timestamp").drop_duplicates("timestamp", keep="last")
-    return pd.merge_asof(left.sort_values("timestamp"), r, on="timestamp", direction="backward", allow_exact_matches=True, suffixes=("", suffix))
+    r = right[["timestamp", *cols]].sort_values("timestamp")
+    return pd.merge_asof(left.sort_values("timestamp"), r, on="timestamp", direction="backward", allow_exact_matches=allow_exact_matches, suffixes=("", suffix))
 
 
 def norm_direction(value: Any) -> str | None:
@@ -89,18 +111,26 @@ def first_value(row: pd.Series, aliases: list[str]):
 
 
 def brain_row(row: pd.Series) -> dict[str, Any]:
-    trend_map = {"BULL_TREND": 1.0, "BEAR_TREND": -1.0, "TRANSITION": 0.0, "UNKNOWN": 0.0}
-    out = {"mtf_trend_score": 0.0, "volume_available": False}
-    for tf in ("M5", "M15", "M30", "H1", "H4", "D1"):
-        out[f"{tf}_trend_regime"] = 0.0
-        out[f"{tf}_volume_regime"] = 0.0
-    for tf in ("M5", "M15", "M30", "H1", "H4", "D1"):
-        raw = first_value(row, [f"{tf}_trend_regime", f"{tf}_trend", f"{tf.lower()}_trend"])
-        if raw is not None:
-            out[f"{tf}_trend_regime"] = trend_map.get(str(raw).upper(), float(raw) if isinstance(raw, (int, float)) else 0.0)
-    raw = first_value(row, ["mtf_trend_score", "mtf_score"])
-    if raw is not None:
-        out["mtf_trend_score"] = float(raw)
+    missing = [
+        field
+        for field in MTF_REQUIRED_FIELDS
+        if field not in row.index or pd.isna(row[field])
+    ]
+    if missing:
+        raise ValueError(f"BLOCKED_MTF_MISSING_CANONICAL_FIELDS:{missing}")
+
+    out: dict[str, Any] = {"volume_available": False}
+    for field in MTF_REQUIRED_FIELDS:
+        raw = row[field]
+        if isinstance(raw, bool):
+            raise ValueError(f"BLOCKED_MTF_NON_NUMERIC_FIELD:{field}:{raw!r}")
+        try:
+            value = float(raw)
+        except (TypeError, ValueError, OverflowError) as exc:
+            raise ValueError(f"BLOCKED_MTF_NON_NUMERIC_FIELD:{field}:{raw!r}") from exc
+        if not math.isfinite(value):
+            raise ValueError(f"BLOCKED_MTF_NON_FINITE_FIELD:{field}")
+        out[field] = value
     return out
 
 
@@ -111,7 +141,7 @@ def run(args) -> dict[str, Any]:
         raise ValueError("No 2016-2024 H1 bars available")
 
     market = read_csv(args.market, {"timestamp"})
-    mtf = read_csv(args.mtf, {"timestamp"})
+    mtf = read_csv(args.mtf, {"timestamp", *MTF_REQUIRED_FIELDS})
     murphy = read_csv(args.murphy, {"timestamp", "status", "direction", "source_rule_id"})
     nison = read_csv(args.nison, {"timestamp", "status", "direction", "rule_id"}, chunksize=400000)
     hc = read_csv(args.historical_context, {"timestamp", "context_signature"})
@@ -133,7 +163,7 @@ def run(args) -> dict[str, Any]:
     n = aggregate_rule_frame(nison, "rule_id")
     joined = bars[["timestamp", "open", "high", "low", "close"]].copy()
     joined = asof_join(joined, market, "_market")
-    joined = asof_join(joined, mtf, "_mtf")
+    joined = asof_join(joined, mtf, "_mtf", allow_exact_matches=False)
     joined = asof_join(joined, m.rename(columns={"direction": "murphy_direction", "rule_ids": "murphy_rule_ids", "rule_count": "murphy_rule_count"}), "_murphy")
     joined = asof_join(joined, n.rename(columns={"direction": "nison_confirmation", "rule_ids": "nison_rule_ids", "rule_count": "nison_rule_count"}), "_nison")
     joined = asof_join(joined, hc[["timestamp", "context_signature"]].rename(columns={"context_signature": "historical_context_signature"}), "_hc")

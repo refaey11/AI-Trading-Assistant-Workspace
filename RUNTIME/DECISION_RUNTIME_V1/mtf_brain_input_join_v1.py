@@ -12,6 +12,7 @@ import json
 from pathlib import Path
 from typing import Any
 
+import numpy as np
 import pandas as pd
 
 REQUIRED_MTF_FIELDS = (
@@ -25,14 +26,34 @@ REQUIRED_MTF_FIELDS = (
 )
 
 
+def _parse_aware_timestamps(values: pd.Series, *, label: str) -> pd.Series:
+    """Parse only explicitly timezone-aware timestamps and normalize them to UTC.
+
+    Naive timestamps are rejected: this adapter must never guess whether a source
+    timestamp represents UTC, broker time, or local time.
+    """
+    normalized: list[pd.Timestamp] = []
+    for index, value in values.items():
+        try:
+            parsed = pd.Timestamp(value)
+        except (TypeError, ValueError, OverflowError) as exc:
+            raise ValueError(f"{label}: invalid timestamp at row {index}: {value!r}") from exc
+        if pd.isna(parsed):
+            raise ValueError(f"{label}: invalid timestamp at row {index}: {value!r}")
+        if parsed.tzinfo is None or parsed.utcoffset() is None:
+            raise ValueError(
+                f"{label}: TIMEZONE_PROVENANCE_UNRESOLVED_NAIVE_TIMESTAMP at row {index}"
+            )
+        normalized.append(parsed.tz_convert("UTC"))
+    return pd.Series(pd.DatetimeIndex(normalized), index=values.index, name=values.name)
+
+
 def _load_timestamped(path: Path, required: set[str]) -> pd.DataFrame:
     df = pd.read_csv(path)
     missing = sorted(required - set(df.columns))
     if missing:
         raise ValueError(f"{path}: missing required columns {missing}")
-    df["timestamp"] = pd.to_datetime(df["timestamp"], utc=True, errors="coerce")
-    if df["timestamp"].isna().any():
-        raise ValueError(f"{path}: invalid timestamp values")
+    df["timestamp"] = _parse_aware_timestamps(df["timestamp"], label=str(path))
     if df["timestamp"].duplicated().any():
         raise ValueError(f"{path}: duplicate timestamps")
     return df.sort_values("timestamp").reset_index(drop=True)
@@ -41,16 +62,24 @@ def _load_timestamped(path: Path, required: set[str]) -> pd.DataFrame:
 def join_mtf_to_events(events: pd.DataFrame, mtf: pd.DataFrame) -> pd.DataFrame:
     if "timestamp" not in events.columns:
         raise ValueError("events: missing timestamp")
-    if events["timestamp"].isna().any():
-        raise ValueError("events: invalid timestamps")
+    if "timestamp" not in mtf.columns:
+        raise ValueError("mtf: missing timestamp")
+
+    events = events.copy()
+    mtf = mtf.copy()
+    events["timestamp"] = _parse_aware_timestamps(events["timestamp"], label="events")
+    mtf["timestamp"] = _parse_aware_timestamps(mtf["timestamp"], label="mtf")
     if events["timestamp"].duplicated().any():
         raise ValueError("events: duplicate timestamps")
+    if mtf["timestamp"].duplicated().any():
+        raise ValueError("mtf: duplicate timestamps")
 
-    mtf = mtf.copy()
     for field in REQUIRED_MTF_FIELDS:
         values = pd.to_numeric(mtf[field], errors="coerce")
         if values.isna().any():
             raise ValueError(f"mtf: non-numeric/NaN values in {field}")
+        if not np.isfinite(values.to_numpy(dtype=float)).all():
+            raise ValueError(f"mtf: non-finite values in {field}")
         mtf[field] = values
 
     events = events.sort_values("timestamp").reset_index(drop=True).copy()
@@ -61,7 +90,7 @@ def join_mtf_to_events(events: pd.DataFrame, mtf: pd.DataFrame) -> pd.DataFrame:
         mtf[["timestamp", *REQUIRED_MTF_FIELDS]],
         on="timestamp",
         direction="backward",
-        allow_exact_matches=True,
+        allow_exact_matches=False,
     )
 
     for field in REQUIRED_MTF_FIELDS:
@@ -74,7 +103,7 @@ def join_mtf_to_events(events: pd.DataFrame, mtf: pd.DataFrame) -> pd.DataFrame:
         left_on="timestamp",
         right_on="mtf_timestamp",
         direction="backward",
-        allow_exact_matches=True,
+        allow_exact_matches=False,
     )["mtf_timestamp"]
     if (mtf_ts > events["timestamp"].sort_values().reset_index(drop=True)).any():
         raise ValueError("FUTURE_MTF_INPUT_DETECTED")
@@ -95,7 +124,7 @@ def run(events_path: Path, mtf_path: Path, output_path: Path) -> dict[str, Any]:
         "mtf_rows": int(len(mtf)),
         "joined_rows": int(len(merged)),
         "required_mtf_fields": list(REQUIRED_MTF_FIELDS),
-        "join": "merge_asof_backward_exact",
+        "join": "merge_asof_backward_strict",
         "defaults_used": False,
         "direction_generated": False,
         "risk_generated": False,
